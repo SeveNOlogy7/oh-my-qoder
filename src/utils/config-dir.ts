@@ -2,9 +2,11 @@
  * Qoder CLI Configuration Directory Resolution
  *
  * Resolves the active Qoder CLI configuration directory, honouring
- * QODER_CONFIG_DIR (absolute path, or ~-prefixed) with fallback to
- * ~/.qoder.  Trailing separators are stripped; filesystem roots are
- * preserved.
+ * QODER_CONFIG_DIR / QODERCN_CONFIG_DIR (absolute path, or ~-prefixed).
+ * When neither is set — a plain terminal, not a CLI-launched session — the
+ * distribution is inferred from which root actually holds state, because the
+ * CN build keeps its data in ~/.qoder-cn while the international one uses
+ * ~/.qoder. Trailing separators are stripped; filesystem roots are preserved.
  *
  * Multi-surface mirrors (keep in sync):
  *   scripts/lib/config-dir.mjs   — ESM hook/HUD runtime
@@ -12,8 +14,12 @@
  *   scripts/lib/config-dir.sh    — POSIX shell runtime
  */
 
-import { join, normalize, parse, sep } from 'path';
+import { existsSync } from 'fs';
+import { basename, join, normalize, parse, sep } from 'path';
 import { homedir } from 'os';
+
+export const QODER_INTL_CONFIG_DIR_NAME = '.qoder';
+export const QODER_CN_CONFIG_DIR_NAME = '.qoder-cn';
 
 /**
  * Strip a single trailing path separator (preserve filesystem root).
@@ -27,18 +33,32 @@ function stripTrailingSep(p: string): string {
 }
 
 /**
+ * Pick the default config root when no environment override exists.
+ *
+ * ~/.qoder also holds cross-product files on a CN machine, so a bare directory
+ * is not evidence; only the CLI's own state files mark the distribution.
+ */
+export function resolveDefaultConfigDir(home: string = homedir()): string {
+  const cnRoot = join(home, QODER_CN_CONFIG_DIR_NAME);
+  const cnHasState = existsSync(join(cnRoot, 'settings.json')) || existsSync(join(cnRoot, 'plugins'));
+  return stripTrailingSep(normalize(join(home, cnHasState ? QODER_CN_CONFIG_DIR_NAME : QODER_INTL_CONFIG_DIR_NAME)));
+}
+
+/**
  * Resolve the Qoder CLI configuration directory.
  *
- * Honours QODER_CONFIG_DIR (absolute path, or ~-prefixed) with fallback
- * to ~/.qoder.  Trailing separators are stripped; filesystem roots are
- * preserved.
+ * Honours QODER_CONFIG_DIR, then QODERCN_CONFIG_DIR (absolute path, or
+ * ~-prefixed), falling back to the inferred default. Trailing separators are
+ * stripped; filesystem roots are preserved.
  */
-export function getQoderConfigDir(): string {
-  const home = homedir();
-  const configured = process.env.QODER_CONFIG_DIR?.trim();
+export function getQoderConfigDir(
+  env: NodeJS.ProcessEnv = process.env,
+  home: string = homedir(),
+): string {
+  const configured = (env.QODER_CONFIG_DIR ?? '').trim() || (env.QODERCN_CONFIG_DIR ?? '').trim();
 
   if (!configured) {
-    return stripTrailingSep(normalize(join(home, '.qoder')));
+    return resolveDefaultConfigDir(home);
   }
 
   if (configured === '~') {
@@ -50,6 +70,42 @@ export function getQoderConfigDir(): string {
   }
 
   return stripTrailingSep(normalize(configured));
+}
+
+/**
+ * Name of the root-level Qoder config JSON that sits beside the config dir.
+ * The CN distribution uses `~/.qoder-cn.json`, the international one
+ * `~/.qoder.json`; a custom config dir keeps the international name.
+ */
+export function getQoderRootConfigFileName(
+  configDir: string = getQoderConfigDir(),
+): string {
+  return basename(normalize(configDir)) === QODER_CN_CONFIG_DIR_NAME
+    ? `${QODER_CN_CONFIG_DIR_NAME}.json`
+    : `${QODER_INTL_CONFIG_DIR_NAME}.json`;
+}
+
+/**
+ * Compare a path against the inferred default config root. Both sides are
+ * normalized so a trailing separator or separator style never changes the
+ * answer - callers embed this in generated shell commands.
+ */
+export function isDefaultQoderConfigDir(configDir: string, home: string = homedir()): boolean {
+  const strip = (p: string) => stripTrailingSep(normalize(p)).replace(/\\/g, '/');
+  return strip(configDir) === strip(resolveDefaultConfigDir(home));
+}
+
+/**
+ * The default config root expressed for `${QODER_CONFIG_DIR:-...}` shell
+ * expansions inside generated hook and statusline commands.
+ *
+ * `$HOME` is deliberately left unexpanded: these strings are persisted into
+ * settings.json and must keep resolving if the home directory moves, so only
+ * the distribution-specific directory name is substituted.
+ */
+export function getDefaultConfigDirShellPath(home: string = homedir()): string {
+  const cn = normalize(resolveDefaultConfigDir(home)) === normalize(join(home, QODER_CN_CONFIG_DIR_NAME));
+  return `$HOME/${cn ? QODER_CN_CONFIG_DIR_NAME : QODER_INTL_CONFIG_DIR_NAME}`;
 }
 
 /**

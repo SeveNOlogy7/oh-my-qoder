@@ -45,6 +45,10 @@ function writePluginRoot(root: string, content: string): void {
 // Mock getQoderConfigDir before importing the module under test
 vi.mock('../utils/config-dir.js', () => ({
   getQoderConfigDir: () => TEST_DIRS.claudeDir,
+  getQoderRootConfigFileName: () => '.qoder.json',
+  getDefaultConfigDirShellPath: () => '$HOME/.qoder',
+  isDefaultQoderConfigDir: () => false,
+  resolveDefaultConfigDir: () => TEST_DIRS.claudeDir,
 }));
 
 // Mock builtin skills to return a known list for testing

@@ -15,11 +15,10 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'fs';
-import { homedir } from 'os';
 import { basename, dirname, join } from 'path';
 import { resolvePluginDirArg } from '../lib/plugin-dir.js';
 import { stripRetiredTeamMcpServers } from '../installer/mcp-registry.js';
-import { getQoderConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir, getQoderRootConfigFileName, isDefaultQoderConfigDir } from '../utils/config-dir.js';
 import {
   resolveLaunchPolicy,
   buildTmuxSessionName,
@@ -106,7 +105,7 @@ function readJsonObject(path: string): Record<string, unknown> | null {
 }
 
 function refreshRuntimeClaudeJsonMcpServers(baseConfigDir: string, runtimeClaudeJsonPath: string): void {
-  const sourceClaudeJsonPath = join(dirname(baseConfigDir), '.qoder.json');
+  const sourceClaudeJsonPath = join(dirname(baseConfigDir), getQoderRootConfigFileName(baseConfigDir));
   const sourceClaudeJson = readJsonObject(sourceClaudeJsonPath);
   if (!sourceClaudeJson || !isJsonObject(sourceClaudeJson.mcpServers)) {
     return;
@@ -185,7 +184,7 @@ export function prepareOmqLaunchConfigDir(baseConfigDir = getQoderConfigDir()): 
 }
 
 function isDefaultQoderConfigDirPath(configDir: string): boolean {
-  return configDir === join(homedir(), '.qoder');
+  return isDefaultQoderConfigDir(configDir);
 }
 
 /**
