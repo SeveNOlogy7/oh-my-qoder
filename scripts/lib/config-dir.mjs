@@ -35,3 +35,8 @@ export function getOmqConfigDir() {
 export function getUpdateCheckCachePath() {
   return join(getOmqConfigDir(), 'update-check.json');
 }
+
+// The HUD wrapper template still destructures the pre-rename symbol; this file is
+// copied verbatim into <configDir>/hud/lib/, so without the alias the statusline
+// throws "getClaudeConfigDir is not a function" on every render.
+export const getClaudeConfigDir = getQoderConfigDir;
