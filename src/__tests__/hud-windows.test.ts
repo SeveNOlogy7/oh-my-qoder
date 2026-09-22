@@ -233,7 +233,9 @@ describe('HUD Windows Compatibility', () => {
       expect(content).not.toMatch(/['"]cache['"],\s*['"]omq['"],\s*['"]oh-my-qoder['"]/);
       expect(content).toMatch(/readdirSync\(p\.join\(d,\s*'plugins',\s*'cache'\)\)/);
       expect(content).not.toContain('ls ~/.qoder/AGENTS-*.md');
-      expect(content).toContain("find \"${QODER_CONFIG_DIR:-$HOME/.qoder}\" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null");
+      // The glob runs against a resolved config root, never a guessed directory name.
+      expect(content).toMatch(/find\s+"\$CONFIG_DIR" -maxdepth 1 -type f -name 'AGENTS-\*\.md'/);
+      expect(content).not.toMatch(/find\s+"\$\{QODER_CONFIG_DIR:-\$HOME\/\./);
     });
 
     it('hud skill should use cross-platform Node.js commands for plugin detection', () => {
@@ -251,10 +253,10 @@ describe('HUD Windows Compatibility', () => {
       const hudPath = join(packageRoot, 'skills', 'hud', 'SKILL.md');
       const content = readFileSync(hudPath, 'utf-8');
 
-      expect(content).toContain(".split(require('path').sep).join('/')");
+      expect(content).toMatch(/\.split\((?:require\('path'\)\.|p\.)sep\)\.join\('\/'\)/);
       expect(content).toContain('The command path MUST use forward slashes on all platforms');
       expect(content).toContain('On Windows the path uses forward slashes (not backslashes):');
-      expect(content).toContain('"command": "node C:/Users/username/.qoder/hud/omq-hud.mjs"');
+      expect(content).toContain('"command": "node C:/Users/username/<config-dir>/hud/omq-hud.mjs"');
       expect(content).not.toContain('"command": "node C:\\Users\\username\\.qwen\\hud\\omq-hud.mjs"');
     });
 

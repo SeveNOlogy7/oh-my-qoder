@@ -5,7 +5,8 @@
 Check if user has existing 2.x configuration:
 
 ```bash
-ls "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands/ralph-loop.md 2>/dev/null || ls "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands/ultrawork.md 2>/dev/null
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
+ls "$CONFIG_DIR"/commands/ralph-loop.md 2>/dev/null || ls "$CONFIG_DIR"/commands/ultrawork.md 2>/dev/null
 ```
 
 If found, this is an upgrade from 2.x. Set `IS_UPGRADE=true`.
@@ -174,12 +175,13 @@ echo ""
 Get the current OMQ version and mark setup complete:
 
 ```bash
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
 # Get current OMQ version from the installed AGENTS.md (OMQ:VERSION marker)
 OMQ_VERSION=""
 if [ -f ".qoder/AGENTS.md" ]; then
   OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' .qoder/AGENTS.md 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
-elif [ -f "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" ]; then
-  OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
+elif [ -f "$CONFIG_DIR/AGENTS.md" ]; then
+  OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' "$CONFIG_DIR/AGENTS.md" 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
 fi
 if [ -z "$OMQ_VERSION" ]; then
   OMQ_VERSION=$(omq --version 2>/dev/null | head -1 || true)

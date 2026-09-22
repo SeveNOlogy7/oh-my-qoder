@@ -128,8 +128,11 @@ describe('MINGW64 escape safety: no "!" in node -e inline scripts (issue #729)',
 
     it('hud SKILL.md keeps Unix statusLine guidance portable while preserving Windows-safe paths', () => {
       const content = readFileSync(join(REPO_ROOT, 'skills', 'hud', 'SKILL.md'), 'utf-8');
-      expect(content).toContain('"command": "node ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs"');
-      expect(content).toContain('"command": "node C:/Users/username/.qoder/hud/omq-hud.mjs"');
+      // The Unix example must not name a distribution directory: the installer
+      // writes whichever root matches the machine it ran on.
+      expect(content).toMatch(/"command": "node \$\{QODER_CONFIG_DIR:-\$HOME\/<config-dir>\}\/hud\/omq-hud\.mjs"/);
+      expect(content).not.toMatch(/"command": "node \$\{QODER_CONFIG_DIR:-\$HOME\/\.qoder(?:-cn)?\}/);
+      expect(content).toContain('"command": "node C:/Users/username/<config-dir>/hud/omq-hud.mjs"');
       expect(content).not.toContain('"command": "node /home/username/.qoder/hud/omq-hud.mjs"');
       expect(content).not.toContain('The command must use an absolute path, not `~`');
     });
