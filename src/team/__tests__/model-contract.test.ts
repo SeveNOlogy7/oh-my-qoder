@@ -18,6 +18,12 @@ import {
   _testInternals,
 } from '../model-contract.js';
 
+// Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
+vi.mock('../../lib/qoder-cli.js', () => ({
+  qoderCliBinary: () => 'qodercli',
+  qoderCliNpmPackage: () => '@qoder-ai/qodercli',
+}));
+
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
   return {

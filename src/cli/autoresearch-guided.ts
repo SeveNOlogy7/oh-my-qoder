@@ -3,6 +3,7 @@ import { existsSync, lstatSync, mkdirSync, symlinkSync, unlinkSync, writeFileSyn
 import { mkdir, writeFile } from 'fs/promises';
 import { join, relative, resolve, sep } from 'path';
 import { homedir } from 'os';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { createInterface } from 'readline/promises';
 import { type AutoresearchKeepPolicy, parseSandboxContract, slugifyMissionName } from '../autoresearch/contracts.js';
 import {
@@ -409,7 +410,7 @@ export function spawnAutoresearchSetupTmux(repoRoot: string): void {
 
   const sessionName = `omq-autoresearch-setup-${Date.now().toString(36)}`;
   const codexHome = prepareAutoresearchSetupCodexHome(repoRoot, sessionName);
-  const claudeCommand = buildTmuxShellCommandWithEnv('qodercli', [CLAUDE_BYPASS_FLAG], { CODEX_HOME: codexHome });
+  const claudeCommand = buildTmuxShellCommandWithEnv(qoderCliBinary(), [CLAUDE_BYPASS_FLAG], { CODEX_HOME: codexHome });
   const wrappedClaudeCommand = wrapWithLoginShell(claudeCommand);
   const paneId = tmuxExec(
     ['new-session', '-d', '-P', '-F', '#{pane_id}', '-s', sessionName, '-c', repoRoot, wrappedClaudeCommand],

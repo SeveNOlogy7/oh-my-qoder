@@ -17,6 +17,7 @@ import {
 } from 'fs';
 import { basename, dirname, join } from 'path';
 import { resolvePluginDirArg } from '../lib/plugin-dir.js';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { stripRetiredTeamMcpServers } from '../installer/mcp-registry.js';
 import { getQoderConfigDir, getQoderRootConfigFileName, isDefaultQoderConfigDir } from '../utils/config-dir.js';
 import {
@@ -518,7 +519,7 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
 
   // Launch Claude in current pane
   try {
-    execFileSync('qodercli', args, {
+    execFileSync(qoderCliBinary(), args, {
       cwd,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -526,7 +527,7 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { status?: number | null };
     if (err.code === 'ENOENT') {
-      console.error('[omq] Error: qodercli not found in PATH.');
+      console.error(`[omq] Error: ${qoderCliBinary()} not found in PATH.`);
       process.exit(1);
     }
     // Propagate Claude's exit code so omq does not swallow failures
@@ -582,8 +583,8 @@ function runClaudeOutsideTmux(
       .filter(([, value]) => value !== undefined),
   ) as Record<string, string>;
   const rawClaudeCmd = isNativeWindowsShell()
-    ? buildTmuxShellCommandWithEnv('qodercli', args, forwardedEnv)
-    : buildTmuxShellCommand('qodercli', args);
+    ? buildTmuxShellCommandWithEnv(qoderCliBinary(), args, forwardedEnv)
+    : buildTmuxShellCommand(qoderCliBinary(), args);
   const envPrefix = !isNativeWindowsShell() && Object.keys(forwardedEnv).length > 0
     ? buildEnvExportPrefix(TMUX_ENV_FORWARD)
     : '';
@@ -645,7 +646,7 @@ function runClaudeOutsideTmux(
  */
 function runClaudeDirect(cwd: string, args: string[]): void {
   try {
-    execFileSync('qodercli', args, {
+    execFileSync(qoderCliBinary(), args, {
       cwd,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -653,7 +654,7 @@ function runClaudeDirect(cwd: string, args: string[]): void {
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { status?: number | null };
     if (err.code === 'ENOENT') {
-      console.error('[omq] Error: qodercli not found in PATH.');
+      console.error(`[omq] Error: ${qoderCliBinary()} not found in PATH.`);
       process.exit(1);
     }
     // Propagate Claude's exit code so omq does not swallow failures
@@ -764,9 +765,9 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  // Pre-flight: check qodercli availability
+  // Pre-flight: check the host CLI availability
   if (!isQoderCliAvailable()) {
-    console.error('[omq] Error: qodercli not found. Install Qoder CLI first:');
+    console.error(`[omq] Error: ${qoderCliBinary()} not found. Install Qoder CLI first:`);
     console.error('  curl -fsSL https://qoder.com/install | bash');
     process.exit(1);
   }

@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { execSync, execFileSync } from 'child_process';
+import { qoderCliBinary, qoderCliNpmPackage } from '../lib/qoder-cli.js';
 import { TaskTool } from '../hooks/beads-context/types.js';
 import {
   install as installOmq,
@@ -33,8 +34,6 @@ export const REPO_OWNER = 'chickenlj';
 export const REPO_NAME = 'oh-my-qoder';
 export const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
 export const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}`;
-
-const QODER_CLI_NPM_PACKAGE = '@qoder-ai/qodercli';
 
 interface GlobalQoderCliInstall {
   status: 'present' | 'absent' | 'unknown';
@@ -98,20 +97,22 @@ function getFirstResolvedBinaryPath(output: string, binaryName: string): string 
 
 function resolveQoderBinaryPath(): string | undefined {
   try {
+    const binary = qoderCliBinary();
     if (process.platform === 'win32') {
-      return getFirstResolvedBinaryPath(execFileSync('where.exe', ['qodercli'], {
+      return getFirstResolvedBinaryPath(execFileSync('where.exe', [binary], {
         encoding: 'utf-8',
         stdio: 'pipe',
         timeout: 5000,
         windowsHide: true,
-      }), 'qodercli');
+      }), binary);
     }
 
-    return getFirstResolvedBinaryPath(execSync('command -v qodercli 2>/dev/null || which qodercli 2>/dev/null', {
+    // qoderCliBinary() only ever returns a validated name, so this stays shell-safe.
+    return getFirstResolvedBinaryPath(execSync(`command -v ${binary} 2>/dev/null || which ${binary} 2>/dev/null`, {
       encoding: 'utf-8',
       stdio: 'pipe',
       timeout: 5000,
-    }), 'qodercli');
+    }), binary);
   } catch {
     return undefined;
   }
@@ -119,7 +120,7 @@ function resolveQoderBinaryPath(): string | undefined {
 
 function detectQoderCliFromBinary(npmRoot?: string): GlobalQoderCliInstall {
   try {
-    const versionOutput = String(execFileSync('qodercli', ['--version'], {
+    const versionOutput = String(execFileSync(qoderCliBinary(), ['--version'], {
       encoding: 'utf-8',
       stdio: 'pipe',
       timeout: 10000,
@@ -128,7 +129,7 @@ function detectQoderCliFromBinary(npmRoot?: string): GlobalQoderCliInstall {
     const binaryPath = resolveQoderBinaryPath();
     const version = parseQoderCliVersion(versionOutput);
     if (!version && !binaryPath) {
-      return { status: 'unknown', error: 'qodercli --version returned no parseable version and binary path could not be resolved' };
+      return { status: 'unknown', error: `${qoderCliBinary()} --version returned no parseable version and binary path could not be resolved` };
     }
 
     const normalizedBinaryPath = binaryPath?.replace(/\\/g, '/').toLowerCase();
@@ -170,7 +171,7 @@ function detectGlobalQoderCliInstall(): GlobalQoderCliInstall {
         : { status: 'unknown', error: 'npm root -g returned an empty path' };
     }
 
-    const packageJsonPath = join(npmRoot, ...QODER_CLI_NPM_PACKAGE.split('/'), 'package.json');
+    const packageJsonPath = join(npmRoot, ...qoderCliNpmPackage().split('/'), 'package.json');
     if (!existsSync(packageJsonPath)) {
       const binaryInstall = detectQoderCliFromBinary(npmRoot);
       return binaryInstall.status === 'present' ? binaryInstall : { status: 'absent' };
@@ -212,7 +213,7 @@ function restoreGlobalQoderCliIfNeeded(
   }
 
   const versionSuffix = beforeUpdate.version ? `@${beforeUpdate.version}` : '@latest';
-  const packageSpec = `${QODER_CLI_NPM_PACKAGE}${versionSuffix}`;
+  const packageSpec = `${qoderCliNpmPackage()}${versionSuffix}`;
 
   if (verbose) {
     console.log(`[omq update] Restoring global ${packageSpec} after npm update...`);
@@ -222,11 +223,11 @@ function restoreGlobalQoderCliIfNeeded(
 
   const afterRestore = detectGlobalQoderCliInstall();
   if (afterRestore.status !== 'present') {
-    throw new Error(`Global ${QODER_CLI_NPM_PACKAGE} was present before update but is still missing after restore`);
+    throw new Error(`Global ${qoderCliNpmPackage()} was present before update but is still missing after restore`);
   }
 
   if (verbose) {
-    console.log(`[omq update] Restored global ${QODER_CLI_NPM_PACKAGE}`);
+    console.log(`[omq update] Restored global ${qoderCliNpmPackage()}`);
   }
 
   return { restored: true };
@@ -1114,7 +1115,7 @@ export async function performUpdate(options?: {
           success: false,
           previousVersion,
           newVersion,
-          message: `Updated to ${newVersion}, but failed to restore global ${QODER_CLI_NPM_PACKAGE}`,
+          message: `Updated to ${newVersion}, but failed to restore global ${qoderCliNpmPackage()}`,
           errors: [restoreError instanceof Error ? restoreError.message : String(restoreError)],
         };
       }

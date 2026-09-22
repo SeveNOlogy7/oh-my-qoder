@@ -4,6 +4,7 @@ import { validateTeamName } from './team-name.js';
 import { normalizeToTierAlias } from '../features/delegation-enforcer.js';
 import { isProviderSpecificModelId, isNonDefaultProvider } from '../config/models.js';
 import { isExternalLLMDisabled } from '../lib/security-config.js';
+import { qoderCliBinary, qoderCliNpmPackage } from '../lib/qoder-cli.js';
 
 export type CliAgentType = 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok';
 
@@ -183,7 +184,8 @@ export function shouldUseClaudeBareMode(env: NodeJS.ProcessEnv = process.env): b
 const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
   qwen: {
     agentType: 'qwen',
-    binary: 'qodercli',
+    // Resolved lazily so importing this module does not shell out to PATH lookup.
+    get binary() { return qoderCliBinary(); },
     installInstructions: 'Install Qoder CLI: curl -fsSL https://qoder.com/install | bash',
     buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
       const args = ['--dangerously-skip-permissions'];

@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
+vi.mock('../lib/qoder-cli.js', () => ({
+  qoderCliBinary: () => 'qodercli',
+  qoderCliNpmPackage: () => '@qoder-ai/qodercli',
+}));
+
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
   execFileSync: vi.fn(),
