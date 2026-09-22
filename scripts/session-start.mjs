@@ -12,6 +12,7 @@ import { join, dirname, basename, resolve, relative, isAbsolute } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { getQoderConfigDir, getUpdateCheckCachePath } from './lib/config-dir.mjs';
+import { resolvePluginCacheBase } from './lib/plugin-cache-dir.mjs';
 import { resolveOmqStateRoot } from './lib/state-root.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -510,7 +511,7 @@ function extractOmcVersion(content) {
 }
 
 function getPluginCacheBase() {
-  return join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder');
+  return resolvePluginCacheBase(configDir);
 }
 
 function isPathInsideOrEqual(parent, child) {
@@ -725,7 +726,7 @@ async function checkHudInstallation(retryCount = 0) {
 
       // If OMQ HUD wrapper is configured, ensure at least one plugin cache version is built.
       if (statusLineCommand?.includes('omq-hud')) {
-        const pluginCacheBase = join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder');
+        const pluginCacheBase = getPluginCacheBase();
         if (existsSync(pluginCacheBase)) {
           const versions = readdirSync(pluginCacheBase)
             .filter(version => !version.startsWith('.'))
@@ -989,7 +990,7 @@ ${cleanContent}
     // This prevents "Cannot find module" errors for sessions started before a
     // plugin update whose QODER_PLUGIN_ROOT still points to the old version.
     try {
-      const cacheBase = join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder');
+      const cacheBase = getPluginCacheBase();
       let versions = [];
       if (existsSync(cacheBase)) {
         versions = readdirSync(cacheBase)

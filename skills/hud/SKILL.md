@@ -43,7 +43,7 @@ node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR|
 
 **Step 2:** Verify the plugin is installed:
 ```bash
-node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||p.join(require('os').homedir(),'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));if(v.length===0){console.log('Plugin not installed - run: /plugin install oh-my-qoder');process.exit()}const l=v[v.length-1],h=p.join(b,l,'dist','hud','index.js');console.log('Version:',l);console.log(f.existsSync(h)?'READY':'NOT_FOUND - try reinstalling: /plugin install oh-my-qoder')}catch{console.log('Plugin not installed - run: /plugin install oh-my-qoder')}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||p.join(require('os').homedir(),'.qoder'),b=p.join(d,'plugins','cache',(()=>{try{const s=f.readdirSync(p.join(d,'plugins','cache')).filter(x=>f.existsSync(p.join(d,'plugins','cache',x,'oh-my-qoder')));return s.includes('omq')?'omq':(s[0]||'omq')}catch{return 'omq'}})(),'oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));if(v.length===0){console.log('Plugin not installed - run: /plugin install oh-my-qoder');process.exit()}const l=v[v.length-1],h=p.join(b,l,'dist','hud','index.js');console.log('Version:',l);console.log(f.existsSync(h)?'READY':'NOT_FOUND - try reinstalling: /plugin install oh-my-qoder')}catch{console.log('Plugin not installed - run: /plugin install oh-my-qoder')}"
 ```
 
 **Step 3:** If omq-hud.mjs is MISSING or argument is `setup`, install the HUD wrapper and its dependency from the canonical template:

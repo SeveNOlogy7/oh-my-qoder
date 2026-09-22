@@ -24,6 +24,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeHooksDataForPlatform } from './lib/hook-command-normalizer.mjs';
+import { resolvePluginCacheBase } from './lib/plugin-cache-dir.mjs';
 
 function getQoderConfigDir() {
   const configured = (process.env.QODER_CONFIG_DIR || join(homedir(), '.qoder')).replace(/[\\/]+$/, '');
@@ -176,7 +177,7 @@ function replaceWithSymlink(versionPath, latestRoot) {
 
 export function repairPluginCacheReferences() {
   const configDir = getQoderConfigDir();
-  const cacheBase = join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder');
+  const cacheBase = resolvePluginCacheBase(configDir);
   const latestRoot = latestValidCacheRoot(cacheBase);
   const result = { latestRoot, registryUpdated: false, hooksPatched: false, symlinked: 0, errors: [] };
 

@@ -23,7 +23,7 @@ import {
   syncInstalledPluginPayload,
 } from '../installer/index.js';
 import { getQoderConfigDir } from '../utils/config-dir.js';
-import { purgeStalePluginCacheVersions } from '../utils/paths.js';
+import { purgeStalePluginCacheVersions, getPluginCacheBase } from '../utils/paths.js';
 import type { NotificationConfig } from '../notifications/types.js';
 import { isAutoUpdateDisabled } from '../lib/security-config.js';
 import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
@@ -460,7 +460,7 @@ export function shouldBlockStandaloneUpdateInCurrentSession(): boolean {
 }
 
 export function syncPluginCache(verbose: boolean = false): { synced: boolean; skipped: boolean; errors: string[] } {
-  const pluginCacheRoot = join(getQoderConfigDir(), 'plugins', 'cache', 'omq', 'oh-my-qoder');
+  const pluginCacheRoot = getPluginCacheBase();
   if (!existsSync(pluginCacheRoot)) {
     return { synced: false, skipped: true, errors: [] };
   }
