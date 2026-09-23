@@ -85,5 +85,13 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qoder-plugins/oh-my-qoder.git"
+  },
+  "homepage": "https://github.com/qoder-plugins/oh-my-qoder#readme",
+  "bugs": {
+    "url": "https://github.com/qoder-plugins/oh-my-qoder/issues"
   }
 }

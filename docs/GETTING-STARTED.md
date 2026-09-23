@@ -19,7 +19,7 @@ OMQ is installed as a local Qoder CLI plugin.
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/anthropics/oh-my-qoder.git
+git clone https://github.com/qoder-plugins/oh-my-qoder.git
 cd oh-my-qoder
 npm install
 npm run build
