@@ -658,7 +658,7 @@ async function checkForUpdates(currentVersion) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 2000);
   try {
-    const response = await fetch('https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/package.json', {
+    const response = await fetch('https://raw.githubusercontent.com/qoder-plugins/oh-my-qoder/main/package.json', {
       signal: controller.signal
     });
     if (!response.ok) return null;

@@ -30,7 +30,7 @@ import { isAutoUpdateDisabled } from '../lib/security-config.js';
 import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
 
 /** GitHub repository information */
-export const REPO_OWNER = 'chickenlj';
+export const REPO_OWNER = 'qoder-plugins';
 export const REPO_NAME = 'oh-my-qoder';
 export const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
 export const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}`;
