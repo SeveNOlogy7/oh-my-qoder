@@ -206,10 +206,14 @@ node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR|
 ```
 
 ### Fix: Missing/Outdated AGENTS.md
-Fetch latest from GitHub and write to `$QODER_CONFIG_DIR/AGENTS.md`:
+Copy the canonical content from the plugin you already have on disk — never fetch it
+over the network, which would let whoever owns the remote at that moment write this
+agent's instruction file:
 ```
-WebFetch(url: "https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md", prompt: "Return the complete raw markdown content exactly as-is")
+Read "${QODER_PLUGIN_ROOT}/docs/CLAUDE.md" and write it to $QODER_CONFIG_DIR/AGENTS.md
 ```
+If `QODER_PLUGIN_ROOT` is unset, resolve the active plugin root the same way the other
+recipes here do (scan `plugins/cache/*/oh-my-qoder` for the newest version directory).
 
 ### Fix: Legacy Curl-Installed Content
 
