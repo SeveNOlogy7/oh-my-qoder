@@ -1239,7 +1239,6 @@ program
   .option('-q, --quiet', 'Suppress output except for errors')
   .option('--no-plugin', 'Install bundled skills from the current package instead of relying on plugin-provided skills')
   .option('--plugin-dir-mode', 'Treat OMQ as launched via --plugin-dir at runtime (skip agent/skill copy; HUD + hooks + AGENTS.md still installed)')
-  .option('--skip-hooks', 'Skip hook installation')
   .option('--force-hooks', 'Force reinstall hooks even if unchanged')
   .addHelpText('after', `
 Examples:
@@ -1248,7 +1247,6 @@ Examples:
   $ omq setup --no-plugin         Force local bundled skill installation
   $ omq setup --plugin-dir-mode   Skip agent/skill copy (used with qodercli --plugin-dir)
   $ omq setup --quiet             Silent setup for scripts
-  $ omq setup --skip-hooks        Install without hooks
   $ omq setup --force-hooks       Force reinstall hooks`)
   .action(async (options) => {
     if (!options.quiet) {
