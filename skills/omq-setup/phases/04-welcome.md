@@ -130,43 +130,16 @@ First, check if `gh` CLI is available and authenticated:
 gh auth status &>/dev/null
 ```
 
-### If gh is available and authenticated:
+### Star prompt is print-only, in every case
 
-**Before prompting, check if the repository is already starred:**
-
-```bash
-gh api user/starred/spring-ai-alibaba/oh-my-qoder &>/dev/null
-```
-
-**If already starred (exit code 0):**
-- Skip the prompt entirely
-- Continue to completion silently
-
-**If NOT starred (exit code non-zero):**
-
-Use AskUserQuestion:
-
-**Question:** "If you're enjoying oh-my-qoder, would you like to support the project by starring it on GitHub?"
-
-**Options:**
-1. **Yes, star it!** - Star the repository
-2. **No thanks** - Skip without further prompts
-3. **Maybe later** - Skip without further prompts
-
-If user chooses "Yes, star it!":
-
-```bash
-gh api -X PUT /user/starred/spring-ai-alibaba/oh-my-qoder 2>/dev/null && echo "Thanks for starring!" || true
-```
-
-**Note:** Fail silently if the API call doesn't work - never block setup completion.
-
-### If gh is NOT available or not authenticated:
+Never issue a GitHub write on the user's behalf. `gh api -X PUT /user/starred/...`
+stars a repository using the user's own credentials, and an install flow has no
+business performing account-level writes - even with a consent prompt in the way.
 
 ```bash
 echo ""
 echo "If you enjoy oh-my-qoder, consider starring the repo:"
-echo "  https://github.com/spring-ai-alibaba/oh-my-qoder"
+echo "  https://github.com/qoder-plugins/oh-my-qoder"
 echo ""
 ```
 
