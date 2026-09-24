@@ -249,7 +249,7 @@ Call `team_create` with a slug derived from the task:
 ```json
 {
   "team_name": "fix-ts-errors",
-  "team_file_path": "~/.qoder/teams/fix-ts-errors/config.json",
+  "team_file_path": "<config-root>/teams/fix-ts-errors/config.json",
   "lead_agent_id": "team-lead@fix-ts-errors"
 }
 ```
@@ -842,7 +842,7 @@ See Cancellation section below for details.
 
 If the lead crashes mid-run, the team skill should detect existing state and resume:
 
-1. Check `${QODER_CONFIG_DIR:-$HOME/.qoder}/teams/` for teams matching the task slug
+1. Check `$QODER_CONFIG_DIR/teams/` for teams matching the task slug
 2. If found, read `config.json` to discover active members
 3. Resume monitor mode instead of creating a duplicate team
 4. Call `team_task_list` to determine current progress

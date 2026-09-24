@@ -19,7 +19,7 @@ import {
   getHooksSettingsConfig,
 } from './hooks.js';
 import { getRuntimePackageVersion } from '../lib/version.js';
-import { getQoderConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir, getDefaultConfigDirShellPath, isDefaultQoderConfigDir } from '../utils/config-dir.js';
 import { resolveNodeBinary } from '../utils/resolve-node.js';
 import { parseFrontmatter } from '../utils/frontmatter.js';
 import { isSkininthegamebrosUser } from '../utils/skininthegamebros-user.js';
@@ -195,7 +195,7 @@ function canonicalizeExistingPath(value: string): string {
 }
 
 function isDefaultQoderConfigDirPath(configDir: string): boolean {
-  return normalizePath(configDir) === normalizePath(join(homedir(), '.qoder'));
+  return isDefaultQoderConfigDir(configDir);
 }
 
 function quoteShellArg(value: string): string {
@@ -216,18 +216,20 @@ function buildStatusLineCommand(
 
   if (cacheWrapperPath) {
     if (isDefaultQoderConfigDirPath(QODER_CONFIG_DIR)) {
-      return 'sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud-cache.sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs';
+      const defaultShellDir = getDefaultConfigDirShellPath();
+      return `sh \${QODER_CONFIG_DIR:-${defaultShellDir}}/hud/omq-hud-cache.sh \${QODER_CONFIG_DIR:-${defaultShellDir}}/hud/omq-hud.mjs`;
     }
 
     return `sh ${quoteShellArg(cacheWrapperPath.replace(/\\/g, '/'))} ${quoteShellArg(normalizedHudScriptPath)}`;
   }
 
   if (isDefaultQoderConfigDirPath(QODER_CONFIG_DIR)) {
+    const defaultShellDir = getDefaultConfigDirShellPath();
     if (findNodePath) {
-      return 'sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/find-node.sh ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs';
+      return `sh \${QODER_CONFIG_DIR:-${defaultShellDir}}/hud/find-node.sh \${QODER_CONFIG_DIR:-${defaultShellDir}}/hud/omq-hud.mjs`;
     }
 
-    return 'node ${QODER_CONFIG_DIR:-$HOME/.qoder}/hud/omq-hud.mjs';
+    return `node \${QODER_CONFIG_DIR:-${defaultShellDir}}/hud/omq-hud.mjs`;
   }
 
   if (findNodePath) {

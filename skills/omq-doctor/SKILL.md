@@ -16,7 +16,7 @@ You are the OMQ Doctor - diagnose and fix installation issues.
 
 ```bash
 # Get installed and latest versions (cross-platform)
-node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=process.env.QODER_CONFIG_DIR||p.join(h,'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));console.log('Installed:',v.length?v[v.length-1]:'(none)')}catch{console.log('Installed: (none)')}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})(),b=p.join(d,'plugins','cache',(()=>{try{const s=f.readdirSync(p.join(d,'plugins','cache')).filter(x=>f.existsSync(p.join(d,'plugins','cache',x,'oh-my-qoder')));return s.includes('omq')?'omq':(s[0]||'omq')}catch{return 'omq'}})(),'oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));console.log('Installed:',v.length?v[v.length-1]:'(none)')}catch{console.log('Installed: (none)')}"
 npm view oh-my-qoder version 2>/dev/null || echo "Latest: (unavailable)"
 ```
 
@@ -27,10 +27,10 @@ npm view oh-my-qoder version 2>/dev/null || echo "Latest: (unavailable)"
 
 ### Step 2: Check for Legacy Hooks in settings.json
 
-Read both `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json` (profile-level) and `./.qoder/settings.json` (project-level) and check if there's a `"hooks"` key with entries like:
-- `bash ${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/keyword-detector.sh`
-- `bash ${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/persistent-mode.sh`
-- `bash ${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/session-start.sh`
+Read both `$QODER_CONFIG_DIR/settings.json` (profile-level) and `./.qoder/settings.json` (project-level) and check if there's a `"hooks"` key with entries like:
+- `bash $QODER_CONFIG_DIR/hooks/keyword-detector.sh`
+- `bash $QODER_CONFIG_DIR/hooks/persistent-mode.sh`
+- `bash $QODER_CONFIG_DIR/hooks/session-start.sh`
 
 **Diagnosis**:
 - If found: CRITICAL - legacy hooks causing duplicates
@@ -38,7 +38,7 @@ Read both `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json` (profile-level) and 
 ### Step 3: Check for Legacy Bash Hook Scripts
 
 ```bash
-ls -la "${QODER_CONFIG_DIR:-$HOME/.qoder}"/hooks/*.sh 2>/dev/null
+ls -la "${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"/hooks/*.sh 2>/dev/null
 ```
 
 **Diagnosis**:
@@ -47,23 +47,24 @@ ls -la "${QODER_CONFIG_DIR:-$HOME/.qoder}"/hooks/*.sh 2>/dev/null
 ### Step 4: Check AGENTS.md
 
 ```bash
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
 # Check if AGENTS.md exists
-ls -la "${QODER_CONFIG_DIR:-$HOME/.qoder}"/AGENTS.md 2>/dev/null
+ls -la "$CONFIG_DIR"/AGENTS.md 2>/dev/null
 
 # Check for OMQ markers (<!-- OMQ:START --> is the canonical marker)
-grep -q "<!-- OMQ:START -->" "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" 2>/dev/null && echo "Has OMQ config" || echo "Missing OMQ config in AGENTS.md"
+grep -q "<!-- OMQ:START -->" "$CONFIG_DIR/AGENTS.md" 2>/dev/null && echo "Has OMQ config" || echo "Missing OMQ config in AGENTS.md"
 
 # Check AGENTS.md (or deterministic companion) version marker and compare with latest installed plugin cache version
-node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=process.env.QODER_CONFIG_DIR||p.join(h,'.qoder');const base=p.join(d,'AGENTS.md');let baseContent='';try{baseContent=f.readFileSync(base,'utf8')}catch{};let candidates=[base];let referenced='';const importMatch=baseContent.match(/AGENTS-[^ )]*\\.md/);if(importMatch){referenced=p.join(d,importMatch[0]);candidates.push(referenced)}else{const defaultCompanion=p.join(d,'AGENTS-omq.md');if(f.existsSync(defaultCompanion))candidates.push(defaultCompanion);try{const others=f.readdirSync(d).filter(n=>/^AGENTS-.*\\.md$/i.test(n)).sort().map(n=>p.join(d,n));for(const o of others){if(candidates.includes(o)===false)candidates.push(o)}}catch{}};let claudeV='(missing)';let claudeSource='(none)';for(const file of candidates){try{const c=f.readFileSync(file,'utf8');const m=c.match(/<!--\\s*OMQ:VERSION:([^\\s]+)\\s*-->/i);if(m){claudeV=m[1];claudeSource=file;break}}catch{}};if(claudeV==='(missing)'&&candidates.length>0){claudeV='(missing marker)';claudeSource='scanned deterministic AGENTS sources';};let pluginV='(none)';try{const b=p.join(d,'plugins','cache','omq','oh-my-qoder');const v=f.readdirSync(b).filter(x=>/^\\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));pluginV=v.length?v[v.length-1]:'(none)';}catch{};console.log('AGENTS.md OMQ version:',claudeV);console.log('OMQ version source:',claudeSource);console.log('Latest cached plugin version:',pluginV);if(claudeV==='(missing)'||claudeV==='(missing marker)'||pluginV==='(none)'){console.log('VERSION CHECK SKIPPED: missing AGENTS marker or plugin cache')}else if(claudeV===pluginV){console.log('VERSION MATCH: AGENTS and plugin cache are aligned')}else{console.log('VERSION DRIFT: AGENTS.md and plugin versions differ')}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})();const base=p.join(d,'AGENTS.md');let baseContent='';try{baseContent=f.readFileSync(base,'utf8')}catch{};let candidates=[base];let referenced='';const importMatch=baseContent.match(/AGENTS-[^ )]*\\.md/);if(importMatch){referenced=p.join(d,importMatch[0]);candidates.push(referenced)}else{const defaultCompanion=p.join(d,'AGENTS-omq.md');if(f.existsSync(defaultCompanion))candidates.push(defaultCompanion);try{const others=f.readdirSync(d).filter(n=>/^AGENTS-.*\\.md$/i.test(n)).sort().map(n=>p.join(d,n));for(const o of others){if(candidates.includes(o)===false)candidates.push(o)}}catch{}};let claudeV='(missing)';let claudeSource='(none)';for(const file of candidates){try{const c=f.readFileSync(file,'utf8');const m=c.match(/<!--\\s*OMQ:VERSION:([^\\s]+)\\s*-->/i);if(m){claudeV=m[1];claudeSource=file;break}}catch{}};if(claudeV==='(missing)'&&candidates.length>0){claudeV='(missing marker)';claudeSource='scanned deterministic AGENTS sources';};let pluginV='(none)';try{const b=p.join(d,'plugins','cache',(()=>{try{const s=f.readdirSync(p.join(d,'plugins','cache')).filter(x=>f.existsSync(p.join(d,'plugins','cache',x,'oh-my-qoder')));return s.includes('omq')?'omq':(s[0]||'omq')}catch{return 'omq'}})(),'oh-my-qoder');const v=f.readdirSync(b).filter(x=>/^\\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));pluginV=v.length?v[v.length-1]:'(none)';}catch{};console.log('AGENTS.md OMQ version:',claudeV);console.log('OMQ version source:',claudeSource);console.log('Latest cached plugin version:',pluginV);if(claudeV==='(missing)'||claudeV==='(missing marker)'||pluginV==='(none)'){console.log('VERSION CHECK SKIPPED: missing AGENTS marker or plugin cache')}else if(claudeV===pluginV){console.log('VERSION MATCH: AGENTS and plugin cache are aligned')}else{console.log('VERSION DRIFT: AGENTS.md and plugin versions differ')}"
 
 # Check companion files for file-split pattern (e.g. AGENTS-omq.md)
-find "${QODER_CONFIG_DIR:-$HOME/.qoder}" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null
+find "$CONFIG_DIR" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null
 while IFS= read -r f; do
   grep -q "<!-- OMQ:START -->" "$f" 2>/dev/null && echo "Has OMQ config in companion: $f"
-done < <(find "${QODER_CONFIG_DIR:-$HOME/.qoder}" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null)
+done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null)
 
 # Check if AGENTS.md references a companion file
-grep -o "AGENTS-[^ )]*\.md" "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" 2>/dev/null
+grep -o "AGENTS-[^ )]*\.md" "$CONFIG_DIR/AGENTS.md" 2>/dev/null
 ```
 
 **Diagnosis**:
@@ -96,7 +97,7 @@ fi
 
 ```bash
 # Count versions in cache (cross-platform)
-node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=process.env.QODER_CONFIG_DIR||p.join(h,'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x));console.log(v.length+' version(s):',v.join(', '))}catch{console.log('0 versions')}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})(),b=p.join(d,'plugins','cache',(()=>{try{const s=f.readdirSync(p.join(d,'plugins','cache')).filter(x=>f.existsSync(p.join(d,'plugins','cache',x,'oh-my-qoder')));return s.includes('omq')?'omq':(s[0]||'omq')}catch{return 'omq'}})(),'oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x));console.log(v.length+' version(s):',v.join(', '))}catch{console.log('0 versions')}"
 ```
 
 **Diagnosis**:
@@ -108,14 +109,15 @@ Check for legacy agents, commands, and skills installed via curl (before plugin 
 **Important**: Only flag files whose names match actual plugin-provided names. Do NOT flag user's custom agents/commands/skills that are unrelated to OMQ.
 
 ```bash
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
 # Check for legacy agents directory
-ls -la "${QODER_CONFIG_DIR:-$HOME/.qoder}"/agents/ 2>/dev/null
+ls -la "$CONFIG_DIR"/agents/ 2>/dev/null
 
 # Check for legacy commands directory
-ls -la "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands/ 2>/dev/null
+ls -la "$CONFIG_DIR"/commands/ 2>/dev/null
 
 # Check for legacy skills directory
-ls -la "${QODER_CONFIG_DIR:-$HOME/.qoder}"/skills/ 2>/dev/null
+ls -la "$CONFIG_DIR"/skills/ 2>/dev/null
 ```
 
 **Diagnosis**:
@@ -176,48 +178,58 @@ If issues found, ask user: "Would you like me to fix these issues automatically?
 If yes, apply fixes:
 
 ### Fix: Legacy Hooks in settings.json
-Remove the `"hooks"` section from `${QODER_CONFIG_DIR:-$HOME/.qoder}/settings.json` (keep other settings intact)
+Remove the `"hooks"` section from `$QODER_CONFIG_DIR/settings.json` (keep other settings intact)
 
 ### Fix: Legacy Bash Scripts
 ```bash
-rm -f "${QODER_CONFIG_DIR:-$HOME/.qoder}"/hooks/keyword-detector.sh
-rm -f "${QODER_CONFIG_DIR:-$HOME/.qoder}"/hooks/persistent-mode.sh
-rm -f "${QODER_CONFIG_DIR:-$HOME/.qoder}"/hooks/session-start.sh
-rm -f "${QODER_CONFIG_DIR:-$HOME/.qoder}"/hooks/stop-continuation.sh
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
+rm -f "$CONFIG_DIR"/hooks/keyword-detector.sh
+rm -f "$CONFIG_DIR"/hooks/persistent-mode.sh
+rm -f "$CONFIG_DIR"/hooks/session-start.sh
+rm -f "$CONFIG_DIR"/hooks/stop-continuation.sh
 ```
 
 ### Fix: Outdated Plugin
+> ⚠️ Confirm the resolved path with the user first. For a directory install the cache
+> lives under `plugins/cache/local/` and is the live development copy — it cannot be
+> re-downloaded from a marketplace.
 ```bash
 # Clear plugin cache (cross-platform)
-node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||p.join(require('os').homedir(),'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{f.rmSync(b,{recursive:true,force:true});console.log('Plugin cache cleared. Restart Qoder CLI to fetch latest version.')}catch{console.log('No plugin cache found')}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})(),b=p.join(d,'plugins','cache',(()=>{try{const s=f.readdirSync(p.join(d,'plugins','cache')).filter(x=>f.existsSync(p.join(d,'plugins','cache',x,'oh-my-qoder')));return s.includes('omq')?'omq':(s[0]||'omq')}catch{return 'omq'}})(),'oh-my-qoder');try{f.rmSync(b,{recursive:true,force:true});console.log('Plugin cache cleared: '+b)}catch{console.log('No plugin cache found')}"
 ```
 
 ### Fix: Stale Cache (multiple versions)
+> ⚠️ Deletes every version directory except the newest. Confirm the resolved path first.
 ```bash
 # Keep only latest version (cross-platform)
-node -e "const p=require('path'),f=require('fs'),h=require('os').homedir(),d=process.env.QODER_CONFIG_DIR||p.join(h,'.qoder'),b=p.join(d,'plugins','cache','omq','oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));v.slice(0,-1).forEach(x=>f.rmSync(p.join(b,x),{recursive:true,force:true}));console.log('Removed',v.length-1,'old version(s)')}catch(e){console.log('No cache to clean')}"
+node -e "const p=require('path'),f=require('fs'),d=process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})(),b=p.join(d,'plugins','cache',(()=>{try{const s=f.readdirSync(p.join(d,'plugins','cache')).filter(x=>f.existsSync(p.join(d,'plugins','cache',x,'oh-my-qoder')));return s.includes('omq')?'omq':(s[0]||'omq')}catch{return 'omq'}})(),'oh-my-qoder');try{const v=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));v.slice(0,-1).forEach(x=>f.rmSync(p.join(b,x),{recursive:true,force:true}));console.log('Removed',v.length-1,'old version(s)')}catch(e){console.log('No cache to clean')}"
 ```
 
 ### Fix: Missing/Outdated AGENTS.md
-Fetch latest from GitHub and write to `${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md`:
+Copy the canonical content from the plugin you already have on disk — never fetch it
+over the network, which would let whoever owns the remote at that moment write this
+agent's instruction file:
 ```
-WebFetch(url: "https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md", prompt: "Return the complete raw markdown content exactly as-is")
+Read "${QODER_PLUGIN_ROOT}/docs/CLAUDE.md" and write it to $QODER_CONFIG_DIR/AGENTS.md
 ```
+If `QODER_PLUGIN_ROOT` is unset, resolve the active plugin root the same way the other
+recipes here do (scan `plugins/cache/*/oh-my-qoder` for the newest version directory).
 
 ### Fix: Legacy Curl-Installed Content
 
 Remove legacy agents, commands, and skills directories (now provided by plugin):
 
 ```bash
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
 # Backup first (optional - ask user)
-# mv "${QODER_CONFIG_DIR:-$HOME/.qoder}"/agents "${QODER_CONFIG_DIR:-$HOME/.qoder}"/agents.bak
-# mv "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands.bak
-# mv "${QODER_CONFIG_DIR:-$HOME/.qoder}"/skills "${QODER_CONFIG_DIR:-$HOME/.qoder}"/skills.bak
+# mv "$CONFIG_DIR"/agents "$CONFIG_DIR"/agents.bak
+# mv "$CONFIG_DIR"/commands "$CONFIG_DIR"/commands.bak
+# mv "$CONFIG_DIR"/skills "$CONFIG_DIR"/skills.bak
 
 # Or remove directly
-rm -rf "${QODER_CONFIG_DIR:-$HOME/.qoder}"/agents
-rm -rf "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands
-rm -rf "${QODER_CONFIG_DIR:-$HOME/.qoder}"/skills
+rm -rf "$CONFIG_DIR"/agents
+rm -rf "$CONFIG_DIR"/commands
+rm -rf "$CONFIG_DIR"/skills
 ```
 
 **Note**: Only remove if these contain oh-my-qoder-related files. If user has custom agents/commands/skills, warn them and ask before removing.

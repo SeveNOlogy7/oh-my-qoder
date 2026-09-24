@@ -113,11 +113,6 @@ describe('HUD marketplace resolution', () => {
       stdio: 'pipe',
     });
 
-    // Patch config-dir.mjs to alias getClaudeConfigDir (template uses legacy name)
-    const configDirMjs = join(configDir, 'hud', 'lib', 'config-dir.mjs');
-    const configDirContent = readFileSync(configDirMjs, 'utf-8');
-    writeFileSync(configDirMjs, configDirContent + '\nexport const getClaudeConfigDir = getQoderConfigDir;\n');
-
     const hudScriptPath = join(configDir, 'hud', 'omq-hud.mjs');
     expect(existsSync(hudScriptPath)).toBe(true);
 
@@ -150,11 +145,6 @@ describe('HUD marketplace resolution', () => {
       },
       stdio: 'pipe',
     });
-
-    // Patch config-dir.mjs to alias getClaudeConfigDir (template uses legacy name)
-    const configDirMjs = join(configDir, 'hud', 'lib', 'config-dir.mjs');
-    const configDirContent = readFileSync(configDirMjs, 'utf-8');
-    writeFileSync(configDirMjs, configDirContent + '\nexport const getClaudeConfigDir = getQoderConfigDir;\n');
 
     const pluginRoot = join(configDir, 'broken-plugin-root');
     const pluginHudDir = join(pluginRoot, 'dist', 'hud');
@@ -221,11 +211,6 @@ describe('HUD marketplace resolution', () => {
     const hudScriptPath = join(configDir, 'hud', 'omq-hud.mjs');
     expect(existsSync(hudScriptPath)).toBe(true);
 
-    // Patch config-dir.mjs to alias getClaudeConfigDir (template uses legacy name)
-    const configDirMjs = join(configDir, 'hud', 'lib', 'config-dir.mjs');
-    const configDirContent = readFileSync(configDirMjs, 'utf-8');
-    writeFileSync(configDirMjs, configDirContent + '\nexport const getClaudeConfigDir = getQoderConfigDir;\n');
-
     execFileSync(process.execPath, [hudScriptPath], {
       cwd: outsideCwd,
       env: {
@@ -273,11 +258,6 @@ describe('HUD marketplace resolution', () => {
 
     const content = readFileSync(hudScriptPath, 'utf-8');
     expect(content).toContain('"oh-my-qoder/dist/hud/index.js"');
-
-    // Patch config-dir.mjs to alias getClaudeConfigDir (template uses legacy name)
-    const configDirMjs = join(configDir, 'hud', 'lib', 'config-dir.mjs');
-    const configDirContent = readFileSync(configDirMjs, 'utf-8');
-    writeFileSync(configDirMjs, configDirContent + '\nexport const getClaudeConfigDir = getQoderConfigDir;\n');
 
     // Run from configDir so cwdRequire resolves the fake package before the real global one
     execFileSync(process.execPath, [hudScriptPath], {

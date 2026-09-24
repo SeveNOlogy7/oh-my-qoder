@@ -5,7 +5,8 @@
 Check if user has existing 2.x configuration:
 
 ```bash
-ls "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands/ralph-loop.md 2>/dev/null || ls "${QODER_CONFIG_DIR:-$HOME/.qoder}"/commands/ultrawork.md 2>/dev/null
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
+ls "$CONFIG_DIR"/commands/ralph-loop.md 2>/dev/null || ls "$CONFIG_DIR"/commands/ultrawork.md 2>/dev/null
 ```
 
 If found, this is an upgrade from 2.x. Set `IS_UPGRADE=true`.
@@ -129,43 +130,16 @@ First, check if `gh` CLI is available and authenticated:
 gh auth status &>/dev/null
 ```
 
-### If gh is available and authenticated:
+### Star prompt is print-only, in every case
 
-**Before prompting, check if the repository is already starred:**
-
-```bash
-gh api user/starred/spring-ai-alibaba/oh-my-qoder &>/dev/null
-```
-
-**If already starred (exit code 0):**
-- Skip the prompt entirely
-- Continue to completion silently
-
-**If NOT starred (exit code non-zero):**
-
-Use AskUserQuestion:
-
-**Question:** "If you're enjoying oh-my-qoder, would you like to support the project by starring it on GitHub?"
-
-**Options:**
-1. **Yes, star it!** - Star the repository
-2. **No thanks** - Skip without further prompts
-3. **Maybe later** - Skip without further prompts
-
-If user chooses "Yes, star it!":
-
-```bash
-gh api -X PUT /user/starred/spring-ai-alibaba/oh-my-qoder 2>/dev/null && echo "Thanks for starring!" || true
-```
-
-**Note:** Fail silently if the API call doesn't work - never block setup completion.
-
-### If gh is NOT available or not authenticated:
+Never issue a GitHub write on the user's behalf. `gh api -X PUT /user/starred/...`
+stars a repository using the user's own credentials, and an install flow has no
+business performing account-level writes - even with a consent prompt in the way.
 
 ```bash
 echo ""
 echo "If you enjoy oh-my-qoder, consider starring the repo:"
-echo "  https://github.com/spring-ai-alibaba/oh-my-qoder"
+echo "  https://github.com/qoder-plugins/oh-my-qoder"
 echo ""
 ```
 
@@ -174,12 +148,13 @@ echo ""
 Get the current OMQ version and mark setup complete:
 
 ```bash
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
 # Get current OMQ version from the installed AGENTS.md (OMQ:VERSION marker)
 OMQ_VERSION=""
 if [ -f ".qoder/AGENTS.md" ]; then
   OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' .qoder/AGENTS.md 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
-elif [ -f "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" ]; then
-  OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' "${QODER_CONFIG_DIR:-$HOME/.qoder}/AGENTS.md" 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
+elif [ -f "$CONFIG_DIR/AGENTS.md" ]; then
+  OMQ_VERSION=$(grep -m1 'OMQ:VERSION:' "$CONFIG_DIR/AGENTS.md" 2>/dev/null | sed -E 's/.*OMQ:VERSION:([^ ]+).*/\1/' || true)
 fi
 if [ -z "$OMQ_VERSION" ]; then
   OMQ_VERSION=$(omq --version 2>/dev/null | head -1 || true)

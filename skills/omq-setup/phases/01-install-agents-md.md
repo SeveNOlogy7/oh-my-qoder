@@ -44,9 +44,11 @@ fails, stop and report the failure instead of writing AGENTS.md manually.
 
 For `local` installs inside a git repository, the script also seeds `.git/info/exclude` with an OMC block that re-includes `.omq/`, ignores local `.omq/*` artifacts by default, and preserves `.omq/skills/` for project skills you intend to commit.
 
-**FALLBACK** if curl fails:
-Tell user to manually download from:
-https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md
+**FALLBACK** if the script cannot find a local copy:
+Copy `docs/CLAUDE.md` from the installed plugin directory (the newest
+`plugins/cache/*/oh-my-qoder/<version>/docs/CLAUDE.md`) into
+`$QODER_CONFIG_DIR/AGENTS.md`. Do not download it over the network: whoever owns
+that URL controls this agent's instruction file.
 
 **Note**: The downloaded AGENTS.md includes Context Persistence instructions with `<remember>` tags for surviving conversation compaction.
 

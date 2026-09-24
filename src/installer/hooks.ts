@@ -12,8 +12,7 @@
 import { join, dirname } from "path";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
-import { homedir } from "os";
-import { getQoderConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir, getDefaultConfigDirShellPath, isDefaultQoderConfigDir as matchesDefaultConfigDir } from '../utils/config-dir.js';
 import { getDefaultUltraworkMessage } from '../hooks/keyword-detector/ultrawork/index.js';
 
 // =============================================================================
@@ -84,12 +83,8 @@ export function getHomeEnvVar(): string {
   return isWindows() ? "%USERPROFILE%" : "$HOME";
 }
 
-function normalizePath(value: string): string {
-  return value.replace(/\\/g, '/').replace(/\/+$/, '');
-}
-
 function isDefaultQoderConfigDir(): boolean {
-  return normalizePath(getQoderConfigDir()) === normalizePath(join(homedir(), '.qoder'));
+  return matchesDefaultConfigDir(getQoderConfigDir());
 }
 
 function quoteCommandPath(path: string): string {
@@ -99,14 +94,14 @@ function quoteCommandPath(path: string): string {
 function buildHookCommand(filename: string): string {
   if (isWindows()) {
     if (isDefaultQoderConfigDir()) {
-      return `node "\${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/${filename}"`;
+      return `node "\${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hooks/${filename}"`;
     }
 
     return `node ${quoteCommandPath(join(getQoderConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;
   }
 
   if (isDefaultQoderConfigDir()) {
-    return `node "\${QODER_CONFIG_DIR:-$HOME/.qoder}/hooks/${filename}"`;
+    return `node "\${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hooks/${filename}"`;
   }
 
   return `node ${quoteCommandPath(join(getQoderConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;

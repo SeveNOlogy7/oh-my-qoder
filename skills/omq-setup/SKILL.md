@@ -79,7 +79,7 @@ EXAMPLES:
   /oh-my-qoder:omq-setup --global  # Update all projects
   /oh-my-qoder:omq-setup --force   # Re-run full setup wizard
 
-For more info: https://github.com/spring-ai-alibaba/oh-my-qoder
+For more info: https://github.com/qoder-plugins/oh-my-qoder
 ```
 
 
@@ -88,7 +88,7 @@ For more info: https://github.com/spring-ai-alibaba/oh-my-qoder
 Before running setup shell commands or reading phase files, resolve the current OMQ plugin root. This prevents an already-running Qoder CLI session from continuing to use a stale `QODER_PLUGIN_ROOT` after `/plugin marketplace update omq` installs a newer cache version.
 
 ```bash
-OMQ_SETUP_PLUGIN_ROOT=$(node -e "const f=require('fs'),p=require('path'),h=require('os').homedir(),d=(process.env.QODER_CONFIG_DIR||p.join(h,'.qoder')).replace(/[\\/]+$/,''),b=p.join(d,'plugins','cache','omq','oh-my-qoder'),valid=r=>f.existsSync(p.join(r,'skills','omq-setup','SKILL.md'))||f.existsSync(p.join(r,'hooks','hooks.json'))||f.existsSync(p.join(r,'docs','CLAUDE.md'));try{const vs=f.readdirSync(b,{withFileTypes:true}).filter(e=>(e.isDirectory()||e.isSymbolicLink())&&/^\d+\.\d+\.\d+/.test(e.name)).map(e=>e.name).sort((a,c)=>c.localeCompare(a,void 0,{numeric:true}));const hit=vs.map(v=>p.join(b,v)).find(valid);if(hit)console.log(hit);else if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}catch{if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}")
+OMQ_SETUP_PLUGIN_ROOT=$(node -e "const f=require('fs'),p=require('path'),d=(process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})()).replace(/[\\/]+$/,''),b=p.join(d,'plugins','cache',(()=>{try{const s=f.readdirSync(p.join(d,'plugins','cache')).filter(x=>f.existsSync(p.join(d,'plugins','cache',x,'oh-my-qoder')));return s.includes('omq')?'omq':(s[0]||'omq')}catch{return 'omq'}})(),'oh-my-qoder'),valid=r=>f.existsSync(p.join(r,'skills','omq-setup','SKILL.md'))||f.existsSync(p.join(r,'hooks','hooks.json'))||f.existsSync(p.join(r,'docs','CLAUDE.md'));try{const vs=f.readdirSync(b,{withFileTypes:true}).filter(e=>(e.isDirectory()||e.isSymbolicLink())&&/^\d+\.\d+\.\d+/.test(e.name)).map(e=>e.name).sort((a,c)=>c.localeCompare(a,void 0,{numeric:true}));const hit=vs.map(v=>p.join(b,v)).find(valid);if(hit)console.log(hit);else if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}catch{if(process.env.QODER_PLUGIN_ROOT)console.log(process.env.QODER_PLUGIN_ROOT)}")
 export OMQ_SETUP_PLUGIN_ROOT
 ```
 
@@ -104,7 +104,7 @@ node "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/repair-plugin-cache
 
 ```bash
 # Check if setup was already completed
-CONFIG_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/.omq-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omq-config.json"
 
 if [ -f "$CONFIG_FILE" ]; then
   SETUP_COMPLETED=$(jq -r '.setupCompleted // empty' "$CONFIG_FILE" 2>/dev/null)

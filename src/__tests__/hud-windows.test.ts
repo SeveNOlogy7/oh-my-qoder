@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname, sep } from 'path';
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join, dirname, sep, normalize } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { getQoderConfigDir } from '../utils/config-dir.js';
 import { getPluginCacheBase } from '../utils/paths.js';
@@ -154,17 +155,47 @@ describe('HUD Windows Compatibility', () => {
   });
 
   describe('Cross-Platform Plugin Cache Path (#670)', () => {
+    // A fixture config dir keeps the expectation exact without depending on what
+    // happens to be installed on the machine running the suite.
+    const withCache = (slugs: string[], fn: (configRoot: string) => void) => {
+      const configRoot = mkdtempSync(join(tmpdir(), 'omq-hud-cache-'));
+      try {
+        for (const slug of slugs) {
+          mkdirSync(join(configRoot, 'plugins', 'cache', slug, 'oh-my-qoder', '0.1.0'), { recursive: true });
+        }
+        fn(configRoot);
+      } finally {
+        rmSync(configRoot, { recursive: true, force: true });
+      }
+    };
+
     it('getPluginCacheBase should return path with correct segments', () => {
-      const cachePath = getPluginCacheBase();
-      // Should contain the expected path segments regardless of separator
-      const normalized = cachePath.replace(/\\/g, '/');
-      expect(normalized).toContain('plugins/cache/omq/oh-my-qoder');
+      withCache(['local'], (configRoot) => {
+        const previous = process.env.QODER_CONFIG_DIR;
+        process.env.QODER_CONFIG_DIR = configRoot;
+        try {
+          const expected = normalize(join(configRoot, 'plugins', 'cache', 'local', 'oh-my-qoder'));
+          expect(getPluginCacheBase()).toBe(expected);
+          // Separator style must follow the platform, not be hardcoded forward.
+          expect(getPluginCacheBase()).toContain(`${sep}cache${sep}`);
+        } finally {
+          if (previous === undefined) delete process.env.QODER_CONFIG_DIR;
+          else process.env.QODER_CONFIG_DIR = previous;
+        }
+      });
     });
 
-    it('getPluginCacheBase should use platform-native separators', () => {
-      const cachePath = getPluginCacheBase();
-      // On Windows: backslashes, on Unix: forward slashes
-      expect(cachePath).toContain(`plugins${sep}cache${sep}omq${sep}oh-my-qoder`);
+    it('getPluginCacheBase should prefer the marketplace slug over a local install', () => {
+      withCache(['local', 'omq'], (configRoot) => {
+        const previous = process.env.QODER_CONFIG_DIR;
+        process.env.QODER_CONFIG_DIR = configRoot;
+        try {
+          expect(getPluginCacheBase()).toBe(normalize(join(configRoot, 'plugins', 'cache', 'omq', 'oh-my-qoder')));
+        } finally {
+          if (previous === undefined) delete process.env.QODER_CONFIG_DIR;
+          else process.env.QODER_CONFIG_DIR = previous;
+        }
+      });
     });
 
     it('getPluginCacheBase should be under claude config dir', () => {
@@ -197,10 +228,14 @@ describe('HUD Windows Compatibility', () => {
       expect(content).not.toMatch(/ls ~\/\.qwen\/plugins\/cache/);
       // Should use node -e for cross-platform compatibility
       expect(content).toContain("node -e");
-      // Should use path.join for constructing paths
-      expect(content).toContain("p.join(d,'plugins','cache','omq','oh-my-qoder')");
+      // Assert the invariant, not the replacement text: the marketplace slug must
+      // be discovered rather than baked in as one literal path fragment.
+      expect(content).not.toMatch(/['"]cache['"],\s*['"]omq['"],\s*['"]oh-my-qoder['"]/);
+      expect(content).toMatch(/readdirSync\(p\.join\(d,\s*'plugins',\s*'cache'\)\)/);
       expect(content).not.toContain('ls ~/.qoder/AGENTS-*.md');
-      expect(content).toContain("find \"${QODER_CONFIG_DIR:-$HOME/.qoder}\" -maxdepth 1 -type f -name 'AGENTS-*.md' -print 2>/dev/null");
+      // The glob runs against a resolved config root, never a guessed directory name.
+      expect(content).toMatch(/find\s+"\$CONFIG_DIR" -maxdepth 1 -type f -name 'AGENTS-\*\.md'/);
+      expect(content).not.toMatch(/find\s+"\$\{QODER_CONFIG_DIR:-\$HOME\/\./);
     });
 
     it('hud skill should use cross-platform Node.js commands for plugin detection', () => {
@@ -218,10 +253,10 @@ describe('HUD Windows Compatibility', () => {
       const hudPath = join(packageRoot, 'skills', 'hud', 'SKILL.md');
       const content = readFileSync(hudPath, 'utf-8');
 
-      expect(content).toContain(".split(require('path').sep).join('/')");
+      expect(content).toMatch(/\.split\((?:require\('path'\)\.|p\.)sep\)\.join\('\/'\)/);
       expect(content).toContain('The command path MUST use forward slashes on all platforms');
       expect(content).toContain('On Windows the path uses forward slashes (not backslashes):');
-      expect(content).toContain('"command": "node C:/Users/username/.qoder/hud/omq-hud.mjs"');
+      expect(content).toContain('"command": "node C:/Users/username/<config-dir>/hud/omq-hud.mjs"');
       expect(content).not.toContain('"command": "node C:\\Users\\username\\.qwen\\hud\\omq-hud.mjs"');
     });
 

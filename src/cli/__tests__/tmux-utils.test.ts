@@ -11,6 +11,12 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { execFileSync, spawnSync } from 'child_process';
 
+// Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
+vi.mock('../../lib/qoder-cli.js', () => ({
+  qoderCliBinary: () => 'qodercli',
+  qoderCliNpmPackage: () => '@qoder-ai/qodercli',
+}));
+
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
   return {

@@ -12,7 +12,6 @@ set -euo pipefail
 
 MODE="${1:?Usage: setup-agents-md.sh <local|global> [overwrite|preserve]}"
 INSTALL_STYLE="${2:-overwrite}"
-DOWNLOAD_URL="https://raw.githubusercontent.com/spring-ai-alibaba/oh-my-qoder/main/docs/CLAUDE.md"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 . "$SCRIPT_DIR/lib/config-dir.sh"
@@ -266,13 +265,15 @@ elif [ -n "${QODER_PLUGIN_ROOT:-}" ] && [ -f "${QODER_PLUGIN_ROOT}/docs/CLAUDE.m
   cp "${QODER_PLUGIN_ROOT}/docs/CLAUDE.md" "$TEMP_OMQ"
   SOURCE_LABEL="${QODER_PLUGIN_ROOT}/docs/CLAUDE.md"
 else
-  curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_OMQ"
-  SOURCE_LABEL="$DOWNLOAD_URL"
+  # No network fallback on purpose: AGENTS.md is this agent's instruction file, so
+  # fetching it from a URL hands whoever owns that URL control over the agent.
+  echo "ERROR: no local AGENTS.md source found (looked in $CANONICAL_AGENTS_SOURCE and \$QODER_PLUGIN_ROOT/docs/CLAUDE.md)." >&2
+  echo "Reinstall the plugin, or copy docs/CLAUDE.md from a checkout to \$QODER_CONFIG_DIR/AGENTS.md." >&2
+  exit 1
 fi
 
 if [ ! -s "$TEMP_OMQ" ]; then
-  echo "ERROR: Failed to download AGENTS.md source. Aborting."
-  echo "FALLBACK: Manually download from: $DOWNLOAD_URL"
+  echo "ERROR: AGENTS.md source is empty: $SOURCE_LABEL" >&2
   rm -f "$TEMP_OMQ"
   exit 1
 fi
