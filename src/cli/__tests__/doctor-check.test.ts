@@ -5,10 +5,10 @@ import { join } from 'node:path';
 
 vi.mock('node:child_process', () => ({ execSync: vi.fn(() => '/fake/npm/root\n') }));
 
-import { probeModule, collectInstallReport, doctorInstallCommand } from '../commands/doctor-install.js';
+import { probeModule, collectInstallReport, doctorCheckCommand } from '../commands/doctor-check.js';
 
 function makeModuleRoot(available: string[]): string {
-  const root = mkdtempSync(join(tmpdir(), 'omq-doctor-install-'));
+  const root = mkdtempSync(join(tmpdir(), 'omq-doctor-check-'));
   for (const name of available) {
     const dir = join(root, 'node_modules', ...name.split('/'));
     mkdirSync(dir, { recursive: true });
@@ -18,7 +18,7 @@ function makeModuleRoot(available: string[]): string {
   return root;
 }
 
-describe('omq doctor install', () => {
+describe('omq doctor check', () => {
   let root: string | undefined;
 
   beforeEach(() => {
@@ -53,7 +53,7 @@ describe('omq doctor install', () => {
 
     const logged: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args) => { logged.push(args.join(' ')); });
-    const exitCode = await doctorInstallCommand({ pluginDir: root });
+    const exitCode = await doctorCheckCommand({ pluginDir: root });
     spy.mockRestore();
 
     expect(exitCode).toBe(1);
@@ -64,7 +64,7 @@ describe('omq doctor install', () => {
     root = makeModuleRoot(['ajv', 'ajv-formats']);
     const logged: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args) => { logged.push(args.join(' ')); });
-    const exitCode = await doctorInstallCommand({ pluginDir: root, json: true });
+    const exitCode = await doctorCheckCommand({ pluginDir: root, json: true });
     spy.mockRestore();
 
     const parsed = JSON.parse(logged.join('\n'));

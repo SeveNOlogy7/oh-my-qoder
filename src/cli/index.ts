@@ -1180,7 +1180,7 @@ const doctorCmd = program
   .addHelpText('after', `
 Examples:
   $ omq doctor conflicts                        Check for plugin conflicts
-  $ omq doctor install                          Check that the installed copy can run
+  $ omq doctor check                        Check that the installed copy can run
   $ omq doctor team-routing                     Probe /team role-routing provider CLIs
   $ omq doctor --team-routing                   Same as above (flag form)
   $ omq doctor --plugin-dir /path/to/plugin     Run diagnostics against a specific plugin dir`)
@@ -1210,19 +1210,19 @@ Examples:
   });
 
 doctorCmd
-  .command('install')
+  .command('check')
   .description('Check whether this installed copy can run: payload completeness + per-module load probes')
   .option('--json', 'Output as JSON')
   .option('--plugin-dir <path>', 'Override OMQ plugin root directory (sets OMQ_PLUGIN_ROOT)')
   .addHelpText('after', `
 Examples:
-  $ omq doctor install                          Diagnose the active plugin install
-  $ omq doctor install --plugin-dir <dir>       Diagnose a specific cache/clone dir
-  $ omq doctor install --json                   Machine-readable report`)
+  $ omq doctor check                            Diagnose the active plugin install
+  $ omq doctor check --plugin-dir <dir>         Diagnose a specific cache/clone dir
+  $ omq doctor check --json                     Machine-readable report`)
   .action(async (options) => {
     applyPluginDirOption(options.pluginDir);
-    const { doctorInstallCommand } = await import('./commands/doctor-install.js');
-    const exitCode = await doctorInstallCommand({ json: options.json ?? false, pluginDir: options.pluginDir });
+    const { doctorCheckCommand } = await import('./commands/doctor-check.js');
+    const exitCode = await doctorCheckCommand({ json: options.json ?? false, pluginDir: options.pluginDir });
     process.exit(exitCode);
   });
 

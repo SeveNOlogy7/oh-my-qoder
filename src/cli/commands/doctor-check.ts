@@ -1,5 +1,5 @@
 /**
- * `omq doctor install` - is this installed copy actually runnable?
+ * `omq doctor check` - is this installed copy actually runnable?
  *
  * A plugin cache directory can be complete on disk and still not work: Qoder's
  * installer copies the tree but never `node_modules`, and the bundles keep
@@ -105,7 +105,7 @@ export function collectInstallReport(flagged?: string): InstallReport {
   };
 }
 
-export async function doctorInstallCommand(options: { json?: boolean; pluginDir?: string } = {}): Promise<number> {
+export async function doctorCheckCommand(options: { json?: boolean; pluginDir?: string } = {}): Promise<number> {
   const report = collectInstallReport(options.pluginDir);
   const required = report.modules.filter(m => REQUIRED_MODULES.includes(m.name));
   const optional = report.modules.filter(m => DEGRADING_MODULES.includes(m.name));

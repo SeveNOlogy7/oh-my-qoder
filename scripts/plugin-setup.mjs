@@ -173,7 +173,7 @@ if (missingExternals().length > 0) {
     console.log('[OMQ] Runtime dependencies installed successfully');
   } else {
     console.log(`[OMQ] Warning: still missing after install: ${stillMissing.join(', ')}`);
-    console.log('[OMQ] Run `omq doctor install` for the per-module report.');
+    console.log('[OMQ] Run `omq doctor check` for the per-module report.');
   }
 } else {
   console.log('[OMQ] Runtime dependencies already present');
