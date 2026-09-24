@@ -18,7 +18,9 @@ const DEFAULT_FACTCHECK_POLICY: FactcheckPolicy = {
   enabled: false,
   mode: 'quick',
   strict_project_patterns: [],
-  forbidden_path_prefixes: ['${QODER_CONFIG_DIR}/plugins/cache/omq/'],
+  // Covers every marketplace directory, not just the canonical `omq` slug: a
+  // `plugins install <dir>` install lives under `cache/local/`.
+  forbidden_path_prefixes: ['${QODER_CONFIG_DIR}/plugins/cache/'],
   forbidden_path_substrings: ['/.omq/', '.omq-config.json'],
   readonly_command_prefixes: [
     'ls ', 'cat ', 'find ', 'grep ', 'head ', 'tail ', 'stat ', 'echo ', 'wc ',

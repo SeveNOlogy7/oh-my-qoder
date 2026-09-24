@@ -53,8 +53,8 @@ Notify user if a newer version is available:
 ```bash
 # Detect installed version (cross-platform)
 node -e "
-const p=require('path'),f=require('fs'),h=require('os').homedir();
-const d=process.env.QODER_CONFIG_DIR||p.join(h,'.qoder');
+const p=require('path'),f=require('fs');
+const d=process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})();
 let v='';
 // Try cache directory first
 const b=p.join(d,'plugins','cache','omc','oh-my-qoder');
@@ -97,7 +97,7 @@ Use the AskUserQuestion tool to prompt the user:
 Store the preference in `~/.qoder/.omc-config.json`:
 
 ```bash
-CONFIG_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omc-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -220,7 +220,7 @@ If beads or beads-rust is detected, use AskUserQuestion:
 Store the preference:
 
 ```bash
-CONFIG_FILE="${QODER_CONFIG_DIR:-$HOME/.qoder}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omc-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then

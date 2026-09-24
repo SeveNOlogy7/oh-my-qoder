@@ -17,7 +17,7 @@ Show all available skills organized by scope.
 
 **Behavior:**
 1. Scan bundled built-in skills in the plugin `skills/` directory (read-only)
-2. Scan user skills at `${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned/`
+2. Scan user skills at `$QODER_CONFIG_DIR/skills/omq-learned/`
 3. Scan project skills at `.omq/skills/`
 4. Parse YAML frontmatter for metadata
 5. Display in organized table format:
@@ -61,7 +61,7 @@ Interactive wizard for creating a new skill.
 4. **Ask for argument hint** (optional)
    - Example: "<file> [options]"
 5. **Ask for scope:**
-   - `user` → `${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned/<name>/SKILL.md`
+   - `user` → `$QODER_CONFIG_DIR/skills/omq-learned/<name>/SKILL.md`
    - `project` → `.omq/skills/<name>/SKILL.md`
 6. **Create skill file** with template:
 
@@ -127,13 +127,13 @@ Remove a skill by name.
 
 **Behavior:**
 1. **Search for skill** in both scopes:
-   - `${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned/<name>/SKILL.md`
+   - `$QODER_CONFIG_DIR/skills/omq-learned/<name>/SKILL.md`
    - `.omq/skills/<name>/SKILL.md`
 2. **If found:**
    - Display skill info (name, description, scope)
    - **Ask for confirmation:** "Delete '<name>' skill from <scope>? (yes/no)"
 3. **If confirmed:**
-   - Delete entire skill directory (e.g., `${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned/<name>/`)
+   - Delete entire skill directory (e.g., `$QODER_CONFIG_DIR/skills/omq-learned/<name>/`)
    - Report: "✓ Removed skill '<name>' from <scope>"
 4. **If not found:**
    - Report: "✗ Skill '<name>' not found in user or project scope"
@@ -300,7 +300,7 @@ Sync skills between user and project scopes.
 
 **Behavior:**
 1. **Scan both scopes:**
-   - User skills: `${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned/`
+   - User skills: `$QODER_CONFIG_DIR/skills/omq-learned/`
    - Project skills: `.omq/skills/`
 2. **Compare and categorize:**
    - User-only skills (not in project)
@@ -370,7 +370,7 @@ First, check if skill directories exist and create them if needed:
 
 ```bash
 # Check and create user-level skills directory
-USER_SKILLS_DIR="${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned"
+USER_SKILLS_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/skills/omq-learned"
 if [ -d "$USER_SKILLS_DIR" ]; then
   echo "User skills directory exists: $USER_SKILLS_DIR"
 else
@@ -393,16 +393,17 @@ fi
 Scan both directories and show a comprehensive inventory:
 
 ```bash
+CONFIG_DIR="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}"
 # Scan user-level skills
-echo "=== USER-LEVEL SKILLS (~/.qoder/skills/omq-learned/) ==="
-if [ -d "${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned" ]; then
-  USER_COUNT=$(find "${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned" -name "*.md" 2>/dev/null | wc -l)
+echo "=== USER-LEVEL SKILLS (omq-learned under the config root) ==="
+if [ -d "$CONFIG_DIR/skills/omq-learned" ]; then
+  USER_COUNT=$(find "$CONFIG_DIR/skills/omq-learned" -name "*.md" 2>/dev/null | wc -l)
   echo "Total skills: $USER_COUNT"
 
   if [ $USER_COUNT -gt 0 ]; then
     echo ""
     echo "Skills found:"
-    find "${QODER_CONFIG_DIR:-$HOME/.qoder}/skills/omq-learned" -name "*.md" -type f -exec sh -c '
+    find "$CONFIG_DIR/skills/omq-learned" -name "*.md" -type f -exec sh -c '
       FILE="$1"
       NAME=$(grep -m1 "^name:" "$FILE" 2>/dev/null | sed "s/name: //")
       DESC=$(grep -m1 "^description:" "$FILE" 2>/dev/null | sed "s/description: //")

@@ -2,6 +2,7 @@
 // and additional CLI detection utilities
 export { isCliAvailable, validateCliAvailable, getContract, type CliAgentType } from './model-contract.js';
 import { spawnSync } from 'child_process';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 
 export interface CliInfo {
   available: boolean;
@@ -32,7 +33,7 @@ export function detectCli(binary: string): CliInfo {
 
 export function detectAllClis(): Record<string, CliInfo> {
   return {
-    claude: detectCli('qodercli'),
+    claude: detectCli(qoderCliBinary()),
     codex: detectCli('codex'),
     gemini: detectCli('gemini'),
     cursor: detectCli('cursor-agent'),

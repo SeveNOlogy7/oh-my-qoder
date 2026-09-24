@@ -16,6 +16,7 @@ import {
 } from 'child_process';
 import { basename, isAbsolute, win32 as win32Path } from 'path';
 import { promisify } from 'util';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 
 // ── tmux environment & execution wrappers ────────────────────────────────────
 
@@ -200,11 +201,11 @@ export function isTmuxAvailable(): boolean {
 }
 
 /**
- * Check if qodercli is available on the system.
+ * Check if the host Qoder CLI is available on the system.
  */
 export function isQoderCliAvailable(): boolean {
   try {
-    execFileSync('qodercli', ['--version'], {
+    execFileSync(qoderCliBinary(), ['--version'], {
       stdio: 'ignore',
       shell: process.platform === 'win32',
     });

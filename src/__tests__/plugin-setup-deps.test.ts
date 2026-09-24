@@ -30,8 +30,11 @@ describe('plugin-setup.mjs dependency installation', () => {
     expect(scriptContent).toMatch(/import\s*\{[^}]*execSync[^}]*\}\s*from\s*['"]node:child_process['"]/);
   });
 
-  it('checks for node_modules/commander as dependency sentinel', () => {
-    expect(scriptContent).toContain("node_modules', 'commander'");
+  it('probes the bundles\' runtime externals as the dependency sentinel', () => {
+    expect(scriptContent).toContain("RUNTIME_EXTERNALS = ['ajv', 'ajv-formats', '@ast-grep/napi', 'better-sqlite3']");
+    // `commander` is inlined into every bundle, so probing for it could never
+    // observe the missing-dependency state this branch exists to fix (#1113).
+    expect(scriptContent).not.toMatch(/node_modules', 'commander'/);
   });
 
   it('runs npm install with --omit=dev flag', () => {

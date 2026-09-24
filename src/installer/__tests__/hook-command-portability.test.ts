@@ -57,7 +57,9 @@ describe('Contract 7: hook command portability (#2084, #2348)', () => {
 
     // On default config, all commands should use the portable env-var pattern
     for (const cmd of commands) {
-      expect(cmd).toContain('${QODER_CONFIG_DIR:-$HOME/.qoder}');
+      // The fallback tracks the installed distribution (.qoder or .qoder-cn); the
+      // contract under test is the guarded, bash-style expansion, not the name.
+      expect(cmd).toMatch(/\$\{QODER_CONFIG_DIR:-\$HOME\/\.qoder(-cn)?\}/);
     }
   });
 
@@ -166,7 +168,9 @@ describe('Contract 7: hook command portability (#2084, #2348)', () => {
 
     expect(commands.length).toBeGreaterThan(0);
     for (const cmd of commands) {
-      expect(cmd).toContain('${QODER_CONFIG_DIR:-$HOME/.qoder}');
+      // The fallback tracks the installed distribution (.qoder or .qoder-cn); the
+      // contract under test is the guarded, bash-style expansion, not the name.
+      expect(cmd).toMatch(/\$\{QODER_CONFIG_DIR:-\$HOME\/\.qoder(-cn)?\}/);
       expect(cmd).not.toContain('%USERPROFILE%');
     }
   });

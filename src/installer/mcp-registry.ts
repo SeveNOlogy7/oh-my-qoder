@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { dirname, join } from 'path';
 
-import { getQoderConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir, getQoderRootConfigFileName } from '../utils/config-dir.js';
 import {
   getGlobalOmqConfigPath,
   getGlobalOmqConfigCandidates,
@@ -75,7 +75,7 @@ export function getClaudeMcpConfigPath(): string {
     return process.env.CLAUDE_MCP_CONFIG_PATH.trim();
   }
 
-  return join(dirname(getQoderConfigDir()), '.qoder.json');
+  return join(dirname(getQoderConfigDir()), getQoderRootConfigFileName());
 }
 
 export function getCodexConfigPath(): string {

@@ -1,6 +1,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import {
   parseAutoresearchSetupHandoffJson,
   type AutoresearchSetupHandoff,
@@ -142,7 +143,7 @@ export function buildAutoresearchSetupPrompt(input: AutoresearchSetupSessionInpu
 
 export function runAutoresearchSetupSession(input: AutoresearchSetupSessionInput): AutoresearchSetupHandoff {
   const prompt = buildAutoresearchSetupPrompt(input);
-  const result = spawnSync('qodercli', ['-p', prompt], {
+  const result = spawnSync(qoderCliBinary(), ['-p', prompt], {
     cwd: input.repoRoot,
     encoding: 'utf-8',
     shell: process.platform === 'win32',

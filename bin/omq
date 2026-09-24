@@ -1,0 +1,5 @@
+#!/bin/sh
+# Entry point for plugin-directory installs: Qoder adds <plugin>/bin to PATH,
+# which does not go through npm's bin linking, so the name must exist on disk.
+basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
+exec node "$basedir/oh-my-qoder.js" "$@"

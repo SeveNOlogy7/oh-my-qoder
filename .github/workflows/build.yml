@@ -1,0 +1,79 @@
+name: build
+
+# Build-only pipeline: it produces and checks the artifacts that a plugin install
+# cannot generate itself (`dist/` and `bridge/` are gitignored, and Qoder's plugin
+# installer runs no build step). No platform matrix here on purpose - native
+# dependencies are resolved by `npm ci` on the runner's platform. The suite runs
+# as a sibling job so its result never gates the published tarball.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Identity gate (source tree)
+        run: node scripts/check-canonical-identity.mjs
+
+      - name: Build
+        run: npm run build
+
+      - name: Identity gate (unpacked tarball)
+        run: |
+          set -euo pipefail
+          tarball=$(npm pack)
+          out=$(mktemp -d)
+          tar -xzf "$tarball" -C "$out"
+          node scripts/check-canonical-identity.mjs "$out/package"
+          echo "tarball top-level entries:"
+          tar -tzf "$tarball" | sed -n '1,10p'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oh-my-qoder-tarball
+          path: '*.tgz'
+          if-no-files-found: error
+
+  # Separate job so that a red suite never hides the tarball a plugin install
+  # needs. It rebuilds rather than downloading dist/: several suites read the
+  # built bridge artifacts, and the extra minute is cheaper than a shared
+  # artifact contract between the two jobs.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm run test:run

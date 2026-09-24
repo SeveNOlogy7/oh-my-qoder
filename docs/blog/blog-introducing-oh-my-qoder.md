@@ -52,7 +52,7 @@ oh-my-qoder（OMQ）是跑在 Qoder CLI 外层的一套编排插件。它不替�
 OMQ 是 Qoder CLI 插件，安装方式是“本地目录安装”。所以流程是：先克隆并构建，再把当前目录装进去。
 
 ```bash
-git clone https://github.com/spring-ai-alibaba/oh-my-qoder.git
+git clone https://github.com/qoder-plugins/oh-my-qoder.git
 cd oh-my-qoder
 npm install
 npm run build
@@ -207,7 +207,7 @@ OMQ 的价值不在“让 AI 写更多代码”，而在“让 AI 以更像工�
 - 用验证兜底，避免“看起来完成”；
 - 让关键记忆跨会话延续，少做重复沟通。
 
-项目开源，欢迎 Star、Issue 和 PR：<https://github.com/spring-ai-alibaba/oh-my-qoder>
+项目开源，欢迎 Star、Issue 和 PR：<https://github.com/qoder-plugins/oh-my-qoder>
 
 ---
 

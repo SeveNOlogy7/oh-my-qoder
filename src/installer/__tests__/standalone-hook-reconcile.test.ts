@@ -100,10 +100,10 @@ describe('install() standalone hook reconciliation', () => {
       'const { getClaudeConfigDir } = await import(pathToFileURL(join(__dirname, "lib", "config-dir.mjs")).href);',
     );
     expect(readFileSync(join(testClaudeDir, 'hud', 'lib', 'config-dir.mjs'), 'utf-8')).toContain(
-      'export function getQoderConfigDir()',
+      'export function getQoderConfigDir(',
     );
     expect(readFileSync(join(testClaudeDir, 'hooks', 'lib', 'config-dir.mjs'), 'utf-8')).toContain(
-      'export function getQoderConfigDir()',
+      'export function getQoderConfigDir(',
     );
     expect(readFileSync(join(testClaudeDir, 'hooks', 'keyword-detector.mjs'), 'utf-8')).toContain('Ralph keywords');
     expect(readFileSync(join(testClaudeDir, 'hooks', 'pre-tool-use.mjs'), 'utf-8')).toContain('PreToolUse');

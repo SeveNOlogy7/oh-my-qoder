@@ -115,7 +115,34 @@ async function main() {
   // 2. Plugin cache (for production installs)
   // Respect QODER_CONFIG_DIR so installs under a custom config dir are found
   const configDir = getClaudeConfigDir();
-  const pluginCacheBase = join(configDir, "plugins", "cache", "omq", "oh-my-qoder");
+  // The marketplace segment varies: "omq" for marketplace installs, "local" for
+  // `plugins install <dir>`, so scan instead of assuming one slug. Mirrors
+  // resolvePluginCacheBase() in src/utils/paths.ts, including the strict semver
+  // filter and the canonical-slug tie-break.
+  const cacheParent = join(configDir, "plugins", "cache");
+  const CACHE_VERSION_DIR = /^\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.-]+)?$/;
+  const newestCacheVersion = (base) => {
+    try {
+      return readdirSync(base)
+        .filter((name) => CACHE_VERSION_DIR.test(name))
+        .sort((a, b) => a.localeCompare(b, void 0, { numeric: true }))
+        .pop() ?? "";
+    } catch {
+      return "";
+    }
+  };
+  let pluginCacheBase = join(cacheParent, "omq", "oh-my-qoder");
+  try {
+    const candidates = readdirSync(cacheParent)
+      .map((slug) => ({ base: join(cacheParent, slug, "oh-my-qoder"), slug }))
+      .filter(({ base }) => existsSync(base))
+      .sort((a, b) => {
+        const byVersion = newestCacheVersion(a.base).localeCompare(newestCacheVersion(b.base), void 0, { numeric: true });
+        if (byVersion !== 0) return byVersion;
+        return (a.slug === "omq" ? 1 : 0) - (b.slug === "omq" ? 1 : 0);
+      });
+    if (candidates.length > 0) pluginCacheBase = candidates[candidates.length - 1].base;
+  } catch { /* cache not readable; keep the canonical default */ }
   if (existsSync(pluginCacheBase)) {
     try {
       // Filter to strict semver dir names only — guards against accidental

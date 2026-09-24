@@ -1,0 +1,4 @@
+# PATH shims are executed by name, so a CRLF checkout on Windows would break the
+# `#!/bin/sh` interpreter line. Everything else keeps core.autocrlf defaults.
+bin/omq text eol=lf
+package-lock.json text eol=lf

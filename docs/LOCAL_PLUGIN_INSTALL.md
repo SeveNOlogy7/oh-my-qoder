@@ -6,7 +6,7 @@ How to install and develop oh-my-qoder from a local checkout as a Qoder CLI plug
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/anthropics/oh-my-qoder.git
+git clone https://github.com/qoder-plugins/oh-my-qoder.git
 cd oh-my-qoder
 
 # 2. Install dependencies and build

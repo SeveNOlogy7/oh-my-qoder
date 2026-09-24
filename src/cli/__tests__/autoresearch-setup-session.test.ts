@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
@@ -17,6 +17,7 @@ import {
   collectAutoresearchRepoSignals,
   runAutoresearchSetupSession,
 } from '../autoresearch-setup-session.js';
+import { clearQoderCliCache } from '../../lib/qoder-cli.js';
 
 describe('collectAutoresearchRepoSignals', () => {
   afterEach(() => {
@@ -53,8 +54,23 @@ describe('buildAutoresearchSetupPrompt', () => {
 });
 
 describe('runAutoresearchSetupSession', () => {
+  const originalCliEnv = process.env.OMQ_QODER_CLI;
+
+  beforeEach(() => {
+    // Without an explicit flavor the resolver probes PATH for a CLI binary with
+    // spawnSync first, so the assertions below would inspect the wrong call.
+    process.env.OMQ_QODER_CLI = 'qodercli';
+    clearQoderCliCache();
+  });
+
   afterEach(() => {
     vi.mocked(spawnSync).mockReset();
+    if (originalCliEnv === undefined) {
+      delete process.env.OMQ_QODER_CLI;
+    } else {
+      process.env.OMQ_QODER_CLI = originalCliEnv;
+    }
+    clearQoderCliCache();
   });
 
   it('parses validated JSON from claude print mode', () => {

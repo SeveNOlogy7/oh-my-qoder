@@ -1180,6 +1180,7 @@ const doctorCmd = program
   .addHelpText('after', `
 Examples:
   $ omq doctor conflicts                        Check for plugin conflicts
+  $ omq doctor check                        Check that the installed copy can run
   $ omq doctor team-routing                     Probe /team role-routing provider CLIs
   $ omq doctor --team-routing                   Same as above (flag form)
   $ omq doctor --plugin-dir /path/to/plugin     Run diagnostics against a specific plugin dir`)
@@ -1205,6 +1206,23 @@ Examples:
   $ omq doctor team-routing --json              Output results as JSON`)
   .action(async (options) => {
     const exitCode = await doctorTeamRoutingCommand({ json: options.json ?? false });
+    process.exit(exitCode);
+  });
+
+doctorCmd
+  .command('check')
+  .description('Check whether this installed copy can run: payload completeness + per-module load probes')
+  .option('--json', 'Output as JSON')
+  .option('--plugin-dir <path>', 'Override OMQ plugin root directory (sets OMQ_PLUGIN_ROOT)')
+  .addHelpText('after', `
+Examples:
+  $ omq doctor check                            Diagnose the active plugin install
+  $ omq doctor check --plugin-dir <dir>         Diagnose a specific cache/clone dir
+  $ omq doctor check --json                     Machine-readable report`)
+  .action(async (options) => {
+    applyPluginDirOption(options.pluginDir);
+    const { doctorCheckCommand } = await import('./commands/doctor-check.js');
+    const exitCode = await doctorCheckCommand({ json: options.json ?? false, pluginDir: options.pluginDir });
     process.exit(exitCode);
   });
 
@@ -1239,7 +1257,6 @@ program
   .option('-q, --quiet', 'Suppress output except for errors')
   .option('--no-plugin', 'Install bundled skills from the current package instead of relying on plugin-provided skills')
   .option('--plugin-dir-mode', 'Treat OMQ as launched via --plugin-dir at runtime (skip agent/skill copy; HUD + hooks + AGENTS.md still installed)')
-  .option('--skip-hooks', 'Skip hook installation')
   .option('--force-hooks', 'Force reinstall hooks even if unchanged')
   .addHelpText('after', `
 Examples:
@@ -1248,7 +1265,6 @@ Examples:
   $ omq setup --no-plugin         Force local bundled skill installation
   $ omq setup --plugin-dir-mode   Skip agent/skill copy (used with qodercli --plugin-dir)
   $ omq setup --quiet             Silent setup for scripts
-  $ omq setup --skip-hooks        Install without hooks
   $ omq setup --force-hooks       Force reinstall hooks`)
   .action(async (options) => {
     if (!options.quiet) {
