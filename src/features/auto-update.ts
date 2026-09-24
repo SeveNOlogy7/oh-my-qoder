@@ -13,7 +13,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { execSync, execFileSync } from 'child_process';
-import { qoderCliBinary, qoderCliNpmPackage } from '../lib/qoder-cli.js';
 import { TaskTool } from '../hooks/beads-context/types.js';
 import {
   install as installOmq,
@@ -35,296 +34,16 @@ export const REPO_NAME = 'oh-my-qoder';
 export const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
 export const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}`;
 
-interface GlobalQoderCliInstall {
-  status: 'present' | 'absent' | 'unknown';
-  version?: string;
-  installMethod?: 'npm' | 'native' | 'manual';
-  binaryPath?: string;
-  error?: string;
-}
 
-function npmExecOptions(verbose: boolean = false): {
-  encoding: 'utf-8';
-  stdio: 'inherit' | 'pipe';
-  timeout: number;
-  windowsHide?: boolean;
-} {
-  return {
-    encoding: 'utf-8',
-    stdio: verbose ? 'inherit' : 'pipe',
-    timeout: 120000,
-    ...(process.platform === 'win32' ? { windowsHide: true } : {}),
-  };
-}
 
-function assertSafeNpmPackageSpec(packageSpec: string): void {
-  if (!/^[A-Za-z0-9@._~+/-]+$/.test(packageSpec)) {
-    throw new Error(`Unsafe npm package spec: ${packageSpec}`);
-  }
-}
 
-function npmInstallGlobalPackage(packageSpec: string, verbose: boolean = false): void {
-  assertSafeNpmPackageSpec(packageSpec);
-  if (process.platform === 'win32') {
-    execSync(`npm install -g ${packageSpec}`, npmExecOptions(verbose));
-    return;
-  }
 
-  execFileSync('npm', ['install', '-g', packageSpec], npmExecOptions(verbose));
-}
 
-function parseQoderCliVersion(output: string): string | undefined {
-  const trimmed = output.trim();
-  if (!trimmed) {
-    return undefined;
-  }
 
-  return trimmed.match(/\b(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/)?.[1];
-}
 
-function getFirstResolvedBinaryPath(output: string, binaryName: string): string {
-  const resolved = output
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .find(Boolean);
 
-  if (!resolved) {
-    throw new Error(`Unable to resolve ${binaryName} binary path`);
-  }
 
-  return resolved;
-}
 
-function resolveQoderBinaryPath(): string | undefined {
-  try {
-    const binary = qoderCliBinary();
-    if (process.platform === 'win32') {
-      return getFirstResolvedBinaryPath(execFileSync('where.exe', [binary], {
-        encoding: 'utf-8',
-        stdio: 'pipe',
-        timeout: 5000,
-        windowsHide: true,
-      }), binary);
-    }
-
-    // qoderCliBinary() only ever returns a validated name, so this stays shell-safe.
-    return getFirstResolvedBinaryPath(execSync(`command -v ${binary} 2>/dev/null || which ${binary} 2>/dev/null`, {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 5000,
-    }), binary);
-  } catch {
-    return undefined;
-  }
-}
-
-function detectQoderCliFromBinary(npmRoot?: string): GlobalQoderCliInstall {
-  try {
-    const versionOutput = String(execFileSync(qoderCliBinary(), ['--version'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 10000,
-      ...(process.platform === 'win32' ? { shell: true, windowsHide: true } : {}),
-    }) ?? '');
-    const binaryPath = resolveQoderBinaryPath();
-    const version = parseQoderCliVersion(versionOutput);
-    if (!version && !binaryPath) {
-      return { status: 'unknown', error: `${qoderCliBinary()} --version returned no parseable version and binary path could not be resolved` };
-    }
-
-    const normalizedBinaryPath = binaryPath?.replace(/\\/g, '/').toLowerCase();
-    const normalizedNpmRoot = npmRoot?.replace(/\\/g, '/').toLowerCase();
-    const isNpmBinary = Boolean(
-      normalizedBinaryPath &&
-      normalizedNpmRoot &&
-      normalizedBinaryPath.startsWith(normalizedNpmRoot.replace(/\/node_modules$/, '')),
-    );
-
-    return {
-      status: 'present',
-      version,
-      installMethod: isNpmBinary ? 'npm' : process.platform === 'win32' ? 'native' : 'manual',
-      binaryPath,
-    };
-  } catch (error) {
-    return {
-      status: 'unknown',
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-function detectGlobalQoderCliInstall(): GlobalQoderCliInstall {
-  let npmRoot: string | undefined;
-
-  try {
-    npmRoot = String(execSync('npm root -g', {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 10000,
-      ...(process.platform === 'win32' ? { windowsHide: true } : {}),
-    }) ?? '').trim();
-    if (!npmRoot) {
-      const binaryInstall = detectQoderCliFromBinary();
-      return binaryInstall.status === 'present'
-        ? binaryInstall
-        : { status: 'unknown', error: 'npm root -g returned an empty path' };
-    }
-
-    const packageJsonPath = join(npmRoot, ...qoderCliNpmPackage().split('/'), 'package.json');
-    if (!existsSync(packageJsonPath)) {
-      const binaryInstall = detectQoderCliFromBinary(npmRoot);
-      return binaryInstall.status === 'present' ? binaryInstall : { status: 'absent' };
-    }
-
-    const packageJson = JSON.parse(String(readFileSync(packageJsonPath, 'utf-8') ?? '')) as {
-      version?: unknown;
-    };
-    return {
-      status: 'present',
-      version: typeof packageJson.version === 'string' && packageJson.version.trim()
-        ? packageJson.version.trim()
-        : undefined,
-      installMethod: 'npm',
-    };
-  } catch (error) {
-    const binaryInstall = detectQoderCliFromBinary(npmRoot);
-    if (binaryInstall.status === 'present') {
-      return binaryInstall;
-    }
-
-    return {
-      status: 'unknown',
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-function restoreGlobalQoderCliIfNeeded(
-  beforeUpdate: GlobalQoderCliInstall,
-  verbose: boolean = false,
-): { restored: boolean } {
-  if (beforeUpdate.status !== 'present' || beforeUpdate.installMethod !== 'npm') {
-    return { restored: false };
-  }
-
-  if (detectGlobalQoderCliInstall().status === 'present') {
-    return { restored: false };
-  }
-
-  const versionSuffix = beforeUpdate.version ? `@${beforeUpdate.version}` : '@latest';
-  const packageSpec = `${qoderCliNpmPackage()}${versionSuffix}`;
-
-  if (verbose) {
-    console.log(`[omq update] Restoring global ${packageSpec} after npm update...`);
-  }
-
-  npmInstallGlobalPackage(packageSpec, verbose);
-
-  const afterRestore = detectGlobalQoderCliInstall();
-  if (afterRestore.status !== 'present') {
-    throw new Error(`Global ${qoderCliNpmPackage()} was present before update but is still missing after restore`);
-  }
-
-  if (verbose) {
-    console.log(`[omq update] Restored global ${qoderCliNpmPackage()}`);
-  }
-
-  return { restored: true };
-}
-
-/**
- * Best-effort sync of the Qoder CLI marketplace clone.
- * The marketplace clone at ~/.qoder/plugins/marketplaces/omq/ is used by
- * Qoder CLI to populate the plugin cache. If it's stale, `/plugin install`
- * and cache rebuilds reinstall old versions. (See #506)
- */
-function syncMarketplaceClone(verbose: boolean = false): { ok: boolean; message: string } {
-  const marketplacePath = join(getQoderConfigDir(), 'plugins', 'marketplaces', 'omq');
-  if (!existsSync(marketplacePath)) {
-    return { ok: true, message: 'Marketplace clone not found; skipping' };
-  }
-
-  const stdio = verbose ? 'inherit' : 'pipe';
-  const execOpts = { encoding: 'utf-8' as const, stdio: stdio as any, timeout: 60000 };
-  const queryExecOpts = { encoding: 'utf-8' as const, stdio: 'pipe' as const, timeout: 60000 };
-
-  try {
-    execFileSync('git', ['-C', marketplacePath, 'fetch', '--all', '--prune'], execOpts);
-  } catch (err) {
-    return { ok: false, message: `Failed to fetch marketplace clone: ${err instanceof Error ? err.message : err}` };
-  }
-
-  try {
-    execFileSync('git', ['-C', marketplacePath, 'checkout', 'main'], { ...execOpts, timeout: 15000 });
-  } catch {
-    // Fall through to explicit branch verification below.
-  }
-
-  let currentBranch = '';
-  try {
-    currentBranch = String(
-      execFileSync('git', ['-C', marketplacePath, 'rev-parse', '--abbrev-ref', 'HEAD'], queryExecOpts) ?? ''
-    ).trim();
-  } catch (err) {
-    return { ok: false, message: `Failed to inspect marketplace clone branch: ${err instanceof Error ? err.message : err}` };
-  }
-
-  if (currentBranch !== 'main') {
-    return {
-      ok: false,
-      message: `Skipped marketplace clone update: expected branch main but found ${currentBranch || 'unknown'}`,
-    };
-  }
-
-  let statusOutput = '';
-  try {
-    statusOutput = String(
-      execFileSync('git', ['-C', marketplacePath, 'status', '--porcelain', '--untracked-files=normal'], queryExecOpts) ?? ''
-    ).trim();
-  } catch (err) {
-    return { ok: false, message: `Failed to inspect marketplace clone status: ${err instanceof Error ? err.message : err}` };
-  }
-
-  if (statusOutput.length > 0) {
-    return {
-      ok: false,
-      message: 'Skipped marketplace clone update: repo has local modifications; commit, stash, or clean it first',
-    };
-  }
-
-  let aheadCount = 0;
-  let behindCount = 0;
-  try {
-    const revListOutput = String(
-      execFileSync('git', ['-C', marketplacePath, 'rev-list', '--left-right', '--count', 'HEAD...origin/main'], queryExecOpts) ?? ''
-    ).trim();
-    const [aheadRaw = '0', behindRaw = '0'] = revListOutput.split(/\s+/);
-    aheadCount = Number.parseInt(aheadRaw, 10) || 0;
-    behindCount = Number.parseInt(behindRaw, 10) || 0;
-  } catch (err) {
-    return { ok: false, message: `Failed to inspect marketplace clone divergence: ${err instanceof Error ? err.message : err}` };
-  }
-
-  if (aheadCount > 0) {
-    return {
-      ok: false,
-      message: 'Skipped marketplace clone update: repo has local commits on main; manual reconciliation required',
-    };
-  }
-
-  if (behindCount === 0) {
-    return { ok: true, message: 'Marketplace clone already up to date' };
-  }
-
-  try {
-    execFileSync('git', ['-C', marketplacePath, 'merge', '--ff-only', 'origin/main'], execOpts);
-  } catch (err) {
-    return { ok: false, message: `Failed to fast-forward marketplace clone: ${err instanceof Error ? err.message : err}` };
-  }
-
-  return { ok: true, message: 'Marketplace clone updated' };
-}
 
 function replaceLastPathSegmentPreservingSeparators(pathValue: string, nextSegment: string): string {
   const trimmed = pathValue.trim();
@@ -1058,22 +777,6 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
   };
 }
 
-function resolveOmqBinaryPath(): string {
-  if (process.platform === 'win32') {
-    return getFirstResolvedBinaryPath(execFileSync('where.exe', ['omq.cmd'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 5000,
-      windowsHide: true,
-    }), 'omq');
-  }
-
-  return getFirstResolvedBinaryPath(execSync('which omq 2>/dev/null || where omq 2>NUL', {
-    encoding: 'utf-8',
-    stdio: 'pipe',
-    timeout: 5000,
-  }), 'omq');
-}
 
 /**
  * Download and execute the install script to perform an update
@@ -1087,132 +790,27 @@ export async function performUpdate(options?: {
   const installed = getInstalledVersion();
   const previousVersion = installed?.version ?? null;
 
-  try {
-    // Block npm update only from active Qoder CLI/plugin sessions.
-    // Standalone terminals may inherit QODER_PLUGIN_ROOT and should still update.
-    if (shouldBlockStandaloneUpdateInCurrentSession() && !options?.standalone) {
-      return {
-        success: false,
-        previousVersion,
-        newVersion: 'unknown',
-        message: 'Running inside an active Qoder CLI plugin session. Use "/plugin install oh-my-qoder" to update, or pass --standalone to force npm update.',
-      };
-    }
-
-    // Fetch the latest release to get the version
-    const release = await fetchLatestRelease();
-    const newVersion = release.tag_name.replace(/^v/, '');
-    const qoderCliBeforeUpdate = detectGlobalQoderCliInstall();
-
-    // Use npm for updates on all platforms (install.sh was removed)
-    try {
-      execSync('npm install -g oh-my-qoder@latest', npmExecOptions(options?.verbose ?? false));
-
-      try {
-        restoreGlobalQoderCliIfNeeded(qoderCliBeforeUpdate, options?.verbose ?? false);
-      } catch (restoreError) {
-        return {
-          success: false,
-          previousVersion,
-          newVersion,
-          message: `Updated to ${newVersion}, but failed to restore global ${qoderCliNpmPackage()}`,
-          errors: [restoreError instanceof Error ? restoreError.message : String(restoreError)],
-        };
-      }
-
-      // Sync Qoder CLI marketplace clone so plugin cache picks up new version (#506)
-      const marketplaceSync = syncMarketplaceClone(options?.verbose ?? false);
-      if (!marketplaceSync.ok && options?.verbose) {
-        console.warn(`[omq update] ${marketplaceSync.message}`);
-      }
-
-      const pluginCacheSync = syncPluginCache(options?.verbose ?? false);
-      if (pluginCacheSync.errors.length > 0 && options?.verbose) {
-        for (const error of pluginCacheSync.errors) {
-          console.warn(`[omq update] Plugin cache sync warning: ${error}`);
-        }
-      }
-
-      // CRITICAL FIX: After npm updates the global package, the current process
-      // still has OLD code loaded in memory. We must re-exec to run reconciliation
-      // with the NEW code. Otherwise, installOmq() runs OLD logic against NEW files.
-      if (!process.env.OMQ_UPDATE_RECONCILE) {
-        // Set flag to prevent infinite loop
-        process.env.OMQ_UPDATE_RECONCILE = '1';
-
-        // Find the omq binary path
-        const omqPath = resolveOmqBinaryPath();
-
-        // Re-exec with reconcile subcommand
-        try {
-          execFileSync(omqPath, ['update-reconcile', ...(options?.clean ? ['--skip-grace-period'] : [])], {
-            encoding: 'utf-8',
-            stdio: options?.verbose ? 'inherit' : 'pipe',
-            timeout: 60000,
-            env: { ...process.env, OMQ_UPDATE_RECONCILE: '1' },
-            ...(process.platform === 'win32' ? { windowsHide: true, shell: true } : {}),
-          });
-        } catch (reconcileError) {
-          return {
-            success: false,
-            previousVersion,
-            newVersion,
-            message: `Updated to ${newVersion}, but runtime reconciliation failed`,
-            errors: [reconcileError instanceof Error ? reconcileError.message : String(reconcileError)],
-          };
-        }
-
-        // Update version metadata after reconciliation succeeds
-        saveVersionMetadata({
-          version: newVersion,
-          installedAt: new Date().toISOString(),
-          installMethod: 'npm',
-          lastCheckAt: new Date().toISOString()
-        });
-
-        return {
-          success: true,
-          previousVersion,
-          newVersion,
-          message: `Successfully updated from ${previousVersion ?? 'unknown'} to ${newVersion}`
-        };
-      } else {
-        // We're in the re-exec'd process - run reconciliation directly
-        const reconcileResult = reconcileUpdateRuntime({ verbose: options?.verbose, skipGracePeriod: options?.clean });
-        if (!reconcileResult.success) {
-          return {
-            success: false,
-            previousVersion,
-            newVersion,
-            message: `Updated to ${newVersion}, but runtime reconciliation failed`,
-            errors: reconcileResult.errors?.map(e => `Reconciliation failed: ${e}`),
-          };
-        }
-        return {
-          success: true,
-          previousVersion,
-          newVersion,
-          message: 'Reconciliation completed successfully'
-        };
-      }
-    } catch (npmError) {
-      throw new Error(
-        'Auto-update via npm failed. Please run manually:\n' +
-        '  npm install -g oh-my-qoder@latest\n' +
-        'Or use: /plugin install oh-my-qoder\n' +
-        `Error: ${npmError instanceof Error ? npmError.message : npmError}`
-      );
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+  if (shouldBlockStandaloneUpdateInCurrentSession() && !options?.standalone) {
     return {
       success: false,
       previousVersion,
-      newVersion: 'unknown',
-      message: `Update failed: ${errorMessage}`,
-      errors: [errorMessage]
+      newVersion: "unknown",
+      message: "Running inside an active Qoder CLI plugin session. Use \"/plugin install oh-my-qoder\" to update.",
     };
   }
+
+  // There is no npm channel to update from: `oh-my-qoder` is not published on the
+  // public registry, so `npm install -g oh-my-qoder@latest` could only install
+  // whichever third party claims that name. Treat a missing channel as a refusal,
+  // not as something to retry - the caller reports the failure to the user.
+  return {
+    success: false,
+    previousVersion,
+    newVersion: "unknown",
+    message:
+      "No update channel is configured for this install. Update with \"/plugin install oh-my-qoder\" in Qoder, " +
+      "or reinstall from a checkout (git pull && npm run install:local).",
+  };
 }
 
 /**
