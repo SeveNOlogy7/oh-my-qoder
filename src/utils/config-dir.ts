@@ -44,6 +44,25 @@ export function resolveDefaultConfigDir(home: string = homedir()): string {
   return stripTrailingSep(normalize(join(home, cnHasState ? QODER_CN_CONFIG_DIR_NAME : QODER_INTL_CONFIG_DIR_NAME)));
 }
 
+/** @internal Probe results are cached per home so one process never splits. */
+let inferredDefault: { home: string; dir: string } | undefined;
+
+/**
+ * The inferred default config root, probed at most once per process.
+ *
+ * The CN/international choice reads filesystem state, so re-probing lets two
+ * callers in the same process disagree as soon as anything writes into a root -
+ * typically a module constant captured at import versus a later call. Use
+ * resolveDefaultConfigDir() directly to force a fresh probe. The script mirrors
+ * need no cache: each resolves the root once per one-shot process.
+ */
+export function getInferredConfigDir(home: string = homedir()): string {
+  if (!inferredDefault || inferredDefault.home !== home) {
+    inferredDefault = { home, dir: resolveDefaultConfigDir(home) };
+  }
+  return inferredDefault.dir;
+}
+
 /**
  * Resolve the Qoder CLI configuration directory.
  *
@@ -58,7 +77,7 @@ export function getQoderConfigDir(
   const configured = (env.QODER_CONFIG_DIR ?? '').trim() || (env.QODERCN_CONFIG_DIR ?? '').trim();
 
   if (!configured) {
-    return resolveDefaultConfigDir(home);
+    return getInferredConfigDir(home);
   }
 
   if (configured === '~') {

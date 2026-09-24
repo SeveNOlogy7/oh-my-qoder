@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
-import { QODER_CN_CONFIG_DIR_NAME, resolveDefaultConfigDir } from '../utils/config-dir.js';
+import { QODER_CN_CONFIG_DIR_NAME, getInferredConfigDir } from '../utils/config-dir.js';
 
 /**
  * Qoder ships two distributions whose executable and npm package names differ:
@@ -58,7 +58,7 @@ export function qoderCli(): QoderCliFlavor {
   // A CN CLI installed outside PATH still must not resolve to the international
   // package, or `omq update` would install the wrong distribution globally.
   cached = FLAVORS.find(flavor => isOnPath(flavor.binary))
-    ?? (basename(resolveDefaultConfigDir()) === QODER_CN_CONFIG_DIR_NAME ? FLAVORS[0] : FALLBACK);
+    ?? (basename(getInferredConfigDir()) === QODER_CN_CONFIG_DIR_NAME ? FLAVORS[0] : FALLBACK);
   return cached;
 }
 

@@ -46,6 +46,22 @@ describe('getQoderConfigDir', () => {
     rmSync(home, { recursive: true, force: true });
   });
 
+  it('keeps one inferred root per process even when state appears later', () => {
+    // Callers that capture the root at import time must not disagree with a
+    // later call in the same process - the plugin cache sync does exactly that.
+    const home = mkdtempSync(join(tmpdir(), 'omq-config-home-'));
+    try {
+      expect(getQoderConfigDir({}, home)).toBe(normalize(join(home, '.qoder')));
+      mkdirSync(join(home, '.qoder-cn'), { recursive: true });
+      writeFileSync(join(home, '.qoder-cn', 'settings.json'), '{}');
+
+      expect(getQoderConfigDir({}, home)).toBe(normalize(join(home, '.qoder')));
+      expect(resolveDefaultConfigDir(home)).toBe(normalize(join(home, '.qoder-cn')));
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   it('honours QODERCN_CONFIG_DIR when QODER_CONFIG_DIR is absent', () => {
     const home = mkdtempSync(join(tmpdir(), 'omq-config-home-'));
     expect(getQoderConfigDir({ QODERCN_CONFIG_DIR: join(home, 'cn-config') }, home))

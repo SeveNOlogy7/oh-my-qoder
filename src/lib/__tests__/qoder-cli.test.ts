@@ -8,7 +8,7 @@ vi.mock('node:child_process', () => ({ spawnSync: vi.fn() }));
 // pin it instead of inheriting whatever this machine has installed.
 vi.mock('../../utils/config-dir.js', () => ({
   QODER_CN_CONFIG_DIR_NAME: '.qoder-cn',
-  resolveDefaultConfigDir: () => (globalThis as any).__omqDefaultConfigRoot ?? join('/home/u', '.qoder'),
+  getInferredConfigDir: () => (globalThis as any).__omqDefaultConfigRoot ?? join('/home/u', '.qoder'),
 }));
 
 const mockSpawnSync = vi.mocked(spawnSync);
