@@ -96,7 +96,10 @@ const installPath = readInstallPath(configDir);
 console.log(`installed at: ${installPath}`);
 
 const destModules = join(installPath, 'node_modules');
-const requiredExternals = ['@ast-grep/napi', 'better-sqlite3', 'jsonc-parser', 'ajv', 'commander'];
+// Measured from the shipped bundles: these are the packages the artifacts still
+// require at runtime. `commander` and `jsonc-parser` are inlined into the bundles,
+// so listing them here made the check pass (or fail) for the wrong reasons.
+const requiredExternals = ['ajv', 'ajv-formats', '@ast-grep/napi', 'better-sqlite3'];
 const missing = requiredExternals.filter((name) => !existsSync(join(destModules, name)));
 
 if (missing.length === 0) {

@@ -143,24 +143,37 @@ try {
 
 // 5. Ensure runtime dependencies are installed in the plugin cache directory.
 //    The npm-published tarball includes only the files listed in "files" (package.json),
-//    which does NOT include node_modules.  When Qoder CLI extracts the plugin into its
-//    cache the dependencies are therefore missing, causing ERR_MODULE_NOT_FOUND at runtime.
-//    We detect this by probing for a known production dependency (commander) and running a
-//    production-only install when it is absent.  --ignore-scripts avoids re-triggering this
-//    very setup script (and any other lifecycle hooks).  Fixes #1113.
+//    which does NOT include node_modules, and Qoder copies the plugin tree without running
+//    any install step. The bundles therefore keep their runtime externals unresolved:
+//    `ajv`/`ajv-formats` are required by generated code and fail at load, while
+//    `@ast-grep/napi`/`better-sqlite3` are loaded on demand and degrade at call time.
+//    Probing for `commander` (bundled into the artifacts, so never needed at runtime)
+//    hid all four. --ignore-scripts avoids re-triggering this very setup script.
+//    Fixes #1113.
 const packageDir = join(__dirname, '..');
-const commanderCheck = join(packageDir, 'node_modules', 'commander');
-if (!existsSync(commanderCheck)) {
-  console.log('[OMQ] Installing runtime dependencies...');
+const RUNTIME_EXTERNALS = ['ajv', 'ajv-formats', '@ast-grep/napi', 'better-sqlite3'];
+const missingExternals = () => RUNTIME_EXTERNALS.filter(
+  (name) => !existsSync(join(packageDir, 'node_modules', ...name.split('/'))),
+);
+
+if (missingExternals().length > 0) {
+  console.log(`[OMQ] Installing runtime dependencies (missing: ${missingExternals().join(', ')})...`);
   try {
+    // A cold install fetches platform binaries for four packages; 60s truncated it.
     execSync('npm install --omit=dev --ignore-scripts', {
       cwd: packageDir,
       stdio: 'pipe',
-      timeout: 60000,
+      timeout: 300000,
     });
-    console.log('[OMQ] Runtime dependencies installed successfully');
   } catch (e) {
     console.log('[OMQ] Warning: Could not install dependencies:', e.message);
+  }
+  const stillMissing = missingExternals();
+  if (stillMissing.length === 0) {
+    console.log('[OMQ] Runtime dependencies installed successfully');
+  } else {
+    console.log(`[OMQ] Warning: still missing after install: ${stillMissing.join(', ')}`);
+    console.log('[OMQ] Run `omq doctor install` for the per-module report.');
   }
 } else {
   console.log('[OMQ] Runtime dependencies already present');
