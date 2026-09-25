@@ -1,88 +1,91 @@
 # Negative Control Harness
 
-Proves that regression tests actually detect the regressions they claim to catch.
+Proves that a regression test actually detects the regression it claims to catch.
 
 ## Purpose
 
-A regression test that passes both before and after reverting the fix it is
-supposed to validate is not a real test -- it is a false sense of security.
-The negative-control harness automates the check:
+A test that passes both before and after removing the fix is not a regression
+test. The harness measures that: it creates a scratch worktree, removes one
+OMQ patch inside it, runs the tests that are supposed to depend on that patch,
+and records whether anything turned red.
 
-1. Create a scratch `git worktree add --detach` under `.omq/worktrees/`.
-2. Revert the named fix commit inside that worktree only.
-3. Run the observation tests.
-4. Assert the observation turned RED.
-5. Remove the worktree in a `finally` block.
+1. `git worktree add --detach` under `.omq/worktrees/` at `HEAD`.
+2. Overwrite the patched file with its **pre-patch** content.
+3. Run each candidate observation on the un-patched tree (want: green).
+4. Revert the file, run the green candidates again (want: red).
+5. Write the carrier, remove the worktree in a `finally` block.
 
-The harness **never** runs `stash`, `reset`, `checkout`, or `revert` in the main
-worktree. All destructive git operations are scoped to the scratch worktree.
+The revert is per file, not per commit: the patching commits also add or edit
+the tests being measured, so a whole-commit revert would delete the observation
+it is judging.
+
+The harness **never** runs `stash`, `reset`, `checkout`, `revert`, `commit` or
+`push` in the main worktree. All git writes are scoped to the scratch worktree,
+and after cleanup it verifies its own worktree path is unregistered.
 
 ## Lanes
 
-| Lane name | Fix commit | Observation |
-|-----------|-----------|-------------|
-| `provenance-path-coverage` | `94df71a` | `src/__tests__/canonical-identity-provenance.test.ts` |
-
-### provenance-path-coverage
-
-Commit `94df71a` changed `scripts/check-canonical-identity.mjs` from a
-content-level check (only inspecting files whose text mentioned the ancestor
-URL) to a path-coverage gate (every scanned file must appear in
-ATTRIBUTION.json). Reverting this fix should cause the provenance tests to
-fail because unlisted files are no longer detected as violations.
-
-## Usage
+A lane is (patched file, pre-patch commit, observation). Lanes are **derived**,
+not hand-written:
 
 ```sh
-# Run the harness directly
-node scripts/negative-control.mjs --lane provenance-path-coverage
-
-# JSON output
-node scripts/negative-control.mjs --lane provenance-path-coverage --json
-
-# Run via vitest
-npx vitest run src/__tests__/negative-control.test.ts
+node scripts/conflict-ledger.mjs --patch-layer --json > .omq/patch-layer.json
+node scripts/negative-control.mjs --lanes-from .omq/patch-layer.json --retry-alternates
 ```
+
+`--retry-alternates` also measures the other tests that reference the module.
+A named observation that stays green after the un-patch means one of two very
+different things -- the patch has no coverage, or the ledger pointed at the
+wrong test -- and the alternates are what tells them apart. Every attempt is
+kept in the carrier, so a reader sees which candidates were green before the
+revert and stayed green after it. That is coverage discovery, not test shopping:
+the harness never writes a test, it only measures ones that already exist.
+
+The one hand-written lane, `provenance-path-coverage`, tests the provenance
+gate itself (it has no patch-layer row to derive from).
+
+Current measured status of the patch-layer lanes is in the `carrier` column of
+[`docs/ANCESTOR-PATCH-LAYER.md`](../ANCESTOR-PATCH-LAYER.md); do not restate the
+numbers here, they go stale the next time a lane is measured.
 
 ## Exit codes
 
 | Code | Meaning |
 |------|---------|
-| 0 | Valid: observation turned RED after reverting (test is effective) |
-| 1 | Invalid: observation stayed GREEN after reverting (test is weak) |
-| 2 | Harness error (bad lane, git failure, etc.) |
+| 0 | Valid: some observation was green before the revert and red after |
+| 1 | Nothing bit: every candidate stayed green, or none was green to begin with |
+| 2 | Harness error (bad lane name, git failure, unreadable ledger) |
+| 3 | A scratch worktree survived cleanup |
+
+`--gate` makes code 1 fail the run. Without it a non-biting lane is recorded
+rather than fatal, which is what the ledger needs while coverage is still being
+authored.
+
+## Measure on Linux
+
+Run lanes on Linux (CI, or a throwaway container). On Windows a large share of
+this suite is red for path-separator and `/tmp` reasons, so `before revert` is
+already non-zero and the lane answers nothing -- the ledger's
+`INCONCLUSIVE`/`INVALID` split on win32 is environment noise, not evidence.
+Carriers committed here are Linux-measured.
 
 ## Carrier files
 
-Each run writes a carrier markdown file at
-`.omq/worktrees/neg-ctrl-<lane>-<timestamp>-carrier.md` containing:
+Each lane writes `docs/negative-control/<lane>.txt`: lane metadata, one row per
+attempt with before/after exit codes, the verdict, and the winning output.
+Carriers carry no timestamp and no worktree path, so re-running a lane whose
+result has not changed produces no diff and the evidence stays reviewable.
+The ledger reads the verdict back out of these files.
 
-- Lane metadata (commit, observation file, description)
-- Before/after revert exit codes
-- Verdict (VALID / INVALID / INCONCLUSIVE)
-- Truncated test output for evidence
+## Adding coverage for a lane
 
-## Safety invariants
-
-- The main worktree is never modified. No stash, reset, checkout, or revert.
-- The scratch worktree is always removed in a `finally` block.
-- After cleanup, `git worktree list` is checked to confirm no stray worktrees.
-- If `git worktree remove` fails, manual `rmSync` + `git worktree prune` is attempted.
-
-## Adding a new lane
-
-Add an entry to the `LANES` object in `scripts/negative-control.mjs`:
-
-```js
-'my-new-lane': {
-  fixCommit: 'abc1234',
-  observation: 'src/__tests__/my-test.test.ts',
-  description: 'what the fix does and why reverting should break the test',
-},
-```
+`INVALID` means: name a test that fails when the patch is removed, or write one.
+Do not point the lane at a test that merely passes -- that is the failure mode
+this harness exists to catch.
 
 ## Related files
 
 - `scripts/negative-control.mjs` -- the harness
-- `src/__tests__/negative-control.test.ts` -- vitest wrapper
-- `docs/negative-control/installer-paths-config.txt` -- installer paths validated by the provenance gate
+- `scripts/conflict-ledger.mjs` -- derives the lanes, reads the verdicts back
+- `src/__tests__/negative-control.test.ts` -- vitest wrapper for the hand-written lane
+- `docs/ANCESTOR-PATCH-LAYER.md` -- generated collision table with carrier status

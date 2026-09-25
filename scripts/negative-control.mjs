@@ -39,6 +39,9 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Lane naming lives with the ledger so a carrier filename and its row cannot drift apart.
+// @ts-expect-error -- .mjs script has no type declarations
+import { laneNameFor } from './conflict-ledger.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
@@ -105,11 +108,6 @@ function git(argv, cwd) {
   }
 }
 
-/** Stable lane id for a path: `src/utils/paths.ts` -> `src-utils-paths-ts`. */
-function laneNameFor(path) {
-  return path.replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-+|-+$/g, '');
-}
-
 function subjectOf(sha) {
   try {
     return git(['log', '-1', '--format=%s', sha], repoRoot);
@@ -148,6 +146,32 @@ function lanesFromPatchLayer(file) {
   }
   if (!lanes.length) throw new Error(`${file} contains no assertable lane`);
   return lanes;
+}
+
+/**
+ * Make captured output comparable across runs and machines.
+ *
+ * Test output embeds the scratch worktree path (which carries a timestamp) and
+ * mkdtemp suffixes (which are random).  Redacting both is what lets a carrier be
+ * committed as evidence: re-running a lane whose result has not changed must not
+ * produce a diff, or nobody can review the file.
+ */
+function redact(text, worktreePath) {
+  if (!text) return '';
+  // Colour codes first: every rule below would otherwise miss its line.
+  let out = text.replace(/\u001b\[[0-9;]*[A-Za-z]/g, '').replace(/\r\n/g, '\n');
+  const posixRoot = worktreePath.replace(/\\/g, '/');
+  for (const form of new Set([worktreePath, posixRoot])) {
+    if (form) out = out.split(form).join('<worktree>');
+  }
+  // mkdtemp suffixes are random: omq-hud-cache-AbC123 -> omq-hud-cache-<tmp>
+  out = out.replace(/([-/][a-z0-9-]{3,}-)[A-Za-z0-9]{6,8}(?=[\s"'/,):])/g, '$1<tmp>');
+  // Per-test durations differ every run, and they are never the evidence.
+  out = out.replace(/ \d+(?:\.\d+)?ms/g, '');
+  // Same for vitest's summary footer.
+  out = out.replace(/^[ \t]*Start at +\d[\d:.]+[ \t]*$/gm, '   Start at  <redacted>');
+  out = out.replace(/^[ \t]*Duration +\d+ms.*$/gm, '   Duration  <redacted>');
+  return out;
 }
 
 function runVitest(worktreeDir, testFile) {
@@ -257,8 +281,8 @@ function runLane(lane, { retryAlternates }) {
       const after = runVitest(worktreePath, observation);
       attempt.afterExitCode = after.code;
       attempt.red = after.code !== 0;
-      attempt.output = after.stdout.slice(-2000);
-      attempt.stderr = after.stderr.slice(-1000);
+      attempt.output = redact(after.stdout, worktreePath).slice(-2000);
+      attempt.stderr = redact(after.stderr, worktreePath).slice(-1000);
       if (attempt.red && !winner) winner = observation;
     }
 
