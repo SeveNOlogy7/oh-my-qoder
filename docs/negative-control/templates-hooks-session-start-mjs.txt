@@ -1,0 +1,45 @@
+# Negative Control Carrier: templates-hooks-session-start-mjs
+
+- **Lane**: templates-hooks-session-start-mjs
+- **Fix commit**: 2f0bd25
+- **Patched file**: templates/hooks/session-start.mjs
+- **Named observation**: src/__tests__/session-start-timeout-cleanup.test.ts
+- **Verified observation**: none
+- **Description**: fix(identity): point every repo URL at the canonical repository -- reverting templates/hooks/session-start.mjs should turn src/__tests__/session-start-timeout-cleanup.test.ts RED (observation found by rule "reference").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/session-start-timeout-cleanup.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/conflict-ledger.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/doctor-conflicts.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-hooks-merge.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/update-check-path.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/safe-installer.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/standalone-hook-reconcile.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**INVALID: no observation turned RED after reverting the fix**
+
+### Winning observation output after revert (last 2000 chars)
+```
+
+ RUN  v4.1.11 <worktree>
+
+ ✓ src/__tests__/session-start-timeout-cleanup.test.ts > BUG 4: session-start hooks clear timeout in finally > templates/hooks/session-start.mjs uses finally for clearTimeout
+ ✓ src/__tests__/session-start-timeout-cleanup.test.ts > BUG 4: session-start hooks clear timeout in finally > scripts/session-start.mjs uses finally for clearTimeout
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```

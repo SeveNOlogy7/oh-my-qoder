@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error -- .mjs script has no type declarations
-import { classifyConflict, buildLedger, summarizeLedger, gitBlobSha, isGenerated, hopVerdict, patchLayerClass, pickObservation, buildPatchLayerRows, summarizePatchLayer, buildWatchRows, renderPatchLayerMarkdown } from '../../scripts/conflict-ledger.mjs';
+import { classifyConflict, buildLedger, summarizeLedger, gitBlobSha, isGenerated, hopVerdict, patchLayerClass, pickObservation, buildPatchLayerRows, summarizePatchLayer, buildWatchRows, parseCarrier, laneNameFor, renderPatchLayerMarkdown } from '../../scripts/conflict-ledger.mjs';
 
 /** SHA constants for tests (look like git blob SHAs but are deterministic). */
 const SHA_A = 'a'.repeat(40);
@@ -544,6 +544,80 @@ describe('buildWatchRows', () => {
       localBlobByPath: new Map([['docs/CLAUDE.md', SHA_B]]),
     });
     expect(rows[0]).toMatchObject({ matchesLineage: false, matchesTarget: true });
+  });
+});
+
+describe('laneNameFor', () => {
+  it('turns a path into the carrier filename the harness writes', () => {
+    expect(laneNameFor('src/utils/paths.ts')).toBe('src-utils-paths-ts');
+    expect(laneNameFor('templates/hooks/session-start.mjs')).toBe('templates-hooks-session-start-mjs');
+  });
+});
+
+describe('parseCarrier', () => {
+  const valid = [
+    '# Negative Control Carrier: src-utils-paths-ts',
+    '- **Verified observation**: src/__tests__/hud-windows.test.ts',
+    '## Verdict',
+    '',
+    '**VALID**',
+  ].join('\n');
+
+  it('reads the verdict and the test that actually bit', () => {
+    expect(parseCarrier(valid)).toEqual({
+      verdict: 'VALID',
+      verifiedObservation: 'src/__tests__/hud-windows.test.ts',
+    });
+  });
+
+  it('strips the explanation after the verdict keyword', () => {
+    expect(parseCarrier(valid.replace('**VALID**', '**INVALID: no observation turned RED**'))).toMatchObject({
+      verdict: 'INVALID',
+    });
+  });
+
+  it('reports no verified observation when the carrier says none', () => {
+    expect(parseCarrier(valid.replace('src/__tests__/hud-windows.test.ts', 'none'))).toMatchObject({
+      verifiedObservation: null,
+    });
+  });
+
+  it('returns null for a missing carrier so the table can say "missing"', () => {
+    expect(parseCarrier(null)).toBeNull();
+    expect(parseCarrier('no verdict here')).toMatchObject({ verdict: null });
+  });
+});
+
+describe('buildPatchLayerRows with carriers', () => {
+  it('reports measured carrier status per assertable row', () => {
+    const lineage = new Map([['src/utils/paths.ts', SHA_A]]);
+    const target = new Map([['src/utils/paths.ts', SHA_B]]);
+    const rows = buildPatchLayerRows(['src/utils/paths.ts'], {
+      lineage,
+      target,
+      commitsByPath: new Map([['src/utils/paths.ts', ['aaa1111']]]),
+      coChangedByPath: new Map(),
+      testFiles: new Set(['src/utils/__tests__/paths.test.ts']),
+      testBodies: new Map(),
+      carrierByLane: new Map([[laneNameFor('src/utils/paths.ts'), { verdict: 'VALID', verifiedObservation: 'x.test.ts' }]]),
+    });
+    expect(rows[0]).toMatchObject({ carrier: 'VALID', verifiedObservation: 'x.test.ts' });
+    expect(summarizePatchLayer(rows).carriers.VALID).toBe(1);
+  });
+
+  it('marks an unmeasured assertable row as a missing carrier', () => {
+    const lineage = new Map([['src/utils/paths.ts', SHA_A]]);
+    const target = new Map([['src/utils/paths.ts', SHA_B]]);
+    const rows = buildPatchLayerRows(['src/utils/paths.ts'], {
+      lineage,
+      target,
+      commitsByPath: new Map([['src/utils/paths.ts', ['aaa1111']]]),
+      coChangedByPath: new Map(),
+      testFiles: new Set(['src/utils/__tests__/paths.test.ts']),
+      testBodies: new Map(),
+    });
+    expect(rows[0].carrier).toBe('missing');
+    expect(summarizePatchLayer(rows).carriers.missing).toBe(1);
   });
 });
 

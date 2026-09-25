@@ -1,0 +1,50 @@
+# Negative Control Carrier: src-team-model-contract-ts
+
+- **Lane**: src-team-model-contract-ts
+- **Fix commit**: b73da86
+- **Patched file**: src/team/model-contract.ts
+- **Named observation**: src/team/__tests__/model-contract.test.ts
+- **Verified observation**: none
+- **Description**: fix(cli): resolve the qodercli / qoderclicn flavor per distribution -- reverting src/team/model-contract.ts should turn src/team/__tests__/model-contract.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/team/__tests__/model-contract.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/auto-slash-aliases.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/deep-interview-provider-options.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/runtime-guidance-plan-ralph.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/runtime-task-orphan.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**INVALID: no observation turned RED after reverting the fix**
+
+### Winning observation output after revert (last 2000 chars)
+```
+lag + instruction for gemini
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > prompt mode (headless TUI bypass) > getPromptModeArgs returns empty array for interactive codex and claude workers
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when OMQ_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when OMQ_ROUTING_FORCE_INHERIT=true on Vertex
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when not on Bedrock or Vertex
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns DASHSCOPE_MODEL on Bedrock when set
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns QODER_MODEL on Bedrock when DASHSCOPE_MODEL is not set
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > falls back to DASHSCOPE_DEFAULT_PLUS_MODEL tier env var
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > falls back to OMQ_MODEL_MEDIUM tier env var
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns DASHSCOPE_MODEL on Vertex when set
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when no non-default provider indicators are present
+ ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > detects Bedrock from model ID pattern even without OMQ_ROUTING_FORCE_INHERIT
+
+ Test Files  1 passed (1)
+      Tests  57 passed (57)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```

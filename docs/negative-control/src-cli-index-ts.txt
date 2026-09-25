@@ -1,0 +1,31 @@
+# Negative Control Carrier: src-cli-index-ts
+
+- **Lane**: src-cli-index-ts
+- **Fix commit**: 5fac66e
+- **Patched file**: src/cli/index.ts
+- **Named observation**: src/cli/__tests__/cli-boot.test.ts
+- **Verified observation**: none
+- **Description**: fix(cli): drop the inert --skip-hooks flag -- reverting src/cli/index.ts should turn src/cli/__tests__/cli-boot.test.ts RED (observation found by rule "reference").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/cli/__tests__/cli-boot.test.ts` | 1 | - | red before revert |
+| `src/cli/__tests__/setup-command-precedence.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/plugin-dir-mode-e2e.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/plugin-dir-mode.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**INVALID: no observation turned RED after reverting the fix**
+
+### Winning observation output after revert (last 2000 chars)
+```
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```

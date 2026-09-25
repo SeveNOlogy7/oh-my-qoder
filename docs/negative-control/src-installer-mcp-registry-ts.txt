@@ -1,0 +1,46 @@
+# Negative Control Carrier: src-installer-mcp-registry-ts
+
+- **Lane**: src-installer-mcp-registry-ts
+- **Fix commit**: b11884d
+- **Patched file**: src/installer/mcp-registry.ts
+- **Named observation**: src/installer/__tests__/mcp-registry.test.ts
+- **Verified observation**: none
+- **Description**: fix(config): resolve the Qoder CN and international config roots -- reverting src/installer/mcp-registry.ts should turn src/installer/__tests__/mcp-registry.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/installer/__tests__/mcp-registry.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**INVALID: no observation turned RED after reverting the fix**
+
+### Winning observation output after revert (last 2000 chars)
+```
+ied MCP registry sync > does not append managed duplicates for existing user-owned mcp_servers tables
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > preserves an existing user-owned codex table when setup sync runs repeatedly
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > skips invalid registry server names when rendering managed Codex TOML blocks
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > does not let malformed registry names inject extra Codex MCP tables during setup sync
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > removes previously managed Claude and Codex MCP entries when the registry becomes empty
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > detects mismatched server definitions during doctor inspection, not just missing names
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > is idempotent when registry, Claude MCP root config, and Codex TOML already match
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > preserves existing .qwen.json server definitions when legacy settings still contain stale copies
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > respects explicit removal from ~/.qwen.json when legacy settings still contain a stale copy
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > detects mismatched URL-based remote MCP definitions during doctor inspection
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > uses XDG config/state defaults when OMQ_HOME is unset on Linux
+ ✓ src/installer/__tests__/mcp-registry.test.ts > unified MCP registry sync > falls back to legacy ~/.omq registry when the XDG registry does not exist
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```

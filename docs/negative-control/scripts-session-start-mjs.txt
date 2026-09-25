@@ -1,0 +1,43 @@
+# Negative Control Carrier: scripts-session-start-mjs
+
+- **Lane**: scripts-session-start-mjs
+- **Fix commit**: 4c9cacf
+- **Patched file**: scripts/session-start.mjs
+- **Named observation**: src/__tests__/session-start-timeout-cleanup.test.ts
+- **Verified observation**: none
+- **Description**: fix(paths): discover the plugin cache under any marketplace slug -- reverting scripts/session-start.mjs should turn src/__tests__/session-start-timeout-cleanup.test.ts RED (observation found by rule "reference").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/session-start-timeout-cleanup.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/conflict-ledger.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/plugin-setup-deps.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/update-check-path.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/setup/__tests__/windows-patch.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**INVALID: no observation turned RED after reverting the fix**
+
+### Winning observation output after revert (last 2000 chars)
+```
+
+ RUN  v4.1.11 <worktree>
+
+ ✓ src/__tests__/session-start-timeout-cleanup.test.ts > BUG 4: session-start hooks clear timeout in finally > templates/hooks/session-start.mjs uses finally for clearTimeout
+ ✓ src/__tests__/session-start-timeout-cleanup.test.ts > BUG 4: session-start hooks clear timeout in finally > scripts/session-start.mjs uses finally for clearTimeout
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```

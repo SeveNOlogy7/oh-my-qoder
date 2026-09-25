@@ -1,0 +1,38 @@
+# Negative Control Carrier: src-team-cli-detection-ts
+
+- **Lane**: src-team-cli-detection-ts
+- **Fix commit**: b73da86
+- **Patched file**: src/team/cli-detection.ts
+- **Named observation**: src/team/__tests__/cli-detection.test.ts
+- **Verified observation**: none
+- **Description**: fix(cli): resolve the qodercli / qoderclicn flavor per distribution -- reverting src/team/cli-detection.ts should turn src/team/__tests__/cli-detection.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/team/__tests__/cli-detection.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**INVALID: no observation turned RED after reverting the fix**
+
+### Winning observation output after revert (last 2000 chars)
+```
+
+ RUN  v4.1.11 <worktree>
+
+ ✓ src/team/__tests__/cli-detection.test.ts > cli-detection > uses shell:true for Windows provider version probes
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```

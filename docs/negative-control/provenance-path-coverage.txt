@@ -2,84 +2,129 @@
 
 - **Lane**: provenance-path-coverage
 - **Fix commit**: 94df71a
-- **Observation**: src/__tests__/canonical-identity-provenance.test.ts
+- **Patched file**: scripts/check-canonical-identity.mjs
+- **Named observation**: src/__tests__/canonical-identity-provenance.test.ts
+- **Verified observation**: src/__tests__/canonical-identity-provenance.test.ts
 - **Description**: fix(identity): make the provenance rule a path-coverage gate -- reverting should cause provenance tests to fail because unlisted files are no longer detected as violations.
 
-## Before revert (should be GREEN)
-- Exit code: 0
-- Green: true
+## Attempts
 
-## After revert (should be RED)
-- Exit code: 1
-- Red: true
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/canonical-identity-provenance.test.ts` | 0 | 1 | RED after revert |
 
 ## Verdict
 
 **VALID**
 
-### After-revert output (last 2000 chars)
+### Winning observation output after revert (last 2000 chars)
 ```
-[1m FAIL [22m[49m src/__tests__/canonical-identity-provenance.test.ts[2m > [22mancestor provenance rule[2m > [22mnormalises backslashes in entry paths to forward slashes
-[31m[1mAssertionError[22m: expected undefined to deeply equal [][39m
+fixtureDir);
+    201|     expect(result.code).toBe(1);
+       |                         ^
+    202|     const parsed = JSON.parse(result.stdout);
+    203|     expect(parsed.provenance[0].reason).toContain('schemaVersion');
 
-[32m- Expected:[39m
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > rejects ATTRIBUTION.json with invalid class name
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:221:25
+    219|
+    220|     const result = runCheck(fixtureDir);
+    221|     expect(result.code).toBe(1);
+       |                         ^
+    222|     const parsed = JSON.parse(result.stdout);
+    223|     const invalid = parsed.provenance.find((v: any) => v.file === 'src…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > normalises backslashes in entry paths to forward slashes
+AssertionError: expected undefined to deeply equal []
+
+- Expected:
 []
 
-[31m+ Received:[39m
++ Received:
 undefined
 
-[36m [2m❯[22m src/__tests__/canonical-identity-provenance.test.ts:[2m247:31[22m[39m
-    [90m245|[39m     [34mexpect[39m(result[33m.[39mcode)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
-    [90m246|[39m     [35mconst[39m parsed [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(result[33m.[39mstdout)[33m;[39m
-    [90m247|[39m     [34mexpect[39m(parsed[33m.[39mprovenance)[33m.[39m[34mtoEqual[39m([])[33m;[39m
-    [90m   |[39m                               [31m^[39m
-    [90m248|[39m   })[33m;[39m
-    [90m249|[39m
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:247:31
+    245|     expect(result.code).toBe(0);
+    246|     const parsed = JSON.parse(result.stdout);
+    247|     expect(parsed.provenance).toEqual([]);
+       |                               ^
+    248|   });
+    249|
 
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯[22m[39m
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
 
-[41m[1m FAIL [22m[49m src/__tests__/canonical-identity-provenance.test.ts[2m > [22mancestor provenance rule[2m > [22mdoes NOT reuse isFixturePath: test files are subject to provenance
-[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > does NOT reuse isFixturePath: test files are subject to provenance
+AssertionError: expected +0 to be 1 // Object.is equality
 
-[32m- Expected[39m
-[31m+ Received[39m
+- Expected
++ Received
 
-[32m- 1[39m
-[31m+ 0[39m
+- 1
++ 0
 
-[36m [2m❯[22m src/__tests__/canonical-identity-provenance.test.ts:[2m263:25[22m[39m
-    [90m261|[39m
-    [90m262|[39m     [35mconst[39m result [33m=[39m [34mrunCheck[39m(fixtureDir)[33m;[39m
-    [90m263|[39m     [34mexpect[39m(result[33m.[39mcode)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
-    [90m   |[39m                         [31m^[39m
-    [90m264|[39m     [35mconst[39m parsed [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(result[33m.[39mstdout)[33m;[39m
-    [90m265|[39m     [35mconst[39m files [33m=[39m parsed[33m.[39mprovenance[33m.[39m[34mmap[39m((v[33m:[39m any) [33m=>[39m v[33m.[39mfile)[33m;[39m
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:263:25
+    261|
+    262|     const result = runCheck(fixtureDir);
+    263|     expect(result.code).toBe(1);
+       |                         ^
+    264|     const parsed = JSON.parse(result.stdout);
+    265|     const files = parsed.provenance.map((v: any) => v.file);
 
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯[22m[39m
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
 
 
 ```
 
-### After-revert stderr (last 1000 chars)
+### Winning observation stderr after revert (last 1000 chars)
 ```
-ts[2m > [22mancestor provenance rule[2m > [22mdoes NOT reuse isFixturePath: test files are subject to provenance
-[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+tionError: expected undefined to deeply equal []
 
-[32m- Expected[39m
-[31m+ Received[39m
+- Expected:
+[]
 
-[32m- 1[39m
-[31m+ 0[39m
++ Received:
+undefined
 
-[36m [2m❯[22m src/__tests__/canonical-identity-provenance.test.ts:[2m263:25[22m[39m
-    [90m261|[39m
-    [90m262|[39m     [35mconst[39m result [33m=[39m [34mrunCheck[39m(fixtureDir)[33m;[39m
-    [90m263|[39m     [34mexpect[39m(result[33m.[39mcode)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
-    [90m   |[39m                         [31m^[39m
-    [90m264|[39m     [35mconst[39m parsed [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(result[33m.[39mstdout)[33m;[39m
-    [90m265|[39m     [35mconst[39m files [33m=[39m parsed[33m.[39mprovenance[33m.[39m[34mmap[39m((v[33m:[39m any) [33m=>[39m v[33m.[39mfile)[33m;[39m
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:247:31
+    245|     expect(result.code).toBe(0);
+    246|     const parsed = JSON.parse(result.stdout);
+    247|     expect(parsed.provenance).toEqual([]);
+       |                               ^
+    248|   });
+    249|
 
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯[22m[39m
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > does NOT reuse isFixturePath: test files are subject to provenance
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:263:25
+    261|
+    262|     const result = runCheck(fixtureDir);
+    263|     expect(result.code).toBe(1);
+       |                         ^
+    264|     const parsed = JSON.parse(result.stdout);
+    265|     const files = parsed.provenance.map((v: any) => v.file);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
 
 
 ```

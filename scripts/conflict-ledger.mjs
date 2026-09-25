@@ -388,6 +388,8 @@ export function buildPatchLayerRows(patchPaths, ctx) {
       observationRule: rule,
       observationCandidates: candidates,
       observationAlternates: alternates,
+      carrier: klass === 'assertable' ? (ctx.carrierByLane?.get(laneNameFor(path))?.verdict ?? 'missing') : null,
+      verifiedObservation: klass === 'assertable' ? (ctx.carrierByLane?.get(laneNameFor(path))?.verifiedObservation ?? null) : null,
     });
   }
   const order = { assertable: 0, 'test-surface': 1, structural: 2 };
@@ -398,11 +400,13 @@ export function buildPatchLayerRows(patchPaths, ctx) {
 export function summarizePatchLayer(rows) {
   const counts = { assertable: 0, 'test-surface': 0, structural: 0 };
   const hopCounts = { modified: 0, added: 0, deleted: 0 };
+  const carriers = { VALID: 0, INVALID: 0, INCONCLUSIVE: 0, missing: 0 };
   let withObservation = 0;
   for (const row of rows) {
     counts[row.class] = (counts[row.class] ?? 0) + 1;
     hopCounts[row.hop] = (hopCounts[row.hop] ?? 0) + 1;
     if (row.observation) withObservation++;
+    if (row.class === 'assertable') carriers[row.carrier ?? 'missing'] = (carriers[row.carrier ?? 'missing'] ?? 0) + 1;
   }
   return {
     total: rows.length,
@@ -410,6 +414,29 @@ export function summarizePatchLayer(rows) {
     ...Object.fromEntries(Object.entries(hopCounts).map(([k, v]) => [`hop_${k}`, v])),
     withObservation,
     missingObservation: counts.assertable - withObservation,
+    carriers,
+  };
+}
+
+/** Stable lane id for a path: `src/utils/paths.ts` -> `src-utils-paths-ts`. */
+export function laneNameFor(path) {
+  return path.replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Read the verdict out of a carrier file.
+ *
+ * The carrier is written by `scripts/negative-control.mjs`, so reporting it here
+ * makes the committed table a statement about measured evidence rather than a
+ * claim about intent.  A lane with no carrier is `missing`, not blank.
+ */
+export function parseCarrier(text) {
+  if (typeof text !== 'string') return null;
+  const raw = text.match(/^\*\*(VALID|INVALID[^*]*|INCONCLUSIVE[^*]*)\*\*/m)?.[1];
+  const verified = text.match(/^- \*\*Verified observation\*\*: (.+)$/m)?.[1]?.trim();
+  return {
+    verdict: raw ? raw.split(':')[0].trim() : null,
+    verifiedObservation: verified && verified !== 'none' ? verified : null,
   };
 }
 
@@ -462,11 +489,17 @@ export function renderPatchLayerMarkdown({ baseCommit, lineageTag, targetTag, ro
     `| Assertable / test-surface / structural | ${summary.assertable} / ${summary['test-surface']} / ${summary.structural} |`,
     `| Hop modified / added / deleted | ${summary.hop_modified} / ${summary.hop_added} / ${summary.hop_deleted} |`,
     `| Assertable rows with a named observation | ${summary.withObservation} of ${summary.assertable} |`,
+    `| Carriers: VALID / INVALID / INCONCLUSIVE / missing | ${summary.carriers.VALID} / ${summary.carriers.INVALID} / ${summary.carriers.INCONCLUSIVE} / ${summary.carriers.missing} |`,
     '',
     'The `un-patch` column is the commit whose parent still has OMQ\'s patch absent; reverting the file to',
     'that parent is what a negative-control lane does. `obs. rule` records *how* the observation was found',
     '(`conventional` = sibling test by naming convention, `reference-and-co-changed` = a test that both',
     'mentions the module and was edited by the same commit, `reference` = mentions the module).',
+    '',
+    '`carrier` is read back out of `docs/negative-control/<lane>.txt`: **VALID** means the un-patch made a',
+    'real test fail, INVALID means every named candidate stayed green (the patch has no coverage),',
+    'INCONCLUSIVE means no candidate was even green at HEAD, and `missing` means the lane has never been',
+    'measured. `verified via` names the test that actually bit, which is not always the one the rules picked.',
     '',
   ];
   for (const klass of ['assertable', 'test-surface', 'structural']) {
@@ -478,13 +511,18 @@ export function renderPatchLayerMarkdown({ baseCommit, lineageTag, targetTag, ro
       lines.push('');
       continue;
     }
-    lines.push('| path | hop | commits | un-patch | observation | obs. rule | cands |');
-    lines.push('|---|---|---|---|---|---|---|');
+    const withCarrier = klass === 'assertable';
+    lines.push(withCarrier
+      ? '| path | hop | commits | un-patch | observation | obs. rule | cands | carrier | verified via |'
+      : '| path | hop | commits | un-patch | observation | obs. rule | cands |');
+    lines.push(withCarrier ? '|---|---|---|---|---|---|---|---|---|' : '|---|---|---|---|---|---|---|');
     for (const row of group) {
-      lines.push(
-        `| \`${row.path}\` | ${row.hop} | ${row.omqCommits} | \`${row.revertTo ?? '-'}\` | ` +
-        `${row.observation ? `\`${row.observation}\`` : '**none - gap**'} | ${row.observationRule} | ${row.observationCandidates} |`,
-      );
+      const base = `| \`${row.path}\` | ${row.hop} | ${row.omqCommits} | \`${row.revertTo ?? '-'}\` | ` +
+        `${row.observation ? `\`${row.observation}\`` : '**none - gap**'} | ${row.observationRule} | ${row.observationCandidates} |`;
+      lines.push(withCarrier
+        ? `${base} ${row.carrier === 'VALID' ? '**VALID**' : row.carrier ?? '-'} | ` +
+          `${row.verifiedObservation ? `\`${row.verifiedObservation}\`` : '-'} |`
+        : base + ' |');
     }
     lines.push('');
   }
@@ -664,7 +702,18 @@ function runPatchLayer({ baseline, lineage, target, outputPath, asJson }) {
   }
 
   const evidence = collectPatchLayerEvidence(baseCommit);
+  const carrierByLane = new Map();
+  const carrierDir = join(repoRoot, 'docs', 'negative-control');
+  for (const p of evidence.patchPaths) {
+    const lane = laneNameFor(p);
+    const file = join(carrierDir, `${lane}.txt`);
+    if (!existsSync(file)) continue;
+    const parsed = parseCarrier(readFileSync(file, 'utf8'));
+    if (parsed?.verdict) carrierByLane.set(lane, parsed);
+  }
+
   const rows = buildPatchLayerRows(evidence.patchPaths, {
+    carrierByLane,
     lineage,
     target,
     commitsByPath: evidence.commitsByPath,

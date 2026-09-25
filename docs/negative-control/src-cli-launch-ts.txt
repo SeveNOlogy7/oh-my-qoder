@@ -1,0 +1,48 @@
+# Negative Control Carrier: src-cli-launch-ts
+
+- **Lane**: src-cli-launch-ts
+- **Fix commit**: b11884d
+- **Patched file**: src/cli/launch.ts
+- **Named observation**: src/cli/__tests__/launch.test.ts
+- **Verified observation**: none
+- **Description**: fix(config): resolve the Qoder CN and international config roots -- reverting src/cli/launch.ts should turn src/cli/__tests__/launch.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/cli/__tests__/launch.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**INVALID: no observation turned RED after reverting the fix**
+
+### Winning observation output after revert (last 2000 chars)
+```
+sent
+ ✓ src/cli/__tests__/launch.test.ts > hasMadmaxFlag > returns false for empty args
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > exits 1 with brew hint when --madmax is used on darwin without tmux
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > exits 1 with brew hint when --yolo is used on darwin without tmux
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > exits 1 if resolver returns "direct" while requireTmux is set
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > passes requireTmux=true to resolveLaunchPolicy on darwin --madmax
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > does not require tmux on darwin without --madmax
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > does not require tmux on linux even with --madmax
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > skips the install check when already inside tmux on darwin --madmax
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > still bypasses tmux for --print even with --madmax on darwin
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > exits 1 when tmux new-session fails under --madmax (no silent direct)
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > exits 1 when tmux attach + has-session both fail under --madmax
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > exits 1 when tmux attach fails under --madmax even if detached session exists
+ ✓ src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > preserves the existing direct fallback when tmux new-session fails WITHOUT --madmax
+
+ Test Files  1 passed (1)
+      Tests  148 passed (148)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```
