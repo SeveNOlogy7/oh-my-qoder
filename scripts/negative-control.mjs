@@ -215,8 +215,9 @@ try {
     `- **Fix commit**: ${lane.fixCommit}`,
     `- **Observation**: ${lane.observation}`,
     `- **Description**: ${lane.description}`,
-    `- **Worktree**: .omq/worktrees/${worktreeName}`,
-    `- **Timestamp**: ${result.timestamp}`,
+    // Deliberately no worktree name and no timestamp: the carrier is committed
+    // as evidence, so re-running the same control must reproduce it byte for
+    // byte, otherwise the tracked file churns on every run and cannot be diffed.
     ``,
     `## Before revert (should be GREEN)`,
     `- Exit code: ${beforeResult.code}`,

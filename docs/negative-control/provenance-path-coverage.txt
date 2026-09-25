@@ -4,8 +4,6 @@
 - **Fix commit**: 94df71a
 - **Observation**: src/__tests__/canonical-identity-provenance.test.ts
 - **Description**: fix(identity): make the provenance rule a path-coverage gate -- reverting should cause provenance tests to fail because unlisted files are no longer detected as violations.
-- **Worktree**: .omq/worktrees/neg-ctrl-provenance-path-coverage-1790315712805
-- **Timestamp**: 2026-09-25T05:55:15.543Z
 
 ## Before revert (should be GREEN)
 - Exit code: 0
