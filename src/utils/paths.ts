@@ -696,3 +696,16 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
 
   return result;
 }
+
+// Brand-compatibility aliases: the vendored ancestor renamed these to "Omc",
+// while OMQ's tree (and the CN config-root work built on them) uses "Omq".
+export {
+  getLegacyOmcDir as getLegacyOmqDir,
+  getGlobalOmcConfigRoot as getGlobalOmqConfigRoot,
+  getGlobalOmcConfigPath as getGlobalOmqConfigPath,
+  getGlobalOmcConfigCandidates as getGlobalOmqConfigCandidates,
+  getGlobalOmcStateRoot as getGlobalOmqStateRoot,
+  getGlobalOmcStatePath as getGlobalOmqStatePath,
+  getGlobalOmcStateCandidates as getGlobalOmqStateCandidates,
+  getLegacyOmcPath as getLegacyOmqPath,
+};

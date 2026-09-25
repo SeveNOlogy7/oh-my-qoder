@@ -1347,3 +1347,15 @@ export function validateWorkingDirectoryOrLinkedWorktree(workingDirectory?: stri
 
   return trustedRoot;
 }
+
+// Vendored ancestor identifiers use the "Omc" spelling; OMQ's tree and its
+// call sites use "Omq". Aliasing keeps the next hop of this file applying
+// cleanly instead of re-conflicting on every rename.
+export {
+  OmcPaths as OmqPaths,
+  ensureAllOmcDirs as ensureAllOmqDirs,
+  ensureOmcDir as ensureOmqDir,
+  getOmcRoot as getOmqRoot,
+  isPathUnderOmc as isPathUnderOmq,
+  resolveOmcPath as resolveOmqPath,
+};
