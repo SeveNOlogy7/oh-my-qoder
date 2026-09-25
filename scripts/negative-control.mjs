@@ -240,12 +240,17 @@ function runLane(lane, { retryAlternates }) {
     git(['worktree', 'add', '--detach', worktreePath, 'HEAD'], repoRoot);
     worktreeCreated = true;
 
-    // 2b. Symlink node_modules from this worktree so vitest can run.  The scratch
-    //     worktree has no dependencies of its own.
-    const mainNodeModules = join(repoRoot, 'node_modules');
-    const worktreeNodeModules = join(worktreePath, 'node_modules');
-    if (existsSync(mainNodeModules) && !existsSync(worktreeNodeModules)) {
-      symlinkSync(mainNodeModules, worktreeNodeModules, 'junction');
+    // 2b. Mirror this worktree's untracked build outputs into the scratch
+    //     worktree. `git worktree add` only checks out tracked files, and
+    //     bridge/ + dist/ + node_modules are gitignored, so without this any
+    //     observation that imports the compiled CLI fails at collection -- which
+    //     reads as "not green before revert" and tells us nothing about the patch.
+    for (const dir of ['node_modules', 'bridge', 'dist']) {
+      const source = join(repoRoot, dir);
+      const target = join(worktreePath, dir);
+      if (existsSync(source) && !existsSync(target)) {
+        symlinkSync(source, target, 'junction');
+      }
     }
 
     // 3. Candidates: the named observation first, then (optionally) the others.
@@ -389,7 +394,26 @@ function runLane(lane, { retryAlternates }) {
         outcome = { exitCode, result: outcome.result };
       }
     } catch {
-      // Non-fatal: we tried to verify.
+      // Non-fatal: step 10 inspects the directory itself, which is the stronger
+      // check of the two.
+    }
+
+    // 10. Registration is not the whole story. On Windows `git worktree remove`
+    // can unlink the tree and drop the registration while the (now empty)
+    // directory survives, because a child process still held its cwd -- 33 such
+    // stubs accumulated silently before this check existed. Clear it, then fail
+    // loudly if it is still there.
+    if (worktreeCreated && existsSync(worktreePath)) {
+      try {
+        rmSync(worktreePath, { recursive: true, force: true });
+      } catch {
+        // Reported below; no second opinion needed.
+      }
+      if (existsSync(worktreePath)) {
+        console.error(`LEAK: ${worktreePath} still exists on disk after cleanup`);
+        exitCode = exitCode === 0 ? 3 : exitCode;
+        outcome = { exitCode, result: outcome.result };
+      }
     }
   }
 
