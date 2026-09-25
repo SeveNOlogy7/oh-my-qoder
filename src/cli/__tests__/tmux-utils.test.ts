@@ -12,9 +12,11 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { execFileSync, spawnSync } from 'child_process';
 
 // Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
+// Returning the CN name is deliberate: a stub that echoed the old hardcoded
+// 'qodercli' would let the pre-flavor source pass this suite unchanged.
 vi.mock('../../lib/qoder-cli.js', () => ({
-  qoderCliBinary: () => 'qodercli',
-  qoderCliNpmPackage: () => '@qoder-ai/qodercli',
+  qoderCliBinary: () => 'qoderclicn',
+  qoderCliNpmPackage: () => '@qodercn-ai/qoderclicn',
 }));
 
 vi.mock('child_process', async (importOriginal) => {
@@ -181,7 +183,7 @@ describe('isQoderCliAvailable', () => {
     mockedExecFileSync.mockReturnValue(Buffer.from('2.1.116'));
 
     expect(isQoderCliAvailable()).toBe(true);
-    expect(mockedExecFileSync).toHaveBeenCalledWith('qodercli', ['--version'], {
+    expect(mockedExecFileSync).toHaveBeenCalledWith('qoderclicn', ['--version'], {
       stdio: 'ignore',
       shell: true,
     });

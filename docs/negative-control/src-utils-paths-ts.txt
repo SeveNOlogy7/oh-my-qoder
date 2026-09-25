@@ -1,0 +1,89 @@
+# Negative Control Carrier: src-utils-paths-ts
+
+- **Lane**: src-utils-paths-ts
+- **Fix commit**: 4c9cacf
+- **Patched file**: src/utils/paths.ts
+- **Named observation**: src/utils/__tests__/paths.test.ts
+- **Verified observation**: src/__tests__/hud-windows.test.ts
+- **Description**: fix(paths): discover the plugin cache under any marketplace slug -- reverting src/utils/paths.ts should turn src/utils/__tests__/paths.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/utils/__tests__/paths.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/hud-windows.test.ts` | 0 | 1 | RED after revert |
+| `src/__tests__/conflict-ledger.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/hud/cli-diagnostic.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/hud/custom-rate-provider.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/hud/usage-api-stale.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/hud/usage-api.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/purge-stale-cache.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/team-status-failed-count.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/persistent-mode/__tests__/idle-cooldown.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+ Cross-Platform Plugin Cache Path (#670) > shared HUD wrapper template should respect QODER_CONFIG_DIR for plugin cache base
+ ✓ src/__tests__/hud-windows.test.ts > HUD Windows Compatibility > Cross-Platform Plugin Cache Path (#670) > omq-doctor skill should use cross-platform Node.js commands
+ ✓ src/__tests__/hud-windows.test.ts > HUD Windows Compatibility > Cross-Platform Plugin Cache Path (#670) > hud skill should use cross-platform Node.js commands for plugin detection
+ ✓ src/__tests__/hud-windows.test.ts > HUD Windows Compatibility > Cross-Platform Plugin Cache Path (#670) > hud skill should normalize statusLine command paths to forward slashes
+ ✓ src/__tests__/hud-windows.test.ts > HUD Windows Compatibility > Cross-Platform Plugin Cache Path (#670) > usage-api should use path.join with separate segments
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 passed (23)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/hud-windows.test.ts > HUD Windows Compatibility > Cross-Platform Plugin Cache Path (#670) > getPluginCacheBase should return path with correct segments
+AssertionError: expected '/tmp/omq-hud-cache-<tmp>/plugins/cac…' to be '/tmp/omq-hud-cache-<tmp>/plugins/cac…' // Object.is equality
+
+Expected: "/tmp/omq-hud-cache-<tmp>/plugins/cache/local/oh-my-qoder"
+Received: "/tmp/omq-hud-cache-<tmp>/plugins/cache/omq/oh-my-qoder"
+
+ ❯ src/__tests__/hud-windows.test.ts:178:40
+    176|         try {
+    177|           const expected = normalize(join(configRoot, 'plugins', 'cach…
+    178|           expect(getPluginCacheBase()).toBe(expected);
+       |                                        ^
+    179|           // Separator style must follow the platform, not be hardcode…
+    180|           expect(getPluginCacheBase()).toContain(`${sep}cache${sep}`);
+ ❯ withCache src/__tests__/hud-windows.test.ts:166:9
+ ❯ src/__tests__/hud-windows.test.ts:173:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+⎯⎯
+
+ FAIL  src/__tests__/hud-windows.test.ts > HUD Windows Compatibility > Cross-Platform Plugin Cache Path (#670) > getPluginCacheBase should return path with correct segments
+AssertionError: expected '/tmp/omq-hud-cache-<tmp>/plugins/cac…' to be '/tmp/omq-hud-cache-<tmp>/plugins/cac…' // Object.is equality
+
+Expected: "/tmp/omq-hud-cache-<tmp>/plugins/cache/local/oh-my-qoder"
+Received: "/tmp/omq-hud-cache-<tmp>/plugins/cache/omq/oh-my-qoder"
+
+ ❯ src/__tests__/hud-windows.test.ts:178:40
+    176|         try {
+    177|           const expected = normalize(join(configRoot, 'plugins', 'cach…
+    178|           expect(getPluginCacheBase()).toBe(expected);
+       |                                        ^
+    179|           // Separator style must follow the platform, not be hardcode…
+    180|           expect(getPluginCacheBase()).toContain(`${sep}cache${sep}`);
+ ❯ withCache src/__tests__/hud-windows.test.ts:166:9
+ ❯ src/__tests__/hud-windows.test.ts:173:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```

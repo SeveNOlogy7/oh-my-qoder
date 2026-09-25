@@ -192,3 +192,25 @@ You can override agent models, toggle features, and customize magic keywords. Th
 | Project | `.qoder/AGENTS.md` |
 
 See [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md#configuration) and [`docs/settings-schema.md`](docs/settings-schema.md) for the full reference.
+
+## Upstream lineage
+
+OMQ is **not a GitHub fork** of the ancestor project
+([`Yeachan-Heo/oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode))
+— `fork: false`, `parent: null`. The ancestor is licensed MIT; OMQ is Apache-2.0.
+The ancestor contains 0 references to Qoder.
+
+OMQ was created 2026-06-25 (last upstream push 2026-07-02) and corresponds to
+ancestor **v4.15.1** (released 2026-06-27). The ancestor has since progressed
+through v5.0.0 (2026-08-24) to v5.5.0 (2026-09-22, latest). No ancestor version
+has been adopted — the current state is baseline-only (M0 provenance complete;
+M1/M2 migration pending).
+
+The blob-tree diff v4.15.1 to v5.0.0 measures: added 1026 / modified 1181 /
+removed 31 (excluding dist/bridge/blog: 263 / 400 / 27). Derived from full git
+tree blob SHA comparison, not the GitHub compare API (which caps files at 300).
+v5.0.0 retired 14 skills + 7 commands; 10 of those names still exist in OMQ
+today.
+
+See [`docs/ANCESTOR-PARITY.md`](docs/ANCESTOR-PARITY.md) and
+[`docs/UPSTREAM.md`](docs/UPSTREAM.md) for details.

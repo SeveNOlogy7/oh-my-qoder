@@ -1,0 +1,119 @@
+# Negative Control Carrier: scripts-session-start-mjs
+
+- **Lane**: scripts-session-start-mjs
+- **Fix commit**: 4c9cacf
+- **Patched file**: scripts/session-start.mjs
+- **Named observation**: src/__tests__/session-start-timeout-cleanup.test.ts
+- **Verified observation**: src/__tests__/patch-layer-guards.test.ts
+- **Description**: fix(paths): discover the plugin cache under any marketplace slug -- reverting scripts/session-start.mjs should turn src/__tests__/session-start-timeout-cleanup.test.ts RED (observation found by rule "reference").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/session-start-timeout-cleanup.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/conflict-ledger.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/patch-layer-guards.test.ts` | 0 | 1 | RED after revert |
+| `src/__tests__/plugin-setup-deps.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/update-check-path.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/setup/__tests__/windows-patch.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+ss.env.QODER_PLUGIN_ROOT;
+      if (pluginRoot) {
+        dispatchSessionStartNotificationInBackground(pluginRoot, {
+          sessionId,
+          projectPath: directory,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Start reply listener daemon if notification reply config is available
+        try {
+          const { startReplyListener, buildDaemonConfig } = await import(pathToFileURL(join(pluginRoot, 'dist', 'notifications', 'reply-listener.js')).href);
+          const replyConfig = await buildDaemonConfig();
+          if (replyConfig) {
+            startReplyListener(replyConfig);
+          }
+        } catch {
+          // Reply listener not available or not configured, skip silently
+        }
+      }
+    } catch {
+      // Notification module not available, skip silently
+    }
+
+    if (messages.length > 0 || userMessages.length > 0) {
+      const output = {
+        continue: true,
+      };
+      if (userMessages.length > 0) {
+        output.systemMessage = userMessages.join('\\n');
+      }
+      if (messages.length > 0) {
+        output.hookSpecificOutput = {
+          hookEventName: 'SessionStart',
+          additionalContext: buildSessionStartAdditionalContext(messages)
+        };
+      }
+      console.log(JSON.stringify(output));
+    } else {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    }
+  } catch (error) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+  }
+}
+
+main();"
+
+ ❯ src/__tests__/patch-layer-guards.test.ts:36:24
+     34|   // the installed hook kept looking at a directory that does not exis…
+     35|   it('discovers the plugin cache through the shared helper instead of …
+     36|     expect(hookScript).toMatch(/from '\.\/lib\/plugin-cache-dir\.mjs'/…
+       |                        ^
+     37|     expect(hookScript).toContain('resolvePluginCacheBase(');
+     38|     expect(hookScript).not.toMatch(/['"]cache['"]\s*,\s*['"]omq['"]/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+userMessages.join('\\n');
+      }
+      if (messages.length > 0) {
+        output.hookSpecificOutput = {
+          hookEventName: 'SessionStart',
+          additionalContext: buildSessionStartAdditionalContext(messages)
+        };
+      }
+      console.log(JSON.stringify(output));
+    } else {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    }
+  } catch (error) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+  }
+}
+
+main();"
+
+ ❯ src/__tests__/patch-layer-guards.test.ts:36:24
+     34|   // the installed hook kept looking at a directory that does not exis…
+     35|   it('discovers the plugin cache through the shared helper instead of …
+     36|     expect(hookScript).toMatch(/from '\.\/lib\/plugin-cache-dir\.mjs'/…
+       |                        ^
+     37|     expect(hookScript).toContain('resolvePluginCacheBase(');
+     38|     expect(hookScript).not.toMatch(/['"]cache['"]\s*,\s*['"]omq['"]/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```

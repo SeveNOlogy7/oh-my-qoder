@@ -30,7 +30,8 @@
     ".qoder-plugin",
     ".mcp.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc && npm run build:bridges && npm run compose-docs",
