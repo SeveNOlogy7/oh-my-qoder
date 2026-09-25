@@ -11,6 +11,7 @@ from `git log 9ba1359c8f8cab5d72d7ffc543d3e35f676a4709..HEAD` intersected with t
 | Hop modified / added / deleted | 28 / 0 / 1 |
 | Assertable rows with a named observation | 13 of 13 |
 | Carriers: VALID / INVALID / INCONCLUSIVE / missing | 3 / 9 / 1 / 0 |
+| Class-2 rows without a named structural guard | 0 of 16 |
 
 The `un-patch` column is the commit whose parent still has OMQ's patch absent; reverting the file to
 that parent is what a negative-control lane does. `obs. rule` records *how* the observation was found
@@ -21,6 +22,10 @@ mentions the module and was edited by the same commit, `reference` = mentions th
 real test fail, INVALID means every named candidate stayed green (the patch has no coverage),
 INCONCLUSIVE means no candidate was even green at HEAD, and `missing` means the lane has never been
 measured. `verified via` names the test that actually bit, which is not always the one the rules picked.
+
+`structural guard` (class-2 rows) names the check that file depends on instead of a behavioural test:
+the metadata contracts suite, the SKILL.md config-root guard, or the identity gate CI runs over the
+payload. A row reading **none - gap** is work M1 has not finished.
 
 ## Assertable (M1 class ①: needs a negative-control carrier) - 13
 
@@ -42,29 +47,29 @@ measured. `verified via` names the test that actually bit, which is not always t
 
 ## Test surface (M1 class ②: merge the assertions) - 6
 
-| path | hop | commits | un-patch | observation | obs. rule | cands |
-|---|---|---|---|---|---|---|
-| `src/__tests__/auto-update.test.ts` | modified | 2 | `b73da86^` | **none - gap** | not-assertable | 0 | |
-| `src/__tests__/doctor-conflicts.test.ts` | modified | 1 | `b11884d^` | **none - gap** | not-assertable | 0 | |
-| `src/__tests__/release-generation.test.ts` | modified | 1 | `2f0bd25^` | **none - gap** | not-assertable | 0 | |
-| `src/cli/__tests__/launch.test.ts` | modified | 1 | `b73da86^` | **none - gap** | not-assertable | 0 | |
-| `src/installer/__tests__/standalone-hook-reconcile.test.ts` | modified | 1 | `0da007d^` | **none - gap** | not-assertable | 0 | |
-| `src/team/__tests__/model-contract.test.ts` | modified | 1 | `b73da86^` | **none - gap** | not-assertable | 0 | |
+| path | hop | commits | un-patch | structural guard |
+|---|---|---|---|---|
+| `src/__tests__/auto-update.test.ts` | modified | 2 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/doctor-conflicts.test.ts` | modified | 1 | `b11884d^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/release-generation.test.ts` | modified | 1 | `2f0bd25^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/cli/__tests__/launch.test.ts` | modified | 1 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/installer/__tests__/standalone-hook-reconcile.test.ts` | modified | 1 | `0da007d^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/team/__tests__/model-contract.test.ts` | modified | 1 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
 
 ## Structural (M1 class ②: structural assertion, no fake test) - 10
 
-| path | hop | commits | un-patch | observation | obs. rule | cands |
-|---|---|---|---|---|---|---|
-| `docs/GETTING-STARTED.md` | modified | 1 | `5453b47^` | **none - gap** | not-assertable | 0 | |
-| `docs/PERFORMANCE-MONITORING.md` | modified | 1 | `5453b47^` | **none - gap** | not-assertable | 0 | |
-| `package-lock.json` | modified | 1 | `243cd02^` | **none - gap** | not-assertable | 0 | |
-| `package.json` | modified | 3 | `b4a7b40^` | **none - gap** | not-assertable | 0 | |
-| `README.md` | modified | 2 | `5453b47^` | **none - gap** | not-assertable | 0 | |
-| `skills/cancel/SKILL.md` | modified | 1 | `8ba4cfb^` | **none - gap** | not-assertable | 0 | |
-| `skills/learner/SKILL.md` | deleted | 1 | `8ba4cfb^` | **none - gap** | not-assertable | 0 | |
-| `skills/project-session-manager/SKILL.md` | modified | 1 | `2f0bd25^` | **none - gap** | not-assertable | 0 | |
-| `skills/skillify/SKILL.md` | modified | 1 | `8ba4cfb^` | **none - gap** | not-assertable | 0 | |
-| `skills/team/SKILL.md` | modified | 1 | `8ba4cfb^` | **none - gap** | not-assertable | 0 | |
+| path | hop | commits | un-patch | structural guard |
+|---|---|---|---|---|
+| `docs/GETTING-STARTED.md` | modified | 1 | `5453b47^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `docs/PERFORMANCE-MONITORING.md` | modified | 1 | `5453b47^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `package-lock.json` | modified | 1 | `243cd02^` | `src/__tests__/metadata-contracts.test.ts` |
+| `package.json` | modified | 3 | `b4a7b40^` | `src/__tests__/metadata-contracts.test.ts` |
+| `README.md` | modified | 2 | `5453b47^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `skills/cancel/SKILL.md` | modified | 1 | `8ba4cfb^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/learner/SKILL.md` | deleted | 1 | `8ba4cfb^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/project-session-manager/SKILL.md` | modified | 1 | `2f0bd25^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/skillify/SKILL.md` | modified | 1 | `8ba4cfb^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/team/SKILL.md` | modified | 1 | `8ba4cfb^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 
 ## Declared watch paths - 1
 

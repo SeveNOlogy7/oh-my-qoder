@@ -287,6 +287,26 @@ export function patchLayerClass(path) {
 }
 
 /**
+ * The structural check that guards a class-2 row.
+ *
+ * Prose, manifests and lockfiles have no honest behavioural test, but "no test"
+ * must not become "no gate": each of these rows names the check that would fail
+ * if the file's contract drifted, so the table accounts for all 29 rows.
+ */
+export function structuralCheck(path) {
+  if (/\.test\.tsx?$/.test(path) || path.includes('__tests__/')) {
+    // A merged test that silently stops asserting is caught by the suite-delta
+    // gate: a baseline entry that no longer fails is itself a failure.
+    return 'scripts/known-failures.mjs --check (CI test job)';
+  }
+  if (path === 'package.json' || path === 'package-lock.json') return 'src/__tests__/metadata-contracts.test.ts';
+  if (path.startsWith('skills/')) return 'src/skills/__tests__/skill-config-dir.test.ts';
+  if (path === '.qoder-plugin/plugin.json') return 'src/__tests__/metadata-contracts.test.ts';
+  if (path.endsWith('.md')) return 'scripts/check-canonical-identity.mjs (CI provenance job)';
+  return null;
+}
+
+/**
  * Name the observation that would catch the loss of OMQ's patch to `path`.
  *
  * Rules are tried strongest-first and the winning rule is recorded, so a reader
@@ -388,6 +408,7 @@ export function buildPatchLayerRows(patchPaths, ctx) {
       observationRule: rule,
       observationCandidates: candidates,
       observationAlternates: alternates,
+      structuralCheck: klass === 'assertable' ? null : structuralCheck(path),
       carrier: klass === 'assertable' ? (ctx.carrierByLane?.get(laneNameFor(path))?.verdict ?? 'missing') : null,
       verifiedObservation: klass === 'assertable' ? (ctx.carrierByLane?.get(laneNameFor(path))?.verifiedObservation ?? null) : null,
     });
@@ -402,11 +423,13 @@ export function summarizePatchLayer(rows) {
   const hopCounts = { modified: 0, added: 0, deleted: 0 };
   const carriers = { VALID: 0, INVALID: 0, INCONCLUSIVE: 0, missing: 0 };
   let withObservation = 0;
+  let unguarded = 0;
   for (const row of rows) {
     counts[row.class] = (counts[row.class] ?? 0) + 1;
     hopCounts[row.hop] = (hopCounts[row.hop] ?? 0) + 1;
     if (row.observation) withObservation++;
     if (row.class === 'assertable') carriers[row.carrier ?? 'missing'] = (carriers[row.carrier ?? 'missing'] ?? 0) + 1;
+    if (row.class !== 'assertable' && !row.structuralCheck) unguarded++;
   }
   return {
     total: rows.length,
@@ -414,6 +437,7 @@ export function summarizePatchLayer(rows) {
     ...Object.fromEntries(Object.entries(hopCounts).map(([k, v]) => [`hop_${k}`, v])),
     withObservation,
     missingObservation: counts.assertable - withObservation,
+    unguardedStructural: unguarded,
     carriers,
   };
 }
@@ -490,6 +514,7 @@ export function renderPatchLayerMarkdown({ baseCommit, lineageTag, targetTag, ro
     `| Hop modified / added / deleted | ${summary.hop_modified} / ${summary.hop_added} / ${summary.hop_deleted} |`,
     `| Assertable rows with a named observation | ${summary.withObservation} of ${summary.assertable} |`,
     `| Carriers: VALID / INVALID / INCONCLUSIVE / missing | ${summary.carriers.VALID} / ${summary.carriers.INVALID} / ${summary.carriers.INCONCLUSIVE} / ${summary.carriers.missing} |`,
+    `| Class-2 rows without a named structural guard | ${summary.unguardedStructural} of ${summary['test-surface'] + summary.structural} |`,
     '',
     'The `un-patch` column is the commit whose parent still has OMQ\'s patch absent; reverting the file to',
     'that parent is what a negative-control lane does. `obs. rule` records *how* the observation was found',
@@ -500,6 +525,10 @@ export function renderPatchLayerMarkdown({ baseCommit, lineageTag, targetTag, ro
     'real test fail, INVALID means every named candidate stayed green (the patch has no coverage),',
     'INCONCLUSIVE means no candidate was even green at HEAD, and `missing` means the lane has never been',
     'measured. `verified via` names the test that actually bit, which is not always the one the rules picked.',
+    '',
+    '`structural guard` (class-2 rows) names the check that file depends on instead of a behavioural test:',
+    'the metadata contracts suite, the SKILL.md config-root guard, or the identity gate CI runs over the',
+    'payload. A row reading **none - gap** is work M1 has not finished.',
     '',
   ];
   for (const klass of ['assertable', 'test-surface', 'structural']) {
@@ -514,15 +543,21 @@ export function renderPatchLayerMarkdown({ baseCommit, lineageTag, targetTag, ro
     const withCarrier = klass === 'assertable';
     lines.push(withCarrier
       ? '| path | hop | commits | un-patch | observation | obs. rule | cands | carrier | verified via |'
-      : '| path | hop | commits | un-patch | observation | obs. rule | cands |');
-    lines.push(withCarrier ? '|---|---|---|---|---|---|---|---|---|' : '|---|---|---|---|---|---|---|');
+      : '| path | hop | commits | un-patch | structural guard |');
+    lines.push(withCarrier ? '|---|---|---|---|---|---|---|---|---|' : '|---|---|---|---|---|');
     for (const row of group) {
-      const base = `| \`${row.path}\` | ${row.hop} | ${row.omqCommits} | \`${row.revertTo ?? '-'}\` | ` +
-        `${row.observation ? `\`${row.observation}\`` : '**none - gap**'} | ${row.observationRule} | ${row.observationCandidates} |`;
-      lines.push(withCarrier
-        ? `${base} ${row.carrier === 'VALID' ? '**VALID**' : row.carrier ?? '-'} | ` +
-          `${row.verifiedObservation ? `\`${row.verifiedObservation}\`` : '-'} |`
-        : base + ' |');
+      const head = `| \`${row.path}\` | ${row.hop} | ${row.omqCommits} | \`${row.revertTo ?? '-'}\` |`;
+      if (!withCarrier) {
+        // A class-2 row still needs a named gate, or "no fake test" becomes "no test".
+        lines.push(`${head} ${row.structuralCheck ? `\`${row.structuralCheck}\`` : '**none - gap**'} |`);
+        continue;
+      }
+      lines.push(
+        `${head} ${row.observation ? `\`${row.observation}\`` : '**none - gap**'} | ` +
+        `${row.observationRule} | ${row.observationCandidates} | ` +
+        `${row.carrier === 'VALID' ? '**VALID**' : row.carrier ?? '-'} | ` +
+        `${row.verifiedObservation ? `\`${row.verifiedObservation}\`` : '-'} |`,
+      );
     }
     lines.push('');
   }

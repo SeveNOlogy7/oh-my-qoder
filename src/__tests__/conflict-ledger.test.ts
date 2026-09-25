@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error -- .mjs script has no type declarations
-import { classifyConflict, buildLedger, summarizeLedger, gitBlobSha, isGenerated, hopVerdict, patchLayerClass, pickObservation, buildPatchLayerRows, summarizePatchLayer, buildWatchRows, parseCarrier, laneNameFor, renderPatchLayerMarkdown } from '../../scripts/conflict-ledger.mjs';
+import { classifyConflict, buildLedger, summarizeLedger, gitBlobSha, isGenerated, hopVerdict, patchLayerClass, pickObservation, buildPatchLayerRows, summarizePatchLayer, buildWatchRows, parseCarrier, laneNameFor, structuralCheck, renderPatchLayerMarkdown } from '../../scripts/conflict-ledger.mjs';
 
 /** SHA constants for tests (look like git blob SHAs but are deterministic). */
 const SHA_A = 'a'.repeat(40);
@@ -621,6 +621,20 @@ describe('buildPatchLayerRows with carriers', () => {
   });
 });
 
+describe('structuralCheck', () => {
+  it('routes each class-2 kind to a check that really exists', () => {
+    expect(structuralCheck('src/team/__tests__/model-contract.test.ts')).toContain('known-failures.mjs');
+    expect(structuralCheck('package.json')).toBe('src/__tests__/metadata-contracts.test.ts');
+    expect(structuralCheck('package-lock.json')).toBe('src/__tests__/metadata-contracts.test.ts');
+    expect(structuralCheck('skills/team/SKILL.md')).toBe('src/skills/__tests__/skill-config-dir.test.ts');
+    expect(structuralCheck('docs/GETTING-STARTED.md')).toContain('check-canonical-identity.mjs');
+  });
+
+  it('names no guard for code, which must be covered by a lane instead', () => {
+    expect(structuralCheck('src/utils/paths.ts')).toBeNull();
+  });
+});
+
 describe('renderPatchLayerMarkdown', () => {
   const rows = [
     {
@@ -653,6 +667,20 @@ describe('renderPatchLayerMarkdown', () => {
     const md = renderPatchLayerMarkdown(args);
     expect(md).toContain('**none - gap**');
     expect(md).toContain('`src/utils/__tests__/paths.test.ts`');
+  });
+
+  it('gives class-2 rows a structural guard column instead of a fake observation', () => {
+    const structuralRows = [{
+      path: 'package.json', hop: 'modified', class: 'structural', omqCommits: 1,
+      revertTo: 'aaa1111^', observation: null, observationRule: 'not-assertable',
+      observationCandidates: 0, structuralCheck: 'src/__tests__/metadata-contracts.test.ts', carrier: null,
+    }];
+    const md = renderPatchLayerMarkdown({ ...args, rows: structuralRows, summary: summarizePatchLayer(structuralRows) });
+    expect(md).toContain('| path | hop | commits | un-patch | structural guard |');
+    const row = md.match(/^\| `package\.json`.*$/m)?.[0];
+    expect(row).toContain('`src/__tests__/metadata-contracts.test.ts`');
+    expect(row).not.toContain('none - gap');
+    expect(md).toContain('| Class-2 rows without a named structural guard | 0 of 1 |');
   });
 
   it('renders declared watch paths in their own section', () => {
