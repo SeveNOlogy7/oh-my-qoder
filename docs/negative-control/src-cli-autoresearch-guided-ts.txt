@@ -1,0 +1,28 @@
+# Negative Control Carrier: src-cli-autoresearch-guided-ts
+
+- **Lane**: src-cli-autoresearch-guided-ts
+- **Fix commit**: b73da86
+- **Patched file**: src/cli/autoresearch-guided.ts
+- **Named observation**: src/cli/__tests__/autoresearch-guided.test.ts
+- **Verified observation**: none
+- **Description**: fix(cli): resolve the qodercli / qoderclicn flavor per distribution -- reverting src/cli/autoresearch-guided.ts should turn src/cli/__tests__/autoresearch-guided.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/cli/__tests__/autoresearch-guided.test.ts` | 1 | - | red before revert |
+
+## Verdict
+
+**INCONCLUSIVE: no observation was green before revert**
+
+### Winning observation output after revert (last 2000 chars)
+```
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+```

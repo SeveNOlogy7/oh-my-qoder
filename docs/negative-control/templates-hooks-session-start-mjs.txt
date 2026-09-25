@@ -1,0 +1,96 @@
+# Negative Control Carrier: templates-hooks-session-start-mjs
+
+- **Lane**: templates-hooks-session-start-mjs
+- **Fix commit**: 2f0bd25
+- **Patched file**: templates/hooks/session-start.mjs
+- **Named observation**: src/__tests__/session-start-timeout-cleanup.test.ts
+- **Verified observation**: src/__tests__/patch-layer-guards.test.ts
+- **Description**: fix(identity): point every repo URL at the canonical repository -- reverting templates/hooks/session-start.mjs should turn src/__tests__/session-start-timeout-cleanup.test.ts RED (observation found by rule "reference").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/session-start-timeout-cleanup.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/conflict-ledger.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/doctor-conflicts.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-hooks-merge.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/patch-layer-guards.test.ts` | 0 | 1 | RED after revert |
+| `src/__tests__/update-check-path.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/safe-installer.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/standalone-hook-reconcile.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+
+ RUN  v4.1.11 <worktree>
+
+ ✓ src/__tests__/patch-layer-guards.test.ts > scripts/session-start.mjs plugin cache discovery > discovers the plugin cache through the shared helper instead of one slug
+ × src/__tests__/patch-layer-guards.test.ts > templates/hooks/session-start.mjs repository identity > references only the canonical repository owner
+   → expected [ 'spring-ai-alibaba' ] to deeply equal [ 'qoder-plugins' ]
+ ✓ src/__tests__/patch-layer-guards.test.ts > src/installer/index.ts statusline config root > derives the shell fallback root instead of hardcoding ~/.qoder
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/patch-layer-guards.test.ts > templates/hooks/session-start.mjs repository identity > references only the canonical repository owner
+AssertionError: expected [ 'spring-ai-alibaba' ] to deeply equal [ 'qoder-plugins' ]
+
+- Expected
++ Received
+
+  [
+-   "qoder-plugins",
++   "spring-ai-alibaba",
+  ]
+
+ ❯ src/__tests__/patch-layer-guards.test.ts:50:34
+     48|       .map((match) => match[1]);
+     49|     expect(owners.length, 'the template has no repository URL -- this …
+     50|     expect([...new Set(owners)]).toEqual([canonicalOwner()]);
+       |                                  ^
+     51|   });
+     52| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/patch-layer-guards.test.ts > templates/hooks/session-start.mjs repository identity > references only the canonical repository owner
+AssertionError: expected [ 'spring-ai-alibaba' ] to deeply equal [ 'qoder-plugins' ]
+
+- Expected
++ Received
+
+  [
+-   "qoder-plugins",
++   "spring-ai-alibaba",
+  ]
+
+ ❯ src/__tests__/patch-layer-guards.test.ts:50:34
+     48|       .map((match) => match[1]);
+     49|     expect(owners.length, 'the template has no repository URL -- this …
+     50|     expect([...new Set(owners)]).toEqual([canonicalOwner()]);
+       |                                  ^
+     51|   });
+     52| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```

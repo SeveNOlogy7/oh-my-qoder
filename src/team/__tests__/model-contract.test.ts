@@ -19,9 +19,12 @@ import {
 } from '../model-contract.js';
 
 // Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
+// The stub deliberately returns the CN name: mocking the resolver back to
+// 'qodercli' would also match the hardcoded value this contract had before the
+// flavor existed, so the assertions would pass either way and guard nothing.
 vi.mock('../../lib/qoder-cli.js', () => ({
-  qoderCliBinary: () => 'qodercli',
-  qoderCliNpmPackage: () => '@qoder-ai/qodercli',
+  qoderCliBinary: () => 'qoderclicn',
+  qoderCliNpmPackage: () => '@qodercn-ai/qoderclicn',
 }));
 
 vi.mock('child_process', async (importOriginal) => {
@@ -155,7 +158,7 @@ describe('model-contract', () => {
     it('returns contract for claude', () => {
       const c = getContract('qwen');
       expect(c.agentType).toBe('qwen');
-      expect(c.binary).toBe('qodercli');
+      expect(c.binary).toBe('qoderclicn');
     });
     it('returns contract for codex', () => {
       const c = getContract('codex');
@@ -414,12 +417,12 @@ describe('model-contract', () => {
         argv = buildWorkerArgv('qwen', { teamName: 'my-team', workerName: 'worker-1', cwd: '/tmp' });
       });
 
-      expect(argv[0]).toBe('qodercli');
+      expect(argv[0]).toBe('qoderclicn');
       expect(argv).toContain('--dangerously-skip-permissions');
       expect(argv).toContain('--bare');
       expect(countArg(argv, '--bare')).toBe(1);
       expect(argv).not.toContain('exec');
-      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['qodercli'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['qoderclicn'], { timeout: 5000, encoding: 'utf8' });
       mockSpawnSync.mockRestore();
     });
 
