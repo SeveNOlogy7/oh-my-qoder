@@ -57,7 +57,9 @@ describe('src/installer/index.ts statusline config root', () => {
   // against the wrong root whenever the variable was absent from the hook's
   // environment. The helper derives it from the inferred root instead.
   it('derives the shell fallback root instead of hardcoding ~/.qoder', () => {
-    const source = readFileSync(join(repoRoot, 'src', 'installer', 'index.ts'), 'utf8');
+    // One literal so the ledger's reference rule can find this file from the
+    // row for src/installer/index.ts (it searches for "installer/index").
+    const source = readFileSync(join(repoRoot, 'src/installer/index.ts'), 'utf8');
     expect(source).toContain('getDefaultConfigDirShellPath(');
     expect(source).not.toMatch(/QODER_CONFIG_DIR:-\$HOME\/\.qoder\}/);
   });

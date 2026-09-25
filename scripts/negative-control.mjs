@@ -167,10 +167,10 @@ function redact(text, worktreePath) {
   // mkdtemp suffixes are random: omq-hud-cache-AbC123 -> omq-hud-cache-<tmp>
   out = out.replace(/([-/][a-z0-9-]{3,}-)[A-Za-z0-9]{6,8}(?=[\s"'/,):])/g, '$1<tmp>');
   // Per-test durations differ every run, and they are never the evidence.
-  out = out.replace(/ \d+(?:\.\d+)?ms/g, '');
+  out = out.replace(/ \d+(?:\.\d+)?(?:ms|s)\b/g, '');
   // Same for vitest's summary footer.
   out = out.replace(/^[ \t]*Start at +\d[\d:.]+[ \t]*$/gm, '   Start at  <redacted>');
-  out = out.replace(/^[ \t]*Duration +\d+ms.*$/gm, '   Duration  <redacted>');
+  out = out.replace(/^[ \t]*Duration +[\d.]+(?:ms|s)\b.*$/gm, '   Duration  <redacted>');
   return out;
 }
 
