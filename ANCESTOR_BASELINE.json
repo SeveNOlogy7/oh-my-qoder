@@ -1,0 +1,25 @@
+{
+  "lineage": {
+    "repo": "Yeachan-Heo/oh-my-claudecode",
+    "tag": "v4.15.1",
+    "tagSha": "faab8f75c9059aac8f6a8e9f2c6c5a43c6e7b14b",
+    "commitSha": "6c59219cced3ddd857334d2a7fb78099f2d67e71",
+    "treeSha": "2443bd70c26b340fd4cf2db9eeec7977ffb686cb",
+    "commitDate": "2026-06-27T09:26:15Z",
+    "blobCount": 5795,
+    "treeCache": ".omq/cache/ancestor-v4.15.1-tree.json"
+  },
+  "adoptionTarget": {
+    "repo": "Yeachan-Heo/oh-my-claudecode",
+    "tag": "v5.0.0",
+    "tagSha": "2813054f14f80c602bd8ef5dd1814e89459857bc",
+    "commitSha": "08db8be068c2d5e12c061958952715555dc6d1b0",
+    "treeSha": "f1e8c7c94671fad150b3cc972d79887669bca72d",
+    "commitDate": "2026-08-24T04:23:04Z",
+    "publishedAt": "2026-08-24T04:37:07Z",
+    "blobCount": 6790,
+    "treeCache": ".omq/cache/ancestor-v5.0.0-tree.json"
+  },
+  "recordedAt": "2026-09-25T00:00:00Z",
+  "note": "OMQ is an attribution-style reimplementation, not a GitHub fork"
+}
