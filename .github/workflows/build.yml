@@ -7,6 +7,7 @@ name: build
 #
 # Job dependency chain:
 #   provenance -> build  (lint, typecheck, identity, pack)
+#   provenance -> windows-test (win32 suite, gated on its own baseline)
 #   provenance -> test   (build + suite)
 # The provenance job assembles the plugin payload, runs ancestor attribution
 # (generate then verify), and gates identity with attribution before build/test.
@@ -86,6 +87,14 @@ jobs:
             exit 1
           fi
           echo "All required payload files present."
+
+      # The ancestor blob trees live under .omq/, which is gitignored, so a fresh
+      # checkout has no cache and every attribution step would die on "Tree cache
+      # not found". Fetch them by the pinned content-addressed treeSha.
+      - name: Fetch ancestor blob trees
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/fetch-ancestor-trees.mjs
 
       - name: Generate ancestor attribution
         run: |
