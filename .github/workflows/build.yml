@@ -171,7 +171,12 @@ jobs:
     needs: [provenance]
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth 0 because the negative-control harness resolves commits by
+      # SHA (`git show <fix>^:<file>`); the default shallow checkout has no
+      # history for that and every lane would error out as "harness error".
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -204,11 +209,19 @@ jobs:
     needs: [provenance]
     runs-on: windows-latest
     steps:
+      # Full history so the captured log matches the machine-generated baseline:
+      # several suites shell out to git and behave differently in a shallow clone.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # Node 24, not 20: better-sqlite3 ships no win32 prebuild for the node 20
+      # ABI, so `npm ci` on the runner falls through to a node-gyp rebuild and
+      # dies. The win32 baseline was produced on node 24, which is what installs
+      # cleanly here.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
 
       - run: npm ci
