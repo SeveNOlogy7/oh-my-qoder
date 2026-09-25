@@ -184,12 +184,21 @@ This ledger is the foundation for M1 (conflict migration) in the ralplan:
 
 The ralplan lists specific files that must be in the ledger (see M1 description). This script identifies those files automatically by comparing blob SHAs.
 
-**Note**: The ralplan mentions "28 collisions of 82" as ground truth. This ledger computes 286 three-way conflicts and 69 omq-original files. The discrepancy may be due to:
-- Different definition of "collision" (git commit history vs tree comparison)
-- Filtering by directory or file type
-- Changes to the working tree since the ground truth was computed
+**How "28 collisions" relates to these numbers**: the ralplan's 28 is *not* a tree
+category — it is the intersection between OMQ's own patch layer and the hop, and it is
+reproducible:
 
-The script provides the complete picture; the lead can filter as needed.
+```bash
+node scripts/conflict-ledger.mjs --patch-layer   # 28 hop-modified + 1 hop-deleted
+```
+
+It counts paths changed by commits after the `patchLayer.baseCommit` recorded in
+`ANCESTOR_BASELINE.json` **and** changed between v4.15.1 and v5.0.0. Measured at the
+plan's own snapshot that was 21 commits / 75 files -> 28 collisions; on this branch it is
+29 commits / 92 files -> the same 28 collisions plus one path the hop deletes. See
+`docs/ANCESTOR-PATCH-LAYER.md` for the per-path table and the observation named for each.
+The three-way count here (286) is the whole-tree superset: most of those files OMQ never
+touched, so adoption can take the ancestor version without any decision.
 
 ---
 

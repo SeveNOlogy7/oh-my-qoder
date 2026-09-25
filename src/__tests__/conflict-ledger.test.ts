@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error -- .mjs script has no type declarations
-import { classifyConflict, buildLedger, summarizeLedger, gitBlobSha, isGenerated } from '../../scripts/conflict-ledger.mjs';
+import { classifyConflict, buildLedger, summarizeLedger, gitBlobSha, isGenerated, hopVerdict, patchLayerClass, pickObservation, buildPatchLayerRows, summarizePatchLayer, buildWatchRows, renderPatchLayerMarkdown } from '../../scripts/conflict-ledger.mjs';
 
 /** SHA constants for tests (look like git blob SHAs but are deterministic). */
 const SHA_A = 'a'.repeat(40);
@@ -278,5 +278,306 @@ describe('integration: full ledger workflow', () => {
     expect(summary['aligned']).toBe(1);
     expect(summary.total).toBe(7);
     expect(summary.actionable).toBe(4); // three-way + omq-only + upstream-only + upstream-deleted
+  });
+});
+
+describe('hopVerdict', () => {
+  const lineage = new Map([
+    ['same.ts', SHA_A],
+    ['drift.ts', SHA_A],
+    ['gone.ts', SHA_A],
+  ]);
+  const target = new Map([
+    ['same.ts', SHA_A],
+    ['drift.ts', SHA_B],
+    ['brand-new.ts', SHA_A],
+  ]);
+
+  it('sees a path both trees hold identically as unchanged', () => {
+    expect(hopVerdict('same.ts', { lineage, target })).toBe('unchanged');
+  });
+
+  it('sees a path whose blob changed as modified', () => {
+    expect(hopVerdict('drift.ts', { lineage, target })).toBe('modified');
+  });
+
+  it('sees a path only the target holds as added', () => {
+    expect(hopVerdict('brand-new.ts', { lineage, target })).toBe('added');
+  });
+
+  it('sees a path only the lineage holds as deleted', () => {
+    expect(hopVerdict('gone.ts', { lineage, target })).toBe('deleted');
+  });
+
+  it('sees a path neither tree holds as absent', () => {
+    expect(hopVerdict('src/utils/config-dir.ts', { lineage, target })).toBe('absent');
+  });
+});
+
+describe('patchLayerClass', () => {
+  it('routes test files to the test-surface class', () => {
+    expect(patchLayerClass('src/team/__tests__/model-contract.test.ts')).toBe('test-surface');
+    expect(patchLayerClass('src/__tests__/auto-update.test.ts')).toBe('test-surface');
+  });
+
+  it('routes prose, manifests and lockfiles to the structural class', () => {
+    expect(patchLayerClass('README.md')).toBe('structural');
+    expect(patchLayerClass('skills/team/SKILL.md')).toBe('structural');
+    expect(patchLayerClass('package.json')).toBe('structural');
+    expect(patchLayerClass('package-lock.json')).toBe('structural');
+  });
+
+  it('routes code to the assertable class', () => {
+    expect(patchLayerClass('src/utils/paths.ts')).toBe('assertable');
+    expect(patchLayerClass('templates/hooks/session-start.mjs')).toBe('assertable');
+  });
+});
+
+describe('pickObservation', () => {
+  const ctx = (over = {}) => ({
+    testFiles: new Set(),
+    testBodies: new Map(),
+    coChangedTests: [],
+    ...over,
+  });
+
+  it('names no observation for a non-assertable path', () => {
+    expect(pickObservation('README.md', ctx())).toEqual({
+      observation: null,
+      rule: 'not-assertable',
+      candidates: 0,
+    });
+  });
+
+  it('prefers the conventionally-placed sibling test', () => {
+    const testFiles = new Set(['src/utils/__tests__/paths.test.ts']);
+    expect(pickObservation('src/utils/paths.ts', ctx({ testFiles }))).toMatchObject({
+      observation: 'src/utils/__tests__/paths.test.ts',
+      rule: 'conventional',
+      candidates: 1,
+    });
+  });
+
+  it('picks the test named after the module over one that merely mentions it', () => {
+    const testFiles = new Set([
+      'src/__tests__/plugin-setup-deps.test.ts',
+      'src/__tests__/session-start-timeout-cleanup.test.ts',
+    ]);
+    const testBodies = new Map([
+      ['src/__tests__/plugin-setup-deps.test.ts', "spawn('scripts/session-start.mjs')"],
+      ['src/__tests__/session-start-timeout-cleanup.test.ts', "read('scripts/session-start.mjs')"],
+    ]);
+    const result = pickObservation('scripts/session-start.mjs', ctx({ testFiles, testBodies }));
+    expect(result.observation).toBe('src/__tests__/session-start-timeout-cleanup.test.ts');
+    expect(result.rule).toBe('reference');
+    expect(result.candidates).toBe(2);
+  });
+
+  it('breaks a tie towards a test sharing the module directory', () => {
+    const testFiles = new Set(['src/__tests__/aaa.test.ts', 'src/installer/__tests__/zzz.test.ts']);
+    const testBodies = new Map([
+      ['src/__tests__/aaa.test.ts', "from '../../installer/index'"],
+      ['src/installer/__tests__/zzz.test.ts', "comment mentions installer/index"],
+    ]);
+    const result = pickObservation('src/installer/index.ts', ctx({ testFiles, testBodies }));
+    expect(result.observation).toBe('src/installer/__tests__/zzz.test.ts');
+  });
+
+  it('records co-change in the rule name when it is what was used', () => {
+    const testFiles = new Set(['src/__tests__/auto-update.test.ts']);
+    const testBodies = new Map([['src/__tests__/auto-update.test.ts', 'import features/auto-update']]);
+    const result = pickObservation('src/features/auto-update.ts', ctx({
+      testFiles,
+      testBodies,
+      coChangedTests: ['src/__tests__/auto-update.test.ts'],
+    }));
+    expect(result.rule).toBe('reference-and-co-changed');
+  });
+
+  it('reports an explicit gap when nothing references the module', () => {
+    expect(pickObservation('src/lib/solo.ts', ctx())).toEqual({
+      observation: null,
+      rule: 'none',
+      candidates: 0,
+    });
+  });
+});
+
+describe('buildPatchLayerRows', () => {
+  const lineage = new Map([
+    ['src/utils/paths.ts', SHA_A],
+    ['README.md', SHA_A],
+    ['untouched.ts', SHA_A],
+    ['skills/learner/SKILL.md', SHA_A],
+  ]);
+  const target = new Map([
+    ['src/utils/paths.ts', SHA_B],
+    ['README.md', SHA_B],
+    ['untouched.ts', SHA_A],
+  ]);
+  const ctx = {
+    lineage,
+    target,
+    commitsByPath: new Map([
+      ['src/utils/paths.ts', ['ccc3333', 'aaa1111']],
+      ['README.md', ['bbb2222']],
+      ['skills/learner/SKILL.md', ['ddd4444']],
+    ]),
+    coChangedByPath: new Map(),
+    testFiles: new Set(['src/utils/__tests__/paths.test.ts']),
+    testBodies: new Map(),
+  };
+
+  it('keeps only the paths the hop also touched, including deletions', () => {
+    const rows = buildPatchLayerRows(
+      ['src/utils/paths.ts', 'README.md', 'untouched.ts', 'skills/learner/SKILL.md'],
+      ctx,
+    );
+    expect(rows.map((r: { path: string }) => r.path)).toEqual(['src/utils/paths.ts', 'README.md', 'skills/learner/SKILL.md']);
+    expect(rows.find((r: { path: string }) => r.path === 'skills/learner/SKILL.md').hop).toBe('deleted');
+  });
+
+  it('points un-patch at the oldest patching commit so multi-commit paths revert fully', () => {
+    const rows = buildPatchLayerRows(['src/utils/paths.ts'], ctx);
+    expect(rows[0].revertTo).toBe('aaa1111^');
+    expect(rows[0].omqCommits).toBe(2);
+  });
+
+  it('sorts assertable rows ahead of prose rows', () => {
+    const rows = buildPatchLayerRows(['README.md', 'src/utils/paths.ts'], ctx);
+    expect(rows.map((r: { class: string }) => r.class)).toEqual(['assertable', 'structural']);
+    expect(rows[0].observation).toBe('src/utils/__tests__/paths.test.ts');
+  });
+
+  it('summarizes counts and the observation gap', () => {
+    const rows = buildPatchLayerRows(
+      ['src/utils/paths.ts', 'README.md', 'skills/learner/SKILL.md'],
+      ctx,
+    );
+    expect(summarizePatchLayer(rows)).toMatchObject({
+      total: 3,
+      assertable: 1,
+      structural: 2,
+      'test-surface': 0,
+      hop_modified: 2,
+      hop_deleted: 1,
+      withObservation: 1,
+      missingObservation: 0,
+    });
+  });
+
+  it('counts an assertable row with no test as a gap', () => {
+    const rows = buildPatchLayerRows(['src/utils/paths.ts'], { ...ctx, testFiles: new Set() });
+    expect(rows[0].observation).toBeNull();
+    expect(summarizePatchLayer(rows).missingObservation).toBe(1);
+  });
+});
+
+describe('buildWatchRows', () => {
+  const lineage = new Map([
+    ['docs/CLAUDE.md', SHA_A],
+    ['src/utils/paths.ts', SHA_A],
+    ['stable.md', SHA_A],
+    ['not-in-trees.md', SHA_A],
+  ]);
+  const target = new Map([
+    ['docs/CLAUDE.md', SHA_B],
+    ['src/utils/paths.ts', SHA_B],
+    ['stable.md', SHA_A],
+  ]);
+
+  it('lists a declared path the hop changes but the patch layer never touched', () => {
+    const rows = buildWatchRows([{ path: 'docs/CLAUDE.md', why: 'AGENTS.md source' }], {
+      lineage,
+      target,
+      collisionPaths: new Set(),
+      localBlobByPath: new Map([['docs/CLAUDE.md', SHA_C]]),
+    });
+    expect(rows).toEqual([{
+      path: 'docs/CLAUDE.md',
+      why: 'AGENTS.md source',
+      hop: 'modified',
+      matchesLineage: false,
+      matchesTarget: false,
+    }]);
+  });
+
+  it('does not duplicate a path already reported as a collision', () => {
+    const rows = buildWatchRows([{ path: 'src/utils/paths.ts' }], {
+      lineage,
+      target,
+      collisionPaths: new Set(['src/utils/paths.ts']),
+      localBlobByPath: new Map(),
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('drops a declared path the hop leaves alone, keeps one it deletes', () => {
+    const rows = buildWatchRows([{ path: 'stable.md' }, { path: 'not-in-trees.md' }], {
+      lineage,
+      target,
+      collisionPaths: new Set(),
+      localBlobByPath: new Map(),
+    });
+    expect(rows.map((r: { path: string }) => r.path)).toEqual(['not-in-trees.md']);
+    expect(rows[0].hop).toBe('deleted');
+  });
+
+  it('says which ancestor version a declared path already matches', () => {
+    const rows = buildWatchRows([{ path: 'docs/CLAUDE.md' }], {
+      lineage,
+      target,
+      collisionPaths: new Set(),
+      localBlobByPath: new Map([['docs/CLAUDE.md', SHA_B]]),
+    });
+    expect(rows[0]).toMatchObject({ matchesLineage: false, matchesTarget: true });
+  });
+});
+
+describe('renderPatchLayerMarkdown', () => {
+  const rows = [
+    {
+      path: 'src/utils/paths.ts', hop: 'modified', class: 'assertable', omqCommits: 2,
+      revertTo: 'aaa1111^', observation: 'src/utils/__tests__/paths.test.ts',
+      observationRule: 'conventional', observationCandidates: 1,
+    },
+    {
+      path: 'src/lib/solo.ts', hop: 'modified', class: 'assertable', omqCommits: 1,
+      revertTo: 'eee5555^', observation: null, observationRule: 'none', observationCandidates: 0,
+    },
+  ];
+  const args = {
+    baseCommit: '9ba1359c8f8cab5d72d7ffc543d3e35f676a4709',
+    lineageTag: 'v4.15.1',
+    targetTag: 'v5.0.0',
+    rows,
+    summary: summarizePatchLayer(rows),
+  };
+
+  it('renders the same bytes twice so the table can be committed', () => {
+    expect(renderPatchLayerMarkdown(args)).toBe(renderPatchLayerMarkdown(args));
+  });
+
+  it('carries no wall-clock timestamp', () => {
+    expect(renderPatchLayerMarkdown(args)).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:/);
+  });
+
+  it('shows a missing observation as a gap rather than a blank cell', () => {
+    const md = renderPatchLayerMarkdown(args);
+    expect(md).toContain('**none - gap**');
+    expect(md).toContain('`src/utils/__tests__/paths.test.ts`');
+  });
+
+  it('renders declared watch paths in their own section', () => {
+    const md = renderPatchLayerMarkdown({
+      ...args,
+      watchRows: [{
+        path: 'docs/CLAUDE.md', why: 'AGENTS.md source', hop: 'modified',
+        matchesLineage: false, matchesTarget: false,
+      }],
+    });
+    expect(md).toContain('## Declared watch paths');
+    expect(md).toContain('| docs/CLAUDE.md | modified | no | no | AGENTS.md source |');
+    expect(renderPatchLayerMarkdown({ ...args, watchRows: [] })).not.toContain('## Declared watch paths');
   });
 });

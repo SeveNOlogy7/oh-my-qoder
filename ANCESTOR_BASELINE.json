@@ -20,6 +20,17 @@
     "blobCount": 6790,
     "treeCache": ".omq/cache/ancestor-v5.0.0-tree.json"
   },
+  "patchLayer": {
+    "baseCommit": "9ba1359c8f8cab5d72d7ffc543d3e35f676a4709",
+    "baseSubject": "update docs",
+    "description": "Last commit before OMQ's own work; every path changed since this commit is part of the patch layer that adoption must not silently drop.",
+    "watchPaths": [
+      {
+        "path": "docs/CLAUDE.md",
+        "why": "source of the AGENTS.md written into a user's config root"
+      }
+    ]
+  },
   "recordedAt": "2026-09-25T00:00:00Z",
   "note": "OMQ is an attribution-style reimplementation, not a GitHub fork"
 }
