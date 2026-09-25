@@ -20,6 +20,11 @@
 | `src/__tests__/tier0-contracts.test.ts` | 0 | 0 | still GREEN |
 | `src/cli/__tests__/setup-command-precedence.test.ts` | 0 | 0 | still GREEN |
 | `src/hooks/beads-context/__tests__/index.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/keyword-detector/__tests__/index.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/callbacks.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/duplicate-notifications.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/openclaw-session-end.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/session-end-timeout.test.ts` | 0 | 0 | still GREEN |
 
 ## Verdict
 

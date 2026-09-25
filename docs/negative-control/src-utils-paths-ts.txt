@@ -20,6 +20,7 @@
 | `src/__tests__/hud/usage-api.test.ts` | 0 | 0 | still GREEN |
 | `src/__tests__/purge-stale-cache.test.ts` | 0 | 0 | still GREEN |
 | `src/__tests__/team-status-failed-count.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/persistent-mode/__tests__/idle-cooldown.test.ts` | 0 | 0 | still GREEN |
 
 ## Verdict
 

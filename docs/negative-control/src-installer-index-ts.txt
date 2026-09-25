@@ -4,7 +4,7 @@
 - **Fix commit**: b11884d
 - **Patched file**: src/installer/index.ts
 - **Named observation**: src/installer/__tests__/hud-wrapper-env.test.ts
-- **Verified observation**: none
+- **Verified observation**: src/__tests__/patch-layer-guards.test.ts
 - **Description**: fix(config): resolve the Qoder CN and international config roots -- reverting src/installer/index.ts should turn src/installer/__tests__/hud-wrapper-env.test.ts RED (observation found by rule "reference").
 
 ## Attempts
@@ -20,37 +20,118 @@
 | `src/__tests__/installer-hooks-merge.test.ts` | 0 | 0 | still GREEN |
 | `src/__tests__/installer-hud-skip.test.ts` | 0 | 0 | still GREEN |
 | `src/__tests__/installer-mcp-config.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-omc-reference.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-plugin-agents.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-version-guard.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/patch-layer-guards.test.ts` | 0 | 1 | RED after revert |
+| `src/__tests__/plugin-skill-budget.test.ts` | 0 | 0 | still GREEN |
+| `src/cli/__tests__/setup-command-precedence.test.ts` | 0 | 0 | still GREEN |
 
 ## Verdict
 
-**INVALID: no observation turned RED after reverting the fix**
+**VALID**
 
 ### Winning observation output after revert (last 2000 chars)
 ```
+ynced = syncPersistedSetupVersion({
++         version: options.version ?? VERSION,
++         onlyIfConfigured: true,
++       });
++       if (setupVersionSynced) {
++         log('Updated persisted setupVersion');
++       }
++     } catch (error) {
++       const message = error instanceof Error ? error.message : String(error);
++       log(`  Warning: Could not refresh setupVersion metadata (non-fatal): ${message}`);
++     }
++
++     result.success = true;
++     result.message = `Successfully installed ${result.installedAgents.length} agents, ${result.installedCommands.length} commands, ${result.installedSkills.length} skills`; 
++
++   } catch (error) {
++     const errorMessage = error instanceof Error ? error.message : String(error);
++     result.errors.push(errorMessage);
++     result.message = `Installation failed: ${errorMessage}`;
++   }
++
++   return result;
++ }
++
++ /**
++  * Check if OMQ is already installed
++  */
++ export function isInstalled(): boolean {
++   return existsSync(VERSION_FILE) && (existsSync(AGENTS_DIR) || hasPluginProvidedAgentFiles());
++ }
++
++ /**
++  * Get installation info
++  */
++ export function getInstallInfo(): { version: string; installedAt: string; method: string } | null {
++   if (!existsSync(VERSION_FILE)) {
++     return null;
++   }
++   try {
++     const content = readFileSync(VERSION_FILE, 'utf-8');
++     const data = JSON.parse(content);
++     return {
++       version: data.version,
++       installedAt: data.installedAt,
++       method: data.installMethod
++     };
++   } catch {
++     return null;
++   }
++ }
 
- RUN  v4.1.11 <worktree>
+ ❯ src/__tests__/patch-layer-guards.test.ts:63:20
+     61|     // row for src/installer/index.ts (it searches for "installer/inde…
+     62|     const source = readFileSync(join(repoRoot, 'src/installer/index.ts…
+     63|     expect(source).toContain('getDefaultConfigDirShellPath(');
+       |                    ^
+     64|     expect(source).not.toMatch(/QODER_CONFIG_DIR:-\$HOME\/\.qoder\}/);
+     65|   });
 
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 1: OMQ_PLUGIN_ROOT set + dist/hud/index.js exists → loads from there
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 2: OMQ_PLUGIN_ROOT set but dist/hud/index.js missing → falls through to cache step
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 3: OMQ_PLUGIN_ROOT unset → cache step (step 2) fires
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 4: OMQ_PLUGIN_ROOT points at a non-existent dir → cache step fires
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 6: cache step is semver-aware — stable beats prerelease with same [M.m.p]
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 7: cache step orders prerelease tags numerically — rc.10 beats rc.2
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 8: cache step falls back to older built version when latest built version fails to import
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > case 5: symmetry — installer source and plugin-setup.mjs both produce identical wrapper text
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — OMQ_PLUGIN_ROOT resolution > uses shell:true only for Windows npm root discovery
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — fixture sanity > the template txt file exists in the repo
- ✓ src/installer/__tests__/hud-wrapper-env.test.ts > HUD wrapper — fixture sanity > cache fallback fixture does not look like a real stable release version
-
- Test Files  1 passed (1)
-      Tests  11 passed (11)
-   Start at  <redacted>
-   Duration  (transform, setup, import, tests, environment)
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
 
 
 ```
 
 ### Winning observation stderr after revert (last 1000 chars)
 ```
+ILE) && (existsSync(AGENTS_DIR) || hasPluginProvidedAgentFiles());
++ }
++
++ /**
++  * Get installation info
++  */
++ export function getInstallInfo(): { version: string; installedAt: string; method: string } | null {
++   if (!existsSync(VERSION_FILE)) {
++     return null;
++   }
++   try {
++     const content = readFileSync(VERSION_FILE, 'utf-8');
++     const data = JSON.parse(content);
++     return {
++       version: data.version,
++       installedAt: data.installedAt,
++       method: data.installMethod
++     };
++   } catch {
++     return null;
++   }
++ }
+
+ ❯ src/__tests__/patch-layer-guards.test.ts:63:20
+     61|     // row for src/installer/index.ts (it searches for "installer/inde…
+     62|     const source = readFileSync(join(repoRoot, 'src/installer/index.ts…
+     63|     expect(source).toContain('getDefaultConfigDirShellPath(');
+       |                    ^
+     64|     expect(source).not.toMatch(/QODER_CONFIG_DIR:-\$HOME\/\.qoder\}/);
+     65|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
 
 ```

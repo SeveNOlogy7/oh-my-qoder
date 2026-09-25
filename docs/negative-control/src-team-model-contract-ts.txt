@@ -4,14 +4,14 @@
 - **Fix commit**: b73da86
 - **Patched file**: src/team/model-contract.ts
 - **Named observation**: src/team/__tests__/model-contract.test.ts
-- **Verified observation**: none
+- **Verified observation**: src/team/__tests__/model-contract.test.ts
 - **Description**: fix(cli): resolve the qodercli / qoderclicn flavor per distribution -- reverting src/team/model-contract.ts should turn src/team/__tests__/model-contract.test.ts RED (observation found by rule "conventional").
 
 ## Attempts
 
 | observation | before (want 0) | after (want !=0) | verdict |
 |---|---|---|---|
-| `src/team/__tests__/model-contract.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/model-contract.test.ts` | 0 | 1 | RED after revert |
 | `src/__tests__/auto-slash-aliases.test.ts` | 0 | 0 | still GREEN |
 | `src/__tests__/deep-interview-provider-options.test.ts` | 0 | 0 | still GREEN |
 | `src/__tests__/runtime-guidance-plan-ralph.test.ts` | 0 | 0 | still GREEN |
@@ -19,32 +19,90 @@
 
 ## Verdict
 
-**INVALID: no observation turned RED after reverting the fix**
+**VALID**
 
 ### Winning observation output after revert (last 2000 chars)
 ```
-lag + instruction for gemini
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > prompt mode (headless TUI bypass) > getPromptModeArgs returns empty array for interactive codex and claude workers
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when OMQ_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when OMQ_ROUTING_FORCE_INHERIT=true on Vertex
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when not on Bedrock or Vertex
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns DASHSCOPE_MODEL on Bedrock when set
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns QODER_MODEL on Bedrock when DASHSCOPE_MODEL is not set
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > falls back to DASHSCOPE_DEFAULT_PLUS_MODEL tier env var
- ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > falls back to OMQ_MODEL_MEDIUM tier env var
+ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > falls back to OMQ_MODEL_MEDIUM tier env var
  ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns DASHSCOPE_MODEL on Vertex when set
  ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > returns undefined when no non-default provider indicators are present
  ✓ src/team/__tests__/model-contract.test.ts > model-contract > resolveClaudeWorkerModel (issue #1695) > detects Bedrock from model ID pattern even without OMQ_ROUTING_FORCE_INHERIT
 
- Test Files  1 passed (1)
-      Tests  57 passed (57)
+ Test Files  1 failed (1)
+      Tests  2 failed | 55 passed (57)
    Start at  <redacted>
    Duration  (transform, setup, import, tests, environment)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/team/__tests__/model-contract.test.ts > model-contract > getContract > returns contract for claude
+AssertionError: expected 'qodercli' to be 'qoderclicn' // Object.is equality
+
+Expected: "qoderclicn"
+Received: "qodercli"
+
+ ❯ src/team/__tests__/model-contract.test.ts:161:24
+    159|       const c = getContract('qwen');
+    160|       expect(c.agentType).toBe('qwen');
+    161|       expect(c.binary).toBe('qoderclicn');
+       |                        ^
+    162|     });
+    163|     it('returns contract for codex', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/team/__tests__/model-contract.test.ts > model-contract > buildWorkerArgv > builds claude interactive worker argv without the exec subcommand
+AssertionError: expected 'qodercli' to be 'qoderclicn' // Object.is equality
+
+Expected: "qoderclicn"
+Received: "qodercli"
+
+ ❯ src/team/__tests__/model-contract.test.ts:420:23
+    418|       });
+    419|
+    420|       expect(argv[0]).toBe('qoderclicn');
+       |                       ^
+    421|       expect(argv).toContain('--dangerously-skip-permissions');
+    422|       expect(argv).toContain('--bare');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
 
 
 ```
 
 ### Winning observation stderr after revert (last 1000 chars)
 ```
+ // Object.is equality
+
+Expected: "qoderclicn"
+Received: "qodercli"
+
+ ❯ src/team/__tests__/model-contract.test.ts:161:24
+    159|       const c = getContract('qwen');
+    160|       expect(c.agentType).toBe('qwen');
+    161|       expect(c.binary).toBe('qoderclicn');
+       |                        ^
+    162|     });
+    163|     it('returns contract for codex', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/team/__tests__/model-contract.test.ts > model-contract > buildWorkerArgv > builds claude interactive worker argv without the exec subcommand
+AssertionError: expected 'qodercli' to be 'qoderclicn' // Object.is equality
+
+Expected: "qoderclicn"
+Received: "qodercli"
+
+ ❯ src/team/__tests__/model-contract.test.ts:420:23
+    418|       });
+    419|
+    420|       expect(argv[0]).toBe('qoderclicn');
+       |                       ^
+    421|       expect(argv).toContain('--dangerously-skip-permissions');
+    422|       expect(argv).toContain('--bare');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
 
 ```

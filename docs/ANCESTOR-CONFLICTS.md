@@ -189,14 +189,16 @@ category — it is the intersection between OMQ's own patch layer and the hop, a
 reproducible:
 
 ```bash
-node scripts/conflict-ledger.mjs --patch-layer   # 28 hop-modified + 1 hop-deleted
+node scripts/conflict-ledger.mjs --patch-layer   # every path our commits touched that the hop also touched
 ```
 
 It counts paths changed by commits after the `patchLayer.baseCommit` recorded in
-`ANCESTOR_BASELINE.json` **and** changed between v4.15.1 and v5.0.0. Measured at the
-plan's own snapshot that was 21 commits / 75 files -> 28 collisions; on this branch it is
-29 commits / 92 files -> the same 28 collisions plus one path the hop deletes. See
-`docs/ANCESTOR-PATCH-LAYER.md` for the per-path table and the observation named for each.
+`ANCESTOR_BASELINE.json` **and** changed between v4.15.1 and v5.0.0. At the plan's
+own snapshot that was 21 commits / 75 files -> **28 collisions**, the number the
+ralplan quotes. The set grows as this branch adds commits -- editing a test the
+ancestor also rewrote creates another collision -- so the generated table is
+authoritative for the current HEAD. See `docs/ANCESTOR-PATCH-LAYER.md` for the
+per-path table, the observation named for each, and the measured carrier verdict.
 The three-way count here (286) is the whole-tree superset: most of those files OMQ never
 touched, so adoption can take the ancestor version without any decision.
 

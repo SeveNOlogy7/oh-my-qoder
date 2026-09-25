@@ -4,18 +4,18 @@
 - **Fix commit**: b73da86
 - **Patched file**: src/team/cli-detection.ts
 - **Named observation**: src/team/__tests__/cli-detection.test.ts
-- **Verified observation**: none
+- **Verified observation**: src/team/__tests__/cli-detection.test.ts
 - **Description**: fix(cli): resolve the qodercli / qoderclicn flavor per distribution -- reverting src/team/cli-detection.ts should turn src/team/__tests__/cli-detection.test.ts RED (observation found by rule "conventional").
 
 ## Attempts
 
 | observation | before (want 0) | after (want !=0) | verdict |
 |---|---|---|---|
-| `src/team/__tests__/cli-detection.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/cli-detection.test.ts` | 0 | 1 | RED after revert |
 
 ## Verdict
 
-**INVALID: no observation turned RED after reverting the fix**
+**VALID**
 
 ### Winning observation output after revert (last 2000 chars)
 ```
@@ -23,16 +23,48 @@
  RUN  v4.1.11 <worktree>
 
  ✓ src/team/__tests__/cli-detection.test.ts > cli-detection > uses shell:true for Windows provider version probes
+ × src/team/__tests__/cli-detection.test.ts > detectAllClis > probes the binary the installed distribution ships
+   → expected [ 'qodercli', 'codex', 'gemini', …(2) ] to include 'qoderclicn'
 
- Test Files  1 passed (1)
-      Tests  1 passed (1)
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
    Start at  <redacted>
    Duration  (transform, setup, import, tests, environment)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/team/__tests__/cli-detection.test.ts > detectAllClis > probes the binary the installed distribution ships
+AssertionError: expected [ 'qodercli', 'codex', 'gemini', …(2) ] to include 'qoderclicn'
+ ❯ src/team/__tests__/cli-detection.test.ts:63:20
+     61|     expect(Object.keys(detected)).toContain('claude');
+     62|     const probed = mockSpawnSync.mock.calls.map((call) => call[0]);
+     63|     expect(probed).toContain('qoderclicn');
+       |                    ^
+     64|     expect(probed).not.toContain('qodercli');
+     65|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
 
 
 ```
 
 ### Winning observation stderr after revert (last 1000 chars)
 ```
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/team/__tests__/cli-detection.test.ts > detectAllClis > probes the binary the installed distribution ships
+AssertionError: expected [ 'qodercli', 'codex', 'gemini', …(2) ] to include 'qoderclicn'
+ ❯ src/team/__tests__/cli-detection.test.ts:63:20
+     61|     expect(Object.keys(detected)).toContain('claude');
+     62|     const probed = mockSpawnSync.mock.calls.map((call) => call[0]);
+     63|     expect(probed).toContain('qoderclicn');
+       |                    ^
+     64|     expect(probed).not.toContain('qodercli');
+     65|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
 
 ```

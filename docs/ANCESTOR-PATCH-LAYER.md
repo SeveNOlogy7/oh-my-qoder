@@ -6,12 +6,12 @@ from `git log 9ba1359c8f8cab5d72d7ffc543d3e35f676a4709..HEAD` intersected with t
 
 | | |
 |---|---|
-| Colliding paths | 29 |
-| Assertable / test-surface / structural | 13 / 6 / 10 |
-| Hop modified / added / deleted | 28 / 0 / 1 |
+| Colliding paths | 31 |
+| Assertable / test-surface / structural | 13 / 8 / 10 |
+| Hop modified / added / deleted | 30 / 0 / 1 |
 | Assertable rows with a named observation | 13 of 13 |
-| Carriers: VALID / INVALID / INCONCLUSIVE / missing | 3 / 9 / 1 / 0 |
-| Class-2 rows without a named structural guard | 0 of 16 |
+| Carriers: VALID / INVALID / INCONCLUSIVE / missing | 12 / 0 / 1 / 0 |
+| Class-2 rows without a named structural guard | 0 of 18 |
 
 The `un-patch` column is the commit whose parent still has OMQ's patch absent; reverting the file to
 that parent is what a negative-control lane does. `obs. rule` records *how* the observation was found
@@ -31,30 +31,32 @@ payload. A row reading **none - gap** is work M1 has not finished.
 
 | path | hop | commits | un-patch | observation | obs. rule | cands | carrier | verified via |
 |---|---|---|---|---|---|---|---|---|
-| `scripts/session-start.mjs` | modified | 2 | `4c9cacf^` | `src/__tests__/session-start-timeout-cleanup.test.ts` | reference | 5 | INVALID | - |
+| `scripts/session-start.mjs` | modified | 2 | `4c9cacf^` | `src/__tests__/session-start-timeout-cleanup.test.ts` | reference | 6 | **VALID** | `src/__tests__/patch-layer-guards.test.ts` |
 | `src/cli/autoresearch-guided.ts` | modified | 1 | `b73da86^` | `src/cli/__tests__/autoresearch-guided.test.ts` | conventional | 1 | INCONCLUSIVE | - |
-| `src/cli/index.ts` | modified | 3 | `5fac66e^` | `src/cli/__tests__/cli-boot.test.ts` | reference | 4 | INVALID | - |
-| `src/cli/launch.ts` | modified | 2 | `b11884d^` | `src/cli/__tests__/launch.test.ts` | conventional | 1 | INVALID | - |
-| `src/cli/tmux-utils.ts` | modified | 1 | `b73da86^` | `src/cli/__tests__/tmux-utils.test.ts` | conventional | 1 | INVALID | - |
+| `src/cli/index.ts` | modified | 3 | `5fac66e^` | `src/cli/__tests__/cli-boot.test.ts` | reference | 4 | **VALID** | `src/cli/__tests__/cli-boot.test.ts` |
+| `src/cli/launch.ts` | modified | 2 | `b11884d^` | `src/cli/__tests__/launch.test.ts` | conventional | 1 | **VALID** | `src/cli/__tests__/launch.test.ts` |
+| `src/cli/tmux-utils.ts` | modified | 1 | `b73da86^` | `src/cli/__tests__/tmux-utils.test.ts` | conventional | 1 | **VALID** | `src/cli/__tests__/tmux-utils.test.ts` |
 | `src/features/auto-update.ts` | modified | 4 | `4c9cacf^` | `src/__tests__/auto-update.test.ts` | reference-and-co-changed | 14 | **VALID** | `src/__tests__/auto-update.test.ts` |
-| `src/installer/index.ts` | modified | 1 | `b11884d^` | `src/installer/__tests__/hud-wrapper-env.test.ts` | reference | 15 | INVALID | - |
-| `src/installer/mcp-registry.ts` | modified | 1 | `b11884d^` | `src/installer/__tests__/mcp-registry.test.ts` | conventional | 1 | INVALID | - |
+| `src/installer/index.ts` | modified | 1 | `b11884d^` | `src/installer/__tests__/hud-wrapper-env.test.ts` | reference | 16 | **VALID** | `src/__tests__/patch-layer-guards.test.ts` |
+| `src/installer/mcp-registry.ts` | modified | 1 | `b11884d^` | `src/installer/__tests__/mcp-registry.test.ts` | conventional | 1 | **VALID** | `src/installer/__tests__/mcp-registry.test.ts` |
 | `src/lib/release-generation.ts` | modified | 1 | `2f0bd25^` | `src/__tests__/release-generation.test.ts` | reference-and-co-changed | 1 | **VALID** | `src/__tests__/release-generation.test.ts` |
-| `src/team/cli-detection.ts` | modified | 1 | `b73da86^` | `src/team/__tests__/cli-detection.test.ts` | conventional | 1 | INVALID | - |
-| `src/team/model-contract.ts` | modified | 1 | `b73da86^` | `src/team/__tests__/model-contract.test.ts` | conventional | 1 | INVALID | - |
+| `src/team/cli-detection.ts` | modified | 1 | `b73da86^` | `src/team/__tests__/cli-detection.test.ts` | conventional | 1 | **VALID** | `src/team/__tests__/cli-detection.test.ts` |
+| `src/team/model-contract.ts` | modified | 1 | `b73da86^` | `src/team/__tests__/model-contract.test.ts` | conventional | 1 | **VALID** | `src/team/__tests__/model-contract.test.ts` |
 | `src/utils/paths.ts` | modified | 1 | `4c9cacf^` | `src/utils/__tests__/paths.test.ts` | conventional | 1 | **VALID** | `src/__tests__/hud-windows.test.ts` |
-| `templates/hooks/session-start.mjs` | modified | 1 | `2f0bd25^` | `src/__tests__/session-start-timeout-cleanup.test.ts` | reference | 7 | INVALID | - |
+| `templates/hooks/session-start.mjs` | modified | 1 | `2f0bd25^` | `src/__tests__/session-start-timeout-cleanup.test.ts` | reference | 8 | **VALID** | `src/__tests__/patch-layer-guards.test.ts` |
 
-## Test surface (M1 class ②: merge the assertions) - 6
+## Test surface (M1 class ②: merge the assertions) - 8
 
 | path | hop | commits | un-patch | structural guard |
 |---|---|---|---|---|
 | `src/__tests__/auto-update.test.ts` | modified | 2 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/doctor-conflicts.test.ts` | modified | 1 | `b11884d^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/release-generation.test.ts` | modified | 1 | `2f0bd25^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/cli/__tests__/launch.test.ts` | modified | 1 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/cli/__tests__/launch.test.ts` | modified | 2 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/installer/__tests__/mcp-registry.test.ts` | modified | 1 | `38e1134^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/installer/__tests__/standalone-hook-reconcile.test.ts` | modified | 1 | `0da007d^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/team/__tests__/model-contract.test.ts` | modified | 1 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/team/__tests__/cli-detection.test.ts` | modified | 1 | `38e1134^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/team/__tests__/model-contract.test.ts` | modified | 2 | `b73da86^` | `scripts/known-failures.mjs --check (CI test job)` |
 
 ## Structural (M1 class ②: structural assertion, no fake test) - 10
 
