@@ -1,0 +1,87 @@
+# Negative Control Carrier: provenance-path-coverage
+
+- **Lane**: provenance-path-coverage
+- **Fix commit**: 94df71a
+- **Observation**: src/__tests__/canonical-identity-provenance.test.ts
+- **Description**: fix(identity): make the provenance rule a path-coverage gate -- reverting should cause provenance tests to fail because unlisted files are no longer detected as violations.
+- **Worktree**: .omq/worktrees/neg-ctrl-provenance-path-coverage-1790315712805
+- **Timestamp**: 2026-09-25T05:55:15.543Z
+
+## Before revert (should be GREEN)
+- Exit code: 0
+- Green: true
+
+## After revert (should be RED)
+- Exit code: 1
+- Red: true
+
+## Verdict
+
+**VALID**
+
+### After-revert output (last 2000 chars)
+```
+[1m FAIL [22m[49m src/__tests__/canonical-identity-provenance.test.ts[2m > [22mancestor provenance rule[2m > [22mnormalises backslashes in entry paths to forward slashes
+[31m[1mAssertionError[22m: expected undefined to deeply equal [][39m
+
+[32m- Expected:[39m
+[]
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/__tests__/canonical-identity-provenance.test.ts:[2m247:31[22m[39m
+    [90m245|[39m     [34mexpect[39m(result[33m.[39mcode)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m246|[39m     [35mconst[39m parsed [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(result[33m.[39mstdout)[33m;[39m
+    [90m247|[39m     [34mexpect[39m(parsed[33m.[39mprovenance)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m   |[39m                               [31m^[39m
+    [90m248|[39m   })[33m;[39m
+    [90m249|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/canonical-identity-provenance.test.ts[2m > [22mancestor provenance rule[2m > [22mdoes NOT reuse isFixturePath: test files are subject to provenance
+[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m src/__tests__/canonical-identity-provenance.test.ts:[2m263:25[22m[39m
+    [90m261|[39m
+    [90m262|[39m     [35mconst[39m result [33m=[39m [34mrunCheck[39m(fixtureDir)[33m;[39m
+    [90m263|[39m     [34mexpect[39m(result[33m.[39mcode)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+    [90m   |[39m                         [31m^[39m
+    [90m264|[39m     [35mconst[39m parsed [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(result[33m.[39mstdout)[33m;[39m
+    [90m265|[39m     [35mconst[39m files [33m=[39m parsed[33m.[39mprovenance[33m.[39m[34mmap[39m((v[33m:[39m any) [33m=>[39m v[33m.[39mfile)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯[22m[39m
+
+
+```
+
+### After-revert stderr (last 1000 chars)
+```
+ts[2m > [22mancestor provenance rule[2m > [22mdoes NOT reuse isFixturePath: test files are subject to provenance
+[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m src/__tests__/canonical-identity-provenance.test.ts:[2m263:25[22m[39m
+    [90m261|[39m
+    [90m262|[39m     [35mconst[39m result [33m=[39m [34mrunCheck[39m(fixtureDir)[33m;[39m
+    [90m263|[39m     [34mexpect[39m(result[33m.[39mcode)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+    [90m   |[39m                         [31m^[39m
+    [90m264|[39m     [35mconst[39m parsed [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(result[33m.[39mstdout)[33m;[39m
+    [90m265|[39m     [35mconst[39m files [33m=[39m parsed[33m.[39mprovenance[33m.[39m[34mmap[39m((v[33m:[39m any) [33m=>[39m v[33m.[39mfile)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯[22m[39m
+
+
+```
