@@ -184,3 +184,33 @@ jobs:
 
       - name: Known-failure delta gate
         run: node scripts/known-failures.mjs --check < .omq/vitest-out.txt
+
+  # Windows is where the CN distribution actually runs, and the behaviours it
+  # exercises are invisible to the Linux jobs -- measuring the same 13 patch-layer
+  # lanes on win32 flipped seven of them to "already red before revert" purely on
+  # path separators, and one real defect (isDefaultQoderConfigDir not recognising
+  # the default root) only shows up here. Same mechanism as the Linux job: the
+  # gate is the delta against a win32 baseline, not absolute green.
+  windows-test:
+    needs: [provenance]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (captured)
+        shell: bash
+        run: mkdir -p .omq && npm run test:run 2>&1 | tee .omq/vitest-out-win.txt || true
+
+      - name: Known-failure delta gate (win32)
+        shell: bash
+        run: node scripts/known-failures.mjs --check --baseline=tests/known-failures-win32.json < .omq/vitest-out-win.txt

@@ -69,6 +69,32 @@ already non-zero and the lane answers nothing -- the ledger's
 `INCONCLUSIVE`/`INVALID` split on win32 is environment noise, not evidence.
 Carriers committed here are Linux-measured.
 
+That is not the same as "Windows does not matter". Measuring the same lanes on
+Linux and win32 is how one real defect surfaced -- `isDefaultQoderConfigDir`
+fails to recognise the default root on Windows and passes on Linux -- so the
+Windows suite runs in CI too, gated on its own baseline
+(`tests/known-failures-win32.json`) rather than on absolute green.
+
+## Reproducing the Linux measurement locally
+
+```sh
+docker run --rm -v "$PWD/..:/main:ro" -v "$PWD:/host:ro" node:20 bash -lc '
+  git config --global safe.directory "*"
+  git clone --no-hardlinks /main /work/omq && cd /work/omq
+  git checkout port/ancestor-baseline-m0
+  cp /host/.omq/cache/ancestor-v*.json .omq/cache/   # tree caches are gitignored
+  npm ci --ignore-scripts && npm run build
+  node scripts/conflict-ledger.mjs --patch-layer --json > .omq/patch-layer.json
+  node scripts/negative-control.mjs --lanes-from .omq/patch-layer.json --retry-alternates
+'
+```
+
+Clone the **common** repository rather than a linked worktree: a worktree's `.git`
+file holds an absolute Windows path that is meaningless inside the container.
+`--ignore-scripts` skips the `better-sqlite3` node-gyp build, which cannot reach
+nodejs.org through this machine's proxy; `npm run build` is still required
+because several observations import the compiled bridge.
+
 ## Carrier files
 
 Each lane writes `docs/negative-control/<lane>.txt`: lane metadata, one row per
