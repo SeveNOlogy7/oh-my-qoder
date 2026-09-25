@@ -302,23 +302,17 @@ export function patchLayerClass(path) {
  */
 export function pickObservation(path, { testFiles, testBodies, coChangedTests = [] }) {
   if (patchLayerClass(path) !== 'assertable') {
-    return { observation: null, rule: 'not-assertable', candidates: 0 };
+    return { observation: null, rule: 'not-assertable', candidates: 0, alternates: [] };
   }
 
   const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.';
   const base = path.replace(/\.[^.]+$/, '').split('/').pop();
-  const conventional = [
-    `${dir}/__tests__/${base}.test.ts`,
-    `${dir}/__tests__/${base}.test.tsx`,
-    `${dir}/${base}.test.ts`,
-  ].find((candidate) => testFiles.has(candidate));
-  if (conventional) return { observation: conventional, rule: 'conventional', candidates: 1 };
+  const moduleDir = dir === '.' ? '' : dir;
+  const coChanged = new Set(coChangedTests);
 
   // A test that mentions "<parent dir>/<module>" is reading the real import
   // specifier ("../../utils/paths"); the bare basename is far too common to use.
   const specifier = dir === '.' ? base : `${dir.split('/').pop()}/${base}`;
-  const coChanged = new Set(coChangedTests);
-  const moduleDir = dir === '.' ? '' : dir;
   const score = (testFile) => {
     const testBase = testFile.replace(/\.[^.]+$/, '').split('/').pop();
     const testDir = testFile.includes('/') ? testFile.slice(0, testFile.lastIndexOf('/')) : '';
@@ -334,16 +328,30 @@ export function pickObservation(path, { testFiles, testBodies, coChangedTests = 
     .filter(([file, body]) => file !== path && body.includes(specifier))
     .map(([file]) => file)
     .sort((a, b) => score(b) - score(a) || a.localeCompare(b));
-  const chosen = referencing;
-  if (chosen.length) {
-    const observation = chosen[0];
+
+  const conventional = [
+    `${dir}/__tests__/${base}.test.ts`,
+    `${dir}/__tests__/${base}.test.tsx`,
+    `${dir}/${base}.test.ts`,
+  ].find((candidate) => testFiles.has(candidate));
+  if (conventional) {
+    return {
+      observation: conventional,
+      rule: 'conventional',
+      candidates: 1,
+      alternates: referencing.filter((file) => file !== conventional).slice(0, 8),
+    };
+  }
+  if (referencing.length) {
+    const observation = referencing[0];
     return {
       observation,
       rule: coChanged.has(observation) ? 'reference-and-co-changed' : 'reference',
-      candidates: chosen.length,
+      candidates: referencing.length,
+      alternates: referencing.slice(1, 9),
     };
   }
-  return { observation: null, rule: 'none', candidates: 0 };
+  return { observation: null, rule: 'none', candidates: 0, alternates: [] };
 }
 
 /**
@@ -365,7 +373,7 @@ export function buildPatchLayerRows(patchPaths, ctx) {
     if (hop === 'unchanged' || hop === 'absent') continue;
     const commits = ctx.commitsByPath.get(path) ?? [];
     const klass = patchLayerClass(path);
-    const { observation, rule, candidates } = pickObservation(path, {
+    const { observation, rule, candidates, alternates } = pickObservation(path, {
       testFiles: ctx.testFiles,
       testBodies: ctx.testBodies,
       coChangedTests: ctx.coChangedByPath.get(path),
@@ -379,6 +387,7 @@ export function buildPatchLayerRows(patchPaths, ctx) {
       observation,
       observationRule: rule,
       observationCandidates: candidates,
+      observationAlternates: alternates,
     });
   }
   const order = { assertable: 0, 'test-surface': 1, structural: 2 };

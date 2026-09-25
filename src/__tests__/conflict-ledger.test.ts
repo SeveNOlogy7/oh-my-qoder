@@ -346,6 +346,7 @@ describe('pickObservation', () => {
       observation: null,
       rule: 'not-assertable',
       candidates: 0,
+      alternates: [],
     });
   });
 
@@ -383,6 +384,17 @@ describe('pickObservation', () => {
     expect(result.observation).toBe('src/installer/__tests__/zzz.test.ts');
   });
 
+  it('hands the runner other candidates without dropping the first pick', () => {
+    const testFiles = new Set(['src/utils/__tests__/paths.test.ts']);
+    const testBodies = new Map([
+      ['src/utils/__tests__/paths.test.ts', "from '../paths' /* utils/paths */"],
+      ['src/utils/__tests__/plugin-cache-base.test.ts', "import '../paths' /* utils/paths */"],
+    ]);
+    const result = pickObservation('src/utils/paths.ts', ctx({ testFiles, testBodies }));
+    expect(result.observation).toBe('src/utils/__tests__/paths.test.ts');
+    expect(result.alternates).toEqual(['src/utils/__tests__/plugin-cache-base.test.ts']);
+  });
+
   it('records co-change in the rule name when it is what was used', () => {
     const testFiles = new Set(['src/__tests__/auto-update.test.ts']);
     const testBodies = new Map([['src/__tests__/auto-update.test.ts', 'import features/auto-update']]);
@@ -399,6 +411,7 @@ describe('pickObservation', () => {
       observation: null,
       rule: 'none',
       candidates: 0,
+      alternates: [],
     });
   });
 });
