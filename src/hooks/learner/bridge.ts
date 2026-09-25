@@ -18,7 +18,7 @@ import {
 } from "fs";
 import { join, dirname, basename } from "path";
 import { homedir } from "os";
-import { OmqPaths } from "../../lib/worktree-paths.js";
+import { OmcPaths, getOmcRoot } from "../../lib/worktree-paths.js";
 import { parseYamlMetadata } from "./parser.js";
 import { expandTriggers } from "./transliteration-map.js";
 
@@ -27,10 +27,10 @@ export const USER_SKILLS_DIR = join(
   homedir(),
   ".claude",
   "skills",
-  "omq-learned",
+  "omc-learned",
 );
-export const GLOBAL_SKILLS_DIR = join(homedir(), ".omq", "skills");
-export const PROJECT_SKILLS_SUBDIR = OmqPaths.SKILLS;
+export const GLOBAL_SKILLS_DIR = join(homedir(), ".omc", "skills");
+export const PROJECT_SKILLS_SUBDIR = OmcPaths.SKILLS;
 export const PROJECT_AGENT_SKILLS_SUBDIR = join(".agents", "skills");
 export const SKILL_EXTENSION = ".md";
 
@@ -182,9 +182,6 @@ function summarizeSkillContent(content: string): string {
   return (firstUsefulLine || content.replace(/\s+/g, " ").trim()).slice(0, 240);
 }
 
-/** State file path */
-const STATE_FILE = `${OmqPaths.STATE}/skill-sessions.json`;
-
 // =============================================================================
 // Types
 // =============================================================================
@@ -242,7 +239,7 @@ interface SessionState {
  * Get state file path for a project.
  */
 function getStateFilePath(projectRoot: string): string {
-  return join(projectRoot, STATE_FILE);
+  return join(getOmcRoot(projectRoot), "state", "skill-sessions.json");
 }
 
 /**

@@ -10,17 +10,18 @@ import {
   getModelForAgent,
   type AgentInput
 } from '../features/delegation-enforcer.js';
+import { clearSkillsCache } from '../features/builtin-skills/skills.js';
 import { resolveDelegation } from '../features/delegation-routing/resolver.js';
 
 describe('delegation-enforcer', () => {
   let originalDebugEnv: string | undefined;
   // Save/restore env vars that trigger non-Claude provider detection (issue #1201)
   // so existing tests run in a standard Claude environment
-  const providerEnvKeys = ['DASHSCOPE_BASE_URL', 'QODER_MODEL', 'DASHSCOPE_MODEL', 'OMQ_ROUTING_FORCE_INHERIT', 'OMQ_ROUTING_FORCE_INHERIT', 'OMQ_ROUTING_FORCE_INHERIT', 'DASHSCOPE_DEFAULT_MAX_MODEL', 'DASHSCOPE_DEFAULT_PLUS_MODEL', 'DASHSCOPE_DEFAULT_TURBO_MODEL', 'DASHSCOPE_DEFAULT_MAX_MODEL', 'DASHSCOPE_DEFAULT_PLUS_MODEL', 'DASHSCOPE_DEFAULT_TURBO_MODEL', 'OMQ_MODEL_HIGH', 'OMQ_MODEL_MEDIUM', 'OMQ_MODEL_LOW'];
+  const providerEnvKeys = ['ANTHROPIC_BASE_URL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'OMC_ROUTING_FORCE_INHERIT', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'OMC_MODEL_HIGH', 'OMC_MODEL_MEDIUM', 'OMC_MODEL_LOW'];
   const savedProviderEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
-    originalDebugEnv = process.env.OMQ_DEBUG;
+    originalDebugEnv = process.env.OMC_DEBUG;
     for (const key of providerEnvKeys) {
       savedProviderEnv[key] = process.env[key];
       delete process.env[key];
@@ -29,9 +30,9 @@ describe('delegation-enforcer', () => {
 
   afterEach(() => {
     if (originalDebugEnv === undefined) {
-      delete process.env.OMQ_DEBUG;
+      delete process.env.OMC_DEBUG;
     } else {
-      process.env.OMQ_DEBUG = originalDebugEnv;
+      process.env.OMC_DEBUG = originalDebugEnv;
     }
     for (const key of providerEnvKeys) {
       if (savedProviderEnv[key] === undefined) {
@@ -47,69 +48,69 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'low'
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'haiku'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('low');
+      expect(result.modifiedInput.model).toBe('haiku');
     });
 
     it('normalizes explicit full model ID to CC alias (issue #1415)', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'qwen-plus'
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'claude-sonnet-5'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('medium');
+      expect(result.modifiedInput.model).toBe('sonnet');
     });
 
-    it('normalizes qwen-max to the fable tier alias (issue #3246)', () => {
+    it('normalizes claude-fable-5 to the fable tier alias (issue #3246)', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'qwen-max'
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'claude-fable-5'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('high');
+      expect(result.modifiedInput.model).toBe('fable');
     });
 
-    it('preserves explicit provider-specific DashScope model ID', () => {
+    it('preserves explicit provider-specific Bedrock model ID', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'dashscope/qwen-plus'
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'us.anthropic.claude-sonnet-4-6-v1:0'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('dashscope/qwen-plus');
+      expect(result.modifiedInput.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
     });
 
     it('injects model from agent definition when not specified', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor'
+        subagent_type: 'oh-my-claudecode:executor'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('medium'); // executor defaults to qwen-plus
+      expect(result.modifiedInput.model).toBe('sonnet'); // executor defaults to claude-sonnet-5
       expect(result.originalInput.model).toBeUndefined();
     });
 
@@ -123,21 +124,21 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('medium'); // debugger defaults to qwen-plus
+      expect(result.modifiedInput.model).toBe('sonnet'); // debugger defaults to claude-sonnet-5
     });
 
     it('rewrites deprecated aliases to canonical agent names before injecting model', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:build-fixer'
+        subagent_type: 'oh-my-claudecode:build-fixer'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.subagent_type).toBe('oh-my-qoder:debugger');
-      expect(result.modifiedInput.model).toBe('medium');
+      expect(result.modifiedInput.subagent_type).toBe('oh-my-claudecode:debugger');
+      expect(result.modifiedInput.model).toBe('sonnet');
     });
 
     it('throws error for unknown agent type', () => {
@@ -149,8 +150,194 @@ describe('delegation-enforcer', () => {
 
       expect(() => enforceModel(input)).toThrow('Unknown agent type');
     });
+    it('throws error for a bundled skill name with Skill-tool guidance (issue #3667)', () => {
+      const input: AgentInput = {
+        description: 'Deslop changed files',
+        prompt: 'Run the cleaner',
+        subagent_type: 'oh-my-claudecode:ai-slop-cleaner'
+      };
 
-    it('logs warning only when OMQ_DEBUG=true', () => {
+      let thrown: Error | undefined;
+      try {
+        enforceModel(input);
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown).toBeDefined();
+      expect(thrown!.message).toContain('Unknown agent type');
+      expect(thrown!.message).toContain('ai-slop-cleaner');
+      expect(thrown!.message).toContain('Skill');
+      expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+      expect(thrown!.message).toContain('do NOT substitute a similarly-named agent');
+    });
+
+    it('does not add Skill guidance for genuinely unknown agents (no closest-match substitution)', () => {
+      const input: AgentInput = {
+        description: 'Test task',
+        prompt: 'Do something',
+        subagent_type: 'oh-my-claudecode:ai-slop-cleanr'
+      };
+
+      let thrown: Error | undefined;
+      try {
+        enforceModel(input);
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown).toBeDefined();
+      expect(thrown!.message).toContain('Unknown agent type');
+      expect(thrown!.message).not.toContain('Skill');
+      expect(thrown!.message).not.toContain('closest match');
+    });
+
+    it('resolves the dir-only plan name to omc-plan in the guidance (hook parity)', () => {
+      const input: AgentInput = {
+        description: 'Plan task',
+        prompt: 'Run it',
+        subagent_type: 'oh-my-claudecode:plan'
+      };
+
+      let thrown: Error | undefined;
+      try {
+        enforceModel(input);
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown).toBeDefined();
+      expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+    });
+    describe('bundled skill visibility (entitlement set empty since 5.0.0, issue #3667)', () => {
+      let savedUserType: string | undefined;
+
+      beforeEach(() => {
+        savedUserType = process.env.USER_TYPE;
+        clearSkillsCache();
+      });
+
+      afterEach(() => {
+        if (savedUserType === undefined) {
+          delete process.env.USER_TYPE;
+        } else {
+          process.env.USER_TYPE = savedUserType;
+        }
+        clearSkillsCache();
+      });
+
+      function thrownFor(subagentType: string): Error | undefined {
+        try {
+          enforceModel({ description: 't', prompt: 'p', subagent_type: subagentType });
+        } catch (error) {
+          return error as Error;
+        }
+        return undefined;
+      }
+
+      // Ungated in 5.0.0: remember/verify/debug are suggested for every user.
+      it.each(['remember', 'verify', 'debug'])(
+        'adds Skill guidance for the %s skill regardless of USER_TYPE',
+        (skillName) => {
+          delete process.env.USER_TYPE;
+          clearSkillsCache();
+          const thrown = thrownFor(`oh-my-claudecode:${skillName}`);
+          expect(thrown).toBeDefined();
+          expect(thrown!.message).toContain(`Skill(skill="oh-my-claudecode:${skillName}")`);
+        },
+      );
+
+      it.each(['remember', 'verify', 'debug'])(
+        'adds Skill guidance for the %s skill when USER_TYPE=ant',
+        (hiddenSkill) => {
+          process.env.USER_TYPE = 'ant';
+          clearSkillsCache();
+          const thrown = thrownFor(`oh-my-claudecode:${hiddenSkill}`);
+          expect(thrown).toBeDefined();
+          expect(thrown!.message).toContain(`Skill(skill="oh-my-claudecode:${hiddenSkill}")`);
+        },
+      );
+
+      it('keeps guidance for every bundled skill in the same process', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        const visible = thrownFor('oh-my-claudecode:ai-slop-cleaner');
+        const ungated = thrownFor('oh-my-claudecode:remember');
+        expect(visible!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+        expect(ungated!.message).toContain('Skill(skill="oh-my-claudecode:remember")');
+      });
+
+      it('case-folds identifiers before visibility and resolution (Windows/macOS semantics, issue #3667)', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        const ungatedMixedCase = thrownFor('oh-my-claudecode:Remember');
+        expect(ungatedMixedCase!.message).toContain('Skill(skill="oh-my-claudecode:remember")');
+
+        const visibleMixedCase = thrownFor('oh-my-claudecode:Plan');
+        expect(visibleMixedCase!.message).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+
+      });
+
+      it('case-folds the namespace prefix for USER_TYPE=ant', () => {
+        process.env.USER_TYPE = 'ant';
+        clearSkillsCache();
+        const hiddenMixedCase = thrownFor('oh-my-claudecode:Remember');
+        expect(hiddenMixedCase!.message).toContain('Skill(skill="oh-my-claudecode:remember")');
+        const omcPrefix = thrownFor('OMC:ai-slop-cleaner');
+        expect(omcPrefix!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+      });
+      it('preserves bare native identifiers (no Skill guidance for plan/general-purpose, issue #3667 P1)', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        for (const bare of ['plan', 'Plan', 'general-purpose']) {
+          const thrown = thrownFor(bare);
+          expect(thrown).toBeDefined();
+          expect(thrown!.message).toContain('Unknown agent type');
+          expect(thrown!.message).not.toContain('Skill(skill=');
+        }
+      });
+
+      it('validates skill names even with an explicit model (issue #3667 P2)', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        let thrown: Error | undefined;
+        try {
+          enforceModel({
+            description: 't',
+            prompt: 'p',
+            subagent_type: 'oh-my-claudecode:ai-slop-cleaner',
+            model: 'sonnet',
+          });
+        } catch (error) {
+          thrown = error as Error;
+        }
+        expect(thrown).toBeDefined();
+        expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+      });
+
+      it('validates skill names under force-inherit routing (issue #3667 P2)', () => {
+        delete process.env.USER_TYPE;
+        process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+        clearSkillsCache();
+        let thrown: Error | undefined;
+        try {
+          enforceModel({ description: 't', prompt: 'p', subagent_type: 'oh-my-claudecode:ai-slop-cleaner' });
+        } catch (error) {
+          thrown = error as Error;
+        }
+        expect(thrown).toBeDefined();
+        expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+        delete process.env.OMC_ROUTING_FORCE_INHERIT;
+      });
+
+      it('keeps valid agents passing validation with an explicit model', () => {
+        const result = enforceModel({ description: 't', prompt: 'p', subagent_type: 'executor', model: 'haiku' });
+        expect(result.modifiedInput.model).toBe('haiku');
+        expect(result.injected).toBe(false);
+      });
+    });
+
+    it('logs warning only when OMC_DEBUG=true', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -158,41 +345,41 @@ describe('delegation-enforcer', () => {
       };
 
       // Without debug flag
-      delete process.env.OMQ_DEBUG;
+      delete process.env.OMC_DEBUG;
       const resultWithoutDebug = enforceModel(input);
       expect(resultWithoutDebug.warning).toBeUndefined();
 
       // With debug flag
-      process.env.OMQ_DEBUG = 'true';
+      process.env.OMC_DEBUG = 'true';
       const resultWithDebug = enforceModel(input);
       expect(resultWithDebug.warning).toBeDefined();
       expect(resultWithDebug.warning).toContain('Auto-injecting model');
-      expect(resultWithDebug.warning).toContain('qwen-plus');
+      expect(resultWithDebug.warning).toContain('claude-sonnet-5');
       expect(resultWithDebug.warning).toContain('executor');
     });
 
-    it('does not log warning when OMQ_DEBUG is false', () => {
+    it('does not log warning when OMC_DEBUG is false', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'executor'
       };
 
-      process.env.OMQ_DEBUG = 'false';
+      process.env.OMC_DEBUG = 'false';
       const result = enforceModel(input);
       expect(result.warning).toBeUndefined();
     });
 
     it('works with all agents', () => {
       const testCases = [
-        { agent: 'architect', expectedModel: 'high' },
-        { agent: 'executor', expectedModel: 'medium' },
-        { agent: 'explore', expectedModel: 'low' },
-        { agent: 'designer', expectedModel: 'medium' },
-        { agent: 'debugger', expectedModel: 'medium' },
-        { agent: 'verifier', expectedModel: 'medium' },
-        { agent: 'code-reviewer', expectedModel: 'high' },
-        { agent: 'test-engineer', expectedModel: 'medium' }
+        { agent: 'architect', expectedModel: 'opus' },
+        { agent: 'executor', expectedModel: 'sonnet' },
+        { agent: 'explore', expectedModel: 'haiku' },
+        { agent: 'designer', expectedModel: 'sonnet' },
+        { agent: 'debugger', expectedModel: 'sonnet' },
+        { agent: 'verifier', expectedModel: 'sonnet' },
+        { agent: 'code-reviewer', expectedModel: 'opus' },
+        { agent: 'test-engineer', expectedModel: 'sonnet' }
       ];
 
       for (const testCase of testCases) {
@@ -264,7 +451,7 @@ describe('delegation-enforcer', () => {
         description: 'Test',
         prompt: 'Test',
         subagent_type: 'quality-reviewer',
-        model: 'high'
+        model: 'opus'
       };
 
       const result = processPreToolUse('Task', toolInput);
@@ -285,7 +472,7 @@ describe('delegation-enforcer', () => {
 
       const result = processPreToolUse('Agent', toolInput);
 
-      expect(result.modifiedInput).toHaveProperty('model', 'medium');
+      expect(result.modifiedInput).toHaveProperty('model', 'sonnet');
     });
 
     it('does not modify input when model already specified', () => {
@@ -293,7 +480,7 @@ describe('delegation-enforcer', () => {
         description: 'Test',
         prompt: 'Test',
         subagent_type: 'executor',
-        model: 'low'
+        model: 'haiku'
       };
 
       const result = processPreToolUse('Agent', toolInput);
@@ -302,7 +489,7 @@ describe('delegation-enforcer', () => {
       expect(result.warning).toBeUndefined();
     });
 
-    it('logs warning only when OMQ_DEBUG=true and model injected', () => {
+    it('logs warning only when OMC_DEBUG=true and model injected', () => {
       const toolInput: AgentInput = {
         description: 'Test',
         prompt: 'Test',
@@ -310,12 +497,12 @@ describe('delegation-enforcer', () => {
       };
 
       // Without debug
-      delete process.env.OMQ_DEBUG;
+      delete process.env.OMC_DEBUG;
       const resultWithoutDebug = processPreToolUse('Agent', toolInput);
       expect(resultWithoutDebug.warning).toBeUndefined();
 
       // With debug
-      process.env.OMQ_DEBUG = 'true';
+      process.env.OMC_DEBUG = 'true';
       const resultWithDebug = processPreToolUse('Agent', toolInput);
       expect(resultWithDebug.warning).toBeDefined();
     });
@@ -323,63 +510,71 @@ describe('delegation-enforcer', () => {
 
   describe('getModelForAgent', () => {
     it('returns correct model for agent with prefix', () => {
-      expect(getModelForAgent('oh-my-qoder:executor')).toBe('medium');
-      expect(getModelForAgent('oh-my-qoder:debugger')).toBe('medium');
-      expect(getModelForAgent('oh-my-qoder:architect')).toBe('high');
+      expect(getModelForAgent('oh-my-claudecode:executor')).toBe('sonnet');
+      expect(getModelForAgent('oh-my-claudecode:debugger')).toBe('sonnet');
+      expect(getModelForAgent('oh-my-claudecode:architect')).toBe('opus');
     });
 
     it('returns correct model for agent without prefix', () => {
-      expect(getModelForAgent('executor')).toBe('medium');
-      expect(getModelForAgent('debugger')).toBe('medium');
-      expect(getModelForAgent('architect')).toBe('high');
-      expect(getModelForAgent('build-fixer')).toBe('medium');
+      expect(getModelForAgent('executor')).toBe('sonnet');
+      expect(getModelForAgent('debugger')).toBe('sonnet');
+      expect(getModelForAgent('architect')).toBe('opus');
+      expect(getModelForAgent('build-fixer')).toBe('sonnet');
     });
 
     it('throws error for unknown agent', () => {
       expect(() => getModelForAgent('unknown')).toThrow('Unknown agent type');
+    });
+
+    it('guides namespaced bundled skills to the canonical Skill invocation (issue #3667 P2)', () => {
+      for (const skillType of ['oh-my-claudecode:plan', 'omc:plan']) {
+        expect(() => getModelForAgent(skillType)).toThrow(
+          'Skill(skill="oh-my-claudecode:omc-plan")',
+        );
+      }
     });
   });
 
   describe('deprecated alias routing', () => {
     it('routes api-reviewer to code-reviewer', () => {
       const result = resolveDelegation({ agentRole: 'api-reviewer' });
-      expect(result.provider).toBe('qwen');
+      expect(result.provider).toBe('claude');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('code-reviewer');
     });
 
     it('routes performance-reviewer to code-reviewer', () => {
       const result = resolveDelegation({ agentRole: 'performance-reviewer' });
-      expect(result.provider).toBe('qwen');
+      expect(result.provider).toBe('claude');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('code-reviewer');
     });
 
     it('routes dependency-expert to document-specialist', () => {
       const result = resolveDelegation({ agentRole: 'dependency-expert' });
-      expect(result.provider).toBe('qwen');
+      expect(result.provider).toBe('claude');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('document-specialist');
     });
 
     it('routes quality-strategist to code-reviewer', () => {
       const result = resolveDelegation({ agentRole: 'quality-strategist' });
-      expect(result.provider).toBe('qwen');
+      expect(result.provider).toBe('claude');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('code-reviewer');
     });
 
     it('routes vision to document-specialist', () => {
       const result = resolveDelegation({ agentRole: 'vision' });
-      expect(result.provider).toBe('qwen');
+      expect(result.provider).toBe('claude');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('document-specialist');
     });
   });
 
   describe('env-resolved agent defaults (issue #1415)', () => {
-    it('preserves DashScope provider-specific env IDs without auto-enabling forceInherit from tier env alone', () => {
-      process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'dashscope/qwen-plus';
+    it('preserves Bedrock family env IDs without auto-enabling forceInherit from tier env alone', () => {
+      process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -389,13 +584,13 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.model).toBe('dashscope/qwen-plus');
-      expect(result.modifiedInput.model).toBe('dashscope/qwen-plus');
+      expect(result.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
+      expect(result.modifiedInput.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
     });
 
-    it('preserves DashScope provider-specific env model IDs when forceInherit is explicitly disabled', () => {
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'false';
-      process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'dashscope/qwen-plus';
+    it('preserves Bedrock family env model IDs when forceInherit is explicitly disabled', () => {
+      process.env.OMC_ROUTING_FORCE_INHERIT = 'false';
+      process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -405,19 +600,19 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.model).toBe('dashscope/qwen-plus');
-      expect(result.modifiedInput.model).toBe('dashscope/qwen-plus');
+      expect(result.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
+      expect(result.modifiedInput.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
     });
 
-    it('getModelForAgent preserves provider-specific IDs from DashScope env vars', () => {
-      process.env.DASHSCOPE_DEFAULT_MAX_MODEL = 'dashscope/qwen-max';
-      expect(getModelForAgent('architect')).toBe('dashscope/qwen-max');
+    it('getModelForAgent preserves provider-specific IDs from Bedrock env vars', () => {
+      process.env.CLAUDE_CODE_BEDROCK_OPUS_MODEL = 'us.anthropic.claude-opus-4-6-v1:0';
+      expect(getModelForAgent('architect')).toBe('us.anthropic.claude-opus-4-6-v1:0');
     });
   });
 
   describe('modelAliases config override (issue #1211)', () => {
     const savedEnv: Record<string, string | undefined> = {};
-    const aliasEnvKeys = ['OMQ_MODEL_ALIAS_LOW', 'OMQ_MODEL_ALIAS_MEDIUM', 'OMQ_MODEL_ALIAS_HIGH'];
+    const aliasEnvKeys = ['OMC_MODEL_ALIAS_HAIKU', 'OMC_MODEL_ALIAS_SONNET', 'OMC_MODEL_ALIAS_OPUS', 'OMC_MODEL_ALIAS_FABLE'];
 
     beforeEach(() => {
       for (const key of aliasEnvKeys) {
@@ -436,59 +631,59 @@ describe('delegation-enforcer', () => {
       }
     });
 
-    it('remaps low-tier agents to inherit via env var', () => {
-      process.env.OMQ_MODEL_ALIAS_LOW = 'inherit';
+    it('remaps haiku agents to inherit via env var', () => {
+      process.env.OMC_MODEL_ALIAS_HAIKU = 'inherit';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'explore' // explore defaults to low
+        subagent_type: 'explore' // explore defaults to haiku
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('remaps low-tier agents to medium via env var', () => {
-      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
+    it('remaps haiku agents to sonnet via env var', () => {
+      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'explore' // explore defaults to low
+        subagent_type: 'explore' // explore defaults to haiku
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('medium');
-      expect(result.modifiedInput.model).toBe('medium');
+      expect(result.model).toBe('sonnet');
+      expect(result.modifiedInput.model).toBe('sonnet');
     });
 
     it('does not remap when no alias configured for the tier', () => {
-      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
-      // executor defaults to medium — no alias for medium
+      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
+      // executor defaults to sonnet — no alias for sonnet
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'executor'
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('medium');
-      expect(result.modifiedInput.model).toBe('medium');
+      expect(result.model).toBe('sonnet');
+      expect(result.modifiedInput.model).toBe('sonnet');
     });
 
     it('explicit model param takes priority over alias', () => {
-      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
+      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'explore',
-        model: 'high' // explicit param wins
+        model: 'opus' // explicit param wins
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('high');
-      expect(result.modifiedInput.model).toBe('high');
+      expect(result.model).toBe('opus');
+      expect(result.modifiedInput.model).toBe('opus');
     });
 
     it('forceInherit takes priority over alias', () => {
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
-      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
+      process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -499,12 +694,24 @@ describe('delegation-enforcer', () => {
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('remaps high-tier agents to inherit via env var', () => {
-      process.env.OMQ_MODEL_ALIAS_HIGH = 'inherit';
+    it('remaps opus agents to fable via env var (issue #3726)', () => {
+      process.env.OMC_MODEL_ALIAS_OPUS = 'fable';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'architect' // architect defaults to high
+        subagent_type: 'architect' // architect defaults to opus
+      };
+      const result = enforceModel(input);
+      expect(result.model).toBe('fable');
+      expect(result.modifiedInput.model).toBe('fable');
+    });
+
+    it('remaps opus agents to inherit via env var', () => {
+      process.env.OMC_MODEL_ALIAS_OPUS = 'inherit';
+      const input: AgentInput = {
+        description: 'Test task',
+        prompt: 'Do something',
+        subagent_type: 'architect' // architect defaults to opus
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
@@ -512,21 +719,21 @@ describe('delegation-enforcer', () => {
     });
 
     it('includes alias note in debug warning', () => {
-      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
-      process.env.OMQ_DEBUG = 'true';
+      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMC_DEBUG = 'true';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'explore'
       };
       const result = enforceModel(input);
-      expect(result.warning).toContain('aliased from low');
+      expect(result.warning).toContain('aliased from haiku');
     });
   });
 
   describe('non-Claude provider support (issue #1201)', () => {
     const savedEnv: Record<string, string | undefined> = {};
-    const envKeys = ['QODER_MODEL', 'DASHSCOPE_BASE_URL', 'OMQ_ROUTING_FORCE_INHERIT'];
+    const envKeys = ['CLAUDE_MODEL', 'ANTHROPIC_BASE_URL', 'OMC_ROUTING_FORCE_INHERIT'];
 
     beforeEach(() => {
       for (const key of envKeys) {
@@ -545,13 +752,13 @@ describe('delegation-enforcer', () => {
       }
     });
 
-    it('strips model when non-Qwen DASHSCOPE_MODEL auto-enables forceInherit', () => {
-      process.env.DASHSCOPE_MODEL = 'deepseek-v3';
+    it('strips model when Bedrock ARN auto-enables forceInherit', () => {
+      process.env.ANTHROPIC_MODEL = 'arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'medium'
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'sonnet'
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
@@ -559,26 +766,26 @@ describe('delegation-enforcer', () => {
     });
 
     it('strips model when non-Claude provider auto-enables forceInherit', () => {
-      process.env.QODER_MODEL = 'glm-5';
+      process.env.CLAUDE_MODEL = 'glm-5';
       // forceInherit is auto-enabled by loadConfig for non-Claude providers
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'medium'
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'sonnet'
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('strips model when custom DASHSCOPE_BASE_URL auto-enables forceInherit', () => {
-      process.env.DASHSCOPE_BASE_URL = 'https://my-proxy.example.com/v1';
+    it('strips model when custom ANTHROPIC_BASE_URL auto-enables forceInherit', () => {
+      process.env.ANTHROPIC_BASE_URL = 'https://my-proxy.example.com/v1';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:architect',
-        model: 'high'
+        subagent_type: 'oh-my-claudecode:architect',
+        model: 'opus'
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
@@ -589,12 +796,12 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'low'
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'haiku'
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('low');
-      expect(result.modifiedInput.model).toBe('low');
+      expect(result.model).toBe('haiku');
+      expect(result.modifiedInput.model).toBe('haiku');
     });
   });
 });

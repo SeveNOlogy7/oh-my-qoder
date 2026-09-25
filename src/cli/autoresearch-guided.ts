@@ -3,7 +3,6 @@ import { existsSync, lstatSync, mkdirSync, symlinkSync, unlinkSync, writeFileSyn
 import { mkdir, writeFile } from 'fs/promises';
 import { join, relative, resolve, sep } from 'path';
 import { homedir } from 'os';
-import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { createInterface } from 'readline/promises';
 import { type AutoresearchKeepPolicy, parseSandboxContract, slugifyMissionName } from '../autoresearch/contracts.js';
 import {
@@ -190,7 +189,7 @@ export async function runAutoresearchNoviceBridge(
         throw new Error('Research topic is required.');
       }
 
-      const evaluatorIntent = await promptWithDefault(io, '\nHow should OMQ judge success? Describe it in plain language', topic);
+      const evaluatorIntent = await promptWithDefault(io, '\nHow should OMC judge success? Describe it in plain language', topic);
       evaluatorCommand = await promptWithDefault(
         io,
         '\nEvaluator command (leave placeholder to refine further; must output {pass:boolean, score?:number} JSON before launch)',
@@ -255,7 +254,7 @@ export async function guidedAutoresearchSetupInference(
 
     const explicitEvaluator = await askQuestion(
       rl,
-      '\nOptional evaluator command (leave blank and OMQ will infer one if confidence is high)\n> ',
+      '\nOptional evaluator command (leave blank and OMC will infer one if confidence is high)\n> ',
     );
 
     const clarificationAnswers: string[] = [];
@@ -312,6 +311,7 @@ function resolveMissionRepoRoot(missionDir: string): string {
     cwd: missionDir,
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
   }).trim();
 }
 
@@ -331,7 +331,7 @@ export function spawnAutoresearchTmux(missionDir: string, slug: string): void {
     throw new Error('tmux is required for background autoresearch execution. Install tmux and try again.');
   }
 
-  const sessionName = `omq-autoresearch-${slug}`;
+  const sessionName = `omc-autoresearch-${slug}`;
 
   try {
     tmuxExec(['has-session', '-t', sessionName], { stripTmux: true, stdio: 'ignore' });
@@ -348,8 +348,8 @@ export function spawnAutoresearchTmux(missionDir: string, slug: string): void {
   }
 
   const repoRoot = resolveMissionRepoRoot(missionDir);
-  const omqPath = resolve(join(__dirname, '..', '..', 'bin', 'omq.js'));
-  const command = buildTmuxShellCommand(process.execPath, [omqPath, 'autoresearch', missionDir]);
+  const omcPath = resolve(join(__dirname, '..', '..', 'bin', 'omc.js'));
+  const command = buildTmuxShellCommand(process.execPath, [omcPath, 'autoresearch', missionDir]);
   const wrappedCommand = wrapWithLoginShell(command);
 
   tmuxExec(['new-session', '-d', '-s', sessionName, '-c', repoRoot, wrappedCommand], { stripTmux: true, stdio: 'ignore' });
@@ -408,9 +408,9 @@ export function spawnAutoresearchSetupTmux(repoRoot: string): void {
     throw new Error('tmux is required for autoresearch setup. Install tmux and try again.');
   }
 
-  const sessionName = `omq-autoresearch-setup-${Date.now().toString(36)}`;
+  const sessionName = `omc-autoresearch-setup-${Date.now().toString(36)}`;
   const codexHome = prepareAutoresearchSetupCodexHome(repoRoot, sessionName);
-  const claudeCommand = buildTmuxShellCommandWithEnv(qoderCliBinary(), [CLAUDE_BYPASS_FLAG], { CODEX_HOME: codexHome });
+  const claudeCommand = buildTmuxShellCommandWithEnv('claude', [CLAUDE_BYPASS_FLAG], { CODEX_HOME: codexHome });
   const wrappedClaudeCommand = wrapWithLoginShell(claudeCommand);
   const paneId = tmuxExec(
     ['new-session', '-d', '-P', '-F', '#{pane_id}', '-s', sessionName, '-c', repoRoot, wrappedClaudeCommand],

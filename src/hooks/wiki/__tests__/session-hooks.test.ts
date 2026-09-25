@@ -19,24 +19,24 @@ describe('Wiki Session Hooks', () => {
   beforeEach(async () => {
     tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-session-hooks-'));
     configDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-session-config-'));
-    originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
-    process.env.QODER_CONFIG_DIR = configDir;
+    originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = configDir;
   });
 
   afterEach(async () => {
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     }
 
     await fsp.rm(tempDir, { recursive: true, force: true });
     await fsp.rm(configDir, { recursive: true, force: true });
   });
 
-  it('respects autoCapture=false from the active QODER_CONFIG_DIR', () => {
+  it('respects autoCapture=false from the active CLAUDE_CONFIG_DIR', () => {
     fs.writeFileSync(
-      path.join(configDir, '.omq-config.json'),
+      path.join(configDir, '.omc-config.json'),
       JSON.stringify({ wiki: { autoCapture: false } }),
     );
 
@@ -58,23 +58,23 @@ describe('feedProjectMemory (environment.md)', () => {
   beforeEach(async () => {
     tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-pm-'));
     configDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-pm-config-'));
-    originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
-    process.env.QODER_CONFIG_DIR = configDir;
+    originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = configDir;
   });
 
   afterEach(async () => {
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     }
     await fsp.rm(tempDir, { recursive: true, force: true });
     await fsp.rm(configDir, { recursive: true, force: true });
   });
 
   function writeProjectMemory(memory: Record<string, unknown>): void {
-    const omqRoot = path.dirname(getWikiDir(tempDir));
-    fs.writeFileSync(path.join(omqRoot, 'project-memory.json'), JSON.stringify(memory));
+    const omcRoot = path.dirname(getWikiDir(tempDir));
+    fs.writeFileSync(path.join(omcRoot, 'project-memory.json'), JSON.stringify(memory));
   }
 
   it('creates environment.md from project-memory.json on session start', () => {
@@ -83,7 +83,7 @@ describe('feedProjectMemory (environment.md)', () => {
       lastScanned: '2026-01-01T00:00:00.000Z',
       techStack: {
         languages: [{ name: 'Java' }, { name: 'Kotlin' }],
-        frameworks: ['Spring'],
+        frameworks: [{ name: 'Spring' }, { name: 'Quarkus' }],
         packageManager: 'gradle',
       },
     });
@@ -93,6 +93,7 @@ describe('feedProjectMemory (environment.md)', () => {
     const env = readPage(tempDir, 'environment.md');
     expect(env).not.toBeNull();
     expect(env!.content).toContain('**Languages:** Java, Kotlin');
+    expect(env!.content).toContain('**Frameworks:** Spring, Quarkus');
     expect(env!.content).not.toContain('[object Object]');
   });
 
@@ -107,6 +108,19 @@ describe('feedProjectMemory (environment.md)', () => {
 
     const env = readPage(tempDir, 'environment.md');
     expect(env!.content).toContain('**Languages:** TypeScript, Go');
+  });
+
+  it('renders plain-string frameworks too', () => {
+    ensureWikiDir(tempDir);
+    writeProjectMemory({
+      lastScanned: '2026-01-01T00:00:00.000Z',
+      techStack: { frameworks: ['React', 'Express'] },
+    });
+
+    onSessionStart({ cwd: tempDir });
+
+    const env = readPage(tempDir, 'environment.md');
+    expect(env!.content).toContain('**Frameworks:** React, Express');
   });
 
   it('updates environment.md when project-memory is newer', () => {

@@ -29,7 +29,7 @@ export const ralplanAdapter: PipelineStageAdapter = {
   },
 
   getPrompt(context: PipelineContext): string {
-    const specPath = context.specPath || ".omq/autopilot/spec.md";
+    const specPath = context.specPath || ".omc/autopilot/spec.md";
     const planPath = context.planPath || resolveAutopilotPlanPath();
 
     if (context.config.planning === "ralplan") {
@@ -41,13 +41,13 @@ Your task: Expand the idea into a detailed spec and implementation plan using co
 
 ### Part 1: Idea Expansion (Spec Creation)
 
-${getExpansionPrompt(context.idea)}
+${getExpansionPrompt(context.idea, undefined, false)}
 
 ### Part 2: Consensus Planning
 
 After the spec is created at \`${specPath}\`, invoke the RALPLAN consensus workflow:
 
-Use the \`/oh-my-qoder:ralplan\` skill to create a consensus-driven implementation plan.
+Use the \`/oh-my-claudecode:ralplan\` skill to create a consensus-driven implementation plan.
 The plan should be saved to: \`${planPath}\`
 
 The RALPLAN process will:
@@ -73,7 +73,7 @@ Your task: Expand the idea into a spec and create an implementation plan.
 
 ### Part 1: Idea Expansion
 
-${getExpansionPrompt(context.idea)}
+${getExpansionPrompt(context.idea, undefined, false)}
 
 ### Part 2: Direct Planning
 

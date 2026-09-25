@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   VERSION,
-  QODER_CONFIG_DIR,
+  CLAUDE_CONFIG_DIR,
   AGENTS_DIR,
   COMMANDS_DIR,
   SKILLS_DIR,
   HOOKS_DIR,
   isRunningAsPlugin,
   isProjectScopedPlugin,
-  extractOmqVersionFromAgentsMd,
+  extractOmcVersionFromClaudeMd,
   syncPersistedSetupVersion,
 } from '../installer/index.js';
 import { getRuntimePackageVersion } from '../lib/version.js';
@@ -127,19 +127,19 @@ describe('Installer Constants', () => {
 
     it('should have consistent model assignments', () => {
       const modelExpectations: Record<string, string> = {
-        'architect.md': 'performance',
-        'executor.md': 'auto',
-        'designer.md': 'auto',
-        'writer.md': 'lite',
-        'critic.md': 'performance',
-        'analyst.md': 'performance',
-        'planner.md': 'performance',
-        'qa-tester.md': 'auto',
-        'debugger.md': 'auto',
-        'verifier.md': 'auto',
-        'test-engineer.md': 'auto',
-        'security-reviewer.md': 'performance',
-        'git-master.md': 'auto',
+        'architect.md': 'opus',
+        'executor.md': 'sonnet',
+        'designer.md': 'sonnet',
+        'writer.md': 'haiku',
+        'critic.md': 'opus',
+        'analyst.md': 'opus',
+        'planner.md': 'opus',
+        'qa-tester.md': 'sonnet',
+        'debugger.md': 'sonnet',
+        'verifier.md': 'sonnet',
+        'test-engineer.md': 'sonnet',
+        'security-reviewer.md': 'opus',
+        'git-master.md': 'sonnet',
       };
 
       for (const [filename, expectedModel] of Object.entries(modelExpectations)) {
@@ -155,8 +155,8 @@ describe('Installer Constants', () => {
 
         const modelMatch = content.match(/^model:\s+(\S+)/m);
         expect(modelMatch, `${filename} should declare a model alias`).toBeTruthy();
-        expect(modelMatch![1], `${filename} should use a tier alias`).toMatch(/^(performance|auto|lite)$/);
-        expect(content, `${filename} should not pin a literal Qwen model ID`).not.toMatch(/^model:\s+qwen-/m);
+        expect(modelMatch![1], `${filename} should use a tier alias`).toMatch(/^(opus|sonnet|haiku)$/);
+        expect(content, `${filename} should not pin a literal Claude model ID`).not.toMatch(/^model:\s+claude-/m);
       }
     });
 
@@ -167,14 +167,15 @@ describe('Installer Constants', () => {
     });
   });
 
-  describe('Qoder CLI plugin command wrappers', () => {
+  describe('Claude Code plugin command wrappers', () => {
     it('should ship package-root commands/*.md wrappers through plugin.json', () => {
       const packageDir = getPackageDir();
       const commandsDir = join(packageDir, 'commands');
       const pluginJson = JSON.parse(
-        readFileSync(join(packageDir, '.qoder-plugin', 'plugin.json'), 'utf-8')
+        readFileSync(join(packageDir, '.claude-plugin', 'plugin.json'), 'utf-8')
       ) as { commands?: unknown };
 
+      expect(pluginJson.commands).toBe('./commands/');
       expect(existsSync(commandsDir)).toBe(true);
 
       const files = readdirSync(commandsDir).filter(f => f.endsWith('.md'));
@@ -184,7 +185,7 @@ describe('Installer Constants', () => {
         const content = readFileSync(join(commandsDir, file), 'utf-8');
         if (file === 'compact.md') {
           expect(content, 'compact.md should avoid unsupported Skill compact invocation').not.toContain('Skill("compact")');
-          expect(content, 'compact.md should provide a manual native /compact handoff').toContain('bare Qoder CLI command');
+          expect(content, 'compact.md should provide a manual native /compact handoff').toContain('bare Claude Code command');
         } else {
           expect(content, `${file} should dispatch to a bundled skill`).toContain('SKILL.md');
         }
@@ -198,7 +199,7 @@ describe('Installer Constants', () => {
       const packageDir = getPackageDir();
       const commandsDir = join(packageDir, 'commands');
 
-      // commands/ now intentionally contains Qoder CLI plugin wrappers.
+      // commands/ now intentionally contains Claude Code plugin wrappers.
       const files = readdirSync(commandsDir).filter(f => f.endsWith('.md'));
       const selfReferentialStubs: string[] = [];
 
@@ -208,7 +209,7 @@ describe('Installer Constants', () => {
 
         // Detect pattern: command file that tells user to invoke the same-named skill
         const skillInvokePattern = new RegExp(
-          `/oh-my-qoder:${commandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+          `/oh-my-claudecode:${commandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
           'i'
         );
 
@@ -282,14 +283,20 @@ describe('Installer Constants', () => {
       expect(CLAUDE_MD_CONTENT).toContain('haiku');
       expect(CLAUDE_MD_CONTENT).toContain('sonnet');
       expect(CLAUDE_MD_CONTENT).toContain('opus');
+      // fable is a documented tier alias (issue #3738) and the session-model
+      // delegation contract must stay discoverable in the shipped file
+      expect(CLAUDE_MD_CONTENT).toContain('fable');
+      expect(CLAUDE_MD_CONTENT).toContain('session model');
+      expect(CLAUDE_MD_CONTENT).toContain('agents.<name>.model');
     });
 
     it('should document magic keywords and compatibility commands', () => {
       // Keywords are now in skill trigger columns
       // Check for key keywords in the skill tables
+      // ralph and ulw were retired in 5.0.0; canonical triggers remain documented.
       const keywords = [
-        'ralph',
-        'ulw',
+        'autopilot',
+        'ralplan',
         'plan',
       ];
 
@@ -340,31 +347,30 @@ describe('Installer Constants', () => {
       expect(VERSION).toBe(getRuntimePackageVersion());
     });
 
-    it('should have a valid OMQ version marker in docs/CLAUDE.md', () => {
-      const versionMatch = CLAUDE_MD_CONTENT.match(/<!-- OMQ:VERSION:([^\s]*?) -->/);
-      expect(versionMatch).toBeTruthy();
-      expect(versionMatch![1]).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+    it('should keep docs/CLAUDE.md version marker in sync with package version', () => {
+      const versionMatch = CLAUDE_MD_CONTENT.match(/<!-- OMC:VERSION:([^\s]*?) -->/);
+      expect(versionMatch?.[1]).toBe(VERSION);
     });
   });
 
 
-  describe('extractOmqVersionFromAgentsMd()', () => {
-    it('prefers the OMQ version marker', () => {
-      const content = `<!-- OMQ:VERSION:4.7.7 -->
-# oh-my-qoder - Intelligent Multi-Agent Orchestration`;
-      expect(extractOmqVersionFromAgentsMd(content)).toBe('v4.7.7');
+  describe('extractOmcVersionFromClaudeMd()', () => {
+    it('prefers the OMC version marker', () => {
+      const content = `<!-- OMC:VERSION:4.7.7 -->
+# oh-my-claudecode - Intelligent Multi-Agent Orchestration`;
+      expect(extractOmcVersionFromClaudeMd(content)).toBe('v4.7.7');
     });
 
     it('falls back to legacy heading versions', () => {
-      const content = '# oh-my-qoder v4.6.0 - Intelligent Multi-Agent Orchestration';
-      expect(extractOmqVersionFromAgentsMd(content)).toBe('v4.6.0');
+      const content = '# oh-my-claudecode v4.6.0 - Intelligent Multi-Agent Orchestration';
+      expect(extractOmcVersionFromClaudeMd(content)).toBe('v4.6.0');
     });
   });
 
   describe('syncPersistedSetupVersion()', () => {
     it('updates setupVersion for already-configured installs', () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'omq-installer-test-'));
-      const configPath = join(tempDir, '.omq-config.json');
+      const tempDir = mkdtempSync(join(tmpdir(), 'omc-installer-test-'));
+      const configPath = join(tempDir, '.omc-config.json');
       writeFileSync(configPath, JSON.stringify({ setupCompleted: '2026-03-03T17:59:08+09:00', setupVersion: 'v4.6.0' }, null, 2));
 
       const changed = syncPersistedSetupVersion({
@@ -380,8 +386,8 @@ describe('Installer Constants', () => {
     });
 
     it('does not create setupVersion for fresh installs by default', () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'omq-installer-test-'));
-      const configPath = join(tempDir, '.omq-config.json');
+      const tempDir = mkdtempSync(join(tmpdir(), 'omc-installer-test-'));
+      const configPath = join(tempDir, '.omc-config.json');
       writeFileSync(configPath, JSON.stringify({ hudEnabled: true }, null, 2));
 
       const changed = syncPersistedSetupVersion({
@@ -399,15 +405,15 @@ describe('Installer Constants', () => {
 
   describe('File Paths', () => {
     it('should define valid directory paths', () => {
-      expect(AGENTS_DIR).toBe(join(QODER_CONFIG_DIR, 'agents'));
-      expect(COMMANDS_DIR).toBe(join(QODER_CONFIG_DIR, 'commands'));
-      expect(SKILLS_DIR).toBe(join(QODER_CONFIG_DIR, 'skills'));
-      expect(HOOKS_DIR).toBe(join(QODER_CONFIG_DIR, 'hooks'));
+      expect(AGENTS_DIR).toBe(join(CLAUDE_CONFIG_DIR, 'agents'));
+      expect(COMMANDS_DIR).toBe(join(CLAUDE_CONFIG_DIR, 'commands'));
+      expect(SKILLS_DIR).toBe(join(CLAUDE_CONFIG_DIR, 'skills'));
+      expect(HOOKS_DIR).toBe(join(CLAUDE_CONFIG_DIR, 'hooks'));
     });
 
     it('should use absolute paths', () => {
       const paths = [
-        QODER_CONFIG_DIR,
+        CLAUDE_CONFIG_DIR,
         AGENTS_DIR,
         COMMANDS_DIR,
         SKILLS_DIR,
@@ -509,30 +515,30 @@ describe('Installer Constants', () => {
 
     beforeEach(() => {
       // Save original env var
-      originalEnv = process.env.QODER_PLUGIN_ROOT;
+      originalEnv = process.env.CLAUDE_PLUGIN_ROOT;
     });
 
     afterEach(() => {
       // Restore original env var
       if (originalEnv !== undefined) {
-        process.env.QODER_PLUGIN_ROOT = originalEnv;
+        process.env.CLAUDE_PLUGIN_ROOT = originalEnv;
       } else {
-        delete process.env.QODER_PLUGIN_ROOT;
+        delete process.env.CLAUDE_PLUGIN_ROOT;
       }
     });
 
-    it('should return false when QODER_PLUGIN_ROOT is not set', () => {
-      delete process.env.QODER_PLUGIN_ROOT;
+    it('should return false when CLAUDE_PLUGIN_ROOT is not set', () => {
+      delete process.env.CLAUDE_PLUGIN_ROOT;
       expect(isRunningAsPlugin()).toBe(false);
     });
 
-    it('should return true when QODER_PLUGIN_ROOT is set', () => {
-      process.env.QODER_PLUGIN_ROOT = '/home/user/.qoder/plugins/marketplaces/oh-my-qoder';
+    it('should return true when CLAUDE_PLUGIN_ROOT is set', () => {
+      process.env.CLAUDE_PLUGIN_ROOT = '/home/user/.claude/plugins/marketplaces/oh-my-claudecode';
       expect(isRunningAsPlugin()).toBe(true);
     });
 
     it('should detect plugin context from environment variable', () => {
-      process.env.QODER_PLUGIN_ROOT = '/any/path';
+      process.env.CLAUDE_PLUGIN_ROOT = '/any/path';
       expect(isRunningAsPlugin()).toBe(true);
     });
   });
@@ -541,48 +547,48 @@ describe('Installer Constants', () => {
     let originalEnv: string | undefined;
 
     beforeEach(() => {
-      originalEnv = process.env.QODER_PLUGIN_ROOT;
+      originalEnv = process.env.CLAUDE_PLUGIN_ROOT;
     });
 
     afterEach(() => {
       if (originalEnv !== undefined) {
-        process.env.QODER_PLUGIN_ROOT = originalEnv;
+        process.env.CLAUDE_PLUGIN_ROOT = originalEnv;
       } else {
-        delete process.env.QODER_PLUGIN_ROOT;
+        delete process.env.CLAUDE_PLUGIN_ROOT;
       }
     });
 
-    it('should return false when QODER_PLUGIN_ROOT is not set', () => {
-      delete process.env.QODER_PLUGIN_ROOT;
+    it('should return false when CLAUDE_PLUGIN_ROOT is not set', () => {
+      delete process.env.CLAUDE_PLUGIN_ROOT;
       expect(isProjectScopedPlugin()).toBe(false);
     });
 
     it('should return false for global plugin installation', () => {
-      // Global plugins are under ~/.qoder/plugins/
-      process.env.QODER_PLUGIN_ROOT = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omq', 'oh-my-qoder', '3.9.0');
+      // Global plugins are under ~/.claude/plugins/
+      process.env.CLAUDE_PLUGIN_ROOT = join(CLAUDE_CONFIG_DIR, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '3.9.0');
       expect(isProjectScopedPlugin()).toBe(false);
     });
 
     it('should return true for project-scoped plugin installation', () => {
-      // Project-scoped plugins are in the project's .qoder/plugins/ directory
-      process.env.QODER_PLUGIN_ROOT = '/home/user/myproject/.qoder/plugins/oh-my-qoder';
+      // Project-scoped plugins are in the project's .claude/plugins/ directory
+      process.env.CLAUDE_PLUGIN_ROOT = '/home/user/myproject/.claude/plugins/oh-my-claudecode';
       expect(isProjectScopedPlugin()).toBe(true);
     });
 
     it('should return true when plugin is outside global plugin directory', () => {
-      // Any path that's not under ~/.qoder/plugins/ is considered project-scoped
-      process.env.QODER_PLUGIN_ROOT = '/var/projects/app/.qoder/plugins/omq';
+      // Any path that's not under ~/.claude/plugins/ is considered project-scoped
+      process.env.CLAUDE_PLUGIN_ROOT = '/var/projects/app/.claude/plugins/omc';
       expect(isProjectScopedPlugin()).toBe(true);
     });
 
     it('should handle Windows-style paths', () => {
       // Windows paths with backslashes should be normalized
-      process.env.QODER_PLUGIN_ROOT = 'C:\\Users\\user\\project\\.qwen\\plugins\\omq';
+      process.env.CLAUDE_PLUGIN_ROOT = 'C:\\Users\\user\\project\\.claude\\plugins\\omc';
       expect(isProjectScopedPlugin()).toBe(true);
     });
 
     it('should handle trailing slashes in paths', () => {
-      process.env.QODER_PLUGIN_ROOT = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omq') + '/';
+      process.env.CLAUDE_PLUGIN_ROOT = join(CLAUDE_CONFIG_DIR, 'plugins', 'cache', 'omc') + '/';
       expect(isProjectScopedPlugin()).toBe(false);
     });
   });
@@ -654,7 +660,7 @@ describe('Installer Constants', () => {
       const libFiles = readdirSync(templatesLibDir);
 
       // Required lib files that must be present
-      const requiredFiles = ['stdin.mjs', 'atomic-write.mjs', 'config-dir.mjs', 'state-root.mjs', 'model-routing-override-message.mjs'];
+      const requiredFiles = ['stdin.mjs', 'atomic-write.mjs', 'config-dir.mjs', 'state-root.mjs', 'model-routing-override-message.mjs', 'bounded-git-timeout.mjs'];
       for (const file of requiredFiles) {
         expect(libFiles).toContain(file);
       }

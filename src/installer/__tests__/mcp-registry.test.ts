@@ -17,25 +17,25 @@ describe('unified MCP registry sync', () => {
   let testRoot: string;
   let claudeDir: string;
   let codexDir: string;
-  let omqDir: string;
+  let omcDir: string;
   let originalEnv: NodeJS.ProcessEnv;
   let originalPlatform: NodeJS.Platform;
 
   beforeEach(() => {
     originalEnv = { ...process.env };
     originalPlatform = process.platform;
-    testRoot = mkdtempSync(join(tmpdir(), 'omq-mcp-registry-'));
-    claudeDir = join(testRoot, '.qwen');
+    testRoot = mkdtempSync(join(tmpdir(), 'omc-mcp-registry-'));
+    claudeDir = join(testRoot, '.claude');
     codexDir = join(testRoot, '.codex');
-    omqDir = join(testRoot, '.omq');
+    omcDir = join(testRoot, '.omc');
 
     mkdirSync(claudeDir, { recursive: true });
     mkdirSync(codexDir, { recursive: true });
-    mkdirSync(omqDir, { recursive: true });
-    process.env.QODER_CONFIG_DIR = claudeDir;
-    process.env.CLAUDE_MCP_CONFIG_PATH = join(testRoot, '.qwen.json');
+    mkdirSync(omcDir, { recursive: true });
+    process.env.CLAUDE_CONFIG_DIR = claudeDir;
+    process.env.CLAUDE_MCP_CONFIG_PATH = join(testRoot, '.claude.json');
     process.env.CODEX_HOME = codexDir;
-    process.env.OMQ_HOME = omqDir;
+    process.env.OMC_HOME = omcDir;
   });
 
   afterEach(() => {
@@ -47,29 +47,7 @@ describe('unified MCP registry sync', () => {
     }
   });
 
-  // Patch-layer guard for src/installer/mcp-registry.ts: the root config file is
-  // named after the distribution (`~/.qoder-cn.json` on CN, `~/.qoder.json`
-  // otherwise). The cases below always pin CLAUDE_MCP_CONFIG_PATH, which bypasses
-  // that derivation entirely, so this one deliberately does not.
-  it('derives the root config path from a CN config dir', () => {
-    delete process.env.CLAUDE_MCP_CONFIG_PATH;
-    const cnRoot = join(testRoot, '.qoder-cn');
-    mkdirSync(cnRoot, { recursive: true });
-    process.env.QODER_CONFIG_DIR = cnRoot;
-
-    expect(getClaudeMcpConfigPath()).toBe(join(testRoot, '.qoder-cn.json'));
-  });
-
-  it('derives the root config path from an international config dir', () => {
-    delete process.env.CLAUDE_MCP_CONFIG_PATH;
-    const intlRoot = join(testRoot, '.qoder');
-    mkdirSync(intlRoot, { recursive: true });
-    process.env.QODER_CONFIG_DIR = intlRoot;
-
-    expect(getClaudeMcpConfigPath()).toBe(join(testRoot, '.qoder.json'));
-  });
-
-  it('bootstraps the registry from legacy Claude settings, migrates to .qwen.json, and syncs Codex config.toml', () => {
+  it('bootstraps the registry from legacy Claude settings, migrates to .claude.json, and syncs Codex config.toml', () => {
     const settings = {
       theme: 'dark',
       mcpServers: {
@@ -95,7 +73,7 @@ describe('unified MCP registry sync', () => {
     });
 
     const codexConfig = readFileSync(getCodexConfigPath(), 'utf-8');
-    expect(codexConfig).toContain('# BEGIN OMQ MANAGED MCP REGISTRY');
+    expect(codexConfig).toContain('# BEGIN OMC MANAGED MCP REGISTRY');
     expect(codexConfig).toContain('[mcp_servers.gitnexus]');
     expect(codexConfig).toContain('command = "gitnexus"');
     expect(codexConfig).toContain('args = ["mcp"]');
@@ -108,7 +86,7 @@ describe('unified MCP registry sync', () => {
       mcpServers: {
         team: {
           command: 'node',
-          args: ['${QODER_PLUGIN_ROOT}/bridge/team-mcp.cjs'],
+          args: ['${CLAUDE_PLUGIN_ROOT}/bridge/team-mcp.cjs'],
         },
         gitnexus: {
           command: 'gitnexus',
@@ -177,7 +155,7 @@ describe('unified MCP registry sync', () => {
   it('round-trips URL-based remote MCP entries through the unified registry sync', () => {
     const settings = {
       mcpServers: {
-        remoteOmq: {
+        remoteOmc: {
           url: 'https://lab.example.com/mcp',
           timeout: 30,
         },
@@ -187,7 +165,7 @@ describe('unified MCP registry sync', () => {
     const { settings: syncedSettings, result } = syncUnifiedMcpRegistryTargets(settings);
 
     expect(result.bootstrappedFromClaude).toBe(true);
-    expect(result.serverNames).toEqual(['remoteOmq']);
+    expect(result.serverNames).toEqual(['remoteOmc']);
     expect(syncedSettings).toEqual({});
 
     const registryPath = getUnifiedMcpRegistryPath();
@@ -197,14 +175,14 @@ describe('unified MCP registry sync', () => {
     });
 
     const codexConfig = readFileSync(getCodexConfigPath(), 'utf-8');
-    expect(codexConfig).toContain('[mcp_servers.remoteOmq]');
+    expect(codexConfig).toContain('[mcp_servers.remoteOmc]');
     expect(codexConfig).toContain('url = "https://lab.example.com/mcp"');
     expect(codexConfig).toContain('startup_timeout_sec = 30');
   });
 
-  it('preserves HTTP MCP headers from .qwen.json through registry, Claude rewrite, and Codex TOML', () => {
+  it('preserves HTTP MCP headers from .claude.json through registry, Claude rewrite, and Codex TOML', () => {
     const mcpServers = {
-      remoteOmq: {
+      remoteOmc: {
         url: 'https://lab.example.com/mcp',
         type: 'sse',
         headers: {
@@ -221,7 +199,7 @@ describe('unified MCP registry sync', () => {
     const { settings: syncedSettings, result } = syncUnifiedMcpRegistryTargets({ theme: 'dark' });
 
     expect(result.bootstrappedFromClaude).toBe(true);
-    expect(result.serverNames).toEqual(['remoteOmq']);
+    expect(result.serverNames).toEqual(['remoteOmc']);
     expect(syncedSettings).toEqual({ theme: 'dark' });
     expect(JSON.parse(readFileSync(getUnifiedMcpRegistryPath(), 'utf-8'))).toEqual(mcpServers);
     expect(JSON.parse(readFileSync(getClaudeMcpConfigPath(), 'utf-8'))).toEqual({
@@ -229,10 +207,10 @@ describe('unified MCP registry sync', () => {
     });
 
     const codexConfig = readFileSync(getCodexConfigPath(), 'utf-8');
-    expect(codexConfig).toContain('[mcp_servers.remoteOmq]');
+    expect(codexConfig).toContain('[mcp_servers.remoteOmc]');
     expect(codexConfig).toContain('url = "https://lab.example.com/mcp"');
     expect(codexConfig).toContain('type = "sse"');
-    expect(codexConfig).toContain('[mcp_servers.remoteOmq.headers]');
+    expect(codexConfig).toContain('[mcp_servers.remoteOmc.headers]');
     expect(codexConfig).toContain('Authorization = "Bearer test-token"');
     expect(codexConfig).toContain('X-Custom-Header = "custom-value"');
 
@@ -375,12 +353,12 @@ describe('unified MCP registry sync', () => {
       'command = "custom-local"',
       'args = ["serve"]',
       '',
-      '# BEGIN OMQ MANAGED MCP REGISTRY',
+      '# BEGIN OMC MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.old_registry]',
       'command = "legacy"',
       '',
-      '# END OMQ MANAGED MCP REGISTRY',
+      '# END OMC MANAGED MCP REGISTRY',
       '',
     ].join('\n');
 
@@ -430,8 +408,8 @@ describe('unified MCP registry sync', () => {
     expect(result.changed).toBe(true);
     expect(result.content.match(/\[mcp_servers\.atlassian\]/g)).toHaveLength(1);
     expect(result.content).toContain('[mcp_servers.storybook_local]');
-    expect(result.content).toContain('# BEGIN OMQ MANAGED MCP REGISTRY');
-    expect(result.content).toContain('# END OMQ MANAGED MCP REGISTRY');
+    expect(result.content).toContain('# BEGIN OMC MANAGED MCP REGISTRY');
+    expect(result.content).toContain('# END OMC MANAGED MCP REGISTRY');
 
     const second = syncCodexConfigToml(result.content, registry);
     expect(second.changed).toBe(false);
@@ -506,7 +484,7 @@ describe('unified MCP registry sync', () => {
   });
 
   it('removes previously managed Claude and Codex MCP entries when the registry becomes empty', () => {
-    writeFileSync(join(omqDir, 'mcp-registry-state.json'), JSON.stringify({ managedServers: ['gitnexus'] }, null, 2));
+    writeFileSync(join(omcDir, 'mcp-registry-state.json'), JSON.stringify({ managedServers: ['gitnexus'] }, null, 2));
     writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify({}, null, 2));
     writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({
       mcpServers: {
@@ -517,13 +495,13 @@ describe('unified MCP registry sync', () => {
     writeFileSync(getCodexConfigPath(), [
       'model = "gpt-5"',
       '',
-      '# BEGIN OMQ MANAGED MCP REGISTRY',
+      '# BEGIN OMC MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.gitnexus]',
       'command = "gitnexus"',
       'args = ["mcp"]',
       '',
-      '# END OMQ MANAGED MCP REGISTRY',
+      '# END OMC MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -555,18 +533,18 @@ describe('unified MCP registry sync', () => {
     }, null, 2));
     writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({
       mcpServers: {
-        gitnexus: { command: 'gitnexus', args: ['old'], timeout: 15 },
+        gitnexus: { command: 'gitnexus', args: ['wrong'] },
       },
     }, null, 2));
     mkdirSync(codexDir, { recursive: true });
     writeFileSync(getCodexConfigPath(), [
-      '# BEGIN OMQ MANAGED MCP REGISTRY',
+      '# BEGIN OMC MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.gitnexus]',
       'command = "gitnexus"',
       'args = ["wrong"]',
       '',
-      '# END OMQ MANAGED MCP REGISTRY',
+      '# END OMC MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -580,21 +558,21 @@ describe('unified MCP registry sync', () => {
 
   it('is idempotent when registry, Claude MCP root config, and Codex TOML already match', () => {
     writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify({
-      remoteOmq: { url: 'https://lab.example.com/mcp', timeout: 30 },
+      remoteOmc: { url: 'https://lab.example.com/mcp', timeout: 30 },
     }, null, 2));
     writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({
       mcpServers: {
-        remoteOmq: { url: 'https://lab.example.com/mcp', timeout: 30 },
+        remoteOmc: { url: 'https://lab.example.com/mcp', timeout: 30 },
       },
     }, null, 2));
     writeFileSync(getCodexConfigPath(), [
-      '# BEGIN OMQ MANAGED MCP REGISTRY',
+      '# BEGIN OMC MANAGED MCP REGISTRY',
       '',
-      '[mcp_servers.remoteOmq]',
+      '[mcp_servers.remoteOmc]',
       'url = "https://lab.example.com/mcp"',
       'startup_timeout_sec = 30',
       '',
-      '# END OMQ MANAGED MCP REGISTRY',
+      '# END OMC MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -606,12 +584,13 @@ describe('unified MCP registry sync', () => {
     expect(result.codexChanged).toBe(false);
   });
 
-  it('preserves existing .qwen.json server definitions when legacy settings still contain stale copies', () => {
+  it('preserves existing .claude.json server definitions when legacy settings still contain stale copies', () => {
     writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify({
       gitnexus: { command: 'gitnexus', args: ['mcp'] },
     }, null, 2));
     writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({
       mcpServers: {
+        gitnexus: { command: 'gitnexus', args: ['mcp'] },
         customLocal: { command: 'custom-local', args: ['serve'] },
       },
     }, null, 2));
@@ -634,7 +613,7 @@ describe('unified MCP registry sync', () => {
   });
 
 
-  it('respects explicit removal from ~/.qwen.json when legacy settings still contain a stale copy', () => {
+  it('respects explicit removal from ~/.claude.json when legacy settings still contain a stale copy', () => {
     writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify({
       gitnexus: { command: 'gitnexus', args: ['mcp'] },
     }, null, 2));
@@ -663,22 +642,22 @@ describe('unified MCP registry sync', () => {
 
   it('detects mismatched URL-based remote MCP definitions during doctor inspection', () => {
     writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify({
-      remoteOmq: { url: 'https://lab.example.com/mcp', timeout: 30 },
+      remoteOmc: { url: 'https://lab.example.com/mcp', timeout: 30 },
     }, null, 2));
     writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({
       mcpServers: {
-        remoteOmq: { url: 'https://old.example.com/mcp', timeout: 30 },
+        remoteOmc: { url: 'https://staging.example.com/mcp', timeout: 30 },
       },
     }, null, 2));
     mkdirSync(codexDir, { recursive: true });
     writeFileSync(getCodexConfigPath(), [
-      '# BEGIN OMQ MANAGED MCP REGISTRY',
+      '# BEGIN OMC MANAGED MCP REGISTRY',
       '',
-      '[mcp_servers.remoteOmq]',
+      '[mcp_servers.remoteOmc]',
       'url = "https://staging.example.com/mcp"',
       'startup_timeout_sec = 30',
       '',
-      '# END OMQ MANAGED MCP REGISTRY',
+      '# END OMC MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -686,13 +665,13 @@ describe('unified MCP registry sync', () => {
 
     expect(status.claudeMissing).toEqual([]);
     expect(status.codexMissing).toEqual([]);
-    expect(status.claudeMismatched).toEqual(['remoteOmq']);
-    expect(status.codexMismatched).toEqual(['remoteOmq']);
+    expect(status.claudeMismatched).toEqual(['remoteOmc']);
+    expect(status.codexMismatched).toEqual(['remoteOmc']);
   });
 
-  it('uses XDG config/state defaults when OMQ_HOME is unset on Linux', () => {
+  it('uses XDG config/state defaults when OMC_HOME is unset on Linux', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
-    delete process.env.OMQ_HOME;
+    delete process.env.OMC_HOME;
     process.env.HOME = testRoot;
     process.env.XDG_CONFIG_HOME = join(testRoot, '.config');
     process.env.XDG_STATE_HOME = join(testRoot, '.state');
@@ -706,19 +685,19 @@ describe('unified MCP registry sync', () => {
       },
     });
 
-    expect(result.registryPath).toBe(join(testRoot, '.config', 'omq', 'mcp-registry.json'));
-    expect(existsSync(join(testRoot, '.config', 'omq', 'mcp-registry.json'))).toBe(true);
-    expect(existsSync(join(testRoot, '.state', 'omq', 'mcp-registry-state.json'))).toBe(true);
+    expect(result.registryPath).toBe(join(testRoot, '.config', 'omc', 'mcp-registry.json'));
+    expect(existsSync(join(testRoot, '.config', 'omc', 'mcp-registry.json'))).toBe(true);
+    expect(existsSync(join(testRoot, '.state', 'omc', 'mcp-registry-state.json'))).toBe(true);
   });
 
-  it('falls back to legacy ~/.omq registry when the XDG registry does not exist', () => {
+  it('falls back to legacy ~/.omc registry when the XDG registry does not exist', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
-    delete process.env.OMQ_HOME;
+    delete process.env.OMC_HOME;
     process.env.HOME = testRoot;
     process.env.XDG_CONFIG_HOME = join(testRoot, '.config');
     process.env.XDG_STATE_HOME = join(testRoot, '.state');
 
-    const legacyRegistryDir = join(testRoot, '.omq');
+    const legacyRegistryDir = join(testRoot, '.omc');
     mkdirSync(legacyRegistryDir, { recursive: true });
     writeFileSync(join(legacyRegistryDir, 'mcp-registry.json'), JSON.stringify({
       gitnexus: { command: 'gitnexus', args: ['mcp'] },
@@ -729,5 +708,284 @@ describe('unified MCP registry sync', () => {
     expect(result.registryExists).toBe(true);
     expect(result.serverNames).toEqual(['gitnexus']);
     expect(result.bootstrappedFromClaude).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Issue #3601: Codex TOML literal-string parsing.
+  // `codex mcp add` writes TOML *literal* strings (single-quoted) on Windows.
+  // The parser previously accepted only *basic* strings (double-quoted), causing
+  // present MCP servers to be reported as `codexMissing`.
+  // ---------------------------------------------------------------------------
+
+  it('parses Codex TOML literal-string commands and args on Windows (issue #3601)', () => {
+    // Construct Windows paths with String.raw so actual backslashes survive.
+    // Include both \t and \n character-pair segments to prove byte fidelity.
+    const winCommand = String.raw`H:\tools\new\python.exe`;
+    const winArg = String.raw`H:\path\to\node\nserver.js`;
+
+    // Byte-safety assertion: the JS values contain literal backslashes, not control chars.
+    expect(winCommand).toBe('H:\\tools\\new\\python.exe');
+    expect(winArg).toBe('H:\\path\\to\\node\\nserver.js');
+    expect(winCommand).not.toContain('\t');
+    expect(winCommand).not.toContain('\n');
+    expect(winArg).not.toContain('\t');
+    expect(winArg).not.toContain('\n');
+
+    const registry = {
+      fred: { command: winCommand, args: [winArg, '--stdio'] },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    writeFileSync(getCodexConfigPath(), [
+      '[mcp_servers.fred]',
+      `command = '${winCommand}'`,
+      `args = ['${winArg}', '--stdio']`,
+      '',
+    ].join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+    expect(status.claudeMissing).toEqual([]);
+    expect(status.claudeMismatched).toEqual([]);
+  });
+
+  it('still accepts basic (double-quoted) strings including escaped quotes and backslashes', () => {
+    const registry = {
+      gitnexus: {
+        command: 'C:\\tools\\gitnexus.exe',
+        args: ['--config=C:\\data\\app.json', '--name="my server"'],
+      },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    writeFileSync(getCodexConfigPath(), [
+      '[mcp_servers.gitnexus]',
+      'command = "C:\\\\tools\\\\gitnexus.exe"',
+      'args = ["--config=C:\\\\data\\\\app.json", "--name=\\"my server\\""]',
+      '',
+    ].join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+  });
+
+  it('parses mixed literal and basic string arrays with delimiters and escapes', () => {
+    // Literal token contains comma, bracket, equals, hash, and backslash (delimiter-rich).
+    const literalRich = String.raw`C:\data\file,[name]=#.py`;
+    // Basic token has escaped quote and paired backslashes.
+    const basicEscaped = '--name="my, server"  \\path';
+
+    const registry = {
+      mixed: { command: 'python', args: [literalRich, basicEscaped] },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    writeFileSync(getCodexConfigPath(), [
+      '[mcp_servers.mixed]',
+      'command = "python"',
+      `args = ['${literalRich}', "${basicEscaped.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`,
+      '',
+    ].join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+  });
+
+  it('parses literal url, type, and nested header values (issue #3601)', () => {
+    const registry = {
+      remote: {
+        url: 'https://lab.example.com/mcp',
+        type: 'sse',
+        headers: { Authorization: 'Bearer test-token' },
+      },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    writeFileSync(getCodexConfigPath(), [
+      '[mcp_servers.remote]',
+      "url = 'https://lab.example.com/mcp'",
+      "type = 'sse'",
+      '',
+      '[mcp_servers.remote.headers]',
+      "Authorization = 'Bearer test-token'",
+      '',
+    ].join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+  });
+
+  it('rejects malformed literal arrays and does not accept valid prefixes (issue #3601)', () => {
+    // Poisoned args: each has a valid first member but is malformed after it.
+    // For each poisoned server, the registry args are the valid prefix ['prefix'].
+    // A command-only control uses the same malformed Codex args but has no registry args,
+    // so it should be NEITHER missing nor mismatched on correct rejection.
+
+    const poisonedCodexArgs: Record<string, string> = {
+      poison_trailing_garbage: `['prefix'] garbage`,
+      poison_missing_comma: `['prefix' '--stdio']`,
+      poison_non_string_member: `['prefix', 1]`,
+      poison_unterminated_quote: `['prefix', '--std`,
+      poison_triple_literal: `['prefix'''']`,
+      poison_embedded_apostrophe: `['pre'fix', '--stdio']`,
+      poison_odd_backslash: `["prefix\\", "--stdio"]`,
+      poison_nul_byte: `['pre\x00fix', '--stdio']`,
+    };
+
+    const registry: Record<string, { command: string; args: string[] }> = {};
+    const registryControl: Record<string, { command: string }> = {};
+    for (const name of Object.keys(poisonedCodexArgs)) {
+      registry[name] = { command: 'python', args: ['prefix'] };
+      registryControl[`${name}_control`] = { command: 'python' };
+    }
+
+    // Add a valid neighboring server to prove the fixture is not broadly broken.
+    registry.valid_neighbor = { command: 'node', args: ['server.js'] };
+
+    const fullRegistry = { ...registry, ...registryControl };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(fullRegistry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: fullRegistry }, null, 2));
+
+    const codexLines: string[] = [];
+    for (const [name, argsValue] of Object.entries(poisonedCodexArgs)) {
+      codexLines.push(`[mcp_servers.${name}]`, `command = 'python'`, `args = ${argsValue}`, '');
+      // Control carries the SAME malformed args so any non-empty parse mismatches it.
+      codexLines.push(`[mcp_servers.${name}_control]`, `command = 'python'`, `args = ${argsValue}`, '');
+    }
+    codexLines.push('[mcp_servers.valid_neighbor]', `command = 'node'`, `args = ['server.js']`, '');
+
+    writeFileSync(getCodexConfigPath(), codexLines.join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    // The valid neighbor should be clean.
+    expect(status.codexMissing).not.toContain('valid_neighbor');
+    expect(status.codexMismatched).not.toContain('valid_neighbor');
+
+    // Each poisoned server should be mismatched (its registry has args, Codex parsed args failed).
+    const expectedMismatched = Object.keys(poisonedCodexArgs).sort();
+    for (const name of expectedMismatched) {
+      expect(status.codexMismatched).toContain(name);
+      expect(status.codexMissing).not.toContain(name);
+    }
+
+    // Each command-only control should be clean (no args in registry, no args parsed from Codex).
+    for (const name of Object.keys(poisonedCodexArgs)) {
+      const controlName = `${name}_control`;
+      expect(status.codexMissing).not.toContain(controlName);
+      expect(status.codexMismatched).not.toContain(controlName);
+    }
+
+    // Exact status-array oracle: no poisoned server or control is missing,
+    // and the mismatched list is exactly the sorted poisoned-server names.
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual(expectedMismatched);
+  });
+
+  it('rejects arrays missing opening or closing brackets (issue #3601)', () => {
+    const registry = {
+      no_open: { command: 'python', args: ['prefix'] },
+      no_close: { command: 'python', args: ['prefix'] },
+    };
+    const registryControl = {
+      no_open_control: { command: 'python' },
+      no_close_control: { command: 'python' },
+    };
+
+    const fullRegistry = { ...registry, ...registryControl };
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(fullRegistry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: fullRegistry }, null, 2));
+    writeFileSync(getCodexConfigPath(), [
+      '[mcp_servers.no_open]',
+      "command = 'python'",
+      "args = 'prefix']",
+      '',
+      '[mcp_servers.no_open_control]',
+      "command = 'python'",
+      "args = 'prefix']",
+      '',
+      '[mcp_servers.no_close]',
+      "command = 'python'",
+      "args = ['prefix'",
+      '',
+      '[mcp_servers.no_close_control]',
+      "command = 'python'",
+      "args = ['prefix'",
+      '',
+    ].join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual(['no_close', 'no_open']);
+    expect(status.claudeMissing).toEqual([]);
+    expect(status.claudeMismatched).toEqual([]);
+  });
+
+  it('rejects physical multiline arrays (issue #3601)', () => {
+    const registry = {
+      multiline: { command: 'python', args: ['prefix', 'second'] },
+    };
+    const registryControl = {
+      multiline_control: { command: 'python' },
+    };
+
+    const fullRegistry = { ...registry, ...registryControl };
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(fullRegistry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: fullRegistry }, null, 2));
+    writeFileSync(getCodexConfigPath(), [
+      '[mcp_servers.multiline]',
+      "command = 'python'",
+      "args = ['prefix',",
+      "  'second']",
+      '',
+      '[mcp_servers.multiline_control]',
+      "command = 'python'",
+      "args = ['prefix',",
+      "  'second']",
+      '',
+    ].join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual(['multiline']);
+    expect(status.claudeMissing).toEqual([]);
+    expect(status.claudeMismatched).toEqual([]);
+  });
+
+  it('accepts TOML v1.0 trailing commas in literal arrays (issue #3601)', () => {
+    const registry = {
+      trailing: { command: 'python', args: ['first', 'second'] },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    writeFileSync(getCodexConfigPath(), [
+      '[mcp_servers.trailing]',
+      "command = 'python'",
+      "args = ['first', 'second',]",
+      '',
+    ].join('\n'));
+
+    const status = inspectUnifiedMcpRegistrySync();
+
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+    expect(status.claudeMissing).toEqual([]);
+    expect(status.claudeMismatched).toEqual([]);
   });
 });

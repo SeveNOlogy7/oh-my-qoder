@@ -3,7 +3,7 @@
  *
  * Mirrors OMX scripts/notify-hook/team-dispatch.js behavior exactly.
  *
- * Called on every leader hook tick. Workers skip (OMQ_TEAM_WORKER set).
+ * Called on every leader hook tick. Workers skip (OMC_TEAM_WORKER set).
  * Processes pending dispatch requests with:
  * - Hook-preferred transport only (skips transport_direct, prompt_stdin)
  * - Post-injection verification (3 rounds x 250ms)
@@ -18,7 +18,9 @@ import { existsSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { createSwallowedErrorLogger } from '../lib/swallowed-error.js';
 import { tmuxExecAsync } from '../cli/tmux-utils.js';
-import { getOmqRoot } from '../lib/worktree-paths.js';
+import { getOmcRoot } from '../lib/worktree-paths.js';
+import type { CliAgentType } from '../team/model-contract.js';
+import { isCliAgentType, paneLineLooksLikeIdlePrompt } from '../team/pane-readiness.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -48,9 +50,9 @@ async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
 
 const DISPATCH_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_ISSUE_DISPATCH_COOLDOWN_MS = 15 * 60 * 1000;
-const ISSUE_DISPATCH_COOLDOWN_ENV = 'OMQ_TEAM_DISPATCH_ISSUE_COOLDOWN_MS';
+const ISSUE_DISPATCH_COOLDOWN_ENV = 'OMC_TEAM_DISPATCH_ISSUE_COOLDOWN_MS';
 const DEFAULT_DISPATCH_TRIGGER_COOLDOWN_MS = 30 * 1000;
-const DISPATCH_TRIGGER_COOLDOWN_ENV = 'OMQ_TEAM_DISPATCH_TRIGGER_COOLDOWN_MS';
+const DISPATCH_TRIGGER_COOLDOWN_ENV = 'OMC_TEAM_DISPATCH_TRIGGER_COOLDOWN_MS';
 const LEADER_PANE_MISSING_DEFERRED_REASON = 'leader_pane_missing_deferred';
 const LEADER_NOTIFICATION_DEFERRED_TYPE = 'leader_notification_deferred';
 const INJECT_VERIFY_DELAY_MS = 250;
@@ -282,6 +284,30 @@ function defaultInjectTarget(
   return null;
 }
 
+type TargetProviderResolution =
+  | { ok: true; provider?: CliAgentType }
+  | { ok: false };
+
+function resolveTargetProvider(request: DispatchRequest, config: TeamConfig): TargetProviderResolution {
+  if (request.to_worker === 'leader-fixed' || !Array.isArray(config.workers)) return { ok: true };
+
+  const byName = config.workers.find((worker) => worker.name === request.to_worker);
+  const byPane = request.pane_id
+    ? config.workers.find((worker) => worker.pane_id === request.pane_id)
+    : undefined;
+  const byIndex = typeof request.worker_index === 'number'
+    ? config.workers.find((worker) => Number(worker.index) === request.worker_index)
+    : undefined;
+
+  const candidates = [byName, byPane, byIndex].filter((worker) => worker !== undefined);
+  const identitiesConflict = candidates.some((worker) => worker !== candidates[0]);
+  const cursorIdentityIncomplete = candidates.some((worker) => worker.worker_cli === 'cursor')
+    && (!byName || !byPane || !byIndex);
+  if (identitiesConflict || cursorIdentityIncomplete) return { ok: false };
+  if (!byName || !byPane || !byIndex) return { ok: true };
+  return isCliAgentType(byName.worker_cli) ? { ok: true, provider: byName.worker_cli } : { ok: true };
+}
+
 function normalizeCaptureText(value: string): string {
   return safeString(value).replace(/\r/g, '').replace(/\s+/g, ' ').trim();
 }
@@ -304,12 +330,13 @@ function capturedPaneContainsTriggerNearTail(captured: string, trigger: string, 
   return normalizeCaptureText(tail).includes(normalizedTrigger);
 }
 
-function paneHasActiveTask(captured: string): boolean {
+function paneHasActiveTask(captured: string, provider?: CliAgentType): boolean {
   const lines = safeString(captured)
     .split('\n')
     .map((line) => line.replace(/\r/g, '').trim())
     .filter((line) => line.length > 0);
   const tail = lines.slice(-40);
+  if (provider === 'cursor' && tail.some((line) => /ctrl\+c\s+to\s+stop/i.test(line))) return true;
   if (tail.some((line) => /\b\d+\s+background terminal running\b/i.test(line))) return true;
   if (tail.some((line) => /esc to interrupt/i.test(line))) return true;
   if (tail.some((line) => /\bbackground terminal running\b/i.test(line))) return true;
@@ -329,15 +356,7 @@ function paneIsBootstrapping(captured: string): boolean {
   );
 }
 
-function paneLineLooksLikeIdlePrompt(line: string): boolean {
-  // Qoder CLI can render its idle input prompt inside a box/left gutter
-  // (for example "│ ❯"). Treat that as ready while still requiring the prompt
-  // glyph to be at the visual start of the line, not embedded in arbitrary
-  // output text.
-  return /^\s*(?:[│┃║▌▐▏▕╎┆┊]\s*)?[›>❯]\s*/u.test(line);
-}
-
-function paneLooksReady(captured: string): boolean {
+function paneLooksReady(captured: string, provider?: CliAgentType): boolean {
   const content = safeString(captured).trimEnd();
   if (content === '') return false;
   const lines = content
@@ -346,8 +365,8 @@ function paneLooksReady(captured: string): boolean {
     .filter((line) => line.trim() !== '');
   if (paneIsBootstrapping(content)) return false;
   const lastLine = lines.length > 0 ? lines[lines.length - 1]! : '';
-  if (paneLineLooksLikeIdlePrompt(lastLine)) return true;
-  return lines.some(paneLineLooksLikeIdlePrompt);
+  if (paneLineLooksLikeIdlePrompt(lastLine, provider)) return true;
+  return lines.some((line) => paneLineLooksLikeIdlePrompt(line, provider));
 }
 
 async function runProcess(cmd: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
@@ -361,6 +380,9 @@ async function runProcess(cmd: string, args: string[], timeoutMs: number): Promi
 async function defaultInjector(request: DispatchRequest, config: TeamConfig, _cwd: string): Promise<InjectionResult> {
   const target = defaultInjectTarget(request, config);
   if (!target) return { ok: false, reason: 'missing_tmux_target' };
+  const providerResolution = resolveTargetProvider(request, config);
+  if (!providerResolution.ok) return { ok: false, reason: 'provider_identity_unverified' };
+  const targetProvider = providerResolution.provider;
 
   const paneTarget = target.value;
   try {
@@ -370,7 +392,7 @@ async function defaultInjector(request: DispatchRequest, config: TeamConfig, _cw
     }
   } catch { /* best effort */ }
 
-  // Qoder CLI v2.1.x sometimes swallows a single Enter during TUI state
+  // Claude Code v2.1.x sometimes swallows a single Enter during TUI state
   // transitions (input-handler bind race) — same root cause documented at
   // runtime-v2.ts:788-793 for the startup path. Send 2 Enters here too so
   // the dispatch path does not stall with the trigger text typed but never
@@ -415,10 +437,10 @@ async function defaultInjector(request: DispatchRequest, config: TeamConfig, _cw
       const narrowCap = await tmuxExecAsync(['capture-pane', '-t', paneTarget, '-p', '-S', '-8'], { timeout: 2000 });
       const wideCap = await tmuxExecAsync(['capture-pane', '-t', paneTarget, '-p'], { timeout: 2000 });
 
-      if (paneHasActiveTask(wideCap.stdout)) {
+      if (paneHasActiveTask(wideCap.stdout, targetProvider)) {
         return { ok: true, reason: 'tmux_send_keys_confirmed_active_task', pane: paneTarget };
       }
-      if (request.to_worker !== 'leader-fixed' && !paneLooksReady(wideCap.stdout)) {
+      if (request.to_worker !== 'leader-fixed' && !paneLooksReady(wideCap.stdout, targetProvider)) {
         continue;
       }
       const triggerInNarrow = capturedPaneContainsTrigger(narrowCap.stdout, request.trigger_message);
@@ -548,13 +570,13 @@ export async function drainPendingTeamDispatch(options: {
   injector?: Injector;
 } = { cwd: '' }): Promise<DrainResult> {
   const { cwd } = options;
-  const omqRoot = getOmqRoot(cwd);
-  const stateDir = options.stateDir ?? join(omqRoot, 'state');
-  const logsDir = options.logsDir ?? join(omqRoot, 'logs');
+  const omcRoot = getOmcRoot(cwd);
+  const stateDir = options.stateDir ?? join(omcRoot, 'state');
+  const logsDir = options.logsDir ?? join(omcRoot, 'logs');
   const maxPerTick = options.maxPerTick ?? 5;
   const injector = options.injector ?? defaultInjector;
 
-  if (safeString(process.env.OMQ_TEAM_WORKER)) {
+  if (safeString(process.env.OMC_TEAM_WORKER)) {
     return { processed: 0, skipped: 0, failed: 0, reason: 'worker_context' };
   }
   const teamRoot = join(stateDir, 'team');

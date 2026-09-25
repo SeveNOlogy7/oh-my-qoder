@@ -9,35 +9,35 @@ level: 2
 
 `psm` is the compatibility alias for this canonical skill entrypoint.
 
-> **Quick Start (worktree-first):** Start with `omq teleport` when you want an isolated issue/PR/feature worktree before adding any tmux/session orchestration:
+> **Quick Start (worktree-first):** Start with `omc teleport` when you want an isolated issue/PR/feature worktree before adding any tmux/session orchestration:
 > ```bash
-> omq teleport #123          # Create worktree for issue/PR
-> omq teleport my-feature    # Create worktree for feature
-> omq teleport list          # List worktrees
+> omc teleport #123          # Create worktree for issue/PR
+> omc teleport my-feature    # Create worktree for feature
+> omc teleport list          # List worktrees
 > ```
 > See [Teleport Command](#teleport-command) below for details.
 
-Automate isolated development environments using git worktrees and tmux sessions with Qoder CLI. Enables parallel work across multiple tasks, projects, and repositories.
+Automate isolated development environments using git worktrees and tmux sessions with Claude Code. Enables parallel work across multiple tasks, projects, and repositories.
 
-Canonical slash command: `/oh-my-qoder:project-session-manager` (alias: `/oh-my-qoder:psm`).
+Canonical slash command: `/oh-my-claudecode:project-session-manager` (alias: `/oh-my-claudecode:psm`).
 
 ## Commands
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `review <ref>` | PR review session | `/psm review omq#123` |
-| `fix <ref>` | Issue fix session | `/psm fix omq#42` |
-| `feature <proj> <name>` | Feature development | `/psm feature omq add-webhooks` |
+| `review <ref>` | PR review session | `/psm review omc#123` |
+| `fix <ref>` | Issue fix session | `/psm fix omc#42` |
+| `feature <proj> <name>` | Feature development | `/psm feature omc add-webhooks` |
 | `list [project]` | List active sessions | `/psm list` |
-| `attach <session>` | Attach to session | `/psm attach omq:pr-123` |
-| `kill <session>` | Kill session | `/psm kill omq:pr-123` |
+| `attach <session>` | Attach to session | `/psm attach omc:pr-123` |
+| `kill <session>` | Kill session | `/psm kill omc:pr-123` |
 | `cleanup` | Clean merged/closed | `/psm cleanup` |
 | `status` | Current session info | `/psm status` |
 
 ## Project References
 
 Supported formats:
-- **Alias**: `omq#123` (requires `~/.psm/projects.json`)
+- **Alias**: `omc#123` (requires `~/.psm/projects.json`)
 - **Full**: `owner/repo#123`
 - **URL**: `https://github.com/owner/repo/pull/123`
 - **Current**: `#123` (uses current directory's repo)
@@ -49,9 +49,9 @@ Supported formats:
 ```json
 {
   "aliases": {
-    "omq": {
-      "repo": "qoder-plugins/oh-my-qoder",
-      "local": "~/Workspace/oh-my-qoder",
+    "omc": {
+      "repo": "Yeachan-Heo/oh-my-claudecode",
+      "local": "~/Workspace/oh-my-claudecode",
       "default_base": "main"
     }
   },
@@ -154,11 +154,18 @@ The Jira CLI handles authentication separately from PSM.
 
 ## Session Naming
 
-| Type | Tmux Session | Worktree Dir |
-|------|--------------|--------------|
-| PR Review | `psm:omq:pr-123` | `~/.psm/worktrees/omq/pr-123` |
-| Issue Fix | `psm:omq:issue-42` | `~/.psm/worktrees/omq/issue-42` |
-| Feature | `psm:omq:feat-auth` | `~/.psm/worktrees/omq/feat-auth` |
+The **public session ID** (colon form, e.g. `omc:pr-123`) is the human-facing
+identifier stored in `sessions.json` and used with `psm attach`/`psm kill`. tmux
+reserves `:` and `.` for its `session:window.pane` target syntax and silently
+rewrites them, so the **actual tmux session name** uses a tmux-safe form where
+those characters become `_` (issue #3528). PSM translates the public ID to the
+tmux-safe name at every tmux boundary; attach directly with the tmux-safe name.
+
+| Type | Public ID (`psm attach`/`kill`) | Tmux Session (`tmux attach -t`) | Worktree Dir |
+|------|---------------------------------|---------------------------------|--------------|
+| PR Review | `omc:pr-123` | `psm_omc_pr-123` | `~/.psm/worktrees/omc/pr-123` |
+| Issue Fix | `omc:issue-42` | `psm_omc_issue-42` | `~/.psm/worktrees/omc/issue-42` |
+| Feature | `omc:feat-auth` | `psm_omc_feat-auth` | `~/.psm/worktrees/omc/feat-auth` |
 
 ---
 
@@ -224,7 +231,7 @@ Parse `{{ARGUMENTS}}` to determine:
      "branch": "<head_branch>",
      "base": "<base_branch>",
      "created_at": "$(date -Iseconds)",
-     "tmux_session": "psm:$project_alias:pr-$pr_number",
+     "tmux_session": "psm_${project_alias}_pr-$pr_number",
      "worktree_path": "$worktree_path",
      "source_repo": "$local_path",
      "github": {
@@ -243,21 +250,21 @@ Parse `{{ARGUMENTS}}` to determine:
    # Add to ~/.psm/sessions.json
    ```
 
-7. **Create tmux session**:
+7. **Create tmux session** (tmux-safe name; `:`/`.` are translated to `_`):
    ```bash
-   tmux new-session -d -s "psm:$project_alias:pr-$pr_number" -c "$worktree_path"
+   tmux new-session -d -s "psm_${project_alias}_pr-$pr_number" -c "$worktree_path"
    ```
 
-8. **Launch Qoder CLI** (unless --no-claude):
+8. **Launch Claude Code** (unless --no-claude):
    ```bash
    # --dangerously-skip-permissions prevents the "Do you trust this directory?" prompt
    # and repeated tool-approval prompts from stalling the session (issue #2508).
-   tmux send-keys -t "psm:$project_alias:pr-$pr_number" "claude --dangerously-skip-permissions" Enter
+   tmux send-keys -t "psm_${project_alias}_pr-$pr_number" "claude --dangerously-skip-permissions" Enter
 
    # After claude boots (PSM_CLAUDE_STARTUP_DELAY, default 5s), deliver the task.
    # Use -l (literal) so special characters are not misinterpreted by tmux.
    sleep "${PSM_CLAUDE_STARTUP_DELAY:-5}"
-   tmux send-keys -t "psm:$project_alias:pr-$pr_number" -l \
+   tmux send-keys -t "psm_${project_alias}_pr-$pr_number" -l \
      "Review PR #$pr_number: \"$pr_title\" by @$pr_author ($head_branch → $base_branch). URL: $pr_url." Enter
    ```
 
@@ -265,11 +272,11 @@ Parse `{{ARGUMENTS}}` to determine:
    ```
    Session ready!
 
-     ID: omq:pr-123
-     Worktree: ~/.psm/worktrees/omq/pr-123
-     Tmux: psm:omq:pr-123
+     ID: omc:pr-123
+     Worktree: ~/.psm/worktrees/omc/pr-123
+     Tmux: psm_omc_pr-123
 
-   To attach: tmux attach -t psm:omq:pr-123
+   To attach: tmux attach -t psm_omc_pr-123   (or: psm attach omc:pr-123)
    ```
 
 ### Subcommand: `fix <ref>`
@@ -304,9 +311,9 @@ Parse `{{ARGUMENTS}}` to determine:
 6. **Update registry, create tmux, launch claude**:
    Same as review, but pass issue context as the initial task prompt:
    ```bash
-   tmux send-keys -t "psm:$project_alias:issue-$issue_number" "claude --dangerously-skip-permissions" Enter
+   tmux send-keys -t "psm_${project_alias}_issue-$issue_number" "claude --dangerously-skip-permissions" Enter
    # After claude boots, deliver the task (see PSM_CLAUDE_STARTUP_DELAY):
-   tmux send-keys -t "psm:$project_alias:issue-$issue_number" -l \
+   tmux send-keys -t "psm_${project_alias}_issue-$issue_number" -l \
      "Fix issue #$issue_number: \"$issue_title\". URL: $issue_url. Branch: $branch_name." Enter
    ```
 
@@ -334,8 +341,8 @@ Parse `{{ARGUMENTS}}` to determine:
 
 4. **Create session, tmux, launch claude** with feature context as initial prompt:
    ```bash
-   tmux send-keys -t "psm:$project_alias:feat-$feature_name" "claude --dangerously-skip-permissions" Enter
-   tmux send-keys -t "psm:$project_alias:feat-$feature_name" -l \
+   tmux send-keys -t "psm_${project_alias}_feat-$feature_name" "claude --dangerously-skip-permissions" Enter
+   tmux send-keys -t "psm_${project_alias}_feat-$feature_name" -l \
      "Implement feature \"$feature_name\" for project $project. Branch: $branch_name." Enter
    ```
 
@@ -352,7 +359,7 @@ Parse `{{ARGUMENTS}}` to determine:
 
 2. **Check tmux sessions**:
    ```bash
-   tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^psm:"
+   tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^psm_"
    ```
 
 3. **Check worktrees**:
@@ -366,8 +373,8 @@ Parse `{{ARGUMENTS}}` to determine:
 
    ID                 | Type    | Status   | Worktree
    -------------------|---------|----------|---------------------------
-   omq:pr-123        | review  | active   | ~/.psm/worktrees/omq/pr-123
-   omq:issue-42      | fix     | detached | ~/.psm/worktrees/omq/issue-42
+   omc:pr-123        | review  | active   | ~/.psm/worktrees/omc/pr-123
+   omc:issue-42      | fix     | detached | ~/.psm/worktrees/omc/issue-42
    ```
 
 ### Subcommand: `attach <session>`
@@ -380,12 +387,12 @@ Parse `{{ARGUMENTS}}` to determine:
 
 2. **Verify session exists**:
    ```bash
-   tmux has-session -t "psm:$session_id" 2>/dev/null
+   tmux has-session -t "psm_${session_id//[.:]/_}" 2>/dev/null   # translate public id to tmux-safe name
    ```
 
 3. **Attach**:
    ```bash
-   tmux attach -t "psm:$session_id"
+   tmux attach -t "psm_${session_id//[.:]/_}"
    ```
 
 ### Subcommand: `kill <session>`
@@ -396,7 +403,7 @@ Parse `{{ARGUMENTS}}` to determine:
 
 1. **Kill tmux session**:
    ```bash
-   tmux kill-session -t "psm:$session_id" 2>/dev/null
+   tmux kill-session -t "psm_${session_id//[.:]/_}" 2>/dev/null
    ```
 
 2. **Remove worktree**:
@@ -439,9 +446,9 @@ Parse `{{ARGUMENTS}}` to determine:
 5. **Report**:
    ```
    Cleanup complete:
-     Removed: omq:pr-123 (merged)
-     Removed: omq:issue-42 (closed)
-     Kept: omq:feat-auth (active)
+     Removed: omc:pr-123 (merged)
+     Removed: omc:issue-42 (closed)
+     Kept: omc:feat-auth (active)
    ```
 
 ### Subcommand: `status`
@@ -463,7 +470,7 @@ Parse `{{ARGUMENTS}}` to determine:
 
 3. **Show status**:
    ```
-   Current Session: omq:pr-123
+   Current Session: omc:pr-123
    Type: review
    PR: #123 - Add webhook support
    Branch: feature/webhooks
@@ -483,25 +490,25 @@ Parse `{{ARGUMENTS}}` to determine:
 
 ## Teleport Command
 
-The `omq teleport` command provides a lightweight alternative to full PSM sessions. It creates git worktrees without tmux session management — ideal for quick, isolated development.
+The `omc teleport` command provides a lightweight alternative to full PSM sessions. It creates git worktrees without tmux session management — ideal for quick, isolated development.
 
 ### Usage
 
 ```bash
 # Create worktree for an issue or PR
-omq teleport #123
-omq teleport owner/repo#123
-omq teleport https://github.com/owner/repo/issues/42
+omc teleport #123
+omc teleport owner/repo#123
+omc teleport https://github.com/owner/repo/issues/42
 
 # Create worktree for a feature
-omq teleport my-feature
+omc teleport my-feature
 
 # List existing worktrees
-omq teleport list
+omc teleport list
 
 # Remove a worktree
-omq teleport remove issue/my-repo-123
-omq teleport remove --force feat/my-repo-my-feature
+omc teleport remove issue/my-repo-123
+omc teleport remove --force feat/my-repo-my-feature
 ```
 
 ### Options
@@ -509,14 +516,14 @@ omq teleport remove --force feat/my-repo-my-feature
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--worktree` | Create worktree (default, kept for compatibility) | `true` |
-| `--path <path>` | Custom worktree root directory | `~/Workspace/omq-worktrees/` |
+| `--path <path>` | Custom worktree root directory | `~/Workspace/omc-worktrees/` |
 | `--base <branch>` | Base branch to create from | `main` |
 | `--json` | Output as JSON | `false` |
 
 ### Worktree Layout
 
 ```
-~/Workspace/omq-worktrees/
+~/Workspace/omc-worktrees/
 ├── issue/
 │   └── my-repo-123/        # Issue worktrees
 ├── pr/
@@ -531,7 +538,7 @@ omq teleport remove --force feat/my-repo-my-feature
 |---------|-----|----------|
 | Git worktree | Yes | Yes |
 | Tmux session | Yes | No |
-| Qoder CLI launch | Yes | No |
+| Claude Code launch | Yes | No |
 | Session registry | Yes | No |
 | Auto-cleanup | Yes | No |
 | Project aliases | Yes | No (uses current repo) |
@@ -563,9 +570,9 @@ if [[ ! -f ~/.psm/projects.json ]]; then
   cat > ~/.psm/projects.json << 'EOF'
 {
   "aliases": {
-    "omq": {
-      "repo": "qoder-plugins/oh-my-qoder",
-      "local": "~/Workspace/oh-my-qoder",
+    "omc": {
+      "repo": "Yeachan-Heo/oh-my-claudecode",
+      "local": "~/Workspace/oh-my-claudecode",
       "default_base": "main"
     }
   },

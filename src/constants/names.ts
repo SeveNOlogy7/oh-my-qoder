@@ -10,7 +10,6 @@ export const MODES = {
   AUTOPILOT: 'autopilot',
   RALPH: 'ralph',
   ULTRAWORK: 'ultrawork',
-  ULTRAQA: 'ultraqa',
   TEAM: 'team',
   RALPLAN: 'ralplan',
 } as const;
@@ -29,10 +28,10 @@ export const TOOL_CATEGORIES = {
   INTEROP: 'interop',
   CODEX: 'codex',
   GEMINI: 'gemini',
+  ANTIGRAVITY: 'antigravity',
   SHARED_MEMORY: 'shared-memory',
   DEEPINIT: 'deepinit',
   WIKI: 'wiki',
-  TEAM: 'team',
 } as const;
 export type ToolCategory = typeof TOOL_CATEGORIES[keyof typeof TOOL_CATEGORIES];
 

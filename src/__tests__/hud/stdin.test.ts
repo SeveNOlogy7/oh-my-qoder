@@ -261,21 +261,21 @@ describe('HUD stdin model display', () => {
   it('prefers the official display_name over the raw model id', () => {
     const stdin = makeStdin({
       model: {
-        id: 'qwen-plus-20250929',
-        display_name: 'Qwen Plus',
+        id: 'claude-sonnet-4-5-20250929',
+        display_name: 'Claude Sonnet 4.5',
       },
     });
 
-    expect(getModelName(stdin)).toBe('Qwen Plus');
-    expect(getModelId(stdin)).toBe('qwen-plus-20250929');
+    expect(getModelName(stdin)).toBe('Claude Sonnet 4.5');
+    expect(getModelId(stdin)).toBe('claude-sonnet-4-5-20250929');
   });
 
   it('falls back to the raw model id when display_name is unavailable', () => {
     expect(getModelName(makeStdin({
       model: {
-        id: 'qwen-plus-20250929',
+        id: 'claude-sonnet-4-5-20250929',
       },
-    }))).toBe('qwen-plus-20250929');
+    }))).toBe('claude-sonnet-4-5-20250929');
   });
 
   it('returns null when stdin omits the model block', () => {
@@ -334,21 +334,35 @@ describe('HUD stdin rate limits', () => {
 
     expect(result).toEqual({
       fiveHourPercent: 100,
-      weeklyPercent: undefined,
       fiveHourResetsAt: null,
+    });
+  });
+
+  it('does not synthesize a 5h bucket when stdin only includes seven_day', () => {
+    const result = getRateLimitsFromStdin(makeStdin({
+      rate_limits: {
+        seven_day: {
+          used_percentage: 2,
+        },
+      },
+    }));
+
+    expect(result).toEqual({
+      weeklyPercent: 2,
       weeklyResetsAt: null,
     });
+    expect(result!.fiveHourPercent).toBeUndefined();
   });
 });
 
 describe('HUD stdin cache path is session-scoped', () => {
   let tmpRoot: string;
   let originalCwd: string;
-  const envKeys = ['QODER_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
+  const envKeys = ['CLAUDE_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
   const savedEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(join(tmpdir(), 'omq-hud-stdin-cache-'));
+    tmpRoot = mkdtempSync(join(tmpdir(), 'omc-hud-stdin-cache-'));
     // Make a real git repo so getWorktreeRoot() (which shells out to git
     // rev-parse) deterministically returns tmpRoot instead of leaking into
     // the surrounding workspace.
@@ -373,13 +387,13 @@ describe('HUD stdin cache path is session-scoped', () => {
     rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  it('writes to a session-scoped path when QODER_SESSION_ID is set', () => {
-    process.env.QODER_SESSION_ID = 'test-session-aaa';
+  it('writes to a session-scoped path when CLAUDE_SESSION_ID is set', () => {
+    process.env.CLAUDE_SESSION_ID = 'test-session-aaa';
     const stdin = makeStdin({ cwd: tmpRoot });
 
     writeStdinCache(stdin);
 
-    const expected = join(tmpRoot, '.omq', 'state', 'sessions', 'test-session-aaa', 'hud-stdin-cache.json');
+    const expected = join(tmpRoot, '.omc', 'state', 'sessions', 'test-session-aaa', 'hud-stdin-cache.json');
     expect(existsSync(expected)).toBe(true);
     const loaded = JSON.parse(readFileSync(expected, 'utf-8')) as StatuslineStdin;
     expect(loaded.cwd).toBe(tmpRoot);
@@ -390,9 +404,9 @@ describe('HUD stdin cache path is session-scoped', () => {
 
     writeStdinCache(stdin);
 
-    const expected = join(tmpRoot, '.omq', 'state', 'hud-stdin-cache.json');
+    const expected = join(tmpRoot, '.omc', 'state', 'hud-stdin-cache.json');
     expect(existsSync(expected)).toBe(true);
-    const sessionScoped = join(tmpRoot, '.omq', 'state', 'sessions');
+    const sessionScoped = join(tmpRoot, '.omc', 'state', 'sessions');
     expect(existsSync(sessionScoped)).toBe(false);
   });
 
@@ -402,35 +416,35 @@ describe('HUD stdin cache path is session-scoped', () => {
 
     writeStdinCache(stdin);
 
-    const expected = join(tmpRoot, '.omq', 'state', 'sessions', 'test-session-bbb', 'hud-stdin-cache.json');
+    const expected = join(tmpRoot, '.omc', 'state', 'sessions', 'test-session-bbb', 'hud-stdin-cache.json');
     expect(existsSync(expected)).toBe(true);
   });
 
   it('prevents two concurrent sessions from clobbering each other', () => {
-    process.env.QODER_SESSION_ID = 'session-alpha';
+    process.env.CLAUDE_SESSION_ID = 'session-alpha';
     const alpha = makeStdin({ cwd: tmpRoot, transcript_path: `${tmpRoot}/alpha.jsonl` });
     writeStdinCache(alpha);
 
-    process.env.QODER_SESSION_ID = 'session-beta';
+    process.env.CLAUDE_SESSION_ID = 'session-beta';
     const beta = makeStdin({ cwd: tmpRoot, transcript_path: `${tmpRoot}/beta.jsonl` });
     writeStdinCache(beta);
 
     // Reading back from each session must return its own snapshot.
-    process.env.QODER_SESSION_ID = 'session-alpha';
+    process.env.CLAUDE_SESSION_ID = 'session-alpha';
     expect(readStdinCache()?.transcript_path).toBe(`${tmpRoot}/alpha.jsonl`);
 
-    process.env.QODER_SESSION_ID = 'session-beta';
+    process.env.CLAUDE_SESSION_ID = 'session-beta';
     expect(readStdinCache()?.transcript_path).toBe(`${tmpRoot}/beta.jsonl`);
   });
 
   it('readStdinCache ignores a legacy flat file when a session id is set', () => {
-    const stateDir = join(tmpRoot, '.omq', 'state');
+    const stateDir = join(tmpRoot, '.omc', 'state');
     mkdirSync(stateDir, { recursive: true });
     // Simulate a stale legacy cache written by an older build.
     const legacy = makeStdin({ cwd: '/legacy/cwd' });
     writeFileSync(join(stateDir, 'hud-stdin-cache.json'), JSON.stringify(legacy));
 
-    process.env.QODER_SESSION_ID = 'fresh-session';
+    process.env.CLAUDE_SESSION_ID = 'fresh-session';
     // Without a session file yet, read should miss rather than return the
     // legacy (cross-session) value.
     expect(readStdinCache()).toBeNull();
@@ -452,14 +466,14 @@ describe('HUD stdin cache path is session-scoped', () => {
     ['backslash (Windows traversal)', 'foo\\bar'],
     ['leading underscore (regex first-char violation)', '_foo'],
     ['overlong id (>256 chars)', 'a'.repeat(300)],
-  ])('rejects unsafe QODER_SESSION_ID (%s) and falls back to the legacy path', (_label, unsafeId) => {
-    process.env.QODER_SESSION_ID = unsafeId;
+  ])('rejects unsafe CLAUDE_SESSION_ID (%s) and falls back to the legacy path', (_label, unsafeId) => {
+    process.env.CLAUDE_SESSION_ID = unsafeId;
     const stdin = makeStdin({ cwd: tmpRoot });
 
     writeStdinCache(stdin);
 
     // Nothing may be written to the session-scoped tree at all.
-    const sessionsDir = join(tmpRoot, '.omq', 'state', 'sessions');
+    const sessionsDir = join(tmpRoot, '.omc', 'state', 'sessions');
     expect(existsSync(sessionsDir)).toBe(false);
 
     // And in particular, nothing outside the intended state dir.
@@ -467,54 +481,54 @@ describe('HUD stdin cache path is session-scoped', () => {
     expect(existsSync(etcProbe)).toBe(false);
 
     // Legacy flat fallback should be populated instead.
-    const legacy = join(tmpRoot, '.omq', 'state', 'hud-stdin-cache.json');
+    const legacy = join(tmpRoot, '.omc', 'state', 'hud-stdin-cache.json');
     expect(existsSync(legacy)).toBe(true);
   });
 
-  it('treats whitespace-only QODER_SESSION_ID as unset and falls back', () => {
-    process.env.QODER_SESSION_ID = '   ';
+  it('treats whitespace-only CLAUDE_SESSION_ID as unset and falls back', () => {
+    process.env.CLAUDE_SESSION_ID = '   ';
     const stdin = makeStdin({ cwd: tmpRoot });
 
     writeStdinCache(stdin);
 
-    const sessionsDir = join(tmpRoot, '.omq', 'state', 'sessions');
+    const sessionsDir = join(tmpRoot, '.omc', 'state', 'sessions');
     expect(existsSync(sessionsDir)).toBe(false);
-    const legacy = join(tmpRoot, '.omq', 'state', 'hud-stdin-cache.json');
+    const legacy = join(tmpRoot, '.omc', 'state', 'hud-stdin-cache.json');
     expect(existsSync(legacy)).toBe(true);
   });
 
-  it('falls through to CLAUDECODE_SESSION_ID when QODER_SESSION_ID is empty', () => {
+  it('falls through to CLAUDECODE_SESSION_ID when CLAUDE_SESSION_ID is empty', () => {
     // Regression for Codex review P2: `??` alone would accept "" as defined
     // and never consult the secondary variable.
-    process.env.QODER_SESSION_ID = '';
+    process.env.CLAUDE_SESSION_ID = '';
     process.env.CLAUDECODE_SESSION_ID = 'secondary-session';
     const stdin = makeStdin({ cwd: tmpRoot });
 
     writeStdinCache(stdin);
 
-    const expected = join(tmpRoot, '.omq', 'state', 'sessions', 'secondary-session', 'hud-stdin-cache.json');
+    const expected = join(tmpRoot, '.omc', 'state', 'sessions', 'secondary-session', 'hud-stdin-cache.json');
     expect(existsSync(expected)).toBe(true);
   });
 
-  it('falls through to CLAUDECODE_SESSION_ID when QODER_SESSION_ID is present but invalid', () => {
+  it('falls through to CLAUDECODE_SESSION_ID when CLAUDE_SESSION_ID is present but invalid', () => {
     // Regression for Codex review P2 (v2): a non-empty-but-invalid primary
     // must not silently bypass a valid secondary. The previous implementation
     // resolved the primary first, then fell straight to the legacy path when
     // validation threw, never giving the secondary a chance.
-    process.env.QODER_SESSION_ID = '../../../etc/passwd';
+    process.env.CLAUDE_SESSION_ID = '../../../etc/passwd';
     process.env.CLAUDECODE_SESSION_ID = 'valid-secondary';
     const stdin = makeStdin({ cwd: tmpRoot });
 
     writeStdinCache(stdin);
 
     const expectedSecondary = join(
-      tmpRoot, '.omq', 'state', 'sessions', 'valid-secondary', 'hud-stdin-cache.json',
+      tmpRoot, '.omc', 'state', 'sessions', 'valid-secondary', 'hud-stdin-cache.json',
     );
     expect(existsSync(expectedSecondary)).toBe(true);
 
     // And in particular, the legacy flat path must NOT have been used —
     // otherwise concurrent sessions could still clobber each other.
-    const legacy = join(tmpRoot, '.omq', 'state', 'hud-stdin-cache.json');
+    const legacy = join(tmpRoot, '.omc', 'state', 'hud-stdin-cache.json');
     expect(existsSync(legacy)).toBe(false);
 
     // Safety probe: traversal from primary must not have escaped.
@@ -523,15 +537,15 @@ describe('HUD stdin cache path is session-scoped', () => {
   });
 
   it('falls back to the legacy path only when every candidate is invalid', () => {
-    process.env.QODER_SESSION_ID = '../traverse';
+    process.env.CLAUDE_SESSION_ID = '../traverse';
     process.env.CLAUDECODE_SESSION_ID = 'foo/bar';
     const stdin = makeStdin({ cwd: tmpRoot });
 
     writeStdinCache(stdin);
 
-    const legacy = join(tmpRoot, '.omq', 'state', 'hud-stdin-cache.json');
+    const legacy = join(tmpRoot, '.omc', 'state', 'hud-stdin-cache.json');
     expect(existsSync(legacy)).toBe(true);
-    const sessionsDir = join(tmpRoot, '.omq', 'state', 'sessions');
+    const sessionsDir = join(tmpRoot, '.omc', 'state', 'sessions');
     expect(existsSync(sessionsDir)).toBe(false);
   });
 });
@@ -539,11 +553,11 @@ describe('HUD stdin cache path is session-scoped', () => {
 describe('readStdinCache — env-less reader fallback to most recent session cache', () => {
   let tmpRoot: string;
   let originalCwd: string;
-  const envKeys = ['QODER_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
+  const envKeys = ['CLAUDE_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
   const savedEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(join(tmpdir(), 'omq-hud-stdin-read-'));
+    tmpRoot = mkdtempSync(join(tmpdir(), 'omc-hud-stdin-read-'));
     execSync('git init --quiet', { cwd: tmpRoot });
     originalCwd = process.cwd();
     process.chdir(tmpRoot);
@@ -567,8 +581,8 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
 
   it('returns the most recently updated session cache when no session env is set', () => {
     // Simulate two concurrent sessions' writes by hand.
-    const stale = join(tmpRoot, '.omq', 'state', 'sessions', 'session-old');
-    const fresh = join(tmpRoot, '.omq', 'state', 'sessions', 'session-new');
+    const stale = join(tmpRoot, '.omc', 'state', 'sessions', 'session-old');
+    const fresh = join(tmpRoot, '.omc', 'state', 'sessions', 'session-new');
     mkdirSync(stale, { recursive: true });
     mkdirSync(fresh, { recursive: true });
 
@@ -592,7 +606,7 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
     // also happens to sit under state/sessions/. The legacy file should
     // win so callers that rely on the pre-session-scoping behavior keep
     // their existing semantics.
-    const stateDir = join(tmpRoot, '.omq', 'state');
+    const stateDir = join(tmpRoot, '.omc', 'state');
     mkdirSync(stateDir, { recursive: true });
     writeFileSync(
       join(stateDir, 'hud-stdin-cache.json'),
@@ -613,35 +627,35 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
     expect(readStdinCache()).toBeNull();
   });
 
-  it('resolves the fallback directory through the same OMQ_STATE_DIR helper as writers', () => {
+  it('resolves the fallback directory through the same OMC_STATE_DIR helper as writers', () => {
     // Regression: the env-less fallback previously assembled the sessions
-    // directory from `join(root, '.omq', 'state', 'sessions')` directly,
-    // which bypasses `OMQ_STATE_DIR`-backed centralized state and made
-    // `omq hud --watch` miss the active cache in that deployment shape.
-    const centralRoot = mkdtempSync(join(tmpdir(), 'omq-hud-stdin-central-'));
-    const prevStateDir = process.env.OMQ_STATE_DIR;
-    process.env.OMQ_STATE_DIR = centralRoot;
+    // directory from `join(root, '.omc', 'state', 'sessions')` directly,
+    // which bypasses `OMC_STATE_DIR`-backed centralized state and made
+    // `omc hud --watch` miss the active cache in that deployment shape.
+    const centralRoot = mkdtempSync(join(tmpdir(), 'omc-hud-stdin-central-'));
+    const prevStateDir = process.env.OMC_STATE_DIR;
+    process.env.OMC_STATE_DIR = centralRoot;
     try {
-      // Writer pinned to a session id: must land under OMQ_STATE_DIR/...,
-      // not under `tmpRoot/.omq/state/sessions/...`.
-      process.env.QODER_SESSION_ID = 'central-session';
+      // Writer pinned to a session id: must land under OMC_STATE_DIR/...,
+      // not under `tmpRoot/.omc/state/sessions/...`.
+      process.env.CLAUDE_SESSION_ID = 'central-session';
       const payload = makeStdin({ transcript_path: '/tmp/central.jsonl' });
       writeStdinCache(payload);
 
-      // Sanity: nothing was written into the worktree-local .omq/ tree.
-      expect(existsSync(join(tmpRoot, '.omq', 'state', 'sessions', 'central-session'))).toBe(false);
+      // Sanity: nothing was written into the worktree-local .omc/ tree.
+      expect(existsSync(join(tmpRoot, '.omc', 'state', 'sessions', 'central-session'))).toBe(false);
 
       // Env-less reader must still surface the same payload via the
       // shared helper, not via a hard-coded worktree-local path.
-      delete process.env.QODER_SESSION_ID;
+      delete process.env.CLAUDE_SESSION_ID;
       delete process.env.CLAUDECODE_SESSION_ID;
       const got = readStdinCache();
       expect(got?.transcript_path).toBe('/tmp/central.jsonl');
     } finally {
       if (prevStateDir === undefined) {
-        delete process.env.OMQ_STATE_DIR;
+        delete process.env.OMC_STATE_DIR;
       } else {
-        process.env.OMQ_STATE_DIR = prevStateDir;
+        process.env.OMC_STATE_DIR = prevStateDir;
       }
       rmSync(centralRoot, { recursive: true, force: true });
     }
@@ -651,15 +665,15 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
     // Regression: the fallback must not fire when an env var pins a
     // specific session — otherwise an unrelated session's cache could
     // be surfaced when the current session has not written anything yet.
-    const mine = join(tmpRoot, '.omq', 'state', 'sessions', 'me');
-    const theirs = join(tmpRoot, '.omq', 'state', 'sessions', 'them');
+    const mine = join(tmpRoot, '.omc', 'state', 'sessions', 'me');
+    const theirs = join(tmpRoot, '.omc', 'state', 'sessions', 'them');
     mkdirSync(theirs, { recursive: true });
     writeFileSync(
       join(theirs, 'hud-stdin-cache.json'),
       JSON.stringify(makeStdin({ transcript_path: '/tmp/theirs.jsonl' })),
     );
 
-    process.env.QODER_SESSION_ID = 'me';
+    process.env.CLAUDE_SESSION_ID = 'me';
     expect(readStdinCache()).toBeNull();
 
     // Once `me` writes, it gets its own snapshot.

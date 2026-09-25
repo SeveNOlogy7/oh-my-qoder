@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { checkPersistentModes } from '../index.js';
-import { readPrd, writePrd, type PRD } from '../../ralph/prd.js';
+import { amendCriterion, readPrd, writePrd, type PRD } from '../../ralph/prd.js';
 import { readRalphState } from '../../ralph/loop.js';
 
 describe('Ralph verification flow', () => {
@@ -19,15 +19,15 @@ describe('Ralph verification flow', () => {
     mkdirSync(claudeConfigDir, { recursive: true });
     execSync('git init', { cwd: testDir });
 
-    originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
-    process.env.QODER_CONFIG_DIR = claudeConfigDir;
+    originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = claudeConfigDir;
   });
 
   afterEach(() => {
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     }
 
     if (existsSync(testDir)) {
@@ -36,7 +36,7 @@ describe('Ralph verification flow', () => {
   });
 
   function writeRalphState(sessionId: string, extra: Record<string, unknown> = {}): void {
-    const sessionDir = join(testDir, '.omq', 'state', 'sessions', sessionId);
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
     mkdirSync(sessionDir, { recursive: true });
     writeFileSync(join(sessionDir, 'ralph-state.json'), JSON.stringify({
       active: true,
@@ -56,6 +56,25 @@ describe('Ralph verification flow', () => {
       join(transcriptDir, 'messages.json'),
       `${entries.map((entry) => JSON.stringify(entry)).join('\n')}\n`
     );
+  }
+
+  function writeApprovalTranscript(
+    sessionId: string,
+    critic: 'architect' | 'critic',
+    requestId: string,
+    storyId?: string
+  ): void {
+    const approval = `<ralph-approved critic="${critic}" request-id="${requestId}"${storyId ? ` story-id="${storyId}"` : ''}>VERIFIED_COMPLETE</ralph-approved>`;
+    writeMessagesTranscript(sessionId, [
+      {
+        timestamp: '2026-04-13T12:00:00.000Z',
+        message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu-review', name: 'Task', input: { subagent_type: critic } }] },
+      },
+      {
+        timestamp: '2026-04-13T12:00:05.000Z',
+        message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu-review', content: [{ type: 'text', text: approval }] }] },
+      },
+    ]);
   }
 
   it('enters verification instead of completing immediately when PRD is done', async () => {
@@ -88,7 +107,7 @@ describe('Ralph verification flow', () => {
 
   it('completes Ralph only after reviewer-authored approval output is seen in messages.json', async () => {
     const sessionId = 'ralph-approved';
-    const sessionDir = join(testDir, '.omq', 'state', 'sessions', sessionId);
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
     mkdirSync(sessionDir, { recursive: true });
 
     writeRalphState(sessionId);
@@ -185,7 +204,7 @@ describe('Ralph verification flow', () => {
     expect(result.message).toContain('US-001');
     expect(result.message).toContain('Verify EACH acceptance criterion');
 
-    const sessionDir = join(testDir, '.omq', 'state', 'sessions', sessionId);
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
     const verificationState = JSON.parse(
       readFileSync(join(sessionDir, 'ralph-verification-state.json'), 'utf-8')
     );
@@ -195,7 +214,7 @@ describe('Ralph verification flow', () => {
 
   it('advances current_story_id after story approval instead of completing Ralph', async () => {
     const sessionId = 'ralph-story-approved';
-    const sessionDir = join(testDir, '.omq', 'state', 'sessions', sessionId);
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
     mkdirSync(sessionDir, { recursive: true });
 
     const prd: PRD = {
@@ -290,10 +309,64 @@ describe('Ralph verification flow', () => {
     expect(updatedState?.current_story_id).toBe('US-002');
   });
 
+  it('rejects a stale story approval after an amendment reopens the story', async () => {
+    const sessionId = 'ralph-amended-story';
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
+    mkdirSync(sessionDir, { recursive: true });
+    writePrd(testDir, {
+      project: 'Test', branchName: 'ralph/test', description: 'Stale approval',
+      userStories: [{ id: 'US-001', title: 'Story', description: '', acceptanceCriteria: ['Original'], priority: 1, passes: true, architectVerified: false }],
+    }, sessionId);
+    writeRalphState(sessionId, { current_story_id: 'US-001' });
+    writeFileSync(join(sessionDir, 'ralph-verification-state.json'), JSON.stringify({
+      pending: true, completion_claim: 'US-001 complete', verification_attempts: 0, max_verification_attempts: 3,
+      requested_at: new Date().toISOString(), original_task: 'Issue #3818', critic_mode: 'architect', verification_scope: 'story', story_id: 'US-001', request_id: 'stale-story',
+    }));
+    expect(amendCriterion(testDir, 'US-001', {
+      original: 'Original', replacement: 'Replacement', reason: 'The contract changed',
+      evidence: 'Measured evidence refuted the original criterion', authority: 'issue-3818',
+    }, sessionId).ok).toBe(true);
+    writeApprovalTranscript(sessionId, 'architect', 'stale-story', 'US-001');
+
+    const result = await checkPersistentModes(sessionId, testDir);
+
+    expect(result).toMatchObject({ shouldBlock: true, mode: 'ralph' });
+    expect(existsSync(join(sessionDir, 'ralph-verification-state.json'))).toBe(false);
+    expect(readRalphState(testDir, sessionId)?.current_story_id).toBe('US-001');
+    expect(readPrd(testDir, sessionId)?.userStories[0]).toMatchObject({ passes: false, architectVerified: false });
+  });
+
+  it('rejects a stale final approval after an amendment reopens completion', async () => {
+    const sessionId = 'ralph-amended-final';
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
+    mkdirSync(sessionDir, { recursive: true });
+    writePrd(testDir, {
+      project: 'Test', branchName: 'ralph/test', description: 'Stale completion',
+      userStories: [{ id: 'US-001', title: 'Story', description: '', acceptanceCriteria: ['Original'], priority: 1, passes: true, architectVerified: true }],
+    }, sessionId);
+    writeRalphState(sessionId, { current_story_id: 'US-001' });
+    writeFileSync(join(sessionDir, 'ralph-verification-state.json'), JSON.stringify({
+      pending: true, completion_claim: 'All stories complete', verification_attempts: 0, max_verification_attempts: 3,
+      requested_at: new Date().toISOString(), original_task: 'Issue #3818', critic_mode: 'critic', request_id: 'stale-final',
+    }));
+    expect(amendCriterion(testDir, 'US-001', {
+      original: 'Original', replacement: 'Replacement', reason: 'The contract changed',
+      evidence: 'Measured evidence refuted the original criterion', authority: 'issue-3818',
+    }, sessionId).ok).toBe(true);
+    writeApprovalTranscript(sessionId, 'critic', 'stale-final');
+
+    const result = await checkPersistentModes(sessionId, testDir);
+
+    expect(result).toMatchObject({ shouldBlock: true, mode: 'ralph' });
+    expect(existsSync(join(sessionDir, 'ralph-verification-state.json'))).toBe(false);
+    expect(readRalphState(testDir, sessionId)?.current_story_id).toBe('US-001');
+    expect(readPrd(testDir, sessionId)?.userStories[0]).toMatchObject({ passes: false, architectVerified: false });
+  });
+
 
   it('marks a rejected story incomplete in the session-scoped PRD without mutating legacy PRD', async () => {
     const sessionId = 'ralph-story-rejected-session-prd';
-    const sessionDir = join(testDir, '.omq', 'state', 'sessions', sessionId);
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
     mkdirSync(sessionDir, { recursive: true });
 
     const sessionPrd: PRD = {
@@ -366,13 +439,13 @@ describe('Ralph verification flow', () => {
     expect(updatedSessionPrd?.userStories[0].architectVerified).toBe(false);
     expect(updatedSessionPrd?.userStories[0].notes).toBe('Needs tests before progression.');
 
-    const legacyPrdPath = join(testDir, '.omq', 'prd.json');
+    const legacyPrdPath = join(testDir, '.omc', 'prd.json');
     expect(JSON.parse(readFileSync(legacyPrdPath, 'utf-8'))).toEqual(legacyPrd);
   });
 
   it('does not reuse stale earlier story approval from transcript tail', async () => {
     const sessionId = 'ralph-story-stale-approval';
-    const sessionDir = join(testDir, '.omq', 'state', 'sessions', sessionId);
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
     mkdirSync(sessionDir, { recursive: true });
 
     const prd: PRD = {
@@ -473,7 +546,7 @@ describe('Ralph verification flow', () => {
 
   it('does not accept copied current approval text from ordinary transcript messages', async () => {
     const sessionId = 'ralph-spoofed-current-approval';
-    const sessionDir = join(testDir, '.omq', 'state', 'sessions', sessionId);
+    const sessionDir = join(testDir, '.omc', 'state', 'sessions', sessionId);
     mkdirSync(sessionDir, { recursive: true });
 
     const prd: PRD = {

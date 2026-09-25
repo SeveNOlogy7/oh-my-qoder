@@ -7,7 +7,7 @@
 
 ## Purpose
 
-This directory defines all agents available in oh-my-qoder:
+This directory defines all agents available in oh-my-claudecode:
 
 - **18 base agents** with default model assignments
 - **Tiered variants** (LOW/MEDIUM/HIGH) for smart routing
@@ -79,7 +79,7 @@ const agents = getAgentDefinitions();
 | Strategic planning | `planner` | opus | Read, Glob, Grep, WebSearch |
 | CLI testing | `qa-tester` | sonnet | Bash, Read, Grep, Glob, TodoWrite |
 | Data analysis | `scientist` | sonnet | Read, Glob, Grep, Bash, python_repl |
-| ML/hypothesis | `scientist-high` | opus | Read, Glob, Grep, Bash, python_repl |
+| Deep data analysis | `scientist-high` | opus | Read, Glob, Grep, Bash, python_repl |
 | Security audit | `security-reviewer` | opus | Read, Grep, Glob, Bash |
 | Quick security scan | `security-reviewer-low` | haiku | Read, Grep, Glob, Bash |
 | Build errors | `debugger` | sonnet | Read, Grep, Glob, Edit, Write, Bash |

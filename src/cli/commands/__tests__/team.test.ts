@@ -19,49 +19,50 @@ async function captureLog(fn: () => Promise<void>): Promise<string[]> {
 
 /** Helper: init minimal team state on disk */
 async function initTeamState(teamName: string, wd: string): Promise<void> {
-  const base = join(wd, '.omq', 'state', 'team', teamName);
+  const base = join(wd, '.omc', 'state', 'team', teamName);
   await mkdir(join(base, 'tasks'), { recursive: true });
   await mkdir(join(base, 'workers', 'worker-1'), { recursive: true });
   await mkdir(join(base, 'mailbox'), { recursive: true });
   await mkdir(join(base, 'events'), { recursive: true });
   await writeFile(join(base, 'config.json'), JSON.stringify({
-    team_name: teamName,
+    name: teamName,
     task: 'test',
     agent_type: 'executor',
     worker_count: 1,
     workers: [{ name: 'worker-1', index: 1, role: 'executor', assigned_tasks: [] }],
     created_at: new Date().toISOString(),
+    tmux_session: 'test-session:0',
   }));
 }
 
 describe('teamCommand help output', () => {
   it('prints team help for --help', async () => {
     const logs = await captureLog(() => teamCommand(['--help']));
-    expect(logs[0]).toContain('omq team api <operation>');
+    expect(logs[0]).toContain('omc team api <operation>');
   });
 
   it('prints team help for help alias', async () => {
     const logs = await captureLog(() => teamCommand(['help']));
-    expect(logs[0]).toContain('omq team api <operation>');
+    expect(logs[0]).toContain('omc team api <operation>');
   });
 
-  it('prints api help for omq team api --help', async () => {
+  it('prints api help for omc team api --help', async () => {
     const logs = await captureLog(() => teamCommand(['api', '--help']));
     expect(logs[0]).toContain('Supported operations');
     expect(logs[0]).toContain('send-message');
     expect(logs[0]).toContain('transition-task-status');
   });
 
-  it('prints operation-specific help for omq team api <op> --help', async () => {
+  it('prints operation-specific help for omc team api <op> --help', async () => {
     const logs = await captureLog(() => teamCommand(['api', 'send-message', '--help']));
-    expect(logs[0]).toContain('Usage: omq team api send-message');
+    expect(logs[0]).toContain('Usage: omc team api send-message');
     expect(logs[0]).toContain('from_worker');
     expect(logs[0]).toContain('to_worker');
   });
 
-  it('prints operation-specific help for omq team api --help <op>', async () => {
+  it('prints operation-specific help for omc team api --help <op>', async () => {
     const logs = await captureLog(() => teamCommand(['api', '--help', 'claim-task']));
-    expect(logs[0]).toContain('Usage: omq team api claim-task');
+    expect(logs[0]).toContain('Usage: omc team api claim-task');
     expect(logs[0]).toContain('expected_version');
   });
 });
@@ -89,7 +90,7 @@ describe('teamCommand api operations', () => {
   });
 
   it('executes send-message with stable JSON envelope', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omq-team-cli-'));
+    wd = await mkdtemp(join(tmpdir(), 'omc-team-cli-'));
     previousCwd = process.cwd();
     process.chdir(wd);
     await initTeamState('cli-test', wd);
@@ -110,12 +111,12 @@ describe('teamCommand api operations', () => {
     const envelope = JSON.parse(logs[0]);
     expect(envelope.schema_version).toBe('1.0');
     expect(envelope.ok).toBe(true);
-    expect(envelope.command).toBe('omq team api send-message');
+    expect(envelope.command).toBe('omc team api send-message');
     expect(envelope.data.message.body).toBe('ACK');
   });
 
   it('supports claim-safe lifecycle: create -> claim -> transition', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omq-team-lifecycle-'));
+    wd = await mkdtemp(join(tmpdir(), 'omc-team-lifecycle-'));
     previousCwd = process.cwd();
     process.chdir(wd);
     await initTeamState('lifecycle', wd);
@@ -176,43 +177,64 @@ describe('teamCommand api operations', () => {
   });
 
   it('blocks team start when running inside worker context', async () => {
-    const previousWorker = process.env.OMQ_TEAM_WORKER;
+    const previousWorker = process.env.OMC_TEAM_WORKER;
+    const errors: string[] = [];
+    const originalError = console.error;
     try {
-      process.env.OMQ_TEAM_WORKER = 'demo-team/worker-1';
+      console.error = (...args: unknown[]) => errors.push(args.map(String).join(' '));
+      process.env.OMC_TEAM_WORKER = 'demo-team/worker-1';
       const logs = await captureLog(() => teamCommand(['1:executor', 'do work']));
-      expect(logs[0]).toContain('omq team [N:agent-type[:role]]');
+      expect(logs.join('\n')).not.toContain('Usage: omc team');
+      expect(errors.join('\n')).toContain('nested_teams_allowed is false');
       expect(process.exitCode).toBe(1);
     } finally {
-      process.env.OMQ_TEAM_WORKER = previousWorker;
+      console.error = originalError;
+      process.env.OMC_TEAM_WORKER = previousWorker;
+      process.exitCode = 0;
+    }
+  });
+
+  it('reports malformed worker specs without dumping generic team usage', async () => {
+    const errors: string[] = [];
+    const originalError = console.error;
+    try {
+      console.error = (...args: unknown[]) => errors.push(args.map(String).join(' '));
+      const logs = await captureLog(() => teamCommand(['1:claude:executor:extra', 'do work']));
+      expect(errors.join('\n')).toContain('Invalid worker spec "1:claude:executor:extra"');
+      expect(logs.join('\n')).not.toContain('Usage: omc team');
+      expect(process.exitCode).toBe(1);
+    } finally {
+      console.error = originalError;
       process.exitCode = 0;
     }
   });
 
 
   it('ignores stale team state without a live tmux session when enforcing leader spawn gate', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omq-team-stale-gate-'));
-    const stale = join(wd, '.omq', 'state', 'team', 'stale-team');
+    wd = await mkdtemp(join(tmpdir(), 'omc-team-stale-gate-'));
+    const stale = join(wd, '.omc', 'state', 'team', 'stale-team');
     await mkdir(stale, { recursive: true });
     await writeFile(join(stale, 'config.json'), JSON.stringify({
       name: 'stale-team',
       task: 'old launch',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_count: 1,
-      workers: [{ name: 'worker-1', index: 1, role: 'qwen', assigned_tasks: [] }],
+      workers: [{ name: 'worker-1', index: 1, role: 'claude', assigned_tasks: [] }],
       created_at: new Date().toISOString(),
+      tmux_session: 'stale-session:0',
       next_task_id: 1,
     }, null, 2));
 
-    delete process.env.OMQ_TEAM_WORKER;
+    delete process.env.OMC_TEAM_WORKER;
     delete process.env.OMX_TEAM_WORKER;
     await expect(assertTeamSpawnAllowed(wd)).resolves.toBeUndefined();
   });
 
   it('allows nested team spawn only when parent governance enables it', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omq-team-governance-'));
+    wd = await mkdtemp(join(tmpdir(), 'omc-team-governance-'));
     previousCwd = process.cwd();
     process.chdir(wd);
-    const base = join(wd, '.omq', 'state', 'team', 'demo-team');
+    const base = join(wd, '.omc', 'state', 'team', 'demo-team');
     await mkdir(base, { recursive: true });
     await writeFile(join(base, 'manifest.json'), JSON.stringify({
       schema_version: 2,
@@ -248,12 +270,12 @@ describe('teamCommand api operations', () => {
       resize_hook_target: null,
     }));
 
-    const previousWorker = process.env.OMQ_TEAM_WORKER;
+    const previousWorker = process.env.OMC_TEAM_WORKER;
     try {
-      process.env.OMQ_TEAM_WORKER = 'demo-team/worker-1';
+      process.env.OMC_TEAM_WORKER = 'demo-team/worker-1';
       await expect(assertTeamSpawnAllowed(wd, process.env)).resolves.toBeUndefined();
     } finally {
-      process.env.OMQ_TEAM_WORKER = previousWorker;
+      process.env.OMC_TEAM_WORKER = previousWorker;
     }
   });
 });
@@ -261,21 +283,21 @@ describe('teamCommand api operations', () => {
 describe('parseTeamArgs comma-separated multi-type specs', () => {
 
   it('honors N multipliers and duplicate agent entries in comma specs', () => {
-    const mixed = parseTeamArgs(['1:qwen,2:codex', 'execute fixed plan']);
+    const mixed = parseTeamArgs(['1:claude,2:codex', 'execute fixed plan']);
     expect(mixed.workerCount).toBe(3);
-    expect(mixed.agentTypes).toEqual(['qwen', 'codex', 'codex']);
+    expect(mixed.agentTypes).toEqual(['claude', 'codex', 'codex']);
     expect(mixed.workerSpecs).toEqual([
-      { agentType: 'qwen' },
+      { agentType: 'claude' },
       { agentType: 'codex' },
       { agentType: 'codex' },
     ]);
     expect(mixed.explicitWorkerSpec).toBe(true);
 
-    const duplicate = parseTeamArgs(['1:qwen,1:codex,1:codex', 'execute fixed plan']);
+    const duplicate = parseTeamArgs(['1:claude,1:codex,1:codex', 'execute fixed plan']);
     expect(duplicate.workerCount).toBe(3);
-    expect(duplicate.agentTypes).toEqual(['qwen', 'codex', 'codex']);
+    expect(duplicate.agentTypes).toEqual(['claude', 'codex', 'codex']);
     expect(duplicate.workerSpecs).toEqual([
-      { agentType: 'qwen' },
+      { agentType: 'claude' },
       { agentType: 'codex' },
       { agentType: 'codex' },
     ]);
@@ -368,7 +390,7 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
 
   it('maps pre-authored numbered scopes to explicit workers when counts match', () => {
     const parsed = parseTeamArgs([
-      '1:qwen,2:codex',
+      '1:claude,2:codex',
       '1. reviewer validates boundaries\n2. codex patches parser\n3. codex patches runtime',
     ]);
     const decomposition = splitTaskString(parsed.task);
@@ -419,19 +441,19 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
     const parsed = parseTeamArgs(['abcdefghijklmnopqrstuvwxyz abc', 'task body']);
     expect(parsed.teamName.endsWith('-')).toBe(false);
 
-    const slugWd = await mkdtemp(join(tmpdir(), 'omq-team-slug-'));
-    await mkdir(join(slugWd, '.omq', 'state', 'team', parsed.teamName), { recursive: true });
+    const slugWd = await mkdtemp(join(tmpdir(), 'omc-team-slug-'));
+    await mkdir(join(slugWd, '.omc', 'state', 'team', parsed.teamName), { recursive: true });
     expect(resolveAvailableTeamName(parsed.teamName, slugWd)).toBe(`${parsed.teamName.slice(0, 28).replace(/-$/g, '')}-2`);
     await rm(slugWd, { recursive: true, force: true });
   });
 
-  it('treats role-only shorthand as qwen workers plus a shared role', () => {
+  it('treats role-only shorthand as claude workers plus a shared role', () => {
     const parsed = parseTeamArgs(['2:executor', 'fix the bug']);
     expect(parsed.workerCount).toBe(2);
-    expect(parsed.agentTypes).toEqual(['qwen', 'qwen']);
+    expect(parsed.agentTypes).toEqual(['claude', 'claude']);
     expect(parsed.workerSpecs).toEqual([
-      { agentType: 'qwen', role: 'executor' },
-      { agentType: 'qwen', role: 'executor' },
+      { agentType: 'claude', role: 'executor' },
+      { agentType: 'claude', role: 'executor' },
     ]);
     expect(parsed.role).toBe('executor');
     expect(parsed.task).toBe('fix the bug');
@@ -445,13 +467,13 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
     expect(parsed.task).toBe('do the task');
   });
 
-  it('parses 2:qwen,1:codex:architect with mixed counts and roles', () => {
-    const parsed = parseTeamArgs(['2:qwen,1:codex:architect', 'design system']);
+  it('parses 2:claude,1:codex:architect with mixed counts and roles', () => {
+    const parsed = parseTeamArgs(['2:claude,1:codex:architect', 'design system']);
     expect(parsed.workerCount).toBe(3);
-    expect(parsed.agentTypes).toEqual(['qwen', 'qwen', 'codex']);
+    expect(parsed.agentTypes).toEqual(['claude', 'claude', 'codex']);
     expect(parsed.workerSpecs).toEqual([
-      { agentType: 'qwen' },
-      { agentType: 'qwen' },
+      { agentType: 'claude' },
+      { agentType: 'claude' },
       { agentType: 'codex', role: 'architect' },
     ]);
     expect(parsed.role).toBeUndefined(); // mixed roles -> no single role
@@ -473,9 +495,9 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
   it('supports mixed explicit cli types and role-only shorthand in comma specs', () => {
     const parsed = parseTeamArgs(['1:executor,1:codex:architect', 'run tasks']);
     expect(parsed.workerCount).toBe(2);
-    expect(parsed.agentTypes).toEqual(['qwen', 'codex']);
+    expect(parsed.agentTypes).toEqual(['claude', 'codex']);
     expect(parsed.workerSpecs).toEqual([
-      { agentType: 'qwen', role: 'executor' },
+      { agentType: 'claude', role: 'executor' },
       { agentType: 'codex', role: 'architect' },
     ]);
     expect(parsed.role).toBeUndefined();
@@ -511,10 +533,47 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
     expect(parsed.task).toBe('compare edits');
   });
 
-  it('defaults to 3 qwen workers when no spec is given', () => {
+  it('rejects cursor with non-executor explicit roles', () => {
+    expect(() => parseTeamArgs(['1:cursor:architect', 'design auth'])).toThrow(
+      /Cursor workers are executor-style only/,
+    );
+    expect(() => parseTeamArgs(['1:cursor:security-reviewer', 'review auth'])).toThrow(
+      /Cursor workers are executor-style only/,
+    );
+  });
+
+  it('parses single-type spec 2:antigravity into uniform agentTypes', () => {
+    const parsed = parseTeamArgs(['2:antigravity', 'apply implementation']);
+    expect(parsed.workerCount).toBe(2);
+    expect(parsed.agentTypes).toEqual(['antigravity', 'antigravity']);
+    expect(parsed.workerSpecs).toEqual([
+      { agentType: 'antigravity' },
+      { agentType: 'antigravity' },
+    ]);
+    expect(parsed.task).toBe('apply implementation');
+  });
+
+  it('supports antigravity in mixed explicit cli specs', () => {
+    const parsed = parseTeamArgs(['1:antigravity,1:codex', 'compare edits']);
+    expect(parsed.workerCount).toBe(2);
+    expect(parsed.agentTypes).toEqual(['antigravity', 'codex']);
+    expect(parsed.task).toBe('compare edits');
+  });
+
+  it('parses antigravity with an explicit executor role', () => {
+    const parsed = parseTeamArgs(['1:antigravity:executor', 'apply the implementation']);
+    expect(parsed.agentTypes).toEqual(['antigravity']);
+  });
+
+  it('uses configured antigravity CLI provider default when supported', () => {
+    const parsed = parseTeamArgs(['run all tests'], 'antigravity');
+    expect(parsed.agentTypes).toEqual(['antigravity', 'antigravity', 'antigravity']);
+  });
+
+  it('defaults to 3 claude workers when no spec is given', () => {
     const parsed = parseTeamArgs(['run all tests']);
     expect(parsed.workerCount).toBe(3);
-    expect(parsed.agentTypes).toEqual(['qwen', 'qwen', 'qwen']);
+    expect(parsed.agentTypes).toEqual(['claude', 'claude', 'claude']);
     expect(parsed.task).toBe('run all tests');
   });
 
@@ -528,13 +587,13 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
     ]);
   });
 
-  it('falls back to qwen when configured defaultAgentType is not a supported CLI provider', () => {
+  it('falls back to claude when configured defaultAgentType is not a supported CLI provider', () => {
     const parsed = parseTeamArgs(['run all tests'], 'executor');
-    expect(parsed.agentTypes).toEqual(['qwen', 'qwen', 'qwen']);
+    expect(parsed.agentTypes).toEqual(['claude', 'claude', 'claude']);
     expect(parsed.workerSpecs).toEqual([
-      { agentType: 'qwen' },
-      { agentType: 'qwen' },
-      { agentType: 'qwen' },
+      { agentType: 'claude' },
+      { agentType: 'claude' },
+      { agentType: 'claude' },
     ]);
   });
 
@@ -550,7 +609,7 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
   });
 
 
-  it('fails loudly when N:agent:role uses an invalid agent type instead of collapsing to qwen', () => {
+  it('fails loudly when N:agent:role uses an invalid agent type instead of collapsing to claude', () => {
     expect(() => parseTeamArgs(['2:foo:architect', 'design auth'])).toThrow(
       /Invalid agent type "foo" in worker spec/,
     );
@@ -570,8 +629,8 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
 
 
   it('fails loudly on a malformed worker spec instead of swallowing it into the task', () => {
-    expect(() => parseTeamArgs(['2:qwen:executor:extra', 'go'])).toThrow(
-      /Invalid worker spec "2:qwen:executor:extra"/,
+    expect(() => parseTeamArgs(['2:claude:executor:extra', 'go'])).toThrow(
+      /Invalid worker spec "2:claude:executor:extra"/,
     );
     expect(() => parseTeamArgs(['1:codex,bogus', 'go'])).toThrow(
       /Invalid worker spec "1:codex,bogus"/,
@@ -581,7 +640,7 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
   it('does not misread a time-like task prefix as a worker spec', () => {
     const parsed = parseTeamArgs(['12:00 standup notes']);
     expect(parsed.workerCount).toBe(3);
-    expect(parsed.agentTypes).toEqual(['qwen', 'qwen', 'qwen']);
+    expect(parsed.agentTypes).toEqual(['claude', 'claude', 'claude']);
     expect(parsed.task).toBe('12:00 standup notes');
   });
 

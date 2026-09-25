@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { createReadStream, existsSync, readdirSync, statSync } from 'fs';
 import { dirname, join, normalize, resolve } from 'path';
 import { createInterface } from 'readline';
@@ -6,9 +6,10 @@ import {
   resolveToWorktreeRoot,
   validateSessionId,
   validateWorkingDirectory,
-  getOmqRoot,
+  getOmcRoot,
 } from '../../lib/worktree-paths.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
+import { encodeProjectPath } from '../../utils/encode-project-path.js';
 import type {
   SessionHistoryMatch,
   SessionHistorySearchOptions,
@@ -66,16 +67,13 @@ function parseSinceSpec(since?: string): number | undefined {
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
-function encodeProjectPath(projectPath: string): string {
-  return projectPath.replace(/[/\\.]/g, '-');
-}
-
 function getMainRepoRoot(projectRoot: string): string | null {
   try {
-    const gitCommonDir = execSync('git rev-parse --git-common-dir', {
+    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
       cwd: projectRoot,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
     }).trim();
     const absoluteCommonDir = resolve(projectRoot, gitCommonDir);
     const mainRepoRoot = dirname(absoluteCommonDir);
@@ -86,7 +84,7 @@ function getMainRepoRoot(projectRoot: string): string | null {
 }
 
 function getClaudeWorktreeParent(projectRoot: string): string | null {
-  const marker = `${normalize('/.qoder/worktrees/')}`;
+  const marker = `${normalize('/.claude/worktrees/')}`;
   const normalizedRoot = normalize(projectRoot);
   const idx = normalizedRoot.indexOf(marker);
   if (idx === -1) return null;
@@ -141,13 +139,15 @@ function uniqueSortedTargets(targets: SearchTarget[]): SearchTarget[] {
     });
 }
 
-function buildCurrentProjectTargets(projectRoot: string): SearchTarget[] {
-  const claudeDir = getQoderConfigDir();
-  const projectRoots = new Set<string>([projectRoot]);
-  const mainRepoRoot = getMainRepoRoot(projectRoot);
-  if (mainRepoRoot) projectRoots.add(mainRepoRoot);
-  const claudeWorktreeParent = getClaudeWorktreeParent(projectRoot);
-  if (claudeWorktreeParent) projectRoots.add(claudeWorktreeParent);
+function buildCurrentProjectTargets(projectRoot: string, transcriptProjectRoots: string[] = [projectRoot]): SearchTarget[] {
+  const claudeDir = getClaudeConfigDir();
+  const projectRoots = new Set<string>(transcriptProjectRoots);
+  for (const root of transcriptProjectRoots) {
+    const mainRepoRoot = getMainRepoRoot(root);
+    if (mainRepoRoot) projectRoots.add(mainRepoRoot);
+    const claudeWorktreeParent = getClaudeWorktreeParent(root);
+    if (claudeWorktreeParent) projectRoots.add(claudeWorktreeParent);
+  }
 
   const targets: SearchTarget[] = [];
 
@@ -163,17 +163,17 @@ function buildCurrentProjectTargets(projectRoot: string): SearchTarget[] {
     targets.push({ filePath, sourceType: 'legacy-transcript' });
   }
 
-  const omqRoot = getOmqRoot(projectRoot);
-  const sessionSummariesDir = join(omqRoot, 'sessions');
+  const omcRoot = getOmcRoot(projectRoot);
+  const sessionSummariesDir = join(omcRoot, 'sessions');
   for (const filePath of listJsonlFiles(sessionSummariesDir)) {
-    targets.push({ filePath, sourceType: 'omq-session-summary' });
+    targets.push({ filePath, sourceType: 'omc-session-summary' });
   }
 
-  const replayDir = join(omqRoot, 'state');
+  const replayDir = join(omcRoot, 'state');
   if (existsSync(replayDir)) {
     for (const filePath of listJsonlFiles(replayDir)) {
       if (filePath.includes('agent-replay-') && filePath.endsWith('.jsonl')) {
-        targets.push({ filePath, sourceType: 'omq-session-replay' });
+        targets.push({ filePath, sourceType: 'omc-session-replay' });
       }
     }
   }
@@ -182,7 +182,7 @@ function buildCurrentProjectTargets(projectRoot: string): SearchTarget[] {
 }
 
 function buildAllProjectTargets(): SearchTarget[] {
-  const claudeDir = getQoderConfigDir();
+  const claudeDir = getClaudeConfigDir();
   const targets: SearchTarget[] = [];
 
   for (const filePath of listJsonlFiles(join(claudeDir, 'projects'))) {
@@ -201,9 +201,9 @@ function isWithinProject(projectPath: string | undefined, projectRoots: string[]
     return false;
   }
 
-  const normalizedProjectPath = normalize(resolve(projectPath));
+  const normalizedProjectPath = normalize(resolve(projectPath)).replace(/\\/g, '/');
   return projectRoots.some((root) => {
-    const normalizedRoot = normalize(resolve(root));
+    const normalizedRoot = normalize(resolve(root)).replace(/\\/g, '/');
     return normalizedProjectPath === normalizedRoot || normalizedProjectPath.startsWith(`${normalizedRoot}/`);
   });
 }
@@ -335,7 +335,7 @@ function buildJsonArtifactEntry(entry: Record<string, unknown>, sourceType: Sear
         ? entry.timestamp
         : undefined;
 
-  const entryType = sourceType === 'omq-session-summary' ? 'session-summary' : 'session-replay';
+  const entryType = sourceType === 'omc-session-summary' ? 'session-summary' : 'session-replay';
 
   return {
     sessionId,
@@ -347,11 +347,11 @@ function buildJsonArtifactEntry(entry: Record<string, unknown>, sourceType: Sear
 }
 
 function buildSearchableEntry(entry: Record<string, unknown>, sourceType: SearchTarget['sourceType']): SearchableEntry | null {
-  if (sourceType === 'project-transcript' || sourceType === 'legacy-transcript' || sourceType === 'omq-session-replay') {
-    return buildTranscriptEntry(entry) ?? (sourceType === 'omq-session-replay' ? buildJsonArtifactEntry(entry, sourceType) : null);
+  if (sourceType === 'project-transcript' || sourceType === 'legacy-transcript' || sourceType === 'omc-session-replay') {
+    return buildTranscriptEntry(entry) ?? (sourceType === 'omc-session-replay' ? buildJsonArtifactEntry(entry, sourceType) : null);
   }
 
-  if (sourceType === 'omq-session-summary') {
+  if (sourceType === 'omc-session-summary') {
     return buildJsonArtifactEntry(entry, sourceType);
   }
 
@@ -410,7 +410,7 @@ async function collectMatchesFromFile(
   const matches: SessionHistoryMatch[] = [];
   const fileMtime = existsSync(target.filePath) ? statSync(target.filePath).mtimeMs : 0;
 
-  if (target.sourceType === 'omq-session-summary' && target.filePath.endsWith('.json')) {
+  if (target.sourceType === 'omc-session-summary' && target.filePath.endsWith('.json')) {
     try {
       const payload = JSON.parse(await import('fs/promises').then((fs) => fs.readFile(target.filePath, 'utf-8')));
       const entry = buildSearchableEntry(payload as Record<string, unknown>, target.sourceType);
@@ -514,15 +514,18 @@ export async function searchSessionHistory(
   const currentProjectRoot = resolveToWorktreeRoot(workingDirectory);
   const scopeMode = buildScopeMode(rawOptions.project);
   const projectFilter = scopeMode === 'project' ? rawOptions.project : undefined;
+  const literalWorkingDirectory = rawOptions.workingDirectory ? resolve(rawOptions.workingDirectory) : workingDirectory;
 
-  const currentProjectRoots = [currentProjectRoot]
+  const currentProjectRoots = [currentProjectRoot, literalWorkingDirectory]
     .concat(getMainRepoRoot(currentProjectRoot) ?? [])
     .concat(getClaudeWorktreeParent(currentProjectRoot) ?? [])
     .filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index);
 
+  const transcriptProjectRoots = currentProjectRoots.filter((root) => isWithinProject(root, [currentProjectRoot]));
+
   const targets = scopeMode === 'all'
     ? buildAllProjectTargets()
-    : buildCurrentProjectTargets(currentProjectRoot);
+    : buildCurrentProjectTargets(currentProjectRoot, transcriptProjectRoots);
 
   const allMatches: SessionHistoryMatch[] = [];
   for (const target of targets) {
@@ -560,7 +563,7 @@ export async function searchSessionHistory(
   };
 }
 
-export { parseSinceSpec };
+export { encodeProjectPath, isWithinProject as __testingIsWithinProject, parseSinceSpec };
 export type {
   SessionHistoryMatch,
   SessionHistorySearchOptions,

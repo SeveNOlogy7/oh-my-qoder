@@ -3,20 +3,14 @@
  *
  * Covers:
  * - Exit code propagation (runClaude direct / inside-tmux)
- * - No OMQ HUD pane spawning in tmux launch paths
+ * - No OMC HUD pane spawning in tmux launch paths
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'child_process';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-
-// Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
-vi.mock('../../lib/qoder-cli.js', () => ({
-  qoderCliBinary: () => 'qoderclicn',
-  qoderCliNpmPackage: () => '@qoder-ai/qodercli',
-}));
 
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
@@ -37,12 +31,12 @@ vi.mock('../tmux-utils.js', () => ({
   isNativeWindowsShell: vi.fn(() => false),
   wrapWithLoginShell: vi.fn((cmd: string) => cmd),
   quoteShellArg: vi.fn((s: string) => s),
-  isQoderCliAvailable: vi.fn(() => true),
+  isClaudeAvailable: vi.fn(() => true),
   isTmuxAvailable: vi.fn(() => true),
   tmuxExec: vi.fn(),
 }));
 
-import { runClaude, launchCommand, extractNotifyFlag, extractOpenClawFlag, extractTelegramFlag, extractDiscordFlag, extractSlackFlag, extractWebhookFlag, normalizeClaudeLaunchArgs, isPrintMode, prepareOmqLaunchConfigDir, buildEnvExportPrefix, hasMadmaxFlag, TMUX_ENV_FORWARD } from '../launch.js';
+import { runClaude, launchCommand, extractNotifyFlag, extractOpenClawFlag, extractTelegramFlag, extractDiscordFlag, extractSlackFlag, extractWebhookFlag, normalizeClaudeLaunchArgs, isPrintMode, prepareOmcLaunchConfigDir, buildEnvExportPrefix, hasMadmaxFlag, TMUX_ENV_FORWARD } from '../launch.js';
 import {
   resolveLaunchPolicy,
   buildTmuxShellCommand,
@@ -164,7 +158,7 @@ describe('runClaude — exit code propagation', () => {
       // isPrintMode short-circuits before resolveLaunchPolicy is called
       expect(resolveLaunchPolicy).not.toHaveBeenCalled();
       expect(vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'tmux')).toBeUndefined();
-      expect(vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'qoderclicn')?.[1]).toEqual(['--print']);
+      expect(vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'claude')?.[1]).toEqual(['--print']);
     });
 
     it('propagates Claude non-zero exit code', () => {
@@ -209,7 +203,7 @@ describe('runClaude — exit code propagation', () => {
 
       runClaude('/tmp', ['--resume'], 'sid');
 
-      expect(vi.mocked(execFileSync)).toHaveBeenCalledWith('qoderclicn', ['--resume'], {
+      expect(vi.mocked(execFileSync)).toHaveBeenCalledWith('claude', ['--resume'], {
         cwd: '/tmp',
         stdio: 'inherit',
         shell: true,
@@ -254,7 +248,7 @@ describe('runClaude — exit code propagation', () => {
 
       runClaude('/tmp', ['--continue'], 'sid');
 
-      expect(vi.mocked(execFileSync)).toHaveBeenCalledWith('qoderclicn', ['--continue'], {
+      expect(vi.mocked(execFileSync)).toHaveBeenCalledWith('claude', ['--continue'], {
         cwd: '/tmp',
         stdio: 'inherit',
         shell: true,
@@ -283,24 +277,24 @@ describe('runClaude — exit code propagation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// runClaude — OMQ HUD pane spawning disabled
+// runClaude — OMC HUD pane spawning disabled
 // ---------------------------------------------------------------------------
-describe('runClaude OMQ HUD behavior', () => {
+describe('runClaude OMC HUD behavior', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     (execFileSync as ReturnType<typeof vi.fn>).mockReturnValue(Buffer.from(''));
   });
 
-  it('does not build an omq hud --watch command inside tmux', () => {
+  it('does not build an omc hud --watch command inside tmux', () => {
     (resolveLaunchPolicy as ReturnType<typeof vi.fn>).mockReturnValue('inside-tmux');
 
     runClaude('/tmp/cwd', [], 'test-session');
 
     const calls = vi.mocked(buildTmuxShellCommand).mock.calls;
-    const omqHudCall = calls.find(
+    const omcHudCall = calls.find(
       ([cmd, args]) => cmd === 'node' && Array.isArray(args) && args.includes('hud'),
     );
-    expect(omqHudCall).toBeUndefined();
+    expect(omcHudCall).toBeUndefined();
   });
 
   it('does not add split-window HUD pane args when launching outside tmux', () => {
@@ -407,7 +401,7 @@ describe('runClaude outside-tmux — mouse scrolling (issue #890)', () => {
       'has-session',
     ]);
     expect(tmuxCalls.some((args) => args[0] === 'kill-session')).toBe(false);
-    expect(vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'qoderclicn')).toBeUndefined();
+    expect(vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'claude')).toBeUndefined();
     expect(processExitSpy).not.toHaveBeenCalled();
   });
 
@@ -422,7 +416,7 @@ describe('runClaude outside-tmux — mouse scrolling (issue #890)', () => {
     runClaude('/tmp', ['--dangerously-skip-permissions'], 'sid');
 
     expect(vi.mocked(tmuxExec).mock.calls).toHaveLength(1);
-    expect(vi.mocked(execFileSync).mock.calls.find(([cmd, args]) => cmd === 'qoderclicn' && (args as string[])[0] === '--dangerously-skip-permissions')).toBeDefined();
+    expect(vi.mocked(execFileSync).mock.calls.find(([cmd, args]) => cmd === 'claude' && (args as string[])[0] === '--dangerously-skip-permissions')).toBeDefined();
   });
 });
 
@@ -451,9 +445,9 @@ describe('runClaude inside-tmux — mouse configuration (issue #890)', () => {
     const mouseCall = tmuxCalls.find(([args]) => args[0] === 'set-option' && args.includes('mouse'));
     expect(mouseCall?.[0]).toEqual(['set-option', 'mouse', 'on']);
 
-    // execFileSync should have been called for qodercli
+    // execFileSync should have been called for claude
     const claudeCalls = vi.mocked(execFileSync).mock.calls;
-    expect(claudeCalls.find(([cmd]) => cmd === 'qoderclicn')).toBeDefined();
+    expect(claudeCalls.find(([cmd]) => cmd === 'claude')).toBeDefined();
   });
 
   it('still launches claude even if tmux mouse config fails', () => {
@@ -464,9 +458,9 @@ describe('runClaude inside-tmux — mouse configuration (issue #890)', () => {
 
     runClaude('/tmp', [], 'sid');
 
-    // tmux calls fail but qodercli should still be called
+    // tmux calls fail but claude should still be called
     const calls = vi.mocked(execFileSync).mock.calls;
-    const claudeCall = calls.find(([cmd]) => cmd === 'qoderclicn');
+    const claudeCall = calls.find(([cmd]) => cmd === 'claude');
     expect(claudeCall).toBeDefined();
   });
 });
@@ -789,7 +783,7 @@ describe('launchCommand — env var propagation', () => {
   let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   // Save original env values to restore after each test
-  const envKeys = ['OMQ_NOTIFY', 'OMQ_OPENCLAW', 'OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'CLAUDECODE'] as const;
+  const envKeys = ['OMC_NOTIFY', 'OMC_OPENCLAW', 'OMC_TELEGRAM', 'OMC_DISCORD', 'OMC_SLACK', 'OMC_WEBHOOK', 'CLAUDECODE'] as const;
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
@@ -817,86 +811,86 @@ describe('launchCommand — env var propagation', () => {
     }
   });
 
-  it('bare --telegram sets OMQ_TELEGRAM to 1', async () => {
+  it('bare --telegram sets OMC_TELEGRAM to 1', async () => {
     await launchCommand(['--telegram']);
-    expect(process.env.OMQ_TELEGRAM).toBe('1');
+    expect(process.env.OMC_TELEGRAM).toBe('1');
   });
 
-  it('bare --discord sets OMQ_DISCORD to 1', async () => {
+  it('bare --discord sets OMC_DISCORD to 1', async () => {
     await launchCommand(['--discord']);
-    expect(process.env.OMQ_DISCORD).toBe('1');
+    expect(process.env.OMC_DISCORD).toBe('1');
   });
 
-  it('bare --slack sets OMQ_SLACK to 1', async () => {
+  it('bare --slack sets OMC_SLACK to 1', async () => {
     await launchCommand(['--slack']);
-    expect(process.env.OMQ_SLACK).toBe('1');
+    expect(process.env.OMC_SLACK).toBe('1');
   });
 
-  it('bare --webhook sets OMQ_WEBHOOK to 1', async () => {
+  it('bare --webhook sets OMC_WEBHOOK to 1', async () => {
     await launchCommand(['--webhook']);
-    expect(process.env.OMQ_WEBHOOK).toBe('1');
+    expect(process.env.OMC_WEBHOOK).toBe('1');
   });
 
-  it('bare --openclaw sets OMQ_OPENCLAW to 1', async () => {
+  it('bare --openclaw sets OMC_OPENCLAW to 1', async () => {
     await launchCommand(['--openclaw']);
-    expect(process.env.OMQ_OPENCLAW).toBe('1');
+    expect(process.env.OMC_OPENCLAW).toBe('1');
   });
 
-  it('--telegram=false overrides inherited OMQ_TELEGRAM=1', async () => {
-    process.env.OMQ_TELEGRAM = '1';
+  it('--telegram=false overrides inherited OMC_TELEGRAM=1', async () => {
+    process.env.OMC_TELEGRAM = '1';
     await launchCommand(['--telegram=false']);
-    expect(process.env.OMQ_TELEGRAM).toBe('0');
+    expect(process.env.OMC_TELEGRAM).toBe('0');
   });
 
-  it('--discord=false overrides inherited OMQ_DISCORD=1', async () => {
-    process.env.OMQ_DISCORD = '1';
+  it('--discord=false overrides inherited OMC_DISCORD=1', async () => {
+    process.env.OMC_DISCORD = '1';
     await launchCommand(['--discord=false']);
-    expect(process.env.OMQ_DISCORD).toBe('0');
+    expect(process.env.OMC_DISCORD).toBe('0');
   });
 
-  it('--slack=false overrides inherited OMQ_SLACK=1', async () => {
-    process.env.OMQ_SLACK = '1';
+  it('--slack=false overrides inherited OMC_SLACK=1', async () => {
+    process.env.OMC_SLACK = '1';
     await launchCommand(['--slack=false']);
-    expect(process.env.OMQ_SLACK).toBe('0');
+    expect(process.env.OMC_SLACK).toBe('0');
   });
 
-  it('--webhook=false overrides inherited OMQ_WEBHOOK=1', async () => {
-    process.env.OMQ_WEBHOOK = '1';
+  it('--webhook=false overrides inherited OMC_WEBHOOK=1', async () => {
+    process.env.OMC_WEBHOOK = '1';
     await launchCommand(['--webhook=false']);
-    expect(process.env.OMQ_WEBHOOK).toBe('0');
+    expect(process.env.OMC_WEBHOOK).toBe('0');
   });
 
-  it('--openclaw=false overrides inherited OMQ_OPENCLAW=1', async () => {
-    process.env.OMQ_OPENCLAW = '1';
+  it('--openclaw=false overrides inherited OMC_OPENCLAW=1', async () => {
+    process.env.OMC_OPENCLAW = '1';
     await launchCommand(['--openclaw=false']);
-    expect(process.env.OMQ_OPENCLAW).toBe('0');
+    expect(process.env.OMC_OPENCLAW).toBe('0');
   });
 
-  it('--telegram=0 overrides inherited OMQ_TELEGRAM=1', async () => {
-    process.env.OMQ_TELEGRAM = '1';
+  it('--telegram=0 overrides inherited OMC_TELEGRAM=1', async () => {
+    process.env.OMC_TELEGRAM = '1';
     await launchCommand(['--telegram=0']);
-    expect(process.env.OMQ_TELEGRAM).toBe('0');
+    expect(process.env.OMC_TELEGRAM).toBe('0');
   });
 
   it('preserves inherited platform env vars when no platform flags are passed', async () => {
-    process.env.OMQ_TELEGRAM = '1';
-    process.env.OMQ_DISCORD = '1';
-    process.env.OMQ_SLACK = '1';
-    process.env.OMQ_WEBHOOK = '1';
+    process.env.OMC_TELEGRAM = '1';
+    process.env.OMC_DISCORD = '1';
+    process.env.OMC_SLACK = '1';
+    process.env.OMC_WEBHOOK = '1';
 
     await launchCommand(['--print']);
 
-    expect(process.env.OMQ_TELEGRAM).toBe('1');
-    expect(process.env.OMQ_DISCORD).toBe('1');
-    expect(process.env.OMQ_SLACK).toBe('1');
-    expect(process.env.OMQ_WEBHOOK).toBe('1');
+    expect(process.env.OMC_TELEGRAM).toBe('1');
+    expect(process.env.OMC_DISCORD).toBe('1');
+    expect(process.env.OMC_SLACK).toBe('1');
+    expect(process.env.OMC_WEBHOOK).toBe('1');
   });
 
-  it('OMQ flags are stripped from args passed to Claude', async () => {
+  it('OMC flags are stripped from args passed to Claude', async () => {
     await launchCommand(['--telegram', '--discord', '--slack', '--webhook', '--openclaw', '--print']);
 
     const calls = vi.mocked(execFileSync).mock.calls;
-    const claudeCall = calls.find(([cmd]) => cmd === 'qoderclicn');
+    const claudeCall = calls.find(([cmd]) => cmd === 'claude');
     expect(claudeCall).toBeDefined();
     const claudeArgs = claudeCall![1] as string[];
     expect(claudeArgs).not.toContain('--telegram');
@@ -908,8 +902,8 @@ describe('launchCommand — env var propagation', () => {
   });
 });
 
-describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () => {
-  const originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
+describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () => {
+  const originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
   const originalHome = process.env.HOME;
   let tempRoot: string | null = null;
 
@@ -918,7 +912,7 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
   beforeEach(() => {
     vi.resetAllMocks();
     delete process.env.CLAUDECODE;
-    tempRoot = mkdtempSync(join(tmpdir(), 'omq-launch-profile-'));
+    tempRoot = mkdtempSync(join(tmpdir(), 'omc-launch-profile-'));
     process.env.HOME = join(tempRoot, 'home');
     (execFileSync as ReturnType<typeof vi.fn>).mockReturnValue(Buffer.from(''));
     (resolveLaunchPolicy as ReturnType<typeof vi.fn>).mockReturnValue('direct');
@@ -937,9 +931,9 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
       process.env.HOME = originalHome;
     }
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     }
     if (originalClaudecode === undefined) {
       delete process.env.CLAUDECODE;
@@ -948,44 +942,44 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
     }
   });
 
-  it('uses a runtime launch profile when a preserved AGENTS-omq.md companion exists', async () => {
-    const configDir = join(tempRoot!, '.qoder');
+  it('uses a runtime launch profile when a preserved CLAUDE-omc.md companion exists', async () => {
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(join(configDir, 'skills'), { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# User base config\n');
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ companion\n<!-- OMQ:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE.md'), '# User base config\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC companion\n<!-- OMC:END -->\n');
     writeFileSync(join(configDir, 'settings.json'), '{"hooks":{}}');
 
-    process.env.QODER_CONFIG_DIR = configDir;
+    process.env.CLAUDE_CONFIG_DIR = configDir;
 
     await launchCommand(['--print']);
 
-    const runtimeDir = join(configDir, '.omq-launch');
-    expect(process.env.QODER_CONFIG_DIR).toBe(runtimeDir);
-    expect(existsSync(join(runtimeDir, 'AGENTS.md'))).toBe(true);
-    expect(readFileSync(join(runtimeDir, 'AGENTS.md'), 'utf-8')).toContain('# OMQ companion');
-    expect(readFileSync(join(configDir, 'AGENTS.md'), 'utf-8')).toBe('# User base config\n');
+    const runtimeDir = join(configDir, '.omc-launch');
+    expect(process.env.CLAUDE_CONFIG_DIR).toBe(runtimeDir);
+    expect(existsSync(join(runtimeDir, 'CLAUDE.md'))).toBe(true);
+    expect(readFileSync(join(runtimeDir, 'CLAUDE.md'), 'utf-8')).toContain('# OMC companion');
+    expect(readFileSync(join(configDir, 'CLAUDE.md'), 'utf-8')).toBe('# User base config\n');
     expect(existsSync(join(runtimeDir, 'settings.json'))).toBe(true);
   });
 
   it('repairs retired team MCP entries in the runtime settings copy', () => {
-    const configDir = join(tempRoot!, '.qoder');
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(join(configDir, 'skills'), { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ companion\n<!-- OMQ:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC companion\n<!-- OMC:END -->\n');
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify({
       theme: 'dark',
       mcpServers: {
         team: {
           command: 'node',
-          args: ['${QODER_PLUGIN_ROOT}/bridge/team-mcp.cjs'],
+          args: ['${CLAUDE_PLUGIN_ROOT}/bridge/team-mcp.cjs'],
         },
         exa: {
           command: 'node',
-          args: ['${QODER_PLUGIN_ROOT}/bridge/mcp-server.cjs'],
+          args: ['${CLAUDE_PLUGIN_ROOT}/bridge/mcp-server.cjs'],
         },
       },
     }, null, 2));
 
-    const runtimeDir = prepareOmqLaunchConfigDir(configDir);
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
     const runtimeSettings = JSON.parse(readFileSync(join(runtimeDir, 'settings.json'), 'utf-8')) as {
       theme?: string;
       mcpServers?: Record<string, unknown>;
@@ -998,15 +992,15 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
   });
 
   it('mirrors keybindings.json, rules/, and themes/ into the runtime config dir', () => {
-    const configDir = join(tempRoot!, '.qoder');
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(join(configDir, 'rules'), { recursive: true });
     mkdirSync(join(configDir, 'themes'), { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
     writeFileSync(join(configDir, 'keybindings.json'), '{"bindings":[]}');
     writeFileSync(join(configDir, 'rules', 'my-rule.md'), '# Rule');
     writeFileSync(join(configDir, 'themes', 'custom-theme.json'), '{"name":"custom"}');
 
-    const runtimeDir = prepareOmqLaunchConfigDir(configDir);
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
     expect(runtimeDir).not.toBe(configDir);
     expect(existsSync(join(runtimeDir, 'keybindings.json'))).toBe(true);
     expect(existsSync(join(runtimeDir, 'rules'))).toBe(true);
@@ -1015,18 +1009,18 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
   });
 
   it('mirrors Linux credential file as a symlink without copying credential content', () => {
-    const configDir = join(tempRoot!, '.qoder');
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
     const credentialsPath = join(configDir, '.credentials.json');
     const credentialContent = '{"accessToken":"test-only-token"}';
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
     writeFileSync(credentialsPath, credentialContent);
 
     try {
-      const runtimeDir = prepareOmqLaunchConfigDir(configDir);
+      const runtimeDir = prepareOmcLaunchConfigDir(configDir);
       const runtimeCredentialsPath = join(runtimeDir, '.credentials.json');
 
       expect(existsSync(runtimeCredentialsPath)).toBe(true);
@@ -1051,54 +1045,103 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
       symlinkSync: vi.fn(() => {
         throw new Error('symlink unavailable');
       }),
+      linkSync: vi.fn(() => {
+        throw new Error('hardlink unavailable');
+      }),
     }));
 
     try {
-      const { prepareOmqLaunchConfigDir: prepareWithFailedSymlink } = await import('../launch.js');
-      const configDir = join(tempRoot!, '.qoder');
+      const { prepareOmcLaunchConfigDir: prepareWithFailedSymlink } = await import('../launch.js');
+      const configDir = join(tempRoot!, '.claude');
       mkdirSync(configDir, { recursive: true });
       const credentialsPath = join(configDir, '.credentials.json');
-      writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
-      writeFileSync(credentialsPath, '{"accessToken":"test-only-token"}');
+      writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+      writeFileSync(credentialsPath, JSON.stringify({ accessToken: 'test-only-token', expiresAt: 1000 }));
 
-      const runtimeDir = prepareWithFailedSymlink(configDir);
-      const runtimeCredentialsPath = join(runtimeDir, '.credentials.json');
-
-      expect(existsSync(runtimeCredentialsPath)).toBe(false);
-      expect(copyFileSyncSpy).not.toHaveBeenCalledWith(credentialsPath, runtimeCredentialsPath);
+      expect(() => prepareWithFailedSymlink(configDir)).toThrow(
+        /Unable to mirror Claude credentials without copying credential content/,
+      );
+      expect(copyFileSyncSpy).not.toHaveBeenCalledWith(credentialsPath, expect.stringContaining('.credentials.json'));
     } finally {
       vi.doUnmock('fs');
       vi.resetModules();
     }
   });
 
-  it('preserves runtime .qoder.json across runtime config dir rebuilds', () => {
-    const configDir = join(tempRoot!, '.qoder');
-    mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+  it.skipIf(process.platform === 'win32')('falls back to a hard link when credential symlink creation fails and remains reconcilable', async () => {
+    vi.resetModules();
+    const actualFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+    vi.doMock('fs', () => ({
+      ...actualFs,
+      symlinkSync: vi.fn(() => {
+        throw new Error('symlink unavailable');
+      }),
+    }));
 
-    const runtimeDir = prepareOmqLaunchConfigDir(configDir);
-    writeFileSync(join(runtimeDir, '.qoder.json'), '{"session":"keep-me"}');
+    try {
+      const { prepareOmcLaunchConfigDir: prepareWithFailedSymlink } = await import('../launch.js');
+      const configDir = join(tempRoot!, '.claude');
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+      writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+        oauthAccount: { accountUuid: 'same-account' },
+      }));
+      const credentialsPath = join(configDir, '.credentials.json');
+      writeFileSync(credentialsPath, JSON.stringify({
+        claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 },
+      }));
 
-    const rebuiltRuntimeDir = prepareOmqLaunchConfigDir(configDir);
+      const runtimeDir = prepareWithFailedSymlink(configDir);
+      const runtimeCredentialsPath = join(runtimeDir, '.credentials.json');
+      expect(lstatSync(runtimeCredentialsPath).isSymbolicLink()).toBe(false);
+      expect(statSync(runtimeCredentialsPath).ino).toBe(statSync(credentialsPath).ino);
 
-    expect(rebuiltRuntimeDir).toBe(runtimeDir);
-    expect(readFileSync(join(rebuiltRuntimeDir, '.qoder.json'), 'utf-8')).toBe('{"session":"keep-me"}');
+      rmSync(runtimeCredentialsPath, { force: true });
+      writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+        oauthAccount: { accountUuid: 'same-account' },
+      }));
+      writeFileSync(runtimeCredentialsPath, JSON.stringify({
+        claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 200 },
+      }));
+
+      const rebuiltRuntimeDir = prepareWithFailedSymlink(configDir);
+      const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+      expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('runtime-token');
+      expect(lstatSync(join(rebuiltRuntimeDir, '.credentials.json')).isSymbolicLink()).toBe(false);
+      expect(statSync(join(rebuiltRuntimeDir, '.credentials.json')).ino).toBe(statSync(credentialsPath).ino);
+    } finally {
+      vi.doUnmock('fs');
+      vi.resetModules();
+    }
   });
 
-  it('seeds missing runtime .qoder.json mcpServers from source .qoder.json', () => {
-    const configDir = join(tempRoot!, '.qoder');
+  it('preserves runtime .claude.json across runtime config dir rebuilds', () => {
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
-    writeFileSync(join(tempRoot!, '.qoder.json'), JSON.stringify({
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), '{"session":"keep-me"}');
+
+    const rebuiltRuntimeDir = prepareOmcLaunchConfigDir(configDir);
+
+    expect(rebuiltRuntimeDir).toBe(runtimeDir);
+    expect(readFileSync(join(rebuiltRuntimeDir, '.claude.json'), 'utf-8')).toBe('{"session":"keep-me"}');
+  });
+
+  it('seeds missing runtime .claude.json mcpServers from source .claude.json', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       mcpServers: {
         github: { command: 'node', args: ['github-mcp.js'] },
       },
       sourceOnly: true,
     }, null, 2));
 
-    const runtimeDir = prepareOmqLaunchConfigDir(configDir);
-    const runtimeClaudeJson = JSON.parse(readFileSync(join(runtimeDir, '.qoder.json'), 'utf-8')) as Record<string, unknown>;
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    const runtimeClaudeJson = JSON.parse(readFileSync(join(runtimeDir, '.claude.json'), 'utf-8')) as Record<string, unknown>;
 
     expect(runtimeClaudeJson).toEqual({
       mcpServers: {
@@ -1108,24 +1151,24 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
   });
 
   it('refreshes runtime mcpServers from source while preserving runtime metadata', () => {
-    const configDir = join(tempRoot!, '.qoder');
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
-    writeFileSync(join(tempRoot!, '.qoder.json'), JSON.stringify({
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       mcpServers: {
         exa: { command: 'node', args: ['old-exa.js'] },
       },
     }, null, 2));
 
-    const runtimeDir = prepareOmqLaunchConfigDir(configDir);
-    writeFileSync(join(runtimeDir, '.qoder.json'), JSON.stringify({
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
       session: 'keep-me',
       projects: { '/repo': { history: ['keep'] } },
       mcpServers: {
         exa: { command: 'node', args: ['stale-exa.js'] },
       },
     }, null, 2));
-    writeFileSync(join(tempRoot!, '.qoder.json'), JSON.stringify({
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       mcpServers: {
         exa: { command: 'node', args: ['new-exa.js'] },
         playwright: { command: 'npx', args: ['@playwright/mcp'] },
@@ -1133,8 +1176,8 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
       sourceOnly: 'not copied',
     }, null, 2));
 
-    const rebuiltRuntimeDir = prepareOmqLaunchConfigDir(configDir);
-    const runtimeClaudeJson = JSON.parse(readFileSync(join(rebuiltRuntimeDir, '.qoder.json'), 'utf-8')) as Record<string, unknown>;
+    const rebuiltRuntimeDir = prepareOmcLaunchConfigDir(configDir);
+    const runtimeClaudeJson = JSON.parse(readFileSync(join(rebuiltRuntimeDir, '.claude.json'), 'utf-8')) as Record<string, unknown>;
 
     expect(runtimeClaudeJson).toEqual({
       session: 'keep-me',
@@ -1146,75 +1189,533 @@ describe('prepareOmqLaunchConfigDir / launchCommand OMQ companion loading', () =
     });
   });
 
-  it('preserves runtime .qoder.json when source .qoder.json is absent, invalid, or has no mcpServers', () => {
-    const configDir = join(tempRoot!, '.qoder');
+  it('seeds onboarding completion and version from source .claude.json', () => {
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      hasCompletedOnboarding: true,
+      lastOnboardingVersion: '2.1',
+    }));
 
-    const runtimeDir = prepareOmqLaunchConfigDir(configDir);
-    const runtimeClaudeJsonPath = join(runtimeDir, '.qoder.json');
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    const runtimeClaudeJson = JSON.parse(readFileSync(join(runtimeDir, '.claude.json'), 'utf-8')) as Record<string, unknown>;
+
+    expect(runtimeClaudeJson.hasCompletedOnboarding).toBe(true);
+    expect(runtimeClaudeJson.lastOnboardingVersion).toBe('2.1');
+  });
+
+  it('inherits onboarding without mcpServers while preserving runtime session and projects', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ hasCompletedOnboarding: true }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      session: 'keep-session',
+      projects: { '/repo': { history: ['keep-project'] } },
+    }));
+
+    const rebuiltRuntimeDir = prepareOmcLaunchConfigDir(configDir);
+    const runtimeClaudeJson = JSON.parse(readFileSync(join(rebuiltRuntimeDir, '.claude.json'), 'utf-8')) as Record<string, unknown>;
+
+    expect(runtimeClaudeJson.hasCompletedOnboarding).toBe(true);
+    expect(runtimeClaudeJson.session).toBe('keep-session');
+    expect(runtimeClaudeJson.projects).toEqual({ '/repo': { history: ['keep-project'] } });
+    expect(runtimeClaudeJson.mcpServers).toBeUndefined();
+  });
+
+  it('replaces mismatched oauthAccount and deletes it when source removes the account', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    const sourceClaudeJsonPath = join(tempRoot!, '.claude.json');
+    writeFileSync(sourceClaudeJsonPath, JSON.stringify({ oauthAccount: { accountUuid: 'source-account' } }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      session: 'keep-session',
+      oauthAccount: { accountUuid: 'runtime-account' },
+    }));
+
+    let runtimeClaudeJson = JSON.parse(readFileSync(join(prepareOmcLaunchConfigDir(configDir), '.claude.json'), 'utf-8')) as Record<string, unknown>;
+    expect(runtimeClaudeJson.oauthAccount).toEqual({ accountUuid: 'source-account' });
+    expect(runtimeClaudeJson.session).toBe('keep-session');
+    writeFileSync(sourceClaudeJsonPath, JSON.stringify({ oauthAccount: null }));
+    runtimeClaudeJson = JSON.parse(readFileSync(join(prepareOmcLaunchConfigDir(configDir), '.claude.json'), 'utf-8')) as Record<string, unknown>;
+    expect(runtimeClaudeJson.oauthAccount).toBeUndefined();
+    expect(runtimeClaudeJson.session).toBe('keep-session');
+  });
+
+  it('promotes a fresher nested runtime credential and preserves unrelated base keys', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'same-account' } }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: { accessToken: 'base-token', expiresAt: 100, refreshToken: 'base-refresh' },
+      unrelated: 'preserve-me',
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'same-account' } }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 200, refreshToken: 'runtime-refresh' },
+    }));
+
+    const rebuiltRuntimeDir = prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    const runtimeCredentialsPath = join(rebuiltRuntimeDir, '.credentials.json');
+
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('runtime-token');
+    expect(baseCredentials.unrelated).toBe('preserve-me');
+    expect(lstatSync(runtimeCredentialsPath).isSymbolicLink()).toBe(true);
+    expect(readlinkSync(runtimeCredentialsPath)).toBe(credentialsPath);
+  });
+
+  it('promotes a fresher credential when UUID matches despite stale email metadata', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account', emailAddress: 'Current@Example.com' },
+    }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 },
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account', emailAddress: 'stale@example.COM' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 200 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('runtime-token');
+  });
+
+  it('promotes a fresher credential when a shared email identity matches case-insensitively', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { emailAddress: 'User@Example.com' },
+    }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 },
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { emailAddress: 'user@example.COM' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 200 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('runtime-token');
+  });
+
+  it('blocks credential promotion when account emails appear only in different fields', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { emailAddress: 'same@example.com' },
+    }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 },
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { email: 'same@example.com' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 200 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('base-token');
+  });
+
+  it('does not promote a high-expiry runtime credential without an access token', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({ claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 } }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { refreshToken: 'runtime-refresh', expiresAt: 999 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('base-token');
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).expiresAt).toBe(100);
+  });
+
+  it('does not resurrect a runtime credential when the base credential file is missing', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    const runtimeCredentialsPath = join(runtimeDir, '.credentials.json');
+    writeFileSync(runtimeCredentialsPath, JSON.stringify({
+      accessToken: 'runtime-token',
+      expiresAt: 999,
+    }));
+
+    const rebuiltRuntimeDir = prepareOmcLaunchConfigDir(configDir);
+    expect(existsSync(join(configDir, '.credentials.json'))).toBe(false);
+    expect(existsSync(join(rebuiltRuntimeDir, '.credentials.json'))).toBe(false);
+  });
+
+  it('blocks credential promotion when source and runtime account identities differ', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'source-account' } }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({ claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 } }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'different-account' } }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 999 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('base-token');
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).expiresAt).toBe(100);
+  });
+
+  it('blocks credential promotion when credential account identities conflict despite matching metadata', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: { accessToken: 'base-token', expiresAt: 100, accountUuid: 'base-account' },
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 999, accountUuid: 'runtime-account' },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('base-token');
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).expiresAt).toBe(100);
+  });
+
+  it('blocks credential promotion when credential email identities conflict despite matching metadata', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: {
+        accessToken: 'base-token',
+        expiresAt: 100,
+        emailAddress: 'base@example.com',
+      },
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: {
+        accessToken: 'runtime-token',
+        expiresAt: 999,
+        emailAddress: 'runtime@example.com',
+      },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('base-token');
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).expiresAt).toBe(100);
+  });
+
+  it('blocks credential promotion when only the base credential has a stable identity', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'stale-account' },
+    }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: {
+        accessToken: 'base-token',
+        refreshToken: 'base-refresh',
+        expiresAt: 100,
+        accountUuid: 'current-account',
+      },
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'stale-account' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 999 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('base-token');
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).refreshToken).toBe('base-refresh');
+  });
+
+  it('promotes a fresher credential when credential UUID matches despite stale email', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({
+      claudeAiOauth: {
+        accessToken: 'base-token',
+        expiresAt: 100,
+        accountUuid: 'same-account',
+        emailAddress: 'current@example.com',
+      },
+    }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: {
+        accessToken: 'runtime-token',
+        expiresAt: 999,
+        accountUuid: 'same-account',
+        emailAddress: 'stale@example.com',
+      },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('runtime-token');
+  });
+
+  it('blocks credential promotion when either account identity is missing', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'source-account' } }));
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(credentialsPath, JSON.stringify({ claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 } }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    // Runtime has no oauthAccount after a forced rewrite
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({ session: 'no-account-meta' }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 999 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    const baseCredentials = JSON.parse(readFileSync(credentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('base-token');
+    expect((baseCredentials.claudeAiOauth as Record<string, unknown>).expiresAt).toBe(100);
+  });
+
+  it('inherits lastOnboardingVersion using semver-aware comparison', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ lastOnboardingVersion: '2.10.0' }));
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({ lastOnboardingVersion: '2.9.0' }));
+    const rebuilt = prepareOmcLaunchConfigDir(configDir);
+    const runtimeClaudeJson = JSON.parse(readFileSync(join(rebuilt, '.claude.json'), 'utf-8')) as Record<string, unknown>;
+    expect(runtimeClaudeJson.lastOnboardingVersion).toBe('2.10.0');
+  });
+
+
+  it('updates a symlink target during credential promotion without replacing the symlink', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'same-account' } }));
+    const targetCredentialsPath = join(tempRoot!, 'credentials-target.json');
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(targetCredentialsPath, JSON.stringify({
+      claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 },
+      unrelated: 'preserve-me',
+    }));
+    symlinkSync(targetCredentialsPath, credentialsPath);
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'same-account' } }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 200 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    expect(lstatSync(credentialsPath).isSymbolicLink()).toBe(true);
+    expect(readlinkSync(credentialsPath)).toBe(targetCredentialsPath);
+    const targetCredentials = JSON.parse(readFileSync(targetCredentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((targetCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('runtime-token');
+    expect(targetCredentials.unrelated).toBe('preserve-me');
+  });
+
+  it.skipIf(process.platform === 'win32')('resolves a credential symlink chain beyond the former depth cap without replacing links', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    const finalCredentialsPath = join(tempRoot!, 'credentials-final.json');
+    const chainPaths = Array.from(
+      { length: 20 },
+      (_, index) => join(tempRoot!, `credentials-link-${index}.json`),
+    );
+    const credentialsPath = join(configDir, '.credentials.json');
+    writeFileSync(finalCredentialsPath, JSON.stringify({
+      claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 },
+    }));
+    for (let index = chainPaths.length - 1; index >= 0; index -= 1) {
+      symlinkSync(chainPaths[index + 1] ?? finalCredentialsPath, chainPaths[index]);
+    }
+    symlinkSync(chainPaths[0], credentialsPath);
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    writeFileSync(join(runtimeDir, '.claude.json'), JSON.stringify({
+      oauthAccount: { accountUuid: 'same-account' },
+    }));
+    rmSync(join(runtimeDir, '.credentials.json'), { force: true });
+    writeFileSync(join(runtimeDir, '.credentials.json'), JSON.stringify({
+      claudeAiOauth: { accessToken: 'runtime-token', expiresAt: 200 },
+    }));
+
+    prepareOmcLaunchConfigDir(configDir);
+    expect(lstatSync(credentialsPath).isSymbolicLink()).toBe(true);
+    expect(readlinkSync(credentialsPath)).toBe(chainPaths[0]);
+    for (let index = 0; index < chainPaths.length; index += 1) {
+      expect(lstatSync(chainPaths[index]).isSymbolicLink()).toBe(true);
+      expect(readlinkSync(chainPaths[index])).toBe(chainPaths[index + 1] ?? finalCredentialsPath);
+    }
+    expect(lstatSync(finalCredentialsPath).isSymbolicLink()).toBe(false);
+    const finalCredentials = JSON.parse(readFileSync(finalCredentialsPath, 'utf-8')) as Record<string, unknown>;
+    expect((finalCredentials.claudeAiOauth as Record<string, unknown>).accessToken).toBe('runtime-token');
+  });
+
+  it('preserves runtime .claude.json when source .claude.json is absent, invalid, or has no mcpServers', () => {
+    const configDir = join(tempRoot!, '.claude');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
+    const runtimeClaudeJsonPath = join(runtimeDir, '.claude.json');
     writeFileSync(runtimeClaudeJsonPath, '{"session":"keep-absent"}');
 
-    prepareOmqLaunchConfigDir(configDir);
+    prepareOmcLaunchConfigDir(configDir);
     expect(readFileSync(runtimeClaudeJsonPath, 'utf-8')).toBe('{"session":"keep-absent"}');
 
-    writeFileSync(join(tempRoot!, '.qoder.json'), '{not json');
+    writeFileSync(join(tempRoot!, '.claude.json'), '{not json');
     writeFileSync(runtimeClaudeJsonPath, '{"session":"keep-invalid"}');
-    prepareOmqLaunchConfigDir(configDir);
+    prepareOmcLaunchConfigDir(configDir);
     expect(readFileSync(runtimeClaudeJsonPath, 'utf-8')).toBe('{"session":"keep-invalid"}');
 
-    writeFileSync(join(tempRoot!, '.qoder.json'), JSON.stringify({ projects: {} }, null, 2));
+    writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ projects: {} }, null, 2));
     writeFileSync(runtimeClaudeJsonPath, '{"session":"keep-no-mcp"}');
-    prepareOmqLaunchConfigDir(configDir);
+    prepareOmcLaunchConfigDir(configDir);
     expect(readFileSync(runtimeClaudeJsonPath, 'utf-8')).toBe('{"session":"keep-no-mcp"}');
   });
 
   it('removes non-mirrored runtime junk across runtime config dir rebuilds', () => {
-    const configDir = join(tempRoot!, '.qoder');
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
 
-    const runtimeDir = prepareOmqLaunchConfigDir(configDir);
+    const runtimeDir = prepareOmcLaunchConfigDir(configDir);
     writeFileSync(join(runtimeDir, 'junk.txt'), 'remove me');
     mkdirSync(join(runtimeDir, 'junk-dir'), { recursive: true });
     writeFileSync(join(runtimeDir, 'junk-dir', 'nested.txt'), 'remove me too');
 
-    const rebuiltRuntimeDir = prepareOmqLaunchConfigDir(configDir);
+    const rebuiltRuntimeDir = prepareOmcLaunchConfigDir(configDir);
 
     expect(rebuiltRuntimeDir).toBe(runtimeDir);
     expect(existsSync(join(rebuiltRuntimeDir, 'junk.txt'))).toBe(false);
     expect(existsSync(join(rebuiltRuntimeDir, 'junk-dir'))).toBe(false);
   });
 
-  it('leaves QODER_CONFIG_DIR unchanged when no preserved companion exists', () => {
-    const configDir = join(tempRoot!, '.qoder');
+  it('leaves CLAUDE_CONFIG_DIR unchanged when no preserved companion exists', () => {
+    const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '<!-- OMQ:START -->\n# OMQ base\n<!-- OMQ:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC base\n<!-- OMC:END -->\n');
 
-    expect(prepareOmqLaunchConfigDir(configDir)).toBe(configDir);
-    expect(existsSync(join(configDir, '.omq-launch'))).toBe(false);
+    expect(prepareOmcLaunchConfigDir(configDir)).toBe(configDir);
+    expect(existsSync(join(configDir, '.omc-launch'))).toBe(false);
   });
 
-  it('does not keep QODER_CONFIG_DIR set when it resolves to the default ~/.qoder path', async () => {
-    const configDir = join(tempRoot!, 'home', '.qoder');
+  it('does not keep CLAUDE_CONFIG_DIR set when it resolves to the default ~/.claude path', async () => {
+    const configDir = join(tempRoot!, 'home', '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# User config\n');
-    process.env.QODER_CONFIG_DIR = configDir;
+    writeFileSync(join(configDir, 'CLAUDE.md'), '# User config\n');
+    process.env.CLAUDE_CONFIG_DIR = configDir;
 
     await launchCommand(['--print']);
 
-    expect(process.env.QODER_CONFIG_DIR).toBeUndefined();
+    expect(process.env.CLAUDE_CONFIG_DIR).toBeUndefined();
   });
 
-  it('preserves explicit non-default QODER_CONFIG_DIR values when no companion exists', async () => {
-    const configDir = join(tempRoot!, 'custom-qoder');
+  it('preserves explicit non-default CLAUDE_CONFIG_DIR values when no companion exists', async () => {
+    const configDir = join(tempRoot!, 'custom-claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'AGENTS.md'), '# Custom user config\n');
-    process.env.QODER_CONFIG_DIR = configDir;
+    writeFileSync(join(configDir, 'CLAUDE.md'), '# Custom user config\n');
+    process.env.CLAUDE_CONFIG_DIR = configDir;
 
     await launchCommand(['--print']);
 
-    expect(process.env.QODER_CONFIG_DIR).toBe(configDir);
+    expect(process.env.CLAUDE_CONFIG_DIR).toBe(configDir);
   });
 });
 
@@ -1269,9 +1770,9 @@ describe('runClaude — print mode bypasses tmux (issue #1665)', () => {
     runClaude('/tmp', ['--print', 'say hello'], 'sid');
 
     const calls = vi.mocked(execFileSync).mock.calls;
-    // Should call qodercli directly, NOT tmux
+    // Should call claude directly, NOT tmux
     expect(calls).toHaveLength(1);
-    expect(calls[0][0]).toBe('qoderclicn');
+    expect(calls[0][0]).toBe('claude');
     expect(calls[0][1]).toEqual(['--print', 'say hello']);
     expect(calls[0][2]).toEqual(expect.objectContaining({ stdio: 'inherit' }));
   });
@@ -1283,7 +1784,7 @@ describe('runClaude — print mode bypasses tmux (issue #1665)', () => {
 
     const calls = vi.mocked(execFileSync).mock.calls;
     expect(calls).toHaveLength(1);
-    expect(calls[0][0]).toBe('qoderclicn');
+    expect(calls[0][0]).toBe('claude');
   });
 
   it('runs claude directly when --print is present (inside-tmux policy)', () => {
@@ -1292,9 +1793,9 @@ describe('runClaude — print mode bypasses tmux (issue #1665)', () => {
     runClaude('/tmp', ['--dangerously-skip-permissions', '--print', 'say hello'], 'sid');
 
     const calls = vi.mocked(execFileSync).mock.calls;
-    // Should NOT call tmux set-option (mouse config), just qodercli directly
+    // Should NOT call tmux set-option (mouse config), just claude directly
     expect(calls).toHaveLength(1);
-    expect(calls[0][0]).toBe('qoderclicn');
+    expect(calls[0][0]).toBe('claude');
   });
 
   it('does not bypass tmux when --print is absent', () => {
@@ -1387,12 +1888,12 @@ describe('buildEnvExportPrefix — quoting delegation', () => {
 // TMUX_ENV_FORWARD — allowlist contract
 // ---------------------------------------------------------------------------
 describe('TMUX_ENV_FORWARD allowlist', () => {
-  it('includes QODER_CONFIG_DIR', () => {
-    expect(TMUX_ENV_FORWARD).toContain('QODER_CONFIG_DIR');
+  it('includes CLAUDE_CONFIG_DIR', () => {
+    expect(TMUX_ENV_FORWARD).toContain('CLAUDE_CONFIG_DIR');
   });
 
-  it('includes all OMQ launch flags', () => {
-    for (const name of ['OMQ_NOTIFY', 'OMQ_OPENCLAW', 'OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK']) {
+  it('includes all OMC launch flags', () => {
+    for (const name of ['OMC_NOTIFY', 'OMC_OPENCLAW', 'OMC_TELEGRAM', 'OMC_DISCORD', 'OMC_SLACK', 'OMC_WEBHOOK']) {
       expect(TMUX_ENV_FORWARD).toContain(name);
     }
   });
@@ -1402,7 +1903,7 @@ describe('TMUX_ENV_FORWARD allowlist', () => {
 // runClaude outside-tmux — env forwarding into tmux command
 // ---------------------------------------------------------------------------
 describe('runClaude outside-tmux — env forwarding', () => {
-  const savedConfigDir = process.env.QODER_CONFIG_DIR;
+  const savedConfigDir = process.env.CLAUDE_CONFIG_DIR;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -1412,45 +1913,45 @@ describe('runClaude outside-tmux — env forwarding', () => {
 
   afterEach(() => {
     if (savedConfigDir !== undefined) {
-      process.env.QODER_CONFIG_DIR = savedConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = savedConfigDir;
     } else {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     }
   });
 
-  it('injects QODER_CONFIG_DIR export into the tmux shell command', () => {
-    process.env.QODER_CONFIG_DIR = '/custom/config';
+  it('injects CLAUDE_CONFIG_DIR export into the tmux shell command', () => {
+    process.env.CLAUDE_CONFIG_DIR = '/custom/config';
     vi.mocked(isNativeWindowsShell).mockReturnValue(false);
 
     runClaude('/tmp', [], 'sid');
 
     const wrapCall = vi.mocked(wrapWithLoginShell).mock.calls[0];
     expect(wrapCall).toBeDefined();
-    expect(wrapCall[0]).toContain('export QODER_CONFIG_DIR=/custom/config');
+    expect(wrapCall[0]).toContain('export CLAUDE_CONFIG_DIR=/custom/config');
   });
 
   it('places env exports before the sleep/claude command', () => {
-    process.env.QODER_CONFIG_DIR = '/custom/config';
+    process.env.CLAUDE_CONFIG_DIR = '/custom/config';
     vi.mocked(isNativeWindowsShell).mockReturnValue(false);
 
     runClaude('/tmp', [], 'sid');
 
     const cmdString = vi.mocked(wrapWithLoginShell).mock.calls[0][0];
-    const exportIdx = cmdString.indexOf('export QODER_CONFIG_DIR');
+    const exportIdx = cmdString.indexOf('export CLAUDE_CONFIG_DIR');
     const sleepIdx = cmdString.indexOf('sleep 0.3');
     expect(exportIdx).toBeGreaterThanOrEqual(0);
     expect(sleepIdx).toBeGreaterThan(exportIdx);
   });
 
   it('does not inject exports when no forwarded vars are set', () => {
-    delete process.env.QODER_CONFIG_DIR;
-    delete process.env.OMQ_NOTIFY;
-    delete process.env.OMQ_OPENCLAW;
-    delete process.env.OMQ_TELEGRAM;
-    delete process.env.OMQ_DISCORD;
-    delete process.env.OMQ_SLACK;
-    delete process.env.OMQ_WEBHOOK;
-    delete process.env.OMQ_PLUGIN_ROOT;
+    delete process.env.CLAUDE_CONFIG_DIR;
+    delete process.env.OMC_NOTIFY;
+    delete process.env.OMC_OPENCLAW;
+    delete process.env.OMC_TELEGRAM;
+    delete process.env.OMC_DISCORD;
+    delete process.env.OMC_SLACK;
+    delete process.env.OMC_WEBHOOK;
+    delete process.env.OMC_PLUGIN_ROOT;
     vi.mocked(isNativeWindowsShell).mockReturnValue(false);
 
     runClaude('/tmp', [], 'sid');
@@ -1462,19 +1963,19 @@ describe('runClaude outside-tmux — env forwarding', () => {
   it('passes a cmd-friendly raw command string into login-shell wrapping on native Windows', () => {
     const originalPlatform = process.platform;
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
-    process.env.QODER_CONFIG_DIR = 'C:\\Users\\bellman\\config dir';
+    process.env.CLAUDE_CONFIG_DIR = 'C:\\Users\\bellman\\config dir';
     vi.mocked(isNativeWindowsShell).mockReturnValue(true);
 
     runClaude('/tmp', ['--print-system-prompt', 'hello world'], 'sid');
 
     expect(vi.mocked(buildTmuxShellCommandWithEnv)).toHaveBeenCalledWith(
-      'qoderclicn',
+      'claude',
       ['--print-system-prompt', 'hello world'],
-      { QODER_CONFIG_DIR: 'C:\\Users\\bellman\\config dir' },
+      { CLAUDE_CONFIG_DIR: 'C:\\Users\\bellman\\config dir' },
     );
     const rawCommand = vi.mocked(wrapWithLoginShell).mock.calls[0][0];
-    expect(rawCommand).toContain('QODER_CONFIG_DIR=C:\\Users\\bellman\\config dir');
-    expect(rawCommand).toContain('qoderclicn --print-system-prompt hello world');
+    expect(rawCommand).toContain('CLAUDE_CONFIG_DIR=C:\\Users\\bellman\\config dir');
+    expect(rawCommand).toContain('claude --print-system-prompt hello world');
     expect(rawCommand).not.toContain('sleep 0.3');
     expect(rawCommand).not.toContain('tcflush');
 
@@ -1484,13 +1985,13 @@ describe('runClaude outside-tmux — env forwarding', () => {
   it('keeps POSIX preflight commands on MSYS2 Windows shells', () => {
     const originalPlatform = process.platform;
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
-    process.env.QODER_CONFIG_DIR = '/custom/config';
+    process.env.CLAUDE_CONFIG_DIR = '/custom/config';
     vi.mocked(isNativeWindowsShell).mockReturnValue(false);
 
     runClaude('/tmp', ['--print-system-prompt', 'hello world'], 'sid');
 
     const rawCommand = vi.mocked(wrapWithLoginShell).mock.calls[0][0];
-    expect(rawCommand).toContain('export QODER_CONFIG_DIR=/custom/config');
+    expect(rawCommand).toContain('export CLAUDE_CONFIG_DIR=/custom/config');
     expect(rawCommand).toContain('sleep 0.3');
     expect(rawCommand).toContain("perl -e 'use POSIX;tcflush(0,TCIFLUSH)' 2>/dev/null;");
 
@@ -1654,7 +2155,7 @@ describe('runClaude — --madmax on macOS forces tmux', () => {
 
     expect(processExitSpy).not.toHaveBeenCalledWith(1);
     expect(resolveLaunchPolicy).not.toHaveBeenCalled();
-    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'qoderclicn');
+    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'claude');
     expect(claudeCall).toBeDefined();
   });
 
@@ -1674,7 +2175,7 @@ describe('runClaude — --madmax on macOS forces tmux', () => {
     expect(processExitSpy).toHaveBeenCalledWith(1);
     const messages = stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n');
     expect(messages).toContain('launching tmux failed');
-    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'qoderclicn');
+    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'claude');
     expect(claudeCall).toBeUndefined();
   });
 
@@ -1694,7 +2195,7 @@ describe('runClaude — --madmax on macOS forces tmux', () => {
     expect(processExitSpy).toHaveBeenCalledWith(1);
     const messages = stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n');
     expect(messages).toContain('launching tmux failed');
-    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'qoderclicn');
+    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'claude');
     expect(claudeCall).toBeUndefined();
   });
 
@@ -1717,7 +2218,7 @@ describe('runClaude — --madmax on macOS forces tmux', () => {
     const tmuxCalls = vi.mocked(tmuxExec).mock.calls.map(([tmuxArgs]) => tmuxArgs[0]);
     expect(tmuxCalls).toContain('attach-session');
     expect(tmuxCalls).not.toContain('has-session');
-    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'qoderclicn');
+    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'claude');
     expect(claudeCall).toBeUndefined();
   });
 
@@ -1736,7 +2237,7 @@ describe('runClaude — --madmax on macOS forces tmux', () => {
 
     // No --madmax: existing behavior preserved (direct path runs, no exit-1).
     expect(processExitSpy).not.toHaveBeenCalledWith(1);
-    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'qoderclicn');
+    const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd]) => cmd === 'claude');
     expect(claudeCall).toBeDefined();
   });
 });

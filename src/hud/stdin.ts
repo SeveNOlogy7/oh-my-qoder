@@ -1,7 +1,7 @@
 /**
- * OMQ HUD - Stdin Parser
+ * OMC HUD - Stdin Parser
  *
- * Parse stdin JSON from Qoder CLI statusline interface.
+ * Parse stdin JSON from Claude Code statusline interface.
  * Based on claude-hud reference implementation.
  */
 
@@ -11,7 +11,7 @@ import {
   getSessionStateDir,
   getWorktreeRoot,
   listSessionIds,
-  resolveOmqPath,
+  resolveOmcPath,
 } from '../lib/worktree-paths.js';
 import type { RateLimits, StatuslineStdin } from './types.js';
 
@@ -23,10 +23,10 @@ const TRANSIENT_CONTEXT_PERCENT_TOLERANCE = 3;
 
 /**
  * Session-id environment variables consulted in priority order.
- * Qoder CLI populates `QODER_SESSION_ID` first; `CLAUDECODE_SESSION_ID`
+ * Claude Code populates `CLAUDE_SESSION_ID` first; `CLAUDECODE_SESSION_ID`
  * is a legacy / compatibility alias for the same value.
  */
-const SESSION_ID_ENV_VARS = ['QODER_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
+const SESSION_ID_ENV_VARS = ['CLAUDE_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
 
 /**
  * Normalize an env value to a session-id candidate.
@@ -66,9 +66,9 @@ function getStdinCachePath(): string {
       // Invalid session id — try the next candidate.
     }
   }
-  // Legacy flat path must also resolve through the shared OMQ-root helper so
-  // `OMQ_STATE_DIR`-backed deployments land on the same directory as writers.
-  return resolveOmqPath('state/hud-stdin-cache.json', root);
+  // Legacy flat path must also resolve through the shared OMC-root helper so
+  // `OMC_STATE_DIR`-backed deployments land on the same directory as writers.
+  return resolveOmcPath('state/hud-stdin-cache.json', root);
 }
 
 /**
@@ -92,7 +92,7 @@ export function writeStdinCache(stdin: StatuslineStdin): void {
  * Read the last cached stdin JSON.
  *
  * When a session id is available in the environment, the session-scoped
- * path is authoritative. Otherwise — e.g. `omq hud --watch` running as a
+ * path is authoritative. Otherwise — e.g. `omc hud --watch` running as a
  * detached CLI/tmux process that never inherited the parent's session
  * env — we still need a way to surface the active session's cache; we
  * fall back first to the legacy flat path, and then to the most recently
@@ -118,7 +118,7 @@ export function readStdinCache(): StatuslineStdin | null {
 
   // If the scoped path already *is* the legacy flat path (no session id
   // was available), there's no further lookup to try.
-  const legacyPath = resolveOmqPath('state/hud-stdin-cache.json', root);
+  const legacyPath = resolveOmcPath('state/hud-stdin-cache.json', root);
   if (scopedPath !== legacyPath) {
     return null;
   }
@@ -132,10 +132,10 @@ export function readStdinCache(): StatuslineStdin | null {
  * Scan `state/sessions/{id}/hud-stdin-cache.json` and return the contents
  * of the most recently modified one. Only used as a fallback when no
  * session id is available in the environment (e.g. a tmux-hosted
- * `omq hud --watch` reader that did not inherit `QODER_SESSION_ID`).
+ * `omc hud --watch` reader that did not inherit `CLAUDE_SESSION_ID`).
  *
- * Uses the same OMQ-root helpers as the writers (`listSessionIds` /
- * `getSessionStateDir`) so this fallback honors `OMQ_STATE_DIR` and any
+ * Uses the same OMC-root helpers as the writers (`listSessionIds` /
+ * `getSessionStateDir`) so this fallback honors `OMC_STATE_DIR` and any
  * other centralized-state configuration.
  */
 function readMostRecentSessionCache(root: string): StatuslineStdin | null {
@@ -178,7 +178,7 @@ function readMostRecentSessionCache(root: string): StatuslineStdin | null {
 // ============================================================================
 
 /**
- * Read and parse stdin JSON from Qoder CLI.
+ * Read and parse stdin JSON from Claude Code.
  * Returns null if stdin is not available or invalid.
  */
 export async function readStdin(): Promise<StatuslineStdin | null> {
@@ -308,7 +308,7 @@ function isSameContextStream(current: StatuslineStdin, previous: StatuslineStdin
 }
 
 /**
- * Preserve the last native context percentage across transient snapshots where Qoder CLI
+ * Preserve the last native context percentage across transient snapshots where Claude Code
  * omits `used_percentage`, but only when the fallback calculation is close enough to suggest
  * the same underlying value rather than a real context jump.
  */
@@ -351,7 +351,7 @@ export function stabilizeContextPercent(
 
 /**
  * Get context window usage percentage.
- * Prefers a positive native percentage from Qoder CLI statusline stdin,
+ * Prefers a positive native percentage from Claude Code statusline stdin,
  * then positive current_usage tokens, then positive total_input_tokens for
  * Anthropic-compatible providers that report zeroed native usage.
  */
@@ -365,7 +365,7 @@ export function getContextPercent(stdin: StatuslineStdin): number {
 }
 
 /**
- * Convert Qoder CLI stdin rate_limits into the existing HUD RateLimits shape.
+ * Convert Claude Code stdin rate_limits into the existing HUD RateLimits shape.
  */
 export function getRateLimitsFromStdin(stdin: StatuslineStdin): RateLimits | null {
   const fiveHour = stdin.rate_limits?.five_hour?.used_percentage;
@@ -375,18 +375,25 @@ export function getRateLimitsFromStdin(stdin: StatuslineStdin): RateLimits | nul
     return null;
   }
 
-  return {
-    fiveHourPercent: clampPercent(fiveHour),
-    weeklyPercent: sevenDay == null ? undefined : clampPercent(sevenDay),
-    fiveHourResetsAt: parseResetDate(stdin.rate_limits?.five_hour?.resets_at),
-    weeklyResetsAt: parseResetDate(stdin.rate_limits?.seven_day?.resets_at),
-  };
+  const result: RateLimits = {};
+
+  if (fiveHour != null) {
+    result.fiveHourPercent = clampPercent(fiveHour);
+    result.fiveHourResetsAt = parseResetDate(stdin.rate_limits?.five_hour?.resets_at);
+  }
+
+  if (sevenDay != null) {
+    result.weeklyPercent = clampPercent(sevenDay);
+    result.weeklyResetsAt = parseResetDate(stdin.rate_limits?.seven_day?.resets_at);
+  }
+
+  return result;
 }
 
 /**
  * Get model display name from stdin.
  * Prefer the official display name field, then fall back to the raw model id.
- * Returns null when Qoder CLI does not provide model metadata so the HUD
+ * Returns null when Claude Code does not provide model metadata so the HUD
  * omits the model instead of guessing or showing a fake placeholder.
  */
 export function getModelId(stdin: StatuslineStdin): string | null {

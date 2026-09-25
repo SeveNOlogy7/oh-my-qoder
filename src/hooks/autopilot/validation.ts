@@ -164,7 +164,7 @@ Spawn all three validation architects in parallel to review the implementation:
 \`\`\`
 // 1. Functional Completeness Review
 Task(
-  subagent_type="oh-my-qoder:architect",
+  subagent_type="oh-my-claudecode:architect",
   model="opus",
   prompt="FUNCTIONAL COMPLETENESS REVIEW
 
@@ -181,7 +181,7 @@ Output: APPROVED or REJECTED with specific gaps"
 
 // 2. Security Review
 Task(
-  subagent_type="oh-my-qoder:security-reviewer",
+  subagent_type="oh-my-claudecode:security-reviewer",
   model="opus",
   prompt="SECURITY REVIEW
 
@@ -198,7 +198,7 @@ Output: APPROVED or REJECTED with specific issues"
 
 // 3. Code Quality Review
 Task(
-  subagent_type="oh-my-qoder:code-reviewer",
+  subagent_type="oh-my-claudecode:code-reviewer",
   model="opus",
   prompt="CODE QUALITY REVIEW
 
@@ -287,7 +287,7 @@ export function generateSummary(directory: string, sessionId?: string): Autopilo
   }
 
   return {
-    originalIdea: state.originalIdea,
+    originalIdea: state.originalIdea || state.prompt || "",
     filesCreated: state.execution.files_created,
     filesModified: state.execution.files_modified,
     testsStatus,

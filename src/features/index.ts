@@ -27,7 +27,7 @@ export {
   REPO_NAME,
   GITHUB_API_URL,
   GITHUB_RAW_URL,
-  QODER_CONFIG_DIR,
+  CLAUDE_CONFIG_DIR,
   VERSION_FILE,
   // Functions
   getInstalledVersion,
@@ -129,6 +129,15 @@ export {
   type SkillMcpConfig,
   type SkillRegistry
 } from './builtin-skills/index.js';
+
+// Session Friction Report - local context-bloat and operator-friction summaries
+export {
+  generateSessionFrictionReport,
+  type SessionFrictionReport,
+  type SessionFrictionReportOptions,
+  type SessionFrictionSession,
+  type SessionFrictionSignal,
+} from './session-friction-report/index.js';
 
 // Model Routing - intelligent model tier routing
 export {
@@ -233,6 +242,7 @@ export {
   createStateManager,
   // Functions
   getStatePath,
+  getLegacyPaths,
   ensureStateDir,
   readState,
   writeState,
@@ -312,4 +322,21 @@ export {
   type SessionHistorySearchOptions,
   type SessionHistorySearchReport,
 } from './session-history-search/index.js';
+// Agent Addressability & Discoverability - unnamed agent addressing/listing contract (#3665)
+export {
+  shortId,
+  hasExplicitName,
+  hasDescription,
+  addressFor,
+  listingLabel,
+  notificationReference,
+  resolveAgent,
+  formatAgentList,
+  SHORT_ID_LENGTH,
+  type AgentStatus,
+  type AddressableAgent,
+  type MatchKind,
+  type ResolveResult,
+  type FormatAgentListOptions,
+} from './agent-addressability/index.js';
 

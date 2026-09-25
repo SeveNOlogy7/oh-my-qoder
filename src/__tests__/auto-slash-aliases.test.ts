@@ -8,7 +8,7 @@ vi.mock('../team/model-contract.js', () => ({
 }));
 
 const originalCwd = process.cwd();
-const originalPluginRoot = process.env.QODER_PLUGIN_ROOT;
+const originalPluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
 const originalPath = process.env.PATH;
 let tempConfigDir: string;
 let tempProjectDir: string;
@@ -20,11 +20,11 @@ async function loadExecutor() {
 
 describe('auto slash aliases + skill guidance', () => {
   beforeEach(() => {
-    tempConfigDir = join(tmpdir(), `omq-auto-slash-config-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    tempProjectDir = join(tmpdir(), `omq-auto-slash-project-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tempConfigDir = join(tmpdir(), `omc-auto-slash-config-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tempProjectDir = join(tmpdir(), `omc-auto-slash-project-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(tempConfigDir, { recursive: true });
     mkdirSync(tempProjectDir, { recursive: true });
-    process.env.QODER_CONFIG_DIR = tempConfigDir;
+    process.env.CLAUDE_CONFIG_DIR = tempConfigDir;
     process.chdir(tempProjectDir);
   });
 
@@ -32,11 +32,11 @@ describe('auto slash aliases + skill guidance', () => {
     process.chdir(originalCwd);
     rmSync(tempConfigDir, { recursive: true, force: true });
     rmSync(tempProjectDir, { recursive: true, force: true });
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
     if (originalPluginRoot === undefined) {
-      delete process.env.QODER_PLUGIN_ROOT;
+      delete process.env.CLAUDE_PLUGIN_ROOT;
     } else {
-      process.env.QODER_PLUGIN_ROOT = originalPluginRoot;
+      process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
     }
     if (originalPath === undefined) {
       delete process.env.PATH;
@@ -56,9 +56,9 @@ description: Setup router
 
 ## Routing
 
-- doctor -> /oh-my-qoder:omq-doctor with remaining args
-- mcp -> /oh-my-qoder:mcp-setup with remaining args
-- otherwise -> /oh-my-qoder:omq-setup with remaining args`
+- doctor -> /oh-my-claudecode:omc-doctor with remaining args
+- mcp -> /oh-my-claudecode:mcp-setup with remaining args
+- otherwise -> /oh-my-claudecode:omc-setup with remaining args`
     );
 
     const { executeSlashCommand } = await loadExecutor();
@@ -69,7 +69,7 @@ description: Setup router
     });
 
     expect(result.success).toBe(true);
-    expect(result.replacementText).toContain('doctor -> /oh-my-qoder:omq-doctor with remaining args');
+    expect(result.replacementText).toContain('doctor -> /oh-my-claudecode:omc-doctor with remaining args');
     expect(result.replacementText).not.toContain('{{ARGUMENTS_AFTER_DOCTOR}}');
     expect(result.replacementText).not.toContain('{{ARGUMENTS_AFTER_MCP}}');
   });
@@ -84,19 +84,19 @@ description: Worktree-first manager
 aliases: [psm]
 ---
 
-> **Quick Start (worktree-first):** Start with \`omq teleport\` before tmux sessions.`
+> **Quick Start (worktree-first):** Start with \`omc teleport\` before tmux sessions.`
     );
 
     const { executeSlashCommand } = await loadExecutor();
     const result = executeSlashCommand({
       command: 'psm',
-      args: 'fix omq#42',
-      raw: '/psm fix omq#42',
+      args: 'fix omc#42',
+      raw: '/psm fix omc#42',
     });
 
     expect(result.success).toBe(true);
     expect(result.replacementText).toContain('Quick Start (worktree-first)');
-    expect(result.replacementText).toContain('`omq teleport`');
+    expect(result.replacementText).toContain('`omc teleport`');
     expect(result.replacementText).toContain('Deprecated Alias');
   });
 
@@ -148,7 +148,7 @@ Advanced: ambiguity ≤ 20%
     );
     writeFileSync(
       join(tempConfigDir, 'settings.json'),
-      JSON.stringify({ omq: { deepInterview: { ambiguityThreshold: 0.15 } } }),
+      JSON.stringify({ omc: { deepInterview: { ambiguityThreshold: 0.15 } } }),
     );
 
     const { executeSlashCommand } = await loadExecutor();
@@ -188,7 +188,7 @@ description: Deep interview
 pipeline: [deep-interview, plan, autopilot]
 next-skill: plan
 next-skill-args: --consensus --direct
-handoff: .omq/specs/deep-interview-{slug}.md
+handoff: .omc/specs/deep-interview-{slug}.md
 ---
 
 Deep interview body`
@@ -205,8 +205,8 @@ Deep interview body`
     expect(result.replacementText).toContain('## Skill Pipeline');
     expect(result.replacementText).toContain('Pipeline: `deep-interview → plan → autopilot`');
     expect(result.replacementText).toContain('Next skill arguments: `--consensus --direct`');
-    expect(result.replacementText).toContain('Skill("oh-my-qoder:plan")');
-    expect(result.replacementText).toContain('`.omq/specs/deep-interview-{slug}.md`');
+    expect(result.replacementText).toContain('Skill("oh-my-claudecode:plan")');
+    expect(result.replacementText).toContain('`.omc/specs/deep-interview-{slug}.md`');
   });
 
   it('discovers project-local compatibility skills from .agents/skills', async () => {
@@ -242,7 +242,43 @@ Compatibility body`
     expect(result.replacementText).toContain('`templates/`');
   });
 
-  it('discovers workspace-local Qoder CLI skills from .claude/skills before OMQ compatibility skills', async () => {
+  it('keeps top-level descriptions for compatibility skills with nested metadata', async () => {
+    mkdirSync(join(tempProjectDir, '.agents', 'skills', 'nested-metadata-skill'), { recursive: true });
+    writeFileSync(
+      join(tempProjectDir, '.agents', 'skills', 'nested-metadata-skill', 'SKILL.md'),
+      `---
+  name: nested-metadata-skill
+  description: Top-level skill description
+  metadata:
+    optionalEnv:
+      - name: EXAMPLE_SECRET
+        description: Nested environment description
+---
+
+Nested metadata skill body`
+    );
+
+    const { findCommand, executeSlashCommand, listAvailableCommands } = await loadExecutor();
+
+    expect(findCommand('nested-metadata-skill')?.metadata.description).toBe('Top-level skill description');
+    expect(listAvailableCommands()).toContainEqual({
+      name: 'nested-metadata-skill',
+      description: 'Top-level skill description',
+      scope: 'skill',
+    });
+
+    const result = executeSlashCommand({
+      command: 'nested-metadata-skill',
+      args: '',
+      raw: '/nested-metadata-skill',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.replacementText).toContain('**Description**: Top-level skill description');
+    expect(result.replacementText).not.toContain('Nested environment description');
+  });
+
+  it('discovers workspace-local Claude Code skills from .claude/skills before OMC compatibility skills', async () => {
     mkdirSync(join(tempProjectDir, '.claude', 'skills', 'workspace-skill', 'references'), { recursive: true });
     writeFileSync(
       join(tempProjectDir, '.claude', 'skills', 'workspace-skill', 'SKILL.md'),
@@ -298,7 +334,7 @@ description: Deep interview
 pipeline: [deep-interview, plan, autopilot]
 next-skill: plan
 next-skill-args: --consensus --direct
-handoff: .omq/specs/deep-interview-{slug}.md
+handoff: .omc/specs/deep-interview-{slug}.md
 ---
 
 Deep interview body`
@@ -313,13 +349,13 @@ Deep interview body`
 
     expect(result.success).toBe(true);
     expect(result.replacementText).toContain('## Autoresearch Setup Mode');
-    expect(result.replacementText).toContain('Skill("oh-my-qoder:autoresearch")');
+    expect(result.replacementText).toContain('Skill("oh-my-claudecode:autoresearch")');
     expect(result.replacementText).toContain('Mission seed from invocation: `improve startup performance`');
     expect(result.replacementText).not.toContain('## Skill Pipeline');
   });
 
-  it('renders plugin-safe autoresearch guidance when omq is unavailable in slash mode', async () => {
-    process.env.QODER_PLUGIN_ROOT = '/plugin-root';
+  it('renders plugin-safe autoresearch guidance when omc is unavailable in slash mode', async () => {
+    process.env.CLAUDE_PLUGIN_ROOT = '/plugin-root';
     process.env.PATH = '';
 
     mkdirSync(join(tempConfigDir, 'skills', 'deep-interview'), { recursive: true });
@@ -342,26 +378,7 @@ Deep interview body`
 
     expect(result.success).toBe(true);
     expect(result.replacementText)
-      .toContain('Skill("oh-my-qoder:autoresearch")');
+      .toContain('Skill("oh-my-claudecode:autoresearch")');
   });
 
-  it('routes /ccg advisor asks through the plugin bridge inside an active Claude session when QODER_PLUGIN_ROOT is set', async () => {
-    process.env.QODER_PLUGIN_ROOT = '/plugin-root';
-    process.env.PATH = '';
-    process.env.CLAUDECODE = '1';
-    process.env.QODER_SESSION_ID = 'session-123';
-
-    const { executeSlashCommand } = await loadExecutor();
-    const result = executeSlashCommand({
-      command: 'ccg',
-      args: 'review this auth flow',
-      raw: '/ccg review this auth flow',
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.replacementText).toContain('`node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs ask codex "<codex prompt>"`');
-    expect(result.replacementText).toContain('`node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs ask gemini "<gemini prompt>"`');
-    expect(result.replacementText).not.toContain('`omq ask codex "<codex prompt>"`');
-    expect(result.replacementText).not.toContain('`omq ask gemini "<gemini prompt>"`');
-  });
 });

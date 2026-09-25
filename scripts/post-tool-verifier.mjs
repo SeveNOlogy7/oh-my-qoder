@@ -6,66 +6,67 @@
  * Cross-platform: Windows, macOS, Linux
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync, renameSync, unlinkSync } from 'fs';
-import { closeSync, openSync, readSync, statSync } from 'fs';
 import { basename, join, dirname, resolve } from 'path';
 import { homedir, tmpdir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { getQoderConfigDir } from './lib/config-dir.mjs';
-import { resolveOmqStateRoot } from './lib/state-root.mjs';
+import { getClaudeConfigDir } from './lib/config-dir.mjs';
+import { encodeProjectPath } from './lib/encode-project-path.mjs';
+import { resolveOmcStateRoot } from './lib/state-root.mjs';
 import { readStdin } from './lib/stdin.mjs';
+import { resolveContextPercent } from './lib/context-usage.mjs';
+import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
 
-const AGENT_OUTPUT_ANALYSIS_LIMIT = parseInt(process.env.OMQ_AGENT_OUTPUT_ANALYSIS_LIMIT || '12000', 10);
-const AGENT_OUTPUT_SUMMARY_LIMIT = parseInt(process.env.OMQ_AGENT_OUTPUT_SUMMARY_LIMIT || '360', 10);
-const PREEMPTIVE_WARNING_THRESHOLD_PERCENT = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT || '70', 10);
-const PREEMPTIVE_CRITICAL_THRESHOLD_PERCENT = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT || '90', 10);
-const PREEMPTIVE_COOLDOWN_MS = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS || '60000', 10);
-const PREEMPTIVE_TRANSCRIPT_TAIL_BYTES = 4096;
+const AGENT_OUTPUT_ANALYSIS_LIMIT = parseInt(process.env.OMC_AGENT_OUTPUT_ANALYSIS_LIMIT || '12000', 10);
+const AGENT_OUTPUT_SUMMARY_LIMIT = parseInt(process.env.OMC_AGENT_OUTPUT_SUMMARY_LIMIT || '360', 10);
+const PREEMPTIVE_WARNING_THRESHOLD_PERCENT = parseInt(process.env.OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT || '70', 10);
+const PREEMPTIVE_CRITICAL_THRESHOLD_PERCENT = parseInt(process.env.OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT || '90', 10);
+const PREEMPTIVE_COOLDOWN_MS = parseInt(process.env.OMC_PREEMPTIVE_COMPACTION_COOLDOWN_MS || '60000', 10);
 const PREEMPTIVE_LARGE_OUTPUT_TOOLS = new Set(['read', 'grep', 'glob', 'bash', 'webfetch', 'task', 'taskcreate', 'taskupdate', 'taskoutput']);
 const QUIET_LEVEL = getQuietLevel();
 const SESSION_ID_ALLOWLIST = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;
 
 function getQuietLevel() {
-  const parsed = Number.parseInt(process.env.OMQ_QUIET || '0', 10);
+  const parsed = Number.parseInt(process.env.OMC_QUIET || '0', 10);
   if (Number.isNaN(parsed)) return 0;
   return Math.max(0, parsed);
 }
 
 /**
- * Resolve the .omq root directory for a given starting directory.
+ * Resolve the .omc root directory for a given starting directory.
  *
- * Resolution order (mirrors src/lib/worktree-paths.ts getOmqRoot):
- *   1) OMQ_STATE_DIR env — log a warning and fall through (full project-id
- *      derivation lives in the TS layer; .mjs scripts use resolveOmqStateRoot
- *      for the async TS-backed path when they need OMQ_STATE_DIR honoring).
- *   2) Walk up from startDir looking for a .omq-workspace marker file.
+ * Resolution order (mirrors src/lib/worktree-paths.ts getOmcRoot):
+ *   1) OMC_STATE_DIR env — log a warning and fall through (full project-id
+ *      derivation lives in the TS layer; .mjs scripts use resolveOmcStateRoot
+ *      for the async TS-backed path when they need OMC_STATE_DIR honoring).
+ *   2) Walk up from startDir looking for a .omc-workspace marker file.
  *      The first directory containing that file is the workspace anchor.
  *   3) git rev-parse --show-toplevel from startDir.
  *   4) Fallback to startDir itself.
  *
  * @param {string} startDir - Directory to resolve from (usually cwd from hook payload)
- * @returns {string} Absolute path to the .omq root directory
+ * @returns {string} Absolute path to the .omc root directory
  */
 function resolveOmcRoot(startDir) {
   const dir = startDir || process.cwd();
 
-  // 1) OMQ_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
-  if (process.env.OMQ_STATE_DIR) {
+  // 1) OMC_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
+  if (process.env.OMC_STATE_DIR) {
     process.stderr.write(
-      '[omq] OMQ_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
-      'resolution. Use resolveOmqStateRoot() for full OMQ_STATE_DIR support.\n'
+      '[omc] OMC_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
+      'resolution. Use resolveOmcStateRoot() for full OMC_STATE_DIR support.\n'
     );
   }
 
-  // 2) Walk up looking for .omq-workspace marker
+  // 2) Walk up looking for .omc-workspace marker
   try {
     let cursor = resolve(dir);
     const home = (() => { try { return resolve(homedir()); } catch { return null; } })();
     while (true) {
-      if (existsSync(join(cursor, '.omq-workspace'))) {
-        return join(cursor, '.omq');
+      if (existsSync(join(cursor, '.omc-workspace'))) {
+        return join(cursor, '.omc');
       }
       const parent = dirname(cursor);
       if (parent === cursor) break;
@@ -78,19 +79,20 @@ function resolveOmcRoot(startDir) {
 
   // 3) git rev-parse --show-toplevel
   try {
-    const top = execSync('git rev-parse --show-toplevel', {
+    const top = execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: dir,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 5000,
+      timeout: BOUNDED_GIT_TIMEOUT_MS,
+      windowsHide: true,
     }).trim();
-    if (top) return join(top, '.omq');
+    if (top) return join(top, '.omc');
   } catch {
     // not in a git repo — fall through
   }
 
   // 4) Fallback to startDir
-  return join(dir, '.omq');
+  return join(dir, '.omc');
 }
 
 function clampPercent(percent, fallback) {
@@ -122,13 +124,13 @@ try {
   // Notepad module not available - remember tags will be silently ignored
 }
 
-// Debug logging helper - gated behind OMQ_DEBUG env var
+// Debug logging helper - gated behind OMC_DEBUG env var
 const debugLog = (...args) => {
-  if (process.env.OMQ_DEBUG) console.error('[omq:debug:post-tool-verifier]', ...args);
+  if (process.env.OMC_DEBUG) console.error('[omc:debug:post-tool-verifier]', ...args);
 };
 
 // State file for session tracking
-const cfgDir = getQoderConfigDir();
+const cfgDir = getClaudeConfigDir();
 const STATE_FILE = join(cfgDir, '.session-stats.json');
 
 // Ensure state directory exists
@@ -189,7 +191,7 @@ function updateStats(toolName, sessionId) {
 // Read bash history config (default: enabled)
 function getBashHistoryConfig() {
   try {
-    const configPath = join(cfgDir, '.omq-config.json');
+    const configPath = join(cfgDir, '.omc-config.json');
     if (existsSync(configPath)) {
       const config = JSON.parse(readFileSync(configPath, 'utf-8'));
       if (config.bashHistory === false) return false;
@@ -219,16 +221,16 @@ function appendToBashHistory(command) {
   }
 }
 
-// Pattern to match Qoder CLI temp CWD permission errors (false positives on macOS)
+// Pattern to match Claude Code temp CWD permission errors (false positives on macOS)
 // e.g. "zsh:1: permission denied: /var/folders/.../T/claude-abc123-cwd"
 const CLAUDE_TEMP_CWD_PATTERN = /zsh:\d+: permission denied:.*\/T\/claude-[a-z0-9]+-cwd/gi;
 
-// Strip Qoder CLI temp CWD noise before pattern matching
+// Strip Claude Code temp CWD noise before pattern matching
 function stripClaudeTempCwdErrors(output) {
   return output.replace(CLAUDE_TEMP_CWD_PATTERN, '');
 }
 
-// Pattern matching Qoder CLI's "Error: Exit code N" prefix line
+// Pattern matching Claude Code's "Error: Exit code N" prefix line
 // Note: no /g flag — module-level regex with /g is stateful (.lastIndex persists across calls)
 const CLAUDE_EXIT_CODE_PREFIX = /^Error: Exit code \d+\s*$/m;
 const QUOTED_SPAN_PATTERN =
@@ -276,7 +278,7 @@ function stripNonActionableErrorContext(output) {
 
 /**
  * Detect non-zero exit code with valid stdout (issue #960).
- * Returns true when output has Qoder CLI's "Error: Exit code N" prefix
+ * Returns true when output has Claude Code's "Error: Exit code N" prefix
  * AND substantial content that doesn't itself indicate real errors.
  * Example: `gh pr checks` exits 8 (pending) but outputs valid CI status.
  */
@@ -284,7 +286,7 @@ export function isNonZeroExitWithOutput(output) {
   if (!output) return false;
   const cleaned = stripNonActionableErrorContext(stripClaudeTempCwdErrors(output));
 
-  // Must contain Qoder CLI's exit code prefix
+  // Must contain Claude Code's exit code prefix
   if (!CLAUDE_EXIT_CODE_PREFIX.test(cleaned)) return false;
 
   // Strip exit code prefix line(s) and check remaining content
@@ -348,18 +350,26 @@ export function detectBashFailure(output) {
     .some(line => linePatterns.some(pattern => pattern.test(line)));
 }
 
-// Detect background operation
-function detectBackgroundOperation(output) {
-  const bgPatterns = [
-    /started/i,
-    /running/i,
-    /background/i,
-    /async/i,
-    /task_id/i,
-    /spawned/i,
-  ];
+// Detect whether a tool call was actually backgrounded.
+//
+// The PostToolUse payload carries the tool's own `tool_input`, and Bash/Task
+// expose `run_in_background` — that flag, not the command output, is what
+// determines background execution. Substring-matching words like "running" or
+// "async" against arbitrary output misreports ordinary foreground calls
+// (issue #3578).
+export function isBackgroundToolInvocation(toolInput) {
+  if (!toolInput || typeof toolInput !== 'object' || Array.isArray(toolInput)) return false;
+  return toolInput.run_in_background === true;
+}
 
-  return bgPatterns.some(pattern => pattern.test(output));
+// Anchored fallback for the harness's own background-launch announcement.
+// Deliberately case-sensitive and anchored to the start of the output: text
+// that merely quotes the phrase elsewhere is not a launch (same rule as
+// src/hud/transcript.ts). Only the Task family gets this fallback — Bash has
+// no equivalent announcement, so it relies on the input flag alone.
+export function detectAnnouncedBackgroundLaunch(output) {
+  if (typeof output !== 'string') return false;
+  return /^(?:Async agent launched|Background task (?:launched|resumed))\b/.test(output.trimStart());
 }
 
 function resolveTranscriptPath(transcriptPath, cwd) {
@@ -379,25 +389,29 @@ function resolveTranscriptPath(transcriptPath, cwd) {
 
   const effectiveCwd = cwd || process.cwd();
   try {
-    const gitCommonDir = execSync('git rev-parse --git-common-dir', {
+    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
       cwd: effectiveCwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: BOUNDED_GIT_TIMEOUT_MS,
+      windowsHide: true,
     }).trim();
 
     const mainRepoRoot = dirname(resolve(effectiveCwd, gitCommonDir));
-    const worktreeTop = execSync('git rev-parse --show-toplevel', {
+    const worktreeTop = execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: effectiveCwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: BOUNDED_GIT_TIMEOUT_MS,
+      windowsHide: true,
     }).trim();
 
     if (mainRepoRoot !== worktreeTop) {
       const sessionFile = basename(transcriptPath);
       if (sessionFile) {
-        const projectsDir = join(getQoderConfigDir(), 'projects');
+        const projectsDir = join(getClaudeConfigDir(), 'projects');
         if (existsSync(projectsDir)) {
-          const encodedMain = mainRepoRoot.replace(/[/\\]/g, '-');
+          const encodedMain = encodeProjectPath(mainRepoRoot);
           const resolvedPath = join(projectsDir, encodedMain, sessionFile);
           if (existsSync(resolvedPath)) return resolvedPath;
         }
@@ -408,79 +422,6 @@ function resolveTranscriptPath(transcriptPath, cwd) {
   return transcriptPath;
 }
 
-function readTranscriptUsage(transcriptPath) {
-  if (!transcriptPath) return null;
-
-  let fd = -1;
-  try {
-    const stat = statSync(transcriptPath);
-    if (stat.size === 0) return null;
-
-    fd = openSync(transcriptPath, 'r');
-    const readSize = Math.min(PREEMPTIVE_TRANSCRIPT_TAIL_BYTES, stat.size);
-    const buffer = Buffer.alloc(readSize);
-    readSync(fd, buffer, 0, readSize, stat.size - readSize);
-    closeSync(fd);
-    fd = -1;
-
-    const tail = buffer.toString('utf-8');
-    const windowMatches = tail.match(/"context_window"\s{0,5}:\s{0,5}(\d+)/g);
-    const inputMatches = tail.match(/"input_tokens"\s{0,5}:\s{0,5}(\d+)/g);
-    if (!windowMatches || !inputMatches) return null;
-
-    const lastWindow = Number.parseInt(
-      windowMatches[windowMatches.length - 1].match(/(\d+)/)?.[1] || '0',
-      10,
-    );
-    const lastInput = Number.parseInt(
-      inputMatches[inputMatches.length - 1].match(/(\d+)/)?.[1] || '0',
-      10,
-    );
-    if (!Number.isFinite(lastWindow) || lastWindow <= 0) return null;
-    if (!Number.isFinite(lastInput) || lastInput < 0) return null;
-
-    return Math.round((lastInput / lastWindow) * 100);
-  } catch {
-    return null;
-  } finally {
-    if (fd !== -1) {
-      try { closeSync(fd); } catch {}
-    }
-  }
-}
-
-function readContextUsageFromHookInput(data) {
-  const contextWindow = data?.context_window;
-  if (!contextWindow || typeof contextWindow !== 'object') {
-    return null;
-  }
-
-  const usedPercentage = contextWindow.used_percentage;
-  if (Number.isFinite(usedPercentage) && usedPercentage >= 0) {
-    return Math.min(100, Math.max(0, Math.round(usedPercentage)));
-  }
-
-  const size = contextWindow.context_window_size;
-  if (!Number.isFinite(size) || size <= 0) {
-    return null;
-  }
-
-  const usage = contextWindow.current_usage;
-  if (!usage || typeof usage !== 'object') {
-    return null;
-  }
-
-  const inputTokens = Number(usage.input_tokens || 0);
-  const cacheCreationTokens = Number(usage.cache_creation_input_tokens || 0);
-  const cacheReadTokens = Number(usage.cache_read_input_tokens || 0);
-
-  const totalTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
-  if (!Number.isFinite(totalTokens) || totalTokens < 0) {
-    return null;
-  }
-
-  return Math.min(100, Math.max(0, Math.round((totalTokens / size) * 100)));
-}
 
 function getPreemptiveCooldownFilePath(directory, sessionId) {
   const cooldownScope =
@@ -488,7 +429,7 @@ function getPreemptiveCooldownFilePath(directory, sessionId) {
       ? `${directory || process.cwd()}::${sessionId}`
       : directory || process.cwd();
   const hash = createHash('sha1').update(cooldownScope).digest('hex');
-  const cooldownDir = join(tmpdir(), 'omq-preemptive-compaction');
+  const cooldownDir = join(tmpdir(), 'omc-preemptive-compaction');
   mkdirSync(cooldownDir, { recursive: true });
   return join(cooldownDir, `${hash}.json`);
 }
@@ -526,22 +467,23 @@ function shouldSuppressPreemptiveWarning(directory, sessionId, severity, now) {
 
 function buildPreemptiveContextMessage(percentUsed, severity) {
   if (severity === 'critical') {
-    return `[OMQ CRITICAL] Context at ${percentUsed}% (critical threshold: ${getPreemptiveCriticalThreshold()}%). Run /compact now before continuing with more tools or agent fan-out.`;
+    return `[OMC CRITICAL] Context at ${percentUsed}% (critical threshold: ${getPreemptiveCriticalThreshold()}%). Run /compact now before continuing with more tools or agent fan-out.`;
   }
 
-  return `[OMQ WARNING] Context at ${percentUsed}% (warning threshold: ${getPreemptiveWarningThreshold()}%). Plan a /compact soon to preserve room for the next large tool output.`;
+  return `[OMC WARNING] Context at ${percentUsed}% (warning threshold: ${getPreemptiveWarningThreshold()}%). Plan a /compact soon to preserve room for the next large tool output.`;
 }
 
-function maybeBuildPreemptiveCompactionMessage(toolName, data, directory) {
+async function maybeBuildPreemptiveCompactionMessage(toolName, data, directory) {
   if (!PREEMPTIVE_LARGE_OUTPUT_TOOLS.has(String(toolName || '').toLowerCase())) {
     return '';
   }
 
-  const percentFromTranscript = readTranscriptUsage(
+  const percentUsed = await resolveContextPercent(
+    data,
     resolveTranscriptPath(data.transcript_path || data.transcriptPath, directory),
+    directory,
   );
-  const percentUsed =
-    percentFromTranscript ?? readContextUsageFromHookInput(data);
+
   const warningThreshold = getPreemptiveWarningThreshold();
   const criticalThreshold = getPreemptiveCriticalThreshold();
 
@@ -594,7 +536,7 @@ function getSkillInvocationArgs(toolInput) {
 function isConsensusPlanningSkillInvocation(skillName, toolInput) {
   if (!skillName) return false;
   if (skillName === 'ralplan') return true;
-  if (skillName !== 'plan' && skillName !== 'omq-plan') return false;
+  if (skillName !== 'plan' && skillName !== 'omc-plan') return false;
   return getSkillInvocationArgs(toolInput).toLowerCase().includes('--consensus');
 }
 
@@ -702,7 +644,7 @@ function clipToolOutputForAnalysis(toolName, output) {
   }
 
   return {
-    clipped: `${output.slice(0, AGENT_OUTPUT_ANALYSIS_LIMIT)}\n...[agent output truncated by OMQ context guard]`,
+    clipped: `${output.slice(0, AGENT_OUTPUT_ANALYSIS_LIMIT)}\n...[agent output truncated by OMC context guard]`,
     wasTruncated: true,
   };
 }
@@ -764,7 +706,7 @@ export function detectWriteFailure(output) {
   return errorPatterns.some(pattern => pattern.test(cleaned));
 }
 
-// Detect Qoder CLI's deterministic write/edit success markers so docs or
+// Detect Claude Code's deterministic write/edit success markers so docs or
 // serialized tool output containing diagnostic prose do not override success.
 export function isClaudeCodeWriteSuccess(output) {
   if (!output) return false;
@@ -945,7 +887,7 @@ function getAgentCompletionSummary(directory, quietLevel = QUIET_LEVEL, sessionI
 
       const parts = [];
       if (quietLevel < 2 && running.length > 0) {
-        parts.push(`Running: ${running.length} [${running.map(a => a.agent_type.replace('oh-my-qoder:', '')).join(', ')}]`);
+        parts.push(`Running: ${running.length} [${running.map(a => a.agent_type.replace('oh-my-claudecode:', '')).join(', ')}]`);
       }
       if (quietLevel < 2 && completed > 0) parts.push(`Completed: ${completed}`);
       if (failed > 0) parts.push(`Failed: ${failed}`);
@@ -963,6 +905,7 @@ function generateMessage(toolName, toolOutput, sessionId, toolCount, directory, 
     rawLength = 0,
     structuredWriteSuccess = false,
     structuredWriteFailure = false,
+    toolInput = {},
   } = options;
   let message = '';
 
@@ -975,7 +918,7 @@ function generateMessage(toolName, toolOutput, sessionId, toolCount, directory, 
         message = `Command exited with code ${code} but produced valid output. This may be expected behavior.`;
       } else if (detectBashFailure(toolOutput)) {
         message = 'Command failed. Please investigate the error and fix before continuing.';
-      } else if (QUIET_LEVEL < 2 && detectBackgroundOperation(toolOutput)) {
+      } else if (QUIET_LEVEL < 2 && isBackgroundToolInvocation(toolInput)) {
         message = 'Background operation detected. Remember to verify results before proceeding.';
       }
       break;
@@ -986,7 +929,10 @@ function generateMessage(toolName, toolOutput, sessionId, toolCount, directory, 
       const agentSummary = getAgentCompletionSummary(directory, QUIET_LEVEL, sessionId);
       if (detectWriteFailure(toolOutput)) {
         message = 'Task delegation failed. Verify agent name and parameters.';
-      } else if (QUIET_LEVEL < 2 && detectBackgroundOperation(toolOutput)) {
+      } else if (
+        QUIET_LEVEL < 2 &&
+        (isBackgroundToolInvocation(toolInput) || detectAnnouncedBackgroundLaunch(toolOutput))
+      ) {
         message = 'Background task launched. Use TaskOutput to check results when needed.';
       } else if (QUIET_LEVEL < 2 && toolCount > 5) {
         message = `Multiple tasks delegated (${toolCount} total). Track their completion status.`;
@@ -1066,9 +1012,9 @@ function combineMessages(...messages) {
 }
 
 async function main() {
-  // Skip guard: check OMQ_SKIP_HOOKS env var (see issue #838)
-  const _skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map(s => s.trim());
-  if (process.env.DISABLE_OMQ === '1' || _skipHooks.includes('post-tool-use')) {
+  // Skip guard: check OMC_SKIP_HOOKS env var (see issue #838)
+  const _skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map(s => s.trim());
+  if (process.env.DISABLE_OMC === '1' || _skipHooks.includes('post-tool-use')) {
     console.log(JSON.stringify({ continue: true }));
     return;
   }
@@ -1087,13 +1033,13 @@ async function main() {
     const { clipped: clippedToolOutput, wasTruncated } = clipToolOutputForAnalysis(toolName, toolOutput);
     const sessionId = data.session_id || data.sessionId || 'unknown';
     const directory = data.cwd || data.directory || process.cwd();
+    const toolInput = data.tool_input || data.toolInput || {};
 
     // Update session statistics
     const toolCount = updateStats(toolName, sessionId);
 
     // Append Bash commands to ~/.bash_history for terminal recall
     if ((toolName === 'Bash' || toolName === 'bash') && getBashHistoryConfig()) {
-      const toolInput = data.tool_input || data.toolInput || {};
       const command = typeof toolInput === 'string' ? toolInput : (toolInput.command || '');
       appendToBashHistory(command);
     }
@@ -1109,12 +1055,11 @@ async function main() {
     }
 
     if (toolName === 'Skill' || toolName === 'skill') {
-      const toolInput = data.tool_input || data.toolInput || {};
       const skillName = getInvokedSkillName(toolInput);
       const currentState = readSkillActiveState(directory, sessionId);
       const completingSkill = (skillName ?? '')
         .toLowerCase()
-        .replace(/^oh-my-qoder:/, '');
+        .replace(/^oh-my-claudecode:/, '');
       if (!currentState || !currentState.active || currentState.skill_name === completingSkill) {
         clearSkillActiveState(directory, sessionId);
       }
@@ -1130,8 +1075,9 @@ async function main() {
         rawLength: toolOutput.length,
         structuredWriteSuccess,
         structuredWriteFailure,
+        toolInput,
       }),
-      maybeBuildPreemptiveCompactionMessage(toolName, data, directory),
+      await maybeBuildPreemptiveCompactionMessage(toolName, data, directory),
     );
 
     // Build response - use hookSpecificOutput.additionalContext for PostToolUse

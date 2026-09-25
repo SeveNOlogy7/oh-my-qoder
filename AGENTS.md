@@ -1,6 +1,6 @@
-# oh-my-qoder - Intelligent Multi-Agent Orchestration
+# oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
-You are running with oh-my-qoder (OMQ), a multi-agent orchestration layer for Qoder CLI.
+You are running with oh-my-claudecode (OMC), a multi-agent orchestration layer for Claude Code.
 Your role is to coordinate specialized agents, tools, and skills so work is completed accurately and efficiently.
 
 <guidance_schema_contract>
@@ -42,7 +42,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Keep diffs small and reversible.
 - Run lint, typecheck, tests, and static analysis after changes.
 - Final reports must include changed files, simplifications made, and remaining risks.
-- For session-scoped state paths, resolve via `resolveSessionStatePaths()` only -- branded `ReadPath`/`WritePath` are produced exclusively by that helper; ESLint `no-restricted-syntax` blocks `as ReadPath` / `as WritePath` casts outside `src/lib/worktree-paths.ts`.
+- For session-scoped state paths, resolve via `resolveSessionStatePaths()` only — branded `ReadPath`/`WritePath` are produced exclusively by that helper; ESLint `no-restricted-syntax` blocks `as ReadPath` / `as WritePath` casts outside `src/lib/worktree-paths.ts`.
 </working_agreements>
 
 ---
@@ -61,12 +61,12 @@ For non-trivial SDK/API/framework usage, delegate to `dependency-expert` to chec
 </delegation_rules>
 
 <child_agent_protocol>
-Qoder CLI spawns child agents via the `spawn_agent` tool (requires `multi_agent = true`).
+Claude Code spawns child agents via the `spawn_agent` tool (requires `multi_agent = true`).
 To inject role-specific behavior, the parent MUST read the role prompt and pass it in the spawned agent message.
 
 Delegation steps:
 1. Decide which agent role to delegate to (e.g., `architect`, `executor`, `debugger`)
-2. Read the role prompt: `~/.qoder/prompts/{role}.md`
+2. Read the role prompt: `~/.codex/prompts/{role}.md`
 3. Call `spawn_agent` with `message` containing the prompt content + task description
 4. The child agent receives full role context and executes the task independently
 
@@ -78,7 +78,7 @@ spawn_agent(message: "<test-engineer prompt>\n\nTask: Write tests for the auth c
 ```
 
 Each child agent:
-- Receives its role-specific prompt (from ~/.qoder/prompts/)
+- Receives its role-specific prompt (from ~/.codex/prompts/)
 - Inherits AGENTS.md context (via child_agents_md feature flag)
 - Runs in an isolated context with its own tool access
 - Returns results to the parent when complete
@@ -91,12 +91,12 @@ Key constraints:
 </child_agent_protocol>
 
 <invocation_conventions>
-Qoder CLI uses these prefixes for custom commands:
-- `/prompts:name` -- invoke a custom prompt (e.g., `/prompts:architect "review auth module"`)
-- `$name` -- invoke a skill (e.g., `$ralph "fix all tests"`, `$autopilot "build REST API"`)
-- `/skills` -- browse available skills interactively
+Claude Code uses these prefixes for custom commands:
+- `/prompts:name` — invoke a custom prompt (e.g., `/prompts:architect "review auth module"`)
+- `$name` — invoke a skill (e.g., `$ralph "fix all tests"`, `$autopilot "build REST API"`)
+- `/skills` — browse available skills interactively
 
-Agent prompts (in `~/.qoder/prompts/`): `/prompts:architect`, `/prompts:executor`, `/prompts:planner`, etc.
+Agent prompts (in `~/.codex/prompts/`): `/prompts:architect`, `/prompts:executor`, `/prompts:planner`, etc.
 Workflow skills (in `~/.agents/skills/`): `$ralph`, `$autopilot`, `$plan`, `$ralplan`, `$team`, etc.
 </invocation_conventions>
 
@@ -107,14 +107,14 @@ Match agent role to task complexity:
 - **High complexity** (architecture, deep analysis, complex refactors): `architect`, `executor`, `critic`
 
 For interactive use: `/prompts:name` (e.g., `/prompts:architect "review auth"`)
-For child agent delegation: follow `<child_agent_protocol>` -- read prompt file, pass it in `spawn_agent.message`
+For child agent delegation: follow `<child_agent_protocol>` — read prompt file, pass it in `spawn_agent.message`
 For workflow skills: `$name` (e.g., `$ralph "fix all tests"`)
 </model_routing>
 
 ---
 
 <agent_catalog>
-Use `/prompts:name` to invoke specialized agents (Qoder CLI custom prompt syntax).
+Use `/prompts:name` to invoke specialized agents (Claude Code custom prompt syntax).
 
 Build/Analysis Lane:
 - `/prompts:explore`: Fast codebase search, file/symbol mapping
@@ -127,7 +127,7 @@ Build/Analysis Lane:
 
 Review Lane:
 - `/prompts:style-reviewer`: Formatting, naming, idioms, lint conventions
-- `/prompts:code-reviewer`: Comprehensive review -- logic defects, maintainability, anti-patterns, style, performance
+- `/prompts:code-reviewer`: Comprehensive review — logic defects, maintainability, anti-patterns, style, performance
 - `/prompts:api-reviewer`: API contracts, versioning, backward compatibility
 - `/prompts:security-reviewer`: Vulnerabilities, trust boundaries, authn/authz
 - `/prompts:performance-reviewer`: Hotspots, complexity, memory/latency optimization
@@ -158,7 +158,7 @@ Coordination:
 
 <keyword_detection>
 When the user's message contains a magic keyword, activate the corresponding skill IMMEDIATELY.
-Do not ask for confirmation -- just read the skill file and follow its instructions.
+Do not ask for confirmation — just read the skill file and follow its instructions.
 
 | Keyword(s) | Skill | Action |
 |-------------|-------|--------|
@@ -182,7 +182,7 @@ Detection rules:
 
 Ralph / Ralplan execution gate:
 - Enforce **ralplan-first** when ralph is active and planning is not complete.
-- Planning is complete only after both `.omq/plans/prd-*.md` and `.omq/plans/test-spec-*.md` exist.
+- Planning is complete only after both `.omc/plans/prd-*.md` and `.omc/plans/test-spec-*.md` exist.
 - Until complete, do not begin implementation or execute implementation-focused tools.
 </keyword_detection>
 
@@ -199,7 +199,6 @@ Workflow Skills:
 - `web-clone`: URL-driven website cloning with visual + functional verification
 - `ecomode`: Token-efficient execution using lightweight models
 - `team`: N coordinated agents on shared task list
-- `ultraqa`: QA cycling -- test, verify, fix, repeat
 - `plan`: Strategic planning with optional RALPLAN-DR consensus mode
 - `deep-interview`: Socratic deep interview with Ouroboros-inspired mathematical ambiguity gating before execution
 - `ralplan`: Iterative consensus planning with RALPLAN-DR structured deliberation (planner + architect + critic); supports `--deliberate` for high-risk work
@@ -271,11 +270,12 @@ Resume: detect existing team state and resume from the last incomplete stage.
 <team_model_resolution>
 Team/Swarm worker startup currently uses one shared `agentType` and one shared launch-arg set for all workers in a team run.
 
-For worker model selection, apply this precedence (highest to lowest):
+For Claude worker model selection, apply this precedence (highest to lowest):
 1. Explicit `--model` already present in worker launch args
-2. Direct provider model env (`QODER_MODEL`)
-3. OMQ tier envs (`OMQ_MODEL_HIGH`, `OMQ_MODEL_MEDIUM`, `OMQ_MODEL_LOW`)
-4. Otherwise let Qoder CLI use its default model
+2. Direct provider model env (`ANTHROPIC_MODEL` / `CLAUDE_MODEL`)
+3. Provider tier envs (`CLAUDE_CODE_BEDROCK_SONNET_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`)
+4. OMC tier env (`OMC_MODEL_MEDIUM`)
+5. Otherwise let Claude Code use its default model
 
 Model flag normalization contract:
 - Accept both `--model <value>` and `--model=<value>`
@@ -317,7 +317,7 @@ Anti-slop workflow:
 
 Visual iteration gate:
 - For visual tasks (reference image(s) + generated screenshot), run `$visual-verdict` every iteration before the next edit.
-- Persist visual verdict JSON in `.omq/state/{scope}/ralph-progress.json` with both numeric (`score`, threshold pass/fail) and qualitative (`reasoning`, `differences`, `suggestions`, `next_actions`) feedback.
+- Persist visual verdict JSON in `.omc/state/{scope}/ralph-progress.json` with both numeric (`score`, threshold pass/fail) and qualitative (`reasoning`, `differences`, `suggestions`, `next_actions`) feedback.
 
 Continuation:
   Before concluding, confirm: zero pending tasks, all features working, tests passing, zero errors, verification evidence collected. If any item is unchecked, continue working.
@@ -342,17 +342,17 @@ When not to cancel:
 ---
 
 <state_management>
-oh-my-qoder uses the `.omq/` directory for persistent state:
-- `.omq/state/` -- Mode state files (JSON)
-- `.omq/notepad.md` -- Session-persistent notes
-- `.omq/project-memory.json` -- Cross-session project knowledge
-- `.omq/plans/` -- Planning documents
-- `.omq/logs/` -- Audit logs
-- `.omq/ultragoal/plans/{planId}/` -- Multi-plan ultragoal artifacts when `--plan-id` / `--auto-plan-id` is used.
+oh-my-claudecode uses the `.omc/` directory for persistent state:
+- `.omc/state/` -- Mode state files (JSON)
+- `.omc/notepad.md` -- Session-persistent notes
+- `.omc/project-memory.json` -- Cross-session project knowledge
+- `.omc/plans/` -- Planning documents
+- `.omc/logs/` -- Audit logs
+- `.omc/ultragoal/plans/{planId}/` -- Multi-plan ultragoal artifacts when `--plan-id` / `--auto-plan-id` is used.
 
-Multi-repo workspaces: drop a `.omq-workspace` marker file (JSON, can be `{}` or `{"id":"name"}`) in the parent directory when it is not itself a git repo. OMQ will anchor `.omq/` at the marker from any sub-directory. This lets parallel sessions in sibling repos share one `.omq/`. The session-start hook uses PID-aware liveness -- a dead owner no longer blocks state restore. See `docs/REFERENCE.md#multi-repo-workspaces-with-omq-workspace` for full details.
+Multi-repo workspaces: drop a `.omc-workspace` marker file (JSON, can be `{}` or `{"id":"name"}`) in the parent directory when it is not itself a git repo. OMC will anchor `.omc/` at the marker from any sub-directory. This lets parallel Claude sessions in sibling repos share one `.omc/`. The session-start hook uses PID-aware liveness — a dead owner no longer blocks state restore. See `docs/REFERENCE.md#multi-repo-workspaces-with-omc-workspace` for full details.
 
-Tools are available via MCP when configured (`omq setup` registers all servers):
+Tools are available via MCP when configured (`omc setup` registers all servers):
 
 State & Memory:
 - `state_read`, `state_write`, `state_clear`, `state_list_active`, `state_get_status`
@@ -386,14 +386,13 @@ Recommended mode fields:
 - `ultrawork`: `active`, `reinforcement_count`, `started_at`
 - `team`: `active`, `current_phase` (`team-plan|team-prd|team-exec|team-verify|team-fix|complete`), `agent_count`, `team_name`
 - `ecomode`: `active`
-- `ultraqa`: `active`, `current_phase`, `iteration`, `started_at`, `completed_at`
 </state_management>
 
 ---
 
 ## Setup
 
-Run `omq setup` to install all components. Run `omq doctor` to verify installation.
+Run `omc setup` to install all components. Run `omc doctor` to verify installation.
 
 ---
 
@@ -401,7 +400,7 @@ Run `omq setup` to install all components. Run `omq doctor` to verify installati
 
 - Flag breaking changes to public API or CLI interfaces as P0.
 - Verify error handling on all async operations (missing try/catch, unhandled rejections).
-- Check for hardcoded secrets, tokens, or credentials -- flag as P0.
+- Check for hardcoded secrets, tokens, or credentials — flag as P0.
 - Ensure new dependencies are justified and not duplicating existing functionality.
 - TypeScript: verify proper type annotations, no unsafe `any` without justification.
 - Test coverage: flag new logic paths that lack corresponding tests.

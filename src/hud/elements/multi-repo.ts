@@ -1,12 +1,12 @@
 /**
- * OMQ HUD - Multi-Repo Element
+ * OMC HUD - Multi-Repo Element
  *
  * Renders a multi-repo workspace indicator when the cwd is a parent
  * directory holding multiple sibling git repos (e.g. `bidchex-repos/`
  * containing `bidchex-backend/`, `bidchex-frontend/`, …).
  *
  * Two modes:
- *  - Marker present (`.omq-workspace` at cwd): show
+ *  - Marker present (`.omc-workspace` at cwd): show
  *      mr:<parent> | repos:N | sessions:M
  *  - Marker missing: show a one-line suggestion to create it.
  *
@@ -14,19 +14,19 @@
  * returns null and the normal repo/branch/status elements take over.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { cyan, dim, green, yellow } from '../colors.js';
-import { getOmqRoot } from '../../lib/worktree-paths.js';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
 
 /**
  * Liveness window for the session counter. A session dir whose
  * mtime (or any file inside) is within this window counts as active.
  *
- * 5 minutes balances responsiveness (a closed Qoder CLI drops off
+ * 5 minutes balances responsiveness (a closed Claude Code drops off
  * quickly) with tolerance for short user idleness between tool calls.
- * Qoder CLI fires hooks on every tool invocation and writes hud
+ * Claude Code fires hooks on every tool invocation and writes hud
  * state on every render, so any active session keeps the dir mtime
  * fresh well inside this window.
  *
@@ -37,7 +37,7 @@ import { getOmqRoot } from '../../lib/worktree-paths.js';
 const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
 
 /**
- * Qoder CLI session IDs are UUIDs. Anchor on this to filter out
+ * Claude Code session IDs are UUIDs. Anchor on this to filter out
  * unrelated subdirectories without depending on any specific marker
  * file (different hooks may or may not have run yet for a given
  * session — e.g. session-started.json is missing if the session-start
@@ -69,12 +69,12 @@ export function resetMultiRepoCache(): void {
 
 function isGitRepo(dir: string): boolean {
   try {
-    execSync('git rev-parse --show-toplevel', {
+    execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: dir,
       encoding: 'utf-8',
       timeout: 1000,
       stdio: ['pipe', 'pipe', 'pipe'],
-      shell: process.platform === 'win32' ? 'cmd.exe' : undefined,
+      windowsHide: true,
     });
     return true;
   } catch {
@@ -88,24 +88,24 @@ function looksLikeRepo(entryPath: string): boolean {
 }
 
 /**
- * Count session directories under `<cwd>/.omq/state/sessions/`.
+ * Count session directories under `<cwd>/.omc/state/sessions/`.
  *
  * A session is "active" when both:
- *  1. The directory name matches a Qoder CLI session UUID — filters
+ *  1. The directory name matches a Claude Code session UUID — filters
  *     out unrelated subdirectories without depending on any specific
  *     marker file.
  *  2. The dir mtime — or any file inside, as a fallback for FS that
  *     don't bubble child mtime — is within ACTIVITY_WINDOW_MS.
  *
- * This relies on Qoder CLI firing hooks on every tool call (and
+ * This relies on Claude Code firing hooks on every tool call (and
  * writing hud state on every render), which keeps mtime fresh while
  * the user is interacting with the session.
  */
 function countActiveSessions(cwd: string): number {
   // cwd here is verified to be the workspace anchor (marker present),
-  // so getOmqRoot resolves to <cwd>/.omq. Route through the canonical
-  // helper so OMQ_STATE_DIR and OMQ_DISABLE_MULTIREPO are honored.
-  const sessionsDir = join(getOmqRoot(cwd), 'state', 'sessions');
+  // so getOmcRoot resolves to <cwd>/.omc. Route through the canonical
+  // helper so OMC_STATE_DIR and OMC_DISABLE_MULTIREPO are honored.
+  const sessionsDir = join(getOmcRoot(cwd), 'state', 'sessions');
   if (!existsSync(sessionsDir)) return 0;
 
   const now = Date.now();
@@ -186,7 +186,7 @@ export function detectMultiRepo(cwd?: string): MultiRepoInfo | null {
       return null;
     }
 
-    const hasMarker = existsSync(join(key, '.omq-workspace'));
+    const hasMarker = existsSync(join(key, '.omc-workspace'));
     const activeSessions = hasMarker ? countActiveSessions(key) : 0;
     result = {
       isMultiRepo: true,
@@ -209,7 +209,7 @@ export function detectMultiRepo(cwd?: string): MultiRepoInfo | null {
  *
  * Examples:
  *   mr:bidchex-repos repos:11 sessions:2
- *   multi-repo detected — create .omq-workspace to enable shared state
+ *   multi-repo detected — create .omc-workspace to enable shared state
  */
 export function renderMultiRepo(cwd?: string): string | null {
   const info = detectMultiRepo(cwd);
@@ -219,7 +219,7 @@ export function renderMultiRepo(cwd?: string): string | null {
     return (
       yellow('⚠ multi-repo detected') +
       dim(' — run: ') +
-      cyan(`echo {} > "${info.parentName}/.omq-workspace"`) +
+      cyan(`echo {} > "${info.parentName}/.omc-workspace"`) +
       dim(' to enable shared state')
     );
   }

@@ -1,39 +1,39 @@
 #!/usr/bin/env node
 
 /**
- * Oh-My-Qoder CLI
+ * Oh-My-ClaudeCode CLI
  *
- * Command-line interface for the OMQ multi-agent system.
+ * Command-line interface for the OMC multi-agent system.
  *
  * Commands:
  * - run: Start an interactive session
  * - config: Show or edit configuration
- * - setup: Sync all OMQ components (hooks, agents, skills)
+ * - setup: Sync all OMC components (hooks, agents, skills)
  */
 
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { join } from 'path';
 import { writeFileSync, existsSync } from 'fs';
-import { getQoderConfigDir } from '../utils/config-dir.js';
-import { OMQ_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
+import { getClaudeConfigDir } from '../utils/config-dir.js';
+import { OMC_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
 import {
   loadConfig,
   getConfigPaths,
 } from '../config/loader.js';
-import { createOmqSession } from '../index.js';
+import { createOmcSession } from '../index.js';
 import {
   checkForUpdates,
   performUpdate,
   formatUpdateNotification,
   getInstalledVersion,
-  getOMQConfig,
+  getOMCConfig,
   reconcileUpdateRuntime,
   CONFIG_FILE,
-  type OMQConfig,
+  type OMCConfig,
 } from '../features/auto-update.js';
 import {
-  install as installOmq,
+  install as installOmc,
   isInstalled,
   getInstallInfo
 } from '../installer/index.js';
@@ -45,10 +45,13 @@ import {
 } from './commands/wait.js';
 import { doctorConflictsCommand } from './commands/doctor-conflicts.js';
 import { doctorTeamRoutingCommand } from './commands/doctor-team-routing.js';
+import { capabilitiesCheckCommand, capabilitiesLockCommand } from './commands/capabilities.js';
 import { sessionSearchCommand } from './commands/session-search.js';
+import { sessionFrictionReportCommand } from './commands/session-friction-report.js';
 import { teamCommand } from './commands/team.js';
 import { ralphthonCommand } from './commands/ralphthon.js';
 import { ultragoalCommand, ULTRAGOAL_HELP } from './commands/ultragoal.js';
+import { aliasRetirementCommand, ALIAS_RETIREMENT_HELP } from './commands/alias-retirement.js';
 import {
   teleportCommand,
   teleportListCommand,
@@ -68,7 +71,7 @@ const version = getRuntimePackageVersion();
 
 /**
  * Apply a --plugin-dir option value: resolve to absolute path, warn if it
- * disagrees with a pre-existing OMQ_PLUGIN_ROOT env var, then set the env var
+ * disagrees with a pre-existing OMC_PLUGIN_ROOT env var, then set the env var
  * so all subsequent code in this process sees the correct plugin root.
  *
  * No-op when `rawPath` is undefined/empty (option was not passed).
@@ -82,30 +85,30 @@ export function applyPluginDirOption(rawPath: string | undefined): void {
     console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
     process.exit(1);
   }
-  const existing = process.env[OMQ_PLUGIN_ROOT_ENV];
+  const existing = process.env[OMC_PLUGIN_ROOT_ENV];
   if (existing && existing !== resolved) {
     console.warn(
       chalk.yellow(
-        `Warning: --plugin-dir "${resolved}" overrides ${OMQ_PLUGIN_ROOT_ENV}="${existing}"`
+        `Warning: --plugin-dir "${resolved}" overrides ${OMC_PLUGIN_ROOT_ENV}="${existing}"`
       )
     );
   }
-  process.env[OMQ_PLUGIN_ROOT_ENV] = resolved;
+  process.env[OMC_PLUGIN_ROOT_ENV] = resolved;
 }
 
 const program = new Command();
 
-// Win32 platform warning - OMQ requires tmux which is not available on native Windows
+// Win32 platform warning - OMC requires tmux which is not available on native Windows
 warnIfWin32();
 
-// Default action when running 'omq' with no subcommand
-// Forwards all args to launchCommand so 'omq --notify false --madmax' etc. work directly
+// Default action when running 'omc' with no subcommand
+// Forwards all args to launchCommand so 'omc --notify false --madmax' etc. work directly
 async function defaultAction() {
   // Pass all CLI args through to launch (strip node + script path)
   const args = process.argv.slice(2);
 
   // Defensive fallback: wrapper/bridge invocations must preserve explicit ask routing
-  // so nested Qoder launch checks only apply to actual Qoder launches.
+  // so nested Claude launch checks only apply to actual Claude launches.
   if (args[0] === 'ask') {
     await askCommand(args.slice(1));
     return;
@@ -116,50 +119,50 @@ async function defaultAction() {
 
 
 program
-  .name('omq')
-  .description('Multi-agent orchestration system for Qoder Agent SDK')
+  .name('omc')
+  .description('Multi-agent orchestration system for Claude Agent SDK')
   .version(version)
   .allowUnknownOption()
   .action(defaultAction);
 
 /**
- * Launch command - Native tmux shell launch for Qoder CLI
+ * Launch command - Native tmux shell launch for Claude Code
  */
 program
   .command('launch [args...]')
-  .description('Launch Qoder CLI with native tmux shell integration')
+  .description('Launch Claude Code with native tmux shell integration')
   .allowUnknownOption()
   .addHelpText('after', `
 Examples:
-  $ omq                                Launch Qoder CLI
-  $ omq --madmax                       Launch with permissions bypass
-  $ omq --yolo                         Launch with permissions bypass (alias)
-  $ omq --notify false                 Launch without CCNotifier events
-  $ omq launch                         Explicit launch subcommand (same as bare omq)
-  $ omq launch --madmax                Explicit launch with flags
+  $ omc                                Launch Claude Code
+  $ omc --madmax                       Launch with permissions bypass
+  $ omc --yolo                         Launch with permissions bypass (alias)
+  $ omc --notify false                 Launch without CCNotifier events
+  $ omc launch                         Explicit launch subcommand (same as bare omc)
+  $ omc launch --madmax                Explicit launch with flags
 
 Options:
-  --notify <bool>   Enable/disable CCNotifier events. false sets OMQ_NOTIFY=0
+  --notify <bool>   Enable/disable CCNotifier events. false sets OMC_NOTIFY=0
                     and suppresses all stop/session-start/session-idle notifications.
                     Default: true
 
 Environment:
-  OMQ_NOTIFY=0              Suppress all notifications (set by --notify false)
+  OMC_NOTIFY=0              Suppress all notifications (set by --notify false)
 `)
   .action(async (args: string[]) => {
     await launchCommand(args);
   });
 
 /**
- * Interop command - Split-pane tmux session with OMQ and OMX
+ * Interop command - Split-pane tmux session with OMC and OMX
  */
 program
   .command('interop')
-  .description('Launch split-pane tmux session with Qoder CLI (OMQ) and Codex (OMX)')
+  .description('Launch split-pane tmux session with Claude Code (OMC) and Codex (OMX)')
   .addHelpText('after', `
 Requirements:
   - Must be running inside a tmux session
-  - Qoder CLI must be installed
+  - Claude CLI must be installed
   - Codex CLI recommended (graceful fallback if missing)`)
   .action(() => {
     interopCommand();
@@ -188,9 +191,9 @@ program
   .option('-p, --paths', 'Show configuration file paths')
   .addHelpText('after', `
 Examples:
-  $ omq config                   Show current configuration
-  $ omq config --validate        Validate configuration files
-  $ omq config --paths           Show config file locations
+  $ omc config                   Show current configuration
+  $ omc config --validate        Validate configuration files
+  $ omc config --paths           Show config file locations
 
   }`)
   .action(async (options) => {
@@ -215,8 +218,8 @@ Examples:
       const warnings: string[] = [];
       const errors: string[] = [];
 
-      if (!process.env.DASHSCOPE_API_KEY) {
-        warnings.push('DASHSCOPE_API_KEY environment variable not set');
+      if (!process.env.ANTHROPIC_API_KEY) {
+        warnings.push('ANTHROPIC_API_KEY environment variable not set');
       }
 
       if (config.mcpServers?.exa?.enabled && !process.env.EXA_API_KEY && !config.mcpServers.exa.apiKey) {
@@ -277,19 +280,19 @@ Profile types (use with --profile):
   webhook      Generic webhook (POST with JSON body)
 
 Examples:
-  $ omq config-stop-callback file --enable --path ${join(getQoderConfigDir(), 'logs/{date}.md')}
-  $ omq config-stop-callback telegram --enable --token <token> --chat <id>
-  $ omq config-stop-callback discord --enable --webhook <url>
-  $ omq config-stop-callback file --disable
-  $ omq config-stop-callback file --show
+  $ omc config-stop-callback file --enable --path ${join(getClaudeConfigDir(), 'logs/{date}.md')}
+  $ omc config-stop-callback telegram --enable --token <token> --chat <id>
+  $ omc config-stop-callback discord --enable --webhook <url>
+  $ omc config-stop-callback file --disable
+  $ omc config-stop-callback file --show
 
   # Named profiles (stored in notificationProfiles):
-  $ omq config-stop-callback discord --profile work --enable --webhook <url>
-  $ omq config-stop-callback telegram --profile work --enable --token <tk> --chat <id>
-  $ omq config-stop-callback discord-bot --profile ops --enable --token <tk> --channel-id <id>
+  $ omc config-stop-callback discord --profile work --enable --webhook <url>
+  $ omc config-stop-callback telegram --profile work --enable --token <tk> --chat <id>
+  $ omc config-stop-callback discord-bot --profile ops --enable --token <tk> --channel-id <id>
 
   # Select profile at launch:
-  $ OMQ_NOTIFY_PROFILE=work qodercli`)
+  $ OMC_NOTIFY_PROFILE=work claude`)
   .action(async (type: string, options) => {
     // When --profile is used, route to profile-based config
     if (options.profile) {
@@ -300,7 +303,7 @@ Examples:
         process.exit(1);
       }
 
-      const config = getOMQConfig() as OMQConfig & { notificationProfiles?: Record<string, any> };
+      const config = getOMCConfig() as OMCConfig & { notificationProfiles?: Record<string, any> };
       config.notificationProfiles = config.notificationProfiles || {};
       const profileName = options.profile as string;
       const profile = config.notificationProfiles[profileName] || { enabled: true };
@@ -430,7 +433,7 @@ Examples:
       process.exit(1);
     }
 
-    const config = getOMQConfig();
+    const config = getOMCConfig();
     config.stopHookCallbacks = config.stopHookCallbacks || {};
 
     // Show current config
@@ -495,7 +498,7 @@ Examples:
         const current = config.stopHookCallbacks.file;
         config.stopHookCallbacks.file = {
           enabled: enabled ?? current?.enabled ?? false,
-          path: options.path ?? current?.path ?? join(getQoderConfigDir(), 'session-logs/{session_id}.md'),
+          path: options.path ?? current?.path ?? join(getClaudeConfigDir(), 'session-logs/{session_id}.md'),
           format: (options.format as 'markdown' | 'json') ?? current?.format ?? 'markdown',
         };
         break;
@@ -574,24 +577,24 @@ program
   .option('--delete', 'Delete a profile')
   .addHelpText('after', `
 Examples:
-  $ omq config-notify-profile --list
-  $ omq config-notify-profile work --show
-  $ omq config-notify-profile work --delete
+  $ omc config-notify-profile --list
+  $ omc config-notify-profile work --show
+  $ omc config-notify-profile work --delete
 
   # Create/update profiles via config-stop-callback --profile:
-  $ omq config-stop-callback discord --profile work --enable --webhook <url>
+  $ omc config-stop-callback discord --profile work --enable --webhook <url>
 
   # Select profile at launch:
-  $ OMQ_NOTIFY_PROFILE=work qodercli`)
+  $ OMC_NOTIFY_PROFILE=work claude`)
   .action(async (name: string | undefined, options) => {
-    const config = getOMQConfig() as OMQConfig & { notificationProfiles?: Record<string, any> };
+    const config = getOMCConfig() as OMCConfig & { notificationProfiles?: Record<string, any> };
     const profiles = config.notificationProfiles || {};
 
     if (options.list || !name) {
       const names = Object.keys(profiles);
       if (names.length === 0) {
         console.log(chalk.yellow('No notification profiles configured.'));
-        console.log(chalk.gray('Create one with: omq config-stop-callback <type> --profile <name> --enable ...'));
+        console.log(chalk.gray('Create one with: omc config-stop-callback <type> --profile <name> --enable ...'));
       } else {
         console.log(chalk.blue('Notification profiles:'));
         for (const pName of names) {
@@ -603,9 +606,9 @@ Examples:
           console.log(`  ${chalk.bold(pName)} [${status}] — ${platforms || 'no platforms'}`);
         }
       }
-      const activeProfile = process.env.OMQ_NOTIFY_PROFILE;
+      const activeProfile = process.env.OMC_NOTIFY_PROFILE;
       if (activeProfile) {
-        console.log(chalk.gray(`\nActive profile (OMQ_NOTIFY_PROFILE): ${activeProfile}`));
+        console.log(chalk.gray(`\nActive profile (OMC_NOTIFY_PROFILE): ${activeProfile}`));
       }
       return;
     }
@@ -646,7 +649,7 @@ Examples:
       console.log(JSON.stringify(profiles[name], null, 2));
     } else {
       console.log(chalk.yellow(`Profile "${name}" not found.`));
-      console.log(chalk.gray('Create it with: omq config-stop-callback <type> --profile ' + name + ' --enable ...'));
+      console.log(chalk.gray('Create it with: omc config-stop-callback <type> --profile ' + name + ' --enable ...'));
     }
   });
 
@@ -659,11 +662,11 @@ program
   .description('Show system and agent information')
   .addHelpText('after', `
 Examples:
-  $ omq info                     Show agents, features, and MCP servers`)
+  $ omc info                     Show agents, features, and MCP servers`)
   .action(async () => {
-    const session = createOmqSession();
+    const session = createOmcSession();
 
-    console.log(chalk.blue.bold('\nOh-My-Qoder System Information\n'));
+    console.log(chalk.blue.bold('\nOh-My-ClaudeCode System Information\n'));
     console.log(chalk.gray('━'.repeat(50)));
 
     console.log(chalk.blue('\nAvailable Agents:'));
@@ -706,10 +709,10 @@ program
   .description('Test how a prompt would be enhanced')
   .addHelpText('after', `
 Examples:
-  $ omq test-prompt "ultrawork fix bugs"    See how magic keywords are detected
-  $ omq test-prompt "analyze this code"     Test prompt enhancement`)
+  $ omc test-prompt "ultrawork fix bugs"    See how magic keywords are detected
+  $ omc test-prompt "analyze this code"     Test prompt enhancement`)
   .action(async (prompt: string) => {
-    const session = createOmqSession();
+    const session = createOmcSession();
 
     console.log(chalk.blue('Original prompt:'));
     console.log(chalk.gray(prompt));
@@ -737,13 +740,13 @@ program
   .option('--clean', 'Purge old plugin cache versions immediately (bypass 24h grace period)')
   .addHelpText('after', `
 Examples:
-  $ omq update                   Check and install updates
-  $ omq update --check           Only check, don't install
-  $ omq update --force           Force reinstall
-  $ omq update --standalone      Force npm update in plugin context`)
+  $ omc update                   Check and install updates
+  $ omc update --check           Only check, don't install
+  $ omc update --force           Force reinstall
+  $ omc update --standalone      Force npm update in plugin context`)
   .action(async (options) => {
     if (!options.quiet) {
-      console.log(chalk.blue('Oh-My-Qoder Update\n'));
+      console.log(chalk.blue('Oh-My-ClaudeCode Update\n'));
     }
 
     try {
@@ -791,7 +794,7 @@ Examples:
       if (result.success) {
         if (!options.quiet) {
           console.log(chalk.green(`\n✓ ${result.message}`));
-          console.log(chalk.gray('\nPlease restart your Qoder CLI session to use the new version.'));
+          console.log(chalk.gray('\nPlease restart your Claude Code session to use the new version.'));
         }
       } else {
         console.error(chalk.red(`\n✗ ${result.message}`));
@@ -803,7 +806,7 @@ Examples:
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(chalk.red(`Update failed: ${message}`));
-      console.error(chalk.gray('Try again with "omq update --force", or reinstall with "omq install --force".'));
+      console.error(chalk.gray('Try again with "omc update --force", or reinstall with "omc install --force".'));
       process.exit(1);
     }
   });
@@ -845,11 +848,11 @@ program
   .description('Show detailed version information')
   .addHelpText('after', `
 Examples:
-  $ omq version                  Show version, install method, and commit hash`)
+  $ omc version                  Show version, install method, and commit hash`)
   .action(async () => {
     const installed = getInstalledVersion();
 
-    console.log(chalk.blue.bold('\nOh-My-Qoder Version Information\n'));
+    console.log(chalk.blue.bold('\nOh-My-ClaudeCode Version Information\n'));
     console.log(chalk.gray('━'.repeat(50)));
 
     console.log(`\n  Package version:   ${chalk.green(version)}`);
@@ -870,30 +873,29 @@ Examples:
     }
 
     console.log(chalk.gray('\n━'.repeat(50)));
-    console.log(chalk.gray('\nTo check for updates, run: oh-my-qoder update --check'));
+    console.log(chalk.gray('\nTo check for updates, run: oh-my-claudecode update --check'));
   });
 
 /**
- * Install command - Install agents and commands (default: ~/.qoder/)
+ * Install command - Install agents and commands (default: ~/.claude/)
  */
 program
   .command('install')
-  .description('Install OMQ agents and commands to Qoder CLI config directory (default: ~/.qoder/)')
+  .description('Install OMC agents and commands to Claude Code config directory (default: ~/.claude/)')
   .option('-f, --force', 'Overwrite existing files')
   .option('-q, --quiet', 'Suppress output except for errors')
-  .option('--skip-qoder-check', 'Skip checking if Qoder CLI is installed')
-  .option('--skip-claude-check', 'Deprecated alias for --skip-qoder-check')
+  .option('--skip-claude-check', 'Skip checking if Claude Code is installed')
   .addHelpText('after', `
 Examples:
-  $ omq install                  Install to config directory (default: ~/.qoder/)
-  $ omq install --force          Reinstall, overwriting existing files
-  $ omq install --quiet          Silent install for scripts
-  $ QODER_CONFIG_DIR=$HOME/.qoder-isolated-workspace omq install  Isolated config directory`)
+  $ omc install                  Install to config directory (default: ~/.claude/)
+  $ omc install --force          Reinstall, overwriting existing files
+  $ omc install --quiet          Silent install for scripts
+  $ CLAUDE_CONFIG_DIR=$HOME/.claude-isolated-workspace omc install  Isolated config directory`)
   .action(async (options) => {
     if (!options.quiet) {
       console.log(chalk.blue('╔═══════════════════════════════════════════════════════════╗'));
-      console.log(chalk.blue('║         Oh-My-Qoder Installer                        ║'));
-      console.log(chalk.blue('║   Multi-Agent Orchestration for Qoder CLI               ║'));
+      console.log(chalk.blue('║         Oh-My-ClaudeCode Installer                        ║'));
+      console.log(chalk.blue('║   Multi-Agent Orchestration for Claude Code               ║'));
       console.log(chalk.blue('╚═══════════════════════════════════════════════════════════╝'));
       console.log('');
     }
@@ -902,7 +904,7 @@ Examples:
     if (isInstalled() && !options.force) {
       const info = getInstallInfo();
       if (!options.quiet) {
-        console.log(chalk.yellow('OMQ is already installed.'));
+        console.log(chalk.yellow('OMC is already installed.'));
         if (info) {
           console.log(chalk.gray(`  Version: ${info.version}`));
           console.log(chalk.gray(`  Installed: ${info.installedAt}`));
@@ -913,10 +915,10 @@ Examples:
     }
 
     // Run installation
-    const result = installOmq({
+    const result = installOmc({
       force: options.force,
       verbose: !options.quiet,
-      skipQoderCheck: options.skipQoderCheck || options.skipClaudeCheck
+      skipClaudeCheck: options.skipClaudeCheck
     });
 
     if (result.success) {
@@ -926,15 +928,15 @@ Examples:
         console.log(chalk.green('║         Installation Complete!                            ║'));
         console.log(chalk.green('╚═══════════════════════════════════════════════════════════╝'));
         console.log('');
-        console.log(chalk.gray(`Installed to: ${getQoderConfigDir()}`));
+        console.log(chalk.gray(`Installed to: ${getClaudeConfigDir()}`));
         console.log('');
         console.log(chalk.yellow('Usage:'));
-        console.log('  qodercli                      # Start Qoder CLI normally');
+        console.log('  claude                        # Start Claude Code normally');
         console.log('');
         console.log(chalk.yellow('Slash Commands:'));
-        console.log('  /omq <task>              # Activate OMQ orchestration mode');
-        console.log('  /omq-default             # Configure for current project');
-        console.log('  /omq-default-global      # Configure globally');
+        console.log('  /omc <task>              # Activate OMC orchestration mode');
+        console.log('  /omc-default             # Configure for current project');
+        console.log('  /omc-default-global      # Configure globally');
         console.log('  /ultrawork <task>             # Maximum performance mode');
         console.log('  /deepsearch <query>           # Thorough codebase search');
         console.log('  /analyze <target>             # Deep analysis mode');
@@ -964,22 +966,22 @@ Examples:
         console.log('    designer-low        - Simple styling (Haiku)');
         console.log('');
         console.log(chalk.yellow('After Updates:'));
-        console.log('  Run \'/omq-default\' (project) or \'/omq-default-global\' (global)');
-        console.log('  to download the latest AGENTS.md configuration.');
+        console.log('  Run \'/omc-default\' (project) or \'/omc-default-global\' (global)');
+        console.log('  to download the latest CLAUDE.md configuration.');
         console.log('  This ensures you get the newest features and agent behaviors.');
         console.log('');
         console.log(chalk.blue('Quick Start:'));
-        console.log('  1. Run \'qodercli\' to start Qoder CLI');
-        console.log('  2. Type \'/omq-default\' for project or \'/omq-default-global\' for global');
-        console.log('  3. Or use \'/omq <task>\' for one-time activation');
+        console.log('  1. Run \'claude\' to start Claude Code');
+        console.log('  2. Type \'/omc-default\' for project or \'/omc-default-global\' for global');
+        console.log('  3. Or use \'/omc <task>\' for one-time activation');
       }
     } else {
       console.error(chalk.red(`Installation failed: ${result.message}`));
       if (result.errors.length > 0) {
         result.errors.forEach(err => console.error(chalk.red(`  - ${err}`)));
       }
-      console.error(chalk.gray('\nTry "omq install --force" to overwrite existing files.'));
-      console.error(chalk.gray('For more diagnostics, run "omq doctor conflicts".'));
+      console.error(chalk.gray('\nTry "omc install --force" to overwrite existing files.'));
+      console.error(chalk.gray('For more diagnostics, run "omc doctor conflicts".'));
       process.exit(1);
     }
   });
@@ -988,24 +990,24 @@ Examples:
  * Wait command - Rate limit wait and auto-resume
  *
  * Zero learning curve design:
- * - `omq wait` alone shows status and suggests next action
- * - `omq wait --start` starts the daemon (shortcut)
- * - `omq wait --stop` stops the daemon (shortcut)
+ * - `omc wait` alone shows status and suggests next action
+ * - `omc wait --start` starts the daemon (shortcut)
+ * - `omc wait --stop` stops the daemon (shortcut)
  * - Subcommands available for power users
  */
 const waitCmd = program
   .command('wait')
-  .description('Rate limit wait and auto-resume (just run "omq wait" to get started)')
+  .description('Rate limit wait and auto-resume (just run "omc wait" to get started)')
   .option('--json', 'Output as JSON')
   .option('--start', 'Start the auto-resume daemon')
   .option('--stop', 'Stop the auto-resume daemon')
   .addHelpText('after', `
 Examples:
-  $ omq wait                     Show status and suggestions
-  $ omq wait --start             Start auto-resume daemon
-  $ omq wait --stop              Stop auto-resume daemon
-  $ omq wait status              Show detailed rate limit status
-  $ omq wait detect              Scan for blocked tmux sessions`)
+  $ omc wait                     Show status and suggestions
+  $ omc wait --start             Start auto-resume daemon
+  $ omc wait --stop              Stop auto-resume daemon
+  $ omc wait status              Show detailed rate limit status
+  $ omc wait detect              Scan for blocked tmux sessions`)
   .action(async (options) => {
     await waitCommand(options);
   });
@@ -1026,13 +1028,13 @@ waitCmd
   .option('-i, --interval <seconds>', 'Poll interval in seconds', '60')
   .addHelpText('after', `
 Examples:
-  $ omq wait daemon start            Start background daemon
-  $ omq wait daemon stop             Stop the daemon
-  $ omq wait daemon start -f         Run in foreground`)
+  $ omc wait daemon start            Start background daemon
+  $ omc wait daemon stop             Stop the daemon
+  $ omc wait daemon start -f         Run in foreground`)
   .action(async (action: string, options) => {
     if (action !== 'start' && action !== 'stop') {
       console.error(chalk.red(`Invalid action "${action}". Valid options: start, stop`));
-      console.error(chalk.gray('Example: omq wait daemon start'));
+      console.error(chalk.gray('Example: omc wait daemon start'));
       process.exit(1);
     }
     await waitDaemonCommand(action as 'start' | 'stop', {
@@ -1044,7 +1046,7 @@ Examples:
 
 waitCmd
   .command('detect')
-  .description('Scan for blocked Qoder CLI sessions in tmux')
+  .description('Scan for blocked Claude Code sessions in tmux')
   .option('--json', 'Output as JSON')
   .option('-l, --lines <number>', 'Number of pane lines to analyze', '15')
   .action(async (options) => {
@@ -1059,35 +1061,35 @@ waitCmd
  * Teleport command - Quick worktree creation
  *
  * Usage:
- * - `omq teleport '#123'` - Create worktree for issue/PR #123
- * - `omq teleport my-feature` - Create worktree for feature branch
- * - `omq teleport list` - List existing worktrees
- * - `omq teleport remove <path>` - Remove a worktree
+ * - `omc teleport '#123'` - Create worktree for issue/PR #123
+ * - `omc teleport my-feature` - Create worktree for feature branch
+ * - `omc teleport list` - List existing worktrees
+ * - `omc teleport remove <path>` - Remove a worktree
  */
 const teleportCmd = program
   .command('teleport [ref]')
-  .description("Create git worktree for isolated development (e.g., omq teleport '#123')")
+  .description("Create git worktree for isolated development (e.g., omc teleport '#123')")
   .option('--worktree', 'Create worktree (default behavior, flag kept for compatibility)')
-  .option('-p, --path <path>', 'Custom worktree path (default: ~/Workspace/omq-worktrees/)')
+  .option('-p, --path <path>', 'Custom worktree path (default: ~/Workspace/omc-worktrees/)')
   .option('-b, --base <branch>', 'Base branch to create from (default: main)')
   .option('--json', 'Output as JSON')
   .addHelpText('after', `
 Examples:
-  $ omq teleport '#42'           Create worktree for issue/PR #42
-  $ omq teleport add-auth        Create worktree for a feature branch
-  $ omq teleport list            List existing worktrees
-  $ omq teleport remove ./path   Remove a worktree
+  $ omc teleport '#42'           Create worktree for issue/PR #42
+  $ omc teleport add-auth        Create worktree for a feature branch
+  $ omc teleport list            List existing worktrees
+  $ omc teleport remove ./path   Remove a worktree
 
 Note:
-  In many shells, # starts a comment. Quote refs: omq teleport '#42'`)
+  In many shells, # starts a comment. Quote refs: omc teleport '#42'`)
   .action(async (ref: string | undefined, options) => {
     if (!ref) {
       // No ref provided, show help
       console.log(chalk.blue('Teleport - Quick worktree creation\n'));
       console.log('Usage:');
-      console.log('  omq teleport <ref>           Create worktree for issue/PR/feature');
-      console.log('  omq teleport list            List existing worktrees');
-      console.log('  omq teleport remove <path>   Remove a worktree');
+      console.log('  omc teleport <ref>           Create worktree for issue/PR/feature');
+      console.log('  omc teleport list            List existing worktrees');
+      console.log('  omc teleport remove <path>   Remove a worktree');
       console.log('');
       console.log('Reference formats:');
       console.log("  '#123'                       Issue/PR in current repo (quoted for shell safety)");
@@ -1095,11 +1097,11 @@ Note:
       console.log('  my-feature                   Feature branch name');
       console.log('  https://github.com/...       GitHub URL');
       console.log('');
-      console.log(chalk.yellow("Note: In many shells, # starts a comment. Quote refs: omq teleport '#42'"));
+      console.log(chalk.yellow("Note: In many shells, # starts a comment. Quote refs: omc teleport '#42'"));
       console.log('');
       console.log('Examples:');
-      console.log("  omq teleport '#42'           Create worktree for issue #42");
-      console.log('  omq teleport add-auth        Create worktree for feature "add-auth"');
+      console.log("  omc teleport '#42'           Create worktree for issue #42");
+      console.log('  omc teleport add-auth        Create worktree for feature "add-auth"');
       console.log('');
       return;
     }
@@ -1114,7 +1116,7 @@ Note:
 
 teleportCmd
   .command('list')
-  .description('List existing worktrees in ~/Workspace/omq-worktrees/')
+  .description('List existing worktrees in ~/Workspace/omc-worktrees/')
   .option('--json', 'Output as JSON')
   .action(async (options) => {
     await teleportListCommand(options);
@@ -1141,13 +1143,15 @@ const sessionCmd = program
   .description('Inspect prior local session history')
   .addHelpText('after', `
 Examples:
-  $ omq session search "team leader stale"
-  $ omq session search notify-hook --since 7d
-  $ omq session search provider-routing --project all --json`);
+  $ omc session search "team leader stale"
+  $ omc session search notify-hook --since 7d
+  $ omc session search provider-routing --project all --json
+  $ omc session friction report --since 24h
+  $ omc session friction report --json`);
 
 sessionCmd
   .command('search <query>')
-  .description('Search prior local session transcripts and OMQ session artifacts')
+  .description('Search prior local session transcripts and OMC session artifacts')
   .option('-l, --limit <number>', 'Maximum number of matches to return', '10')
   .option('-s, --session <id>', 'Restrict search to a specific session id')
   .option('--since <duration|date>', 'Only include matches since a duration (e.g. 7d, 24h) or absolute date')
@@ -1168,22 +1172,74 @@ sessionCmd
     });
   });
 
+sessionCmd
+  .command('friction')
+  .description('Report local session context-bloat and operator-friction signals')
+  .command('report')
+  .description('Summarize local session/context bloat and friction without raw prompt content')
+  .option('-l, --limit <number>', 'Maximum number of sessions to return', '10')
+  .option('-s, --session <id>', 'Restrict report to a specific session id')
+  .option('--since <duration|date>', 'Only include artifacts since a duration (e.g. 7d, 24h) or absolute date')
+  .option('--project <scope>', 'Project scope. Defaults to current project. Use "all" to inspect all local projects')
+  .option('--json', 'Output report as JSON')
+  .action(async (options) => {
+    await sessionFrictionReportCommand({
+      limit: parseInt(options.limit, 10),
+      session: options.session,
+      since: options.since,
+      project: options.project,
+      json: options.json,
+      workingDirectory: process.cwd(),
+    });
+  });
+
+/**
+ * Capabilities command - deterministic tool/skill/capability lockfile preflight
+ */
+const capabilitiesCmd = program
+  .command('capabilities')
+  .description('Create or verify deterministic tool/skill/capability lockfiles')
+  .addHelpText('after', `
+Examples:
+  $ omc capabilities lock
+  $ omc capabilities lock --json --lockfile .omc/capabilities.lock.json
+  $ omc capabilities check --json`);
+
+capabilitiesCmd
+  .command('lock')
+  .description('Write the current deterministic tool/skill/capability lockfile')
+  .option('--json', 'Output as JSON')
+  .option('--lockfile <path>', 'Lockfile path (default: omc-capabilities.lock.json)')
+  .action(async (options) => {
+    const exitCode = await capabilitiesLockCommand(options);
+    process.exit(exitCode);
+  });
+
+capabilitiesCmd
+  .command('check')
+  .description('Check current deterministic tool/skill/capability surface against a lockfile')
+  .option('--json', 'Output as JSON')
+  .option('--lockfile <path>', 'Lockfile path (default: omc-capabilities.lock.json)')
+  .action(async (options) => {
+    const exitCode = await capabilitiesCheckCommand(options);
+    process.exit(exitCode);
+  });
+
 /**
  * Doctor command - Diagnostic tools
  */
 const doctorCmd = program
   .command('doctor')
-  .description('Diagnostic tools for troubleshooting OMQ installation')
-  .option('--plugin-dir <path>', 'Override OMQ plugin root directory (sets OMQ_PLUGIN_ROOT)')
+  .description('Diagnostic tools for troubleshooting OMC installation')
+  .option('--plugin-dir <path>', 'Override OMC plugin root directory (sets OMC_PLUGIN_ROOT)')
   .option('--team-routing', 'Probe CLI presence for every provider referenced by team.roleRouting')
   .option('--json', 'Output as JSON (used with --team-routing)')
   .addHelpText('after', `
 Examples:
-  $ omq doctor conflicts                        Check for plugin conflicts
-  $ omq doctor check                        Check that the installed copy can run
-  $ omq doctor team-routing                     Probe /team role-routing provider CLIs
-  $ omq doctor --team-routing                   Same as above (flag form)
-  $ omq doctor --plugin-dir /path/to/plugin     Run diagnostics against a specific plugin dir`)
+  $ omc doctor conflicts                        Check for plugin conflicts
+  $ omc doctor team-routing                     Probe /team role-routing provider CLIs
+  $ omc doctor --team-routing                   Same as above (flag form)
+  $ omc doctor --plugin-dir /path/to/plugin     Run diagnostics against a specific plugin dir`)
   .hook('preAction', (thisCommand) => {
     applyPluginDirOption(thisCommand.opts().pluginDir as string | undefined);
   })
@@ -1202,27 +1258,10 @@ doctorCmd
   .option('--json', 'Output as JSON')
   .addHelpText('after', `
 Examples:
-  $ omq doctor team-routing                     Probe configured providers
-  $ omq doctor team-routing --json              Output results as JSON`)
-  .action(async (options) => {
-    const exitCode = await doctorTeamRoutingCommand({ json: options.json ?? false });
-    process.exit(exitCode);
-  });
-
-doctorCmd
-  .command('check')
-  .description('Check whether this installed copy can run: payload completeness + per-module load probes')
-  .option('--json', 'Output as JSON')
-  .option('--plugin-dir <path>', 'Override OMQ plugin root directory (sets OMQ_PLUGIN_ROOT)')
-  .addHelpText('after', `
-Examples:
-  $ omq doctor check                            Diagnose the active plugin install
-  $ omq doctor check --plugin-dir <dir>         Diagnose a specific cache/clone dir
-  $ omq doctor check --json                     Machine-readable report`)
-  .action(async (options) => {
-    applyPluginDirOption(options.pluginDir);
-    const { doctorCheckCommand } = await import('./commands/doctor-check.js');
-    const exitCode = await doctorCheckCommand({ json: options.json ?? false, pluginDir: options.pluginDir });
+  $ omc doctor team-routing                     Probe configured providers
+  $ omc doctor team-routing --json              Output results as JSON`)
+  .action(async (_options, command) => {
+    const exitCode = await doctorTeamRoutingCommand({ json: command.optsWithGlobals().json ?? false });
     process.exit(exitCode);
   });
 
@@ -1230,12 +1269,12 @@ doctorCmd
   .command('conflicts')
   .description('Check for plugin coexistence issues and configuration conflicts')
   .option('--json', 'Output as JSON')
-  .option('--plugin-dir <path>', 'Override OMQ plugin root directory (sets OMQ_PLUGIN_ROOT)')
+  .option('--plugin-dir <path>', 'Override OMC plugin root directory (sets OMC_PLUGIN_ROOT)')
   .addHelpText('after', `
 Examples:
-  $ omq doctor conflicts                        Check for configuration issues
-  $ omq doctor conflicts --json                 Output results as JSON
-  $ omq doctor conflicts --plugin-dir /tmp/foo  Check against a specific plugin dir`)
+  $ omc doctor conflicts                        Check for configuration issues
+  $ omc doctor conflicts --json                 Output results as JSON
+  $ omc doctor conflicts --plugin-dir /tmp/foo  Check against a specific plugin dir`)
   .action(async (options) => {
     applyPluginDirOption(options.pluginDir);
     const exitCode = await doctorConflictsCommand(options);
@@ -1243,37 +1282,39 @@ Examples:
   });
 
 /**
- * Setup command - Official CLI entry point for omq-setup
+ * Setup command - Official CLI entry point for omc-setup
  *
- * User-friendly command that syncs all OMQ components:
+ * User-friendly command that syncs all OMC components:
  * - Installs/updates hooks, agents, and skills
  * - Reconciles runtime state after updates
  * - Shows clear summary of what was installed/updated
  */
 program
   .command('setup')
-  .description('Run OMQ setup to sync all components (hooks, agents, skills)')
+  .description('Run OMC setup to sync all components (hooks, agents, skills)')
   .option('-f, --force', 'Force reinstall even if already up to date')
   .option('-q, --quiet', 'Suppress output except for errors')
   .option('--no-plugin', 'Install bundled skills from the current package instead of relying on plugin-provided skills')
-  .option('--plugin-dir-mode', 'Treat OMQ as launched via --plugin-dir at runtime (skip agent/skill copy; HUD + hooks + AGENTS.md still installed)')
+  .option('--plugin-dir-mode', 'Treat OMC as launched via --plugin-dir at runtime (skip agent/skill copy; HUD + hooks + CLAUDE.md still installed)')
+  .option('--skip-hooks', 'Skip hook installation')
   .option('--force-hooks', 'Force reinstall hooks even if unchanged')
   .addHelpText('after', `
 Examples:
-  $ omq setup                     Sync all OMQ components
-  $ omq setup --force             Force reinstall everything
-  $ omq setup --no-plugin         Force local bundled skill installation
-  $ omq setup --plugin-dir-mode   Skip agent/skill copy (used with qodercli --plugin-dir)
-  $ omq setup --quiet             Silent setup for scripts
-  $ omq setup --force-hooks       Force reinstall hooks`)
+  $ omc setup                     Sync all OMC components
+  $ omc setup --force             Force reinstall everything
+  $ omc setup --no-plugin         Force local bundled skill installation
+  $ omc setup --plugin-dir-mode   Skip agent/skill copy (used with claude --plugin-dir)
+  $ omc setup --quiet             Silent setup for scripts
+  $ omc setup --skip-hooks        Install without hooks
+  $ omc setup --force-hooks       Force reinstall hooks`)
   .action(async (options) => {
     if (!options.quiet) {
-      console.log(chalk.blue('Oh-My-Qoder Setup\n'));
+      console.log(chalk.blue('Oh-My-ClaudeCode Setup\n'));
     }
 
     // Step 1: Run installation (which handles hooks, agents, skills)
     if (!options.quiet) {
-      console.log(chalk.gray('Syncing OMQ components...'));
+      console.log(chalk.gray('Syncing OMC components...'));
     }
 
     // Commander exposes negated flags like `--no-plugin` as `options.plugin === false`
@@ -1281,13 +1322,13 @@ Examples:
     const useLocalBundledSkills = options.plugin === false;
 
     // Dev plugin-dir mode: skip agent/skill copy because the plugin already
-    // provides them at runtime via `qodercli --plugin-dir <path>` (or `omq --plugin-dir`).
-    // Auto-detected from OMQ_PLUGIN_ROOT (set by `omq --plugin-dir` in src/cli/launch.ts).
+    // provides them at runtime via `claude --plugin-dir <path>` (or `omc --plugin-dir`).
+    // Auto-detected from OMC_PLUGIN_ROOT (set by `omc --plugin-dir` in src/cli/launch.ts).
     let pluginDirMode = !!options.pluginDirMode;
-    if (!pluginDirMode && process.env[OMQ_PLUGIN_ROOT_ENV]) {
+    if (!pluginDirMode && process.env[OMC_PLUGIN_ROOT_ENV]) {
       pluginDirMode = true;
       if (!options.quiet) {
-        console.log(chalk.gray(`Detected ${OMQ_PLUGIN_ROOT_ENV} — entering dev plugin-dir mode`));
+        console.log(chalk.gray(`Detected ${OMC_PLUGIN_ROOT_ENV} — entering dev plugin-dir mode`));
       }
     }
     if (pluginDirMode && useLocalBundledSkills) {
@@ -1300,10 +1341,10 @@ Examples:
       console.log(chalk.gray('Dev plugin-dir mode: skipping agent/skill sync (plugin provides them via --plugin-dir)'));
     }
 
-    const result = installOmq({
+    const result = installOmc({
       force: !!options.force,
       verbose: !options.quiet,
-      skipQoderCheck: true,
+      skipClaudeCheck: true,
       forceHooks: !!options.forceHooks,
       noPlugin: useLocalBundledSkills,
       pluginDirMode,
@@ -1351,7 +1392,7 @@ Examples:
       if (reportedVersion !== version) {
         console.log(chalk.gray(`CLI package version: ${version}`));
       }
-      console.log(chalk.gray('Start Qoder CLI and use /oh-my-qoder:omq-setup for interactive setup.'));
+      console.log(chalk.gray('Start Claude Code and use /oh-my-claudecode:omc-setup for interactive setup.'));
     }
   });
 
@@ -1363,30 +1404,30 @@ program
   .description('Run post-install setup (called automatically by npm)')
   .action(async () => {
     // Silent install - only show errors
-    const result = installOmq({
+    const result = installOmc({
       force: false,
       verbose: false,
-      skipQoderCheck: true
+      skipClaudeCheck: true
     });
 
     if (result.success) {
-      console.log(chalk.green('✓ Oh-My-Qoder installed successfully!'));
-      console.log(chalk.gray('  Run "oh-my-qoder info" to see available agents.'));
-      console.log(chalk.yellow('  Run "/omq-default" (project) or "/omq-default-global" (global) in Qoder CLI.'));
+      console.log(chalk.green('✓ Oh-My-ClaudeCode installed successfully!'));
+      console.log(chalk.gray('  Run "oh-my-claudecode info" to see available agents.'));
+      console.log(chalk.yellow('  Run "/omc-default" (project) or "/omc-default-global" (global) in Claude Code.'));
     } else {
       // Don't fail the npm install, just warn
-      console.warn(chalk.yellow('⚠ Could not complete OMQ setup:'), result.message);
-      console.warn(chalk.gray('  Run "oh-my-qoder install" manually to complete setup.'));
+      console.warn(chalk.yellow('⚠ Could not complete OMC setup:'), result.message);
+      console.warn(chalk.gray('  Run "oh-my-claudecode install" manually to complete setup.'));
     }
   });
 
 /**
- * HUD command - Run the OMQ HUD statusline renderer
+ * HUD command - Run the OMC HUD statusline renderer
  * In --watch mode, loops continuously for use in a tmux pane.
  */
 program
   .command('hud')
-  .description('Run the OMQ HUD statusline renderer')
+  .description('Run the OMC HUD statusline renderer')
   .option('--watch', 'Run in watch mode (continuous polling for tmux pane)')
   .option('--interval <ms>', 'Poll interval in milliseconds', '1000')
   .action(async (options) => {
@@ -1424,7 +1465,7 @@ program
 
 /**
  * Team command - CLI API for team worker lifecycle operations
- * Exposes OMQ's `omq team api` interface.
+ * Exposes OMC's `omc team api` interface.
  *
  * helpOption(false) prevents commander from intercepting --help;
  * our teamCommand handler provides its own help output.
@@ -1472,9 +1513,9 @@ program
   });
 
 /**
- * Ultragoal command - Durable repo-native multi-goal workflow with Qoder /goal handoff
+ * Ultragoal command - Durable repo-native multi-goal workflow with Claude /goal handoff
  *
- * Writes plan/ledger artifacts under .omq/ultragoal/ and prints model-facing
+ * Writes plan/ledger artifacts under .omc/ultragoal/ and prints model-facing
  * handoff text that tells the active Claude agent when to invoke /goal,
  * checkpoint progress, and gate final completion behind ai-slop-cleaner +
  * verification + $code-review evidence. The shell cannot mutate the Claude
@@ -1482,7 +1523,7 @@ program
  */
 program
   .command('ultragoal')
-  .description('Durable repo-native multi-goal workflow with Qoder CLI /goal handoff (see omq ultragoal help)')
+  .description('Durable repo-native multi-goal workflow with Claude Code /goal handoff (see omc ultragoal help)')
   .helpOption(false)
   .allowUnknownOption(true)
   .allowExcessArguments(true)
@@ -1493,10 +1534,26 @@ program
   });
 
 /**
+ * Alias retirement verifier — Issue #3711
+ * Read-only eligibility check + generated closure inventory. Never deletes files.
+ */
+program
+  .command('alias-retirement')
+  .description('Alias retirement verifier and generated-closure inventory (issue #3711)')
+  .helpOption(false)
+  .allowUnknownOption(true)
+  .allowExcessArguments(true)
+  .argument('[args...]', 'alias-retirement subcommand arguments')
+  .addHelpText('after', `\n${ALIAS_RETIREMENT_HELP}`)
+  .action(async (args: string[]) => {
+    await aliasRetirementCommand(args ?? []);
+  });
+
+/**
  * Returns the fully-configured commander program.
  *
  * Exported so tests can drive the real CLI pipeline (e.g.
- * `await buildProgram().parseAsync(['node','omq','setup','--plugin-dir-mode'], { from: 'user' })`)
+ * `await buildProgram().parseAsync(['node','omc','setup','--plugin-dir-mode'], { from: 'user' })`)
  * without spawning a subprocess. The program is built once at module load
  * (commander does not support re-registration), so this just returns the
  * singleton.
@@ -1506,10 +1563,10 @@ export function buildProgram(): Command {
 }
 
 // Parse arguments — skipped only when an importing test explicitly opts out
-// via OMQ_CLI_SKIP_PARSE. We do NOT key off process.env.VITEST because the
+// via OMC_CLI_SKIP_PARSE. We do NOT key off process.env.VITEST because the
 // CLI is also spawned as a child process from tests (e.g. cli-boot.test.ts),
 // and child processes inherit VITEST from the parent vitest worker, which
 // would cause the CLI to silently exit with no output.
-if (!process.env.OMQ_CLI_SKIP_PARSE) {
+if (!process.env.OMC_CLI_SKIP_PARSE) {
   program.parse();
 }

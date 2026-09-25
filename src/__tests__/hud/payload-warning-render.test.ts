@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 import { render } from "../../hud/render.js";
 import {
   DEFAULT_HUD_CONFIG,
   type HudConfig,
   type HudRenderContext,
 } from "../../hud/types.js";
-import { createPayloadEstimate } from "../../hud/payload-estimate.js";
+import {
+  PAYLOAD_WARNING_BYTES,
+  createPayloadEstimate,
+  estimatePayloadFromTranscriptPath,
+} from "../../hud/payload-estimate.js";
 
 const stripAnsi = (value: string): string =>
   value.replace(/\x1b\[[0-9;]*m/g, "");
@@ -28,7 +35,7 @@ function baseContext(payloadBytes?: number): HudRenderContext {
     pendingPermission: null,
     thinkingState: null,
     sessionHealth: null,
-    omqVersion: "4.14.1",
+    omcVersion: "4.14.1",
     updateAvailable: null,
     toolCallCount: 0,
     agentCallCount: 0,
@@ -48,7 +55,7 @@ function config(): HudConfig {
     elements: {
       ...DEFAULT_HUD_CONFIG.elements,
       model: false,
-      omqLabel: false,
+      omcLabel: false,
       rateLimits: false,
       ralph: false,
       autopilot: false,
@@ -96,5 +103,67 @@ describe("HUD payload warning render", () => {
 
     expect(output).toContain("payload est ~26 MB / 32 MB");
     expect(output).toContain("compact may fail; consider new session");
+  });
+
+  it("does not warn for a large pre-boundary transcript with a small live epoch", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "omc-payload-render-"));
+    try {
+      const transcriptPath = join(dir, "transcript.jsonl");
+      writeFileSync(
+        transcriptPath,
+        `${JSON.stringify({ type: "message", content: "x".repeat(100) })}\n`.repeat(
+          260_000,
+        ),
+      );
+      writeFileSync(
+        transcriptPath,
+        `${JSON.stringify({ type: "compact_boundary" })}\n${JSON.stringify({ type: "message", content: "small" })}\n`,
+        { flag: "a" },
+      );
+
+      const output = stripAnsi(
+        await render(
+          {
+            ...baseContext(),
+            payloadEstimate: estimatePayloadFromTranscriptPath(transcriptPath),
+          },
+          config(),
+        ),
+      );
+
+      expect(output).not.toContain("payload est");
+      expect(output).not.toContain("compact may fail");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("still warns when the post-boundary live epoch is large", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "omc-payload-render-"));
+    try {
+      const transcriptPath = join(dir, "transcript.jsonl");
+      writeFileSync(
+        transcriptPath,
+        `${JSON.stringify({ type: "compact_boundary" })}\n`,
+      );
+      writeFileSync(transcriptPath, "x".repeat(PAYLOAD_WARNING_BYTES), {
+        flag: "a",
+      });
+
+      const output = stripAnsi(
+        await render(
+          {
+            ...baseContext(),
+            payloadEstimate: estimatePayloadFromTranscriptPath(transcriptPath),
+          },
+          config(),
+        ),
+      );
+
+      expect(output).toContain("payload est ~22 MB / 32 MB");
+      expect(output).toContain("consider /compact soon");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

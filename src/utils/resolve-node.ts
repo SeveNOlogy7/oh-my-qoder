@@ -36,7 +36,7 @@ function resolveLatestVersionedNode(baseDir: string, nodeSegments: string[]): st
  * 6. Fallback: bare 'node' (lets the shell resolve at runtime)
  *
  * This is used at setup time to embed the absolute node path into the HUD
- * statusLine command and into .omq-config.json so that hook scripts can
+ * statusLine command and into .omc-config.json so that hook scripts can
  * locate node even when it is not on PATH (nvm/fnm users, non-interactive
  * shells, issue #892). We prefer PATH resolution first because process.execPath
  * can point at ephemeral CI runner toolcache paths or Homebrew Cellar
@@ -49,7 +49,7 @@ export function resolveNodeBinary(): string {
   // symlink (for example /opt/homebrew/bin/node instead of a Cellar version).
   try {
     const cmd = process.platform === 'win32' ? 'where node' : 'which node';
-    const result = execSync(cmd, { encoding: 'utf-8', stdio: 'pipe' })
+    const result = execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', windowsHide: true })
       .trim()
       .split('\n')[0]
       .trim();

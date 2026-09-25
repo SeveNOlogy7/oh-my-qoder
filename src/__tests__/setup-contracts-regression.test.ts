@@ -3,15 +3,14 @@
  *
  * Guards against recurring setup violations found in issues #2155, #2084, #2348, #2347.
  * Two core contracts:
- *   1. Never hardcode paths — use getQoderConfigDir() or QODER_CONFIG_DIR env var
- *   2. Never install to root ~/.qwen when QODER_CONFIG_DIR is set to a custom path
+ *   1. Never hardcode paths — use getClaudeConfigDir() or CLAUDE_CONFIG_DIR env var
+ *   2. Never install to root ~/.claude when CLAUDE_CONFIG_DIR is set to a custom path
  *
  * Scanning approach: narrow construction-pattern matching (not broad string literals)
  * to avoid false positives and allowlist bloat.
  */
 
-import { describe, it, expect, afterEach, beforeAll } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
@@ -91,24 +90,24 @@ function isInsideStringLiteral(line: string, pattern: RegExp): boolean {
   return quoteCount % 2 === 1; // odd number of quotes means we're inside a string
 }
 
-// ── Contract 1: No dangerous join(homedir(), '.qwen') in runtime source ────
-// Issue #2155 — functions that construct config paths inline instead of using getQoderConfigDir()
+// ── Contract 1: No dangerous join(homedir(), '.claude') in runtime source ────
+// Issue #2155 — functions that construct config paths inline instead of using getClaudeConfigDir()
 
-describe('Contract 1: no join(homedir()...".qwen") outside canonical helpers', () => {
+describe('Contract 1: no join(homedir()...".claude") outside canonical helpers', () => {
   const SRC_DIR = join(REPO_ROOT, 'src');
   const tsFiles = findFiles(SRC_DIR, ['.ts'], ['__tests__', 'node_modules']);
 
   // Canonical helper file and legitimate comparison functions
   const EXCLUDED_FILE = 'src/utils/config-dir.ts';
-  // Functions that legitimately need to reference ~/.qwen as a default/comparison
+  // Functions that legitimately need to reference ~/.claude as a default/comparison
   const EXCLUDED_FUNCTIONS = [
-    'isDefaultQoderConfigDir',
-    'isDefaultQoderConfigDirPath',
-    'prepareOmqLaunchConfigDir', // entry-point with its own QODER_CONFIG_DIR || fallback
+    'isDefaultClaudeConfigDir',
+    'isDefaultClaudeConfigDirPath',
+    'prepareOmcLaunchConfigDir', // entry-point with its own CLAUDE_CONFIG_DIR || fallback
   ];
 
-  // Pattern: join(homedir() ... '.qwen') — the dangerous inline path construction
-  const DANGEROUS_PATTERN = /join\(homedir\(\)[^)]*['"]\.qwen['"]/;
+  // Pattern: join(homedir() ... '.claude') — the dangerous inline path construction
+  const DANGEROUS_PATTERN = /join\(homedir\(\)[^)]*['"]\.claude['"]/;
 
   const violations: { file: string; line: number; text: string }[] = [];
 
@@ -131,23 +130,23 @@ describe('Contract 1: no join(homedir()...".qwen") outside canonical helpers', (
     }
   }
 
-  it('has no unguarded join(homedir(), ".qwen") in runtime TypeScript', () => {
+  it('has no unguarded join(homedir(), ".claude") in runtime TypeScript', () => {
     if (violations.length > 0) {
       const details = violations
         .map(v => `  ${v.file}:${v.line}: ${v.text}`)
         .join('\n');
       expect.fail(
-        `Found join(homedir(), '.qwen') outside canonical helpers:\n${details}\n\n` +
-        `Use getQoderConfigDir() instead of join(homedir(), '.qwen').`
+        `Found join(homedir(), '.claude') outside canonical helpers:\n${details}\n\n` +
+        `Use getClaudeConfigDir() instead of join(homedir(), '.claude').`
       );
     }
   });
 });
 
-// ── Contract 2: No unguarded $HOME/.qwen in runtime shell scripts ──────────
-// Issue #2155 §11-13 — scripts with inline $HOME/.qwen without QODER_CONFIG_DIR guard
+// ── Contract 2: No unguarded $HOME/.claude in runtime shell scripts ──────────
+// Issue #2155 §11-13 — scripts with inline $HOME/.claude without CLAUDE_CONFIG_DIR guard
 
-describe('Contract 2: no unguarded $HOME/.qwen in shell/script files', () => {
+describe('Contract 2: no unguarded $HOME/.claude in shell/script files', () => {
   const SCRIPT_DIRS = [
     join(REPO_ROOT, 'scripts'),
     join(REPO_ROOT, 'templates', 'hooks'),
@@ -159,9 +158,9 @@ describe('Contract 2: no unguarded $HOME/.qwen in shell/script files', () => {
     'scripts/lib/config-dir.sh',
   ]);
 
-  // The safe pattern: ${QODER_CONFIG_DIR:-$HOME/.qwen}
-  const SAFE_PATTERN = /\$\{QODER_CONFIG_DIR:-\$HOME\/\.qwen\}/;
-  const DANGEROUS_PATTERN = /\$HOME\/\.qoder/;
+  // The safe pattern: ${CLAUDE_CONFIG_DIR:-$HOME/.claude}
+  const SAFE_PATTERN = /\$\{CLAUDE_CONFIG_DIR:-\$HOME\/\.claude\}/;
+  const DANGEROUS_PATTERN = /\$HOME\/\.claude/;
 
   const violations: { file: string; line: number; text: string }[] = [];
 
@@ -186,14 +185,14 @@ describe('Contract 2: no unguarded $HOME/.qwen in shell/script files', () => {
     }
   }
 
-  it('has no $HOME/.qwen without ${QODER_CONFIG_DIR:-...} guard in scripts', () => {
+  it('has no $HOME/.claude without ${CLAUDE_CONFIG_DIR:-...} guard in scripts', () => {
     if (violations.length > 0) {
       const details = violations
         .map(v => `  ${v.file}:${v.line}: ${v.text}`)
         .join('\n');
       expect.fail(
-        `Found $HOME/.qwen without QODER_CONFIG_DIR guard:\n${details}\n\n` +
-        `Replace with: \${QODER_CONFIG_DIR:-$HOME/.qwen}`
+        `Found $HOME/.claude without CLAUDE_CONFIG_DIR guard:\n${details}\n\n` +
+        `Replace with: \${CLAUDE_CONFIG_DIR:-$HOME/.claude}`
       );
     }
   });
@@ -206,8 +205,8 @@ describe('Contract 2: no unguarded $HOME/.qwen in shell/script files', () => {
 
 describe('Contract 2b: setup jq writes are guarded against truncation', () => {
   const SETUP_MUTATION_FILES = [
-    join(REPO_ROOT, 'skills', 'omq-setup', 'phases', '02-configure.md'),
-    join(REPO_ROOT, 'skills', 'omq-setup', 'phases', '03-integrations.md'),
+    join(REPO_ROOT, 'skills', 'omc-setup', 'phases', '02-configure.md'),
+    join(REPO_ROOT, 'skills', 'omc-setup', 'phases', '03-integrations.md'),
     join(REPO_ROOT, 'scripts', 'setup-progress.sh'),
   ];
 
@@ -303,18 +302,18 @@ describe('Contract 3: no raw __dirname path resolution in installer outside getP
 // Issue #2348 — CI baked /opt/hostedtoolcache/node/... into hooks
 
 describe('Contract 4: no absolute node binary paths in hook commands', () => {
-  const originalConfigDir = process.env.QODER_CONFIG_DIR;
+  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
 
   afterEach(() => {
     if (originalConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
     }
   });
 
   it('getHooksSettingsConfig() produces no absolute node paths (default config)', async () => {
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
 
     // Dynamic import to get fresh module evaluation
     const { getHooksSettingsConfig } = await import('../installer/hooks.js');
@@ -348,15 +347,15 @@ describe('Contract 4: no absolute node binary paths in hook commands', () => {
 // ── Contract 5: No hardcoded paths in LLM-consumed artifacts ─────────────────
 // Architect recommendation + Issue #2155 §16
 
-describe('Contract 5: no hardcoded ~/.qwen in LLM-consumed artifacts', () => {
+describe('Contract 5: no hardcoded ~/.claude in LLM-consumed artifacts', () => {
   const AGENTS_DIR = join(REPO_ROOT, 'agents');
   const DOCS_DIR = join(REPO_ROOT, 'docs');
 
-  // Match ~/.qwen NOT inside portable notation [$QODER_CONFIG_DIR|~/.qoder]
-  // or ${QODER_CONFIG_DIR:-...} pattern
-  const TILDE_CLAUDE_PATTERN = /~\/\.qoder/;
-  const SAFE_PORTABLE = /\[\$QODER_CONFIG_DIR\|~\/\.qwen\]/;
-  const SAFE_ENV_FALLBACK = /\$\{QODER_CONFIG_DIR:-/;
+  // Match ~/.claude NOT inside portable notation [$CLAUDE_CONFIG_DIR|~/.claude]
+  // or ${CLAUDE_CONFIG_DIR:-...} pattern
+  const TILDE_CLAUDE_PATTERN = /~\/\.claude/;
+  const SAFE_PORTABLE = /\[\$CLAUDE_CONFIG_DIR\|~\/\.claude\]/;
+  const SAFE_ENV_FALLBACK = /\$\{CLAUDE_CONFIG_DIR:-/;
 
   function scanForViolations(dir: string): { file: string; line: number; text: string }[] {
     const violations: { file: string; line: number; text: string }[] = [];
@@ -372,10 +371,10 @@ describe('Contract 5: no hardcoded ~/.qwen in LLM-consumed artifacts', () => {
           // Skip markdown comments
           const trimmed = line.trim();
           if (trimmed.startsWith('<!--') && trimmed.endsWith('-->')) continue;
-          // Skip lines that are just describing what QODER_CONFIG_DIR defaults to
-          if (/default.*~\/\.qoder/i.test(line) || /fallback.*~\/\.qoder/i.test(line)) continue;
+          // Skip lines that are just describing what CLAUDE_CONFIG_DIR defaults to
+          if (/default.*~\/\.claude/i.test(line) || /fallback.*~\/\.claude/i.test(line)) continue;
           // Skip lines documenting the config-dir behavior
-          if (/QODER_CONFIG_DIR/i.test(line)) continue;
+          if (/CLAUDE_CONFIG_DIR/i.test(line)) continue;
           violations.push({ file: relPath(file), line: i + 1, text: trimmed });
         }
       }
@@ -383,19 +382,19 @@ describe('Contract 5: no hardcoded ~/.qwen in LLM-consumed artifacts', () => {
     return violations;
   }
 
-  it('agents/*.md have no unguarded ~/.qwen references', () => {
+  it('agents/*.md have no unguarded ~/.claude references', () => {
     if (!existsSync(AGENTS_DIR)) return;
     const violations = scanForViolations(AGENTS_DIR);
     if (violations.length > 0) {
       const details = violations.map(v => `  ${v.file}:${v.line}: ${v.text}`).join('\n');
       expect.fail(
-        `Found unguarded ~/.qwen in agent definitions:\n${details}\n\n` +
-        `Use [$QODER_CONFIG_DIR|~/.qoder] notation in LLM-consumed artifacts.`
+        `Found unguarded ~/.claude in agent definitions:\n${details}\n\n` +
+        `Use [$CLAUDE_CONFIG_DIR|~/.claude] notation in LLM-consumed artifacts.`
       );
     }
   });
 
-  it('docs/CLAUDE.md (the installed template) has no unguarded ~/.qwen references', () => {
+  it('docs/CLAUDE.md (the installed template) has no unguarded ~/.claude references', () => {
     // Only scan docs/CLAUDE.md — this is the file installed to users' config dirs
     // and consumed by LLMs. Other docs/ files are developer documentation, not runtime artifacts.
     const claudeMdPath = join(DOCS_DIR, 'CLAUDE.md');
@@ -410,10 +409,10 @@ describe('Contract 5: no hardcoded ~/.qwen in LLM-consumed artifacts', () => {
       if (TILDE_CLAUDE_PATTERN.test(line) && !SAFE_PORTABLE.test(line) && !SAFE_ENV_FALLBACK.test(line)) {
         const trimmed = line.trim();
         if (trimmed.startsWith('<!--') && trimmed.endsWith('-->')) continue;
-        if (/default.*~\/\.qoder/i.test(line) || /fallback.*~\/\.qoder/i.test(line)) continue;
-        if (/QODER_CONFIG_DIR/i.test(line)) continue;
-        // Skip glob/permission patterns like ~/.qoder/** (describes allowed paths, not path resolution)
-        if (/~\/\.qoder\/\*/.test(line)) continue;
+        if (/default.*~\/\.claude/i.test(line) || /fallback.*~\/\.claude/i.test(line)) continue;
+        if (/CLAUDE_CONFIG_DIR/i.test(line)) continue;
+        // Skip glob/permission patterns like ~/.claude/** (describes allowed paths, not path resolution)
+        if (/~\/\.claude\/\*/.test(line)) continue;
         violations.push({ file: 'docs/CLAUDE.md', line: i + 1, text: trimmed });
       }
     }
@@ -421,14 +420,14 @@ describe('Contract 5: no hardcoded ~/.qwen in LLM-consumed artifacts', () => {
     if (violations.length > 0) {
       const details = violations.map(v => `  ${v.file}:${v.line}: ${v.text}`).join('\n');
       expect.fail(
-        `Found unguarded ~/.qwen in docs/CLAUDE.md:\n${details}\n\n` +
-        `Use [$QODER_CONFIG_DIR|~/.qoder] notation in LLM-consumed artifacts.`
+        `Found unguarded ~/.claude in docs/CLAUDE.md:\n${details}\n\n` +
+        `Use [$CLAUDE_CONFIG_DIR|~/.claude] notation in LLM-consumed artifacts.`
       );
     }
   });
 });
 
-// ── Contract 9: hooks/hooks.json commands use $QODER_PLUGIN_ROOT, no absolute paths ──
+// ── Contract 9: hooks/hooks.json commands use $CLAUDE_PLUGIN_ROOT, no absolute paths ──
 // Issue #2348 — plugin hook delivery must be portable
 
 describe('Contract 9: hooks/hooks.json portability', () => {
@@ -438,7 +437,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
   // restore hooks/hooks.json from git here: hook portability hotfixes intentionally
   // change that source file, and a checkout would hide the working-tree contract.
 
-  it('all hook commands reference $QODER_PLUGIN_ROOT', () => {
+  it('all hook commands reference $CLAUDE_PLUGIN_ROOT', () => {
     if (!existsSync(HOOKS_JSON_PATH)) return;
 
     const hooksJson = JSON.parse(readFileSync(HOOKS_JSON_PATH, 'utf-8'));
@@ -448,7 +447,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
       for (const hookGroup of eventHooks as Array<{ hooks: Array<{ type: string; command: string }> }>) {
         for (const hook of hookGroup.hooks) {
           if (hook.type !== 'command') continue;
-          if (!hook.command.includes('$QODER_PLUGIN_ROOT')) {
+          if (!hook.command.includes('$CLAUDE_PLUGIN_ROOT')) {
             violations.push({ event: eventType, command: hook.command });
           }
         }
@@ -458,8 +457,8 @@ describe('Contract 9: hooks/hooks.json portability', () => {
     if (violations.length > 0) {
       const details = violations.map(v => `  ${v.event}: ${v.command}`).join('\n');
       expect.fail(
-        `Found hook commands not using $QODER_PLUGIN_ROOT:\n${details}\n\n` +
-        `All plugin hook commands must reference $QODER_PLUGIN_ROOT for portability.`
+        `Found hook commands not using $CLAUDE_PLUGIN_ROOT:\n${details}\n\n` +
+        `All plugin hook commands must reference $CLAUDE_PLUGIN_ROOT for portability.`
       );
     }
   });
@@ -502,7 +501,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
       for (const hookGroup of eventHooks as Array<{ hooks: Array<{ type: string; command: string }> }>) {
         for (const hook of hookGroup.hooks) {
           if (hook.type !== 'command') continue;
-          if (!hook.command.startsWith('node "$QODER_PLUGIN_ROOT"/scripts/run.cjs ')) {
+          if (!hook.command.startsWith('node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs ')) {
             violations.push({ event: eventType, command: hook.command, reason: 'not direct node run.cjs' });
           }
           if (/^(?:"\/bin\/sh"|sh)\s/.test(hook.command) || hook.command.includes('find-node.sh')) {
@@ -516,7 +515,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
       const details = violations.map(v => `  ${v.event} (${v.reason}): ${v.command}`).join('\n');
       expect.fail(
         `Found non-Windows-safe source hook commands in hooks.json:\n${details}\n\n` +
-        `Source plugin manifest commands must be direct: node "$QODER_PLUGIN_ROOT"/scripts/run.cjs ...`
+        `Source plugin manifest commands must be direct: node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs ...`
       );
     }
   });
@@ -549,10 +548,10 @@ describe('Contract 9: hooks/hooks.json portability', () => {
   });
 });
 
-// ── Contract 10: Setup installer manages stale OMQ-created files ─────────────
-// User requirement: setup cleanup stale ~/.qoder/skills and ~/.qoder/agents created by OMQ
+// ── Contract 10: Setup installer manages stale OMC-created files ─────────────
+// User requirement: setup cleanup stale ~/.claude/skills and ~/.claude/agents created by OMC
 
-describe('Contract 10: installer manages stale OMQ-created agents and skills', () => {
+describe('Contract 10: installer manages stale OMC-created agents and skills', () => {
   it('package ships agent definitions that can be enumerated', () => {
     const agentsDir = join(REPO_ROOT, 'agents');
     expect(existsSync(agentsDir)).toBe(true);
@@ -570,7 +569,7 @@ describe('Contract 10: installer manages stale OMQ-created agents and skills', (
     expect(skillDirs.length).toBeGreaterThan(5);
   });
 
-  it('syncBundledSkillDefinitions overwrites existing OMQ skills (force copy)', () => {
+  it('syncBundledSkillDefinitions overwrites existing OMC skills (force copy)', () => {
     // The installer uses cpSync with { force: true } which overwrites stale versions
     // Verify this by checking the source code pattern
     const installerSource = readFileSync(join(REPO_ROOT, 'src', 'installer', 'index.ts'), 'utf-8');
@@ -585,7 +584,7 @@ describe('Contract 10: installer manages stale OMQ-created agents and skills', (
     expect(installerSource).toContain('existsSync(filepath) && !options.force');
   });
 
-  it('OMQ agent filenames are all lowercase kebab-case .md files', () => {
+  it('OMC agent filenames are all lowercase kebab-case .md files', () => {
     // Ensures agent filenames follow a consistent pattern so stale detection is reliable
     const agentsDir = join(REPO_ROOT, 'agents');
     const agentFiles = readdirSync(agentsDir).filter(f => f.endsWith('.md') && f !== 'AGENTS.md');
@@ -595,7 +594,7 @@ describe('Contract 10: installer manages stale OMQ-created agents and skills', (
     }
   });
 
-  it('OMQ skill directories match a consistent naming pattern', () => {
+  it('OMC skill directories match a consistent naming pattern', () => {
     const skillsDir = join(REPO_ROOT, 'skills');
     const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
       .filter(d => d.isDirectory() && existsSync(join(skillsDir, d.name, 'SKILL.md')));
@@ -607,16 +606,16 @@ describe('Contract 10: installer manages stale OMQ-created agents and skills', (
 });
 
 
-describe('OMQ setup Ralph Ruby dependency guidance (issue #2969)', () => {
+describe('OMC setup Ralph Ruby dependency guidance (issue #2969)', () => {
   it('checks Ruby during setup with product-facing Ralph remediation', () => {
-    const phasePath = join(REPO_ROOT, 'skills', 'omq-setup', 'phases', '02-configure.md');
+    const phasePath = join(REPO_ROOT, 'skills', 'omc-setup', 'phases', '02-configure.md');
     const content = readFileSync(phasePath, 'utf-8');
 
     expect(content).toContain('Step 2.0: Check Ralph Ruby Dependency');
     expect(content).toContain('command -v ruby');
     expect(content).toContain('Ralph workflows require Ruby');
     expect(content).toContain('sudo apt update && sudo apt install ruby-full');
-    expect(content).toContain('restart Qoder CLI');
+    expect(content).toContain('restart Claude Code');
   });
 });
 
@@ -656,6 +655,21 @@ describe('Contract 11: SessionEnd hooks are async (issue #3240)', () => {
     }
   });
 
+  it('keeps both SessionEnd scripts on the direct asynchronous run.cjs path', () => {
+    if (!existsSync(HOOKS_JSON_PATH)) return;
+
+    const hooksJson = JSON.parse(readFileSync(HOOKS_JSON_PATH, 'utf-8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ type: string; command?: string; async?: boolean }> }>>;
+    };
+    const commands = (hooksJson.hooks.SessionEnd ?? [])
+      .flatMap(group => group.hooks)
+      .filter(hook => hook.type === 'command')
+      .map(hook => hook.command);
+
+    expect(commands).toContain('node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/session-end.mjs');
+    expect(commands).toContain('node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/wiki-session-end.mjs');
+  });
+
   it('non-SessionEnd hooks do not unconditionally carry async:true', () => {
     if (!existsSync(HOOKS_JSON_PATH)) return;
 
@@ -666,6 +680,7 @@ describe('Contract 11: SessionEnd hooks are async (issue #3240)', () => {
     // Only SessionEnd should have async:true; verify at least one event type that
     // is expected to be synchronous (Stop) is not accidentally marked async.
     const stopGroups = hooksJson.hooks?.['Stop'] ?? [];
+    expect(stopGroups.length).toBeGreaterThan(0);
     for (const group of stopGroups) {
       for (const hook of group.hooks ?? []) {
         if (hook.type === 'command') {

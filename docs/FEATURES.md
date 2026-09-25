@@ -1,6 +1,6 @@
 # Developer API Reference
 
-> Internal API documentation for oh-my-qoder developers and contributors.
+> Internal API documentation for oh-my-claudecode developers and contributors.
 
 ## Table of Contents
 1. [Notepad Wisdom System](#notepad-wisdom-system)
@@ -15,7 +15,7 @@
 
 ## Notepad Wisdom System
 
-Plan-scoped knowledge capture for agents executing tasks. Each plan gets its own notepad directory at `.omq/notepads/{plan-name}/` with four markdown files:
+Plan-scoped knowledge capture for agents executing tasks. Each plan gets its own notepad directory at `.omc/notepads/{plan-name}/` with four markdown files:
 
 - **learnings.md**: Patterns, conventions, successful approaches
 - **decisions.md**: Architectural choices and rationales
@@ -344,7 +344,7 @@ if (result.success && result.context) {
 
   // Continue with Task delegation
   Task({
-    subagent_type: "oh-my-qoder:executor",
+    subagent_type: "oh-my-claudecode:executor",
     model: "sonnet",
     prompt: result.context.continuationPrompt
   });
@@ -362,7 +362,7 @@ Autonomous execution from idea to validated working code through a 5-phase devel
 1. **Expansion** - Analyst + Architect expand idea into requirements and technical spec
 2. **Planning** - Architect creates execution plan (validated by Critic)
 3. **Execution** - Ralph + Ultrawork implement plan with parallel tasks
-4. **QA** - UltraQA ensures build/lint/tests pass through fix cycles
+4. **QA** - build/lint/test fix cycles until all pass
 5. **Validation** - Specialized architects perform functional, security, and quality reviews
 
 ### Core Types
@@ -446,8 +446,8 @@ updateValidation(directory: string, updates: Partial<AutopilotValidation>): bool
 incrementAgentCount(directory: string, count?: number): boolean
 
 // Paths
-getSpecPath(directory: string): string  // .omq/autopilot/spec.md
-getPlanPath(directory: string): string  // .omq/plans/autopilot-impl.md
+getSpecPath(directory: string): string  // .omc/autopilot/spec.md
+getPlanPath(directory: string): string  // .omc/plans/autopilot-impl.md
 ```
 
 ### Prompt Generation
@@ -562,7 +562,7 @@ if (validationStatus?.allApproved) {
 
 ### State Persistence
 
-All state is persisted to `.omq/state/autopilot-state.json` and includes:
+All state is persisted to `.omc/state/autopilot-state.json` and includes:
 
 - Active status and current phase
 - Original user idea

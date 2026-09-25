@@ -8,8 +8,8 @@
 
 import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
-import { getOmqRoot } from '../../lib/worktree-paths.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
 import type {
   ParsedSlashCommand,
   CommandInfo,
@@ -17,21 +17,25 @@ import type {
   CommandScope,
   ExecuteResult,
 } from './types.js';
-import { resolveLiveData } from './live-data.js';
+import {
+  hasLiveDataScriptArgumentPlaceholder,
+  introducesLiveDataDirective,
+  resolveLiveData,
+} from './live-data.js';
 import { parseFrontmatter, parseFrontmatterAliases, stripOptionalQuotes } from '../../utils/frontmatter.js';
-import { rewriteOmqCliInvocations } from '../../utils/omq-cli-rendering.js';
+import { rewriteOmcCliInvocations } from '../../utils/omc-cli-rendering.js';
 import { parseSkillPipelineMetadata, renderSkillPipelineGuidance } from '../../utils/skill-pipeline.js';
 import { renderSkillResourcesGuidance } from '../../utils/skill-resources.js';
 import { renderSkillRuntimeGuidance } from '../../features/builtin-skills/runtime-guidance.js';
 import { getSkillsDir, renderBundledSkillBody } from '../../features/builtin-skills/skills.js';
 
 /** Claude config directory */
-const QODER_CONFIG_DIR = getQoderConfigDir();
+const CLAUDE_CONFIG_DIR = getClaudeConfigDir();
 
 /**
- * Qoder CLI native commands that must not be shadowed by user skills.
+ * Claude Code native commands that must not be shadowed by user skills.
  * Skills whose canonical name or alias matches one of these will be prefixed
- * with `omq-` to avoid overriding built-in CC slash commands.
+ * with `omc-` to avoid overriding built-in CC slash commands.
  */
 const CC_NATIVE_COMMANDS = new Set([
   'review',
@@ -49,7 +53,7 @@ const CC_NATIVE_COMMANDS = new Set([
 function toSafeSkillName(name: string): string {
   const normalized = name.trim();
   return CC_NATIVE_COMMANDS.has(normalized.toLowerCase())
-    ? `omq-${normalized}`
+    ? `omc-${normalized}`
     : normalized;
 }
 
@@ -190,27 +194,27 @@ function discoverSkillsFromDir(skillsDir: string): CommandInfo[] {
  * Discover all available commands from multiple sources
  */
 export function discoverAllCommands(): CommandInfo[] {
-  const userCommandsDir = join(QODER_CONFIG_DIR, 'commands');
+  const userCommandsDir = join(CLAUDE_CONFIG_DIR, 'commands');
   const projectCommandsDir = join(process.cwd(), '.claude', 'commands');
   const projectClaudeSkillsDir = join(process.cwd(), '.claude', 'skills');
-  const projectOmqSkillsDir = join(getOmqRoot(), 'skills');
+  const projectOmcSkillsDir = join(getOmcRoot(), 'skills');
   const projectAgentSkillsDir = join(process.cwd(), '.agents', 'skills');
-  const userSkillsDir = join(QODER_CONFIG_DIR, 'skills');
+  const userSkillsDir = join(CLAUDE_CONFIG_DIR, 'skills');
 
   const userCommands = discoverCommandsFromDir(userCommandsDir, 'user');
   const projectCommands = discoverCommandsFromDir(projectCommandsDir, 'project');
   const projectClaudeSkills = discoverSkillsFromDir(projectClaudeSkillsDir);
-  const projectOmqSkills = discoverSkillsFromDir(projectOmqSkillsDir);
+  const projectOmcSkills = discoverSkillsFromDir(projectOmcSkillsDir);
   const projectAgentSkills = discoverSkillsFromDir(projectAgentSkillsDir);
   const userSkills = discoverSkillsFromDir(userSkillsDir);
   const builtinSkills = discoverSkillsFromDir(getSkillsDir());
 
-  // Priority: project commands > user commands > project Qoder CLI skills > project OMQ skills > project compatibility skills > user skills > builtin skills
+  // Priority: project commands > user commands > project Claude Code skills > project OMC skills > project compatibility skills > user skills > builtin skills
   const prioritized = [
     ...projectCommands,
     ...userCommands,
     ...projectClaudeSkills,
-    ...projectOmqSkills,
+    ...projectOmcSkills,
     ...projectAgentSkills,
     ...userSkills,
     ...builtinSkills,
@@ -244,6 +248,16 @@ function resolveArguments(content: string, args: string): string {
   return content.replace(/\$ARGUMENTS/g, args || '(no arguments provided)');
 }
 
+function validateLiveDataArguments(args: string): string | null {
+  for (const char of args) {
+    const code = char.charCodeAt(0);
+    if ((code < 32 && char !== '\t') || code === 127) {
+      return 'control character rejected';
+    }
+  }
+  return null;
+}
+
 function hasInvocationFlag(args: string, flag: string): boolean {
   const escaped = flag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(^|\\s)${escaped}(?=\\s|$)`).test(args);
@@ -267,8 +281,8 @@ function renderDeepInterviewAutoresearchGuidance(args: string): string {
     '- If the mission is not already clear, start by asking: "What should autoresearch improve or prove for this repo?"',
     '- Treat evaluator clarity as a required readiness gate before launch.',
     '- When the mission and evaluator are ready, write setup artifacts and hand off with:',
-    '  `Skill("oh-my-qoder:autoresearch")`',
-    '- Do **not** hand off to `omq-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omq autoresearch` CLI in this mode.',
+    '  `Skill("oh-my-claudecode:autoresearch")`',
+    '- Do **not** hand off to `omc-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc autoresearch` CLI in this mode.',
   ];
 
   if (missionSeed) {
@@ -289,6 +303,23 @@ function formatCommandTemplate(cmd: CommandInfo, args: string): string {
   const displayArgs = isDeepInterviewAutoresearch
     ? stripInvocationFlag(args, '--autoresearch')
     : args;
+  const commandContent = cmd.content || '';
+  const hasArgumentsPlaceholder = commandContent.includes('$ARGUMENTS');
+  const hasScriptArgumentsPlaceholder = hasArgumentsPlaceholder
+    && hasLiveDataScriptArgumentPlaceholder(commandContent);
+  const argumentValidationError = hasArgumentsPlaceholder
+    ? hasScriptArgumentsPlaceholder
+      ? 'arguments are not supported in live-data script blocks'
+      : validateLiveDataArguments(displayArgs)
+    : null;
+  const resolvedContent = resolveArguments(commandContent, displayArgs);
+  const liveDataArgumentError = argumentValidationError
+    ?? (hasArgumentsPlaceholder && introducesLiveDataDirective(commandContent, resolvedContent)
+      ? 'live-data directive introduced by arguments'
+      : null);
+  const renderedArgs = liveDataArgumentError
+    ? `[blocked: ${liveDataArgumentError}]`
+    : displayArgs;
 
   sections.push(`<command-name>/${cmd.name}</command-name>\n`);
 
@@ -296,8 +327,8 @@ function formatCommandTemplate(cmd: CommandInfo, args: string): string {
     sections.push(`**Description**: ${cmd.metadata.description}\n`);
   }
 
-  if (displayArgs) {
-    sections.push(`**Arguments**: ${displayArgs}\n`);
+  if (renderedArgs) {
+    sections.push(`**Arguments**: ${renderedArgs}\n`);
   }
 
   if (cmd.metadata.model) {
@@ -319,11 +350,12 @@ function formatCommandTemplate(cmd: CommandInfo, args: string): string {
   sections.push('---\n');
 
   // Resolve arguments in content, then execute any live-data commands
-  const resolvedContent = resolveArguments(cmd.content || '', displayArgs);
-  const baseContent = resolveLiveData(resolvedContent);
+  const baseContent = liveDataArgumentError
+    ? `<live-data command="$ARGUMENTS" error="true">blocked: ${liveDataArgumentError}</live-data>`
+    : resolveLiveData(resolvedContent);
   const injectedContent = cmd.scope === 'skill'
     ? renderBundledSkillBody(cmd.metadata.name, baseContent)
-    : rewriteOmqCliInvocations(baseContent);
+    : rewriteOmcCliInvocations(baseContent);
   const runtimeGuidance = cmd.scope === 'skill' && !isDeepInterviewAutoresearch
     ? renderSkillRuntimeGuidance(cmd.metadata.name)
     : '';
@@ -342,10 +374,10 @@ function formatCommandTemplate(cmd: CommandInfo, args: string): string {
       .join('\n\n')
   );
 
-  if (displayArgs && !cmd.content?.includes('$ARGUMENTS')) {
+  if (renderedArgs && !cmd.content?.includes('$ARGUMENTS')) {
     sections.push('\n\n---\n');
     sections.push('## User Request\n');
-    sections.push(displayArgs);
+    sections.push(renderedArgs);
   }
 
   return sections.join('\n');
@@ -360,7 +392,7 @@ export function executeSlashCommand(parsed: ParsedSlashCommand): ExecuteResult {
   if (!command) {
     return {
       success: false,
-      error: `Command "/${parsed.command}" not found. Available commands are in ${QODER_CONFIG_DIR}/commands/ or .qoder/commands/`,
+      error: `Command "/${parsed.command}" not found. Available commands are in ${CLAUDE_CONFIG_DIR}/commands/ or .claude/commands/`,
     };
   }
 

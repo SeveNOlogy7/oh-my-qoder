@@ -1,9 +1,9 @@
-import { mkdir, writeFile, readFile, rm, rename } from 'fs/promises';
+import { mkdir, readFile, rm, rename, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { tmuxExecAsync } from '../cli/tmux-utils.js';
 import type { CliAgentType } from './model-contract.js';
-import { buildWorkerArgv, resolveValidatedBinaryPath, getWorkerEnv as getModelWorkerEnv, isPromptModeAgent, getPromptModeArgs, resolveClaudeWorkerModel } from './model-contract.js';
+import { buildWorkerArgv, resolveValidatedBinaryPath, getWorkerEnv as getModelWorkerEnv, isPromptModeAgent, getPromptModeArgs, resolveClaudeWorkerModel, assertHeadlessSupported } from './model-contract.js';
 import { validateTeamName } from './team-name.js';
 import {
   createTeamSession, spawnWorkerInPane, sendToWorker,
@@ -14,6 +14,7 @@ import {
   composeInitialInbox, ensureWorkerStateDir, writeWorkerOverlay, generateTriggerMessage,
 } from './worker-bootstrap.js';
 import { cleanupTeamWorktrees } from './git-worktree.js';
+import { atomicWriteJson } from '../lib/atomic-write.js';
 import {
   withTaskLock,
   writeTaskFailure,
@@ -50,7 +51,7 @@ export interface TeamRuntime {
   cwd: string;
   /** Preflight-validated absolute binary paths, keyed by agent type */
   resolvedBinaryPaths?: Partial<Record<CliAgentType, string>>;
-  stopWatchdog?: () => void;
+  stopWatchdog?: () => Promise<void>;
 }
 
 export interface WorkerStatus {
@@ -114,12 +115,11 @@ function workerName(index: number): string {
 
 function stateRoot(cwd: string, teamName: string): string {
   validateTeamName(teamName);
-  return join(cwd, `.omq/state/team/${teamName}`);
+  return join(cwd, `.omc/state/team/${teamName}`);
 }
 
 async function writeJson(filePath: string, data: unknown): Promise<void> {
-  await mkdir(join(filePath, '..'), { recursive: true });
-  await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  await atomicWriteJson(filePath, data);
 }
 
 async function readJsonSafe<T>(filePath: string): Promise<T | null> {
@@ -172,11 +172,11 @@ function taskPath(root: string, taskId: string): string {
 }
 
 async function writePanesTrackingFileIfPresent(runtime: TeamRuntime): Promise<void> {
-  const jobId = process.env.OMQ_JOB_ID;
-  const omqJobsDir = process.env.OMQ_JOBS_DIR;
-  if (!jobId || !omqJobsDir) return;
+  const jobId = process.env.OMC_JOB_ID;
+  const omcJobsDir = process.env.OMC_JOBS_DIR;
+  if (!jobId || !omcJobsDir) return;
 
-  const panesPath = join(omqJobsDir, `${jobId}-panes.json`);
+  const panesPath = join(omcJobsDir, `${jobId}-panes.json`);
   const tempPath = `${panesPath}.tmp`;
   await writeFile(
     tempPath,
@@ -213,15 +213,17 @@ async function markTaskInProgress(root: string, taskId: string, owner: string, t
   return result ?? false;
 }
 
-async function resetTaskToPending(root: string, taskId: string, teamName: string, cwd: string): Promise<void> {
-  await withTaskLock(teamName, taskId, async () => {
+async function resetTaskToPending(root: string, taskId: string, teamName: string, cwd: string): Promise<boolean> {
+  const result = await withTaskLock(teamName, taskId, async () => {
     const task = await readTask(root, taskId);
-    if (!task) return;
+    if (!task) return false;
     task.status = 'pending';
     task.owner = null;
     task.assignedAt = undefined;
     await writeTask(root, task);
+    return true;
   }, { cwd });
+  return result ?? false;
 }
 
 async function markTaskFromDone(
@@ -350,7 +352,7 @@ function buildInitialTaskInstruction(
   task: { subject: string; description: string },
   taskId: string
 ): string {
-  const donePath = `.omq/state/team/${teamName}/workers/${workerName}/done.json`;
+  const donePath = `.omc/state/team/${teamName}/workers/${workerName}/done.json`;
   return [
     `## Initial Task Assignment`,
     `Task ID: ${taskId}`,
@@ -374,8 +376,13 @@ export async function startTeam(config: TeamConfig): Promise<TeamRuntime> {
   validateTeamName(teamName);
 
   // Validate CLIs once and pin absolute binary paths for consistent spawn behavior.
+  // Reject headless-unsupported providers (e.g. antigravity on Windows) here in
+  // preflight — BEFORE writing any team state or creating the tmux session — so an
+  // unsupported provider can never leave stale `.omc/state/team` files or a leader
+  // session behind. (spawnWorkerForTask keeps its own guard for the watchdog path.)
   const resolvedBinaryPaths: Partial<Record<CliAgentType, string>> = {};
   for (const agentType of [...new Set(agentTypes)]) {
+    assertHeadlessSupported(agentType);
     resolvedBinaryPaths[agentType] = resolveValidatedBinaryPath(agentType);
   }
 
@@ -406,7 +413,7 @@ export async function startTeam(config: TeamConfig): Promise<TeamRuntime> {
   for (let i = 0; i < tasks.length; i++) {
     const wName = workerName(i);
     workerNames.push(wName);
-    const agentType = agentTypes[i % agentTypes.length] ?? agentTypes[0] ?? 'qwen';
+    const agentType = agentTypes[i % agentTypes.length] ?? agentTypes[0] ?? 'claude';
     await ensureWorkerStateDir(teamName, wName, cwd);
     await writeWorkerOverlay({
       teamName, workerName: wName, agentType,
@@ -537,8 +544,9 @@ export async function monitorTeam(teamName: string, cwd: string, workerPaneIds: 
  * Runtime-owned worker watchdog/orchestrator loop.
  * Handles done.json completion, dead pane failures, and next-task spawning.
  */
-export function watchdogCliWorkers(runtime: TeamRuntime, intervalMs: number): () => void {
-  let tickInFlight = false;
+export function watchdogCliWorkers(runtime: TeamRuntime, intervalMs: number): () => Promise<void> {
+  let activeTick: Promise<void> | null = null;
+  let stopped = false;
   let consecutiveFailures = 0;
   const MAX_CONSECUTIVE_FAILURES = 3;
   // Track consecutive unresponsive ticks per worker
@@ -546,8 +554,6 @@ export function watchdogCliWorkers(runtime: TeamRuntime, intervalMs: number): ()
   const UNRESPONSIVE_KILL_THRESHOLD = 3;
 
   const tick = async () => {
-    if (tickInFlight) return;
-    tickInFlight = true;
     try {
       const workers = [...runtime.activeWorkers.entries()];
       if (workers.length === 0) return;
@@ -658,14 +664,24 @@ export function watchdogCliWorkers(runtime: TeamRuntime, intervalMs: number): ()
         }
         clearInterval(intervalId);
       }
-    } finally {
-      tickInFlight = false;
     }
   };
 
-  const intervalId = setInterval(() => { tick(); }, intervalMs);
+  const startTick = () => {
+    if (stopped || activeTick) return;
+    const tickPromise = tick();
+    activeTick = tickPromise;
+    void tickPromise.finally(() => {
+      if (activeTick === tickPromise) activeTick = null;
+    });
+  };
+  const intervalId = setInterval(startTick, intervalMs);
 
-  return () => clearInterval(intervalId);
+  return async () => {
+    stopped = true;
+    clearInterval(intervalId);
+    await activeTick;
+  };
 }
 
 /**
@@ -680,6 +696,16 @@ export async function spawnWorkerForTask(
   const taskId = String(taskIndex + 1);
   const task = runtime.config.tasks[taskIndex];
   if (!task) return '';
+
+  const workerIndex = parseWorkerIndex(workerNameValue);
+  const agentType = runtime.config.agentTypes[workerIndex % runtime.config.agentTypes.length]
+    ?? runtime.config.agentTypes[0]
+    ?? 'claude';
+  // Guard headless-unsupported providers (e.g. antigravity on Windows) BEFORE any
+  // task-state mutation or pane split, so legacy v1 startup rejects cleanly instead
+  // of leaving a task stuck `in_progress` with a stray pane (parity with v2/scale-up).
+  assertHeadlessSupported(agentType);
+
   const marked = await markTaskInProgress(root, taskId, workerNameValue, runtime.teamName, runtime.cwd);
   if (!marked) return '';
 
@@ -687,136 +713,202 @@ export async function spawnWorkerForTask(
     ? runtime.leaderPaneId
     : runtime.workerPaneIds[runtime.workerPaneIds.length - 1];
   const splitDirection = runtime.workerPaneIds.length === 0 ? 'right' : 'down';
-  const paneId = await splitTeamWorkerPane(splitTarget, splitDirection, runtime.cwd);
-  if (!paneId) {
+  const resetTaskAfterSplitFailure = async (startupError?: unknown): Promise<void> => {
+    let taskCleanupError: unknown;
     try {
-      await resetTaskToPending(root, taskId, runtime.teamName, runtime.cwd);
-    } catch {
-      // best-effort revert
+      if (!await resetTaskToPending(root, taskId, runtime.teamName, runtime.cwd)) {
+        taskCleanupError = new Error(`worker_startup_task_reset_unconfirmed:${workerNameValue}:${taskId}`);
+      }
+    } catch (cleanupError) {
+      taskCleanupError = cleanupError;
     }
+    if (taskCleanupError) {
+      const rollbackError = new Error(`worker_startup_task_reset_unconfirmed:${workerNameValue}:${taskId}`);
+      (rollbackError as Error & { cause?: unknown }).cause = {
+        ...(startupError !== undefined ? { startupError } : {}),
+        taskCleanupError,
+      };
+      throw rollbackError;
+    }
+    if (startupError !== undefined) {
+      if (startupError instanceof Error) throw startupError;
+      throw new Error(String(startupError));
+    }
+  };
+
+  let paneId: string | null;
+  try {
+    paneId = await splitTeamWorkerPane(splitTarget, splitDirection, runtime.cwd);
+  } catch (error) {
+    await resetTaskAfterSplitFailure(error);
+    return '';
+  }
+  if (!paneId) {
+    await resetTaskAfterSplitFailure();
     return '';
   }
 
-  const workerIndex = parseWorkerIndex(workerNameValue);
-  const agentType = runtime.config.agentTypes[workerIndex % runtime.config.agentTypes.length]
-    ?? runtime.config.agentTypes[0]
-    ?? 'qwen';
-  const usePromptMode = isPromptModeAgent(agentType);
-
-  // Build the initial task instruction and write inbox before spawn.
-  // For prompt-mode agents the instruction is passed via CLI flag;
-  // for interactive agents it is sent via tmux send-keys after startup.
-  const instruction = buildInitialTaskInstruction(runtime.teamName, workerNameValue, task, taskId);
-  await composeInitialInbox(runtime.teamName, workerNameValue, instruction, runtime.cwd);
-
-  const envVars = getModelWorkerEnv(runtime.teamName, workerNameValue, agentType);
-  const resolvedBinaryPath = runtime.resolvedBinaryPaths?.[agentType] ?? resolveValidatedBinaryPath(agentType);
-  if (!runtime.resolvedBinaryPaths) {
-    runtime.resolvedBinaryPaths = {};
-  }
-  runtime.resolvedBinaryPaths[agentType] = resolvedBinaryPath;
-
-  // Resolve model from environment variables based on agent type.
-  // For Claude agents on Bedrock/Vertex, resolve the provider-specific model
-  // so workers don't fall back to invalid Anthropic API model names. (#1695)
-  const modelForAgent = (() => {
-    if (agentType === 'codex') {
-      return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL
-        || process.env.OMQ_CODEX_DEFAULT_MODEL
-        || undefined;
+  const rollbackStartupFailure = async (
+    startupError: unknown,
+    rollbackMessage: string,
+    taskResetMarker: string,
+    causeKey: 'startupError' | 'layoutError',
+  ): Promise<never> => {
+    let paneCleanupError: unknown;
+    try {
+      await killWorkerPane(runtime, workerNameValue, paneId, { strict: true });
+    } catch (cleanupError) {
+      paneCleanupError = cleanupError;
     }
-    if (agentType === 'gemini') {
-      return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL
-        || process.env.OMQ_GEMINI_DEFAULT_MODEL
-        || undefined;
+    let taskCleanupError: unknown;
+    try {
+      if (!await resetTaskToPending(root, taskId, runtime.teamName, runtime.cwd)) {
+        taskCleanupError = new Error(taskResetMarker);
+      }
+    } catch (cleanupError) {
+      taskCleanupError = cleanupError;
     }
-    if (agentType === 'grok') {
-      return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL
-        || process.env.OMQ_GROK_DEFAULT_MODEL
-        || undefined;
+    if (paneCleanupError || taskCleanupError) {
+      const rollbackError = new Error(rollbackMessage);
+      (rollbackError as Error & { cause?: unknown }).cause = {
+        [causeKey]: startupError,
+        paneCleanupError,
+        taskCleanupError,
+      };
+      throw rollbackError;
     }
-    if (agentType === 'cursor') {
-      return undefined;
-    }
-    // Claude agents: resolve Bedrock/Vertex model when on those providers
-    return resolveClaudeWorkerModel();
-  })();
-
-  const [launchBinary, ...launchArgs] = buildWorkerArgv(agentType, {
-    teamName: runtime.teamName,
-    workerName: workerNameValue,
-    cwd: runtime.cwd,
-    resolvedBinaryPath,
-    model: modelForAgent,
-  });
-
-  // For prompt-mode agents (e.g. Gemini Ink TUI), pass instruction via CLI
-  // flag so tmux send-keys never needs to interact with the TUI input widget.
-  // Codex and Claude team workers are persistent interactive panes and are
-  // nudged through the inbox transport instead of `codex exec`/print modes.
-  if (usePromptMode) {
-    const promptArgs = getPromptModeArgs(agentType, generateTriggerMessage(runtime.teamName, workerNameValue));
-    launchArgs.push(...promptArgs);
-  }
-
-  const paneConfig: WorkerPaneConfig = {
-    teamName: runtime.teamName,
-    workerName: workerNameValue,
-    envVars,
-    launchBinary,
-    launchArgs,
-    cwd: runtime.cwd,
+    throw startupError instanceof Error ? startupError : new Error(String(startupError));
   };
 
-  await spawnWorkerInPane(runtime.sessionName, paneId, paneConfig);
-
-  runtime.workerPaneIds.push(paneId);
-  runtime.activeWorkers.set(workerNameValue, { paneId, taskId, spawnedAt: Date.now() });
-
-  await applyMainVerticalLayout(runtime.sessionName);
-
+  let rollbackMessage = `worker_startup_rollback_unverified:${workerNameValue}:${paneId}`;
+  let taskResetMarker = `worker_startup_task_reset_unconfirmed:${workerNameValue}:${taskId}`;
+  let rollbackCauseKey: 'startupError' | 'layoutError' = 'startupError';
   try {
-    await writePanesTrackingFileIfPresent(runtime);
-  } catch {
-    // panes tracking is best-effort
-  }
+    const usePromptMode = isPromptModeAgent(agentType);
 
-  if (!usePromptMode) {
-    // Interactive mode: wait for pane readiness, handle trust-confirm, then
-    // send instruction via tmux send-keys.
-    const paneReady = await waitForPaneReady(paneId);
-    if (!paneReady) {
-      await killWorkerPane(runtime, workerNameValue, paneId);
-      await resetTaskToPending(root, taskId, runtime.teamName, runtime.cwd);
-      throw new Error(`worker_pane_not_ready:${workerNameValue}`);
+    // Build the initial task instruction and write inbox before spawn.
+    // For prompt-mode agents the instruction is passed via CLI flag;
+    // for interactive agents it is sent via tmux send-keys after startup.
+    const instruction = buildInitialTaskInstruction(runtime.teamName, workerNameValue, task, taskId);
+    await composeInitialInbox(runtime.teamName, workerNameValue, instruction, runtime.cwd);
+
+    const envVars = getModelWorkerEnv(runtime.teamName, workerNameValue, agentType);
+    const resolvedBinaryPath = runtime.resolvedBinaryPaths?.[agentType] ?? resolveValidatedBinaryPath(agentType);
+    if (!runtime.resolvedBinaryPaths) {
+      runtime.resolvedBinaryPaths = {};
     }
+    runtime.resolvedBinaryPaths[agentType] = resolvedBinaryPath;
 
-    if (agentType === 'gemini') {
-      const confirmed = await notifyPaneWithRetry(runtime.sessionName, paneId, '1');
-      if (!confirmed) {
-        await killWorkerPane(runtime, workerNameValue, paneId);
-        await resetTaskToPending(root, taskId, runtime.teamName, runtime.cwd);
-        throw new Error(`worker_notify_failed:${workerNameValue}:trust-confirm`);
+    // Resolve model from environment variables based on agent type.
+    // For Claude agents on Bedrock/Vertex, resolve the provider-specific model
+    // so workers don't fall back to invalid Anthropic API model names. (#1695)
+    const modelForAgent = (() => {
+      if (agentType === 'codex') {
+        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL
+          || process.env.OMC_CODEX_DEFAULT_MODEL
+          || undefined;
       }
-      await new Promise(r => setTimeout(r, 800));
+      if (agentType === 'gemini') {
+        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL
+          || process.env.OMC_GEMINI_DEFAULT_MODEL
+          || undefined;
+      }
+      if (agentType === 'antigravity') {
+        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL
+          || process.env.OMC_ANTIGRAVITY_DEFAULT_MODEL
+          || undefined;
+      }
+      if (agentType === 'grok') {
+        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL
+          || process.env.OMC_GROK_DEFAULT_MODEL
+          || undefined;
+      }
+      if (agentType === 'cursor') {
+        return undefined;
+      }
+      // Claude agents: resolve Bedrock/Vertex model when on those providers
+      return resolveClaudeWorkerModel();
+    })();
+
+    const [launchBinary, ...launchArgs] = buildWorkerArgv(agentType, {
+      teamName: runtime.teamName,
+      workerName: workerNameValue,
+      cwd: runtime.cwd,
+      resolvedBinaryPath,
+      model: modelForAgent,
+    });
+
+    // For prompt-mode agents (e.g. Gemini Ink TUI, Antigravity --print), pass
+    // instruction via CLI flag so tmux send-keys never needs to interact with
+    // the TUI input widget.
+    // Codex and Claude team workers are persistent interactive panes and are
+    // nudged through the inbox transport instead of `codex exec`/print modes.
+    if (usePromptMode) {
+      const promptArgs = getPromptModeArgs(agentType, generateTriggerMessage(runtime.teamName, workerNameValue));
+      launchArgs.push(...promptArgs);
     }
 
-    const notified = await notifyPaneWithRetry(
-      runtime.sessionName,
-      paneId,
-      generateTriggerMessage(runtime.teamName, workerNameValue),
-      1
-    );
-    if (!notified) {
-      await killWorkerPane(runtime, workerNameValue, paneId);
-      await resetTaskToPending(root, taskId, runtime.teamName, runtime.cwd);
-      throw new Error(`worker_notify_failed:${workerNameValue}:initial-inbox`);
+    const paneConfig: WorkerPaneConfig = {
+      teamName: runtime.teamName,
+      workerName: workerNameValue,
+      envVars,
+      launchBinary,
+      launchArgs,
+      cwd: runtime.cwd,
+    };
+
+    try {
+      await applyMainVerticalLayout(runtime.sessionName, { required: true });
+    } catch (error) {
+      rollbackMessage = `worker_layout_rollback_unverified:${workerNameValue}:${paneId}`;
+      taskResetMarker = `worker_layout_task_reset_unconfirmed:${workerNameValue}:${taskId}`;
+      rollbackCauseKey = 'layoutError';
+      throw error;
     }
+    await spawnWorkerInPane(runtime.sessionName, paneId, paneConfig);
+
+    runtime.workerPaneIds.push(paneId);
+    runtime.activeWorkers.set(workerNameValue, { paneId, taskId, spawnedAt: Date.now() });
+
+    try {
+      await writePanesTrackingFileIfPresent(runtime);
+    } catch {
+      // panes tracking is best-effort
+    }
+
+    if (!usePromptMode) {
+      // Interactive mode: wait for pane readiness, handle trust-confirm, then
+      // send instruction via tmux send-keys.
+      const paneReady = await waitForPaneReady(paneId, { provider: agentType });
+      if (!paneReady) {
+        throw new Error(`worker_pane_not_ready:${workerNameValue}`);
+      }
+
+      if (agentType === 'gemini') {
+        const confirmed = await notifyPaneWithRetry(runtime.sessionName, paneId, '1');
+        if (!confirmed) {
+          throw new Error(`worker_notify_failed:${workerNameValue}:trust-confirm`);
+        }
+        await new Promise(r => setTimeout(r, 800));
+      }
+
+      const notified = await notifyPaneWithRetry(
+        runtime.sessionName,
+        paneId,
+        generateTriggerMessage(runtime.teamName, workerNameValue),
+        1
+      );
+      if (!notified) {
+        throw new Error(`worker_notify_failed:${workerNameValue}:initial-inbox`);
+      }
+    }
+    // Prompt-mode agents: instruction already passed via CLI flag at spawn.
+    // No trust-confirm or tmux send-keys interaction needed.
+
+    return paneId;
+  } catch (error) {
+    return await rollbackStartupFailure(error, rollbackMessage, taskResetMarker, rollbackCauseKey);
   }
-  // Prompt-mode agents: instruction already passed via CLI flag at spawn.
-  // No trust-confirm or tmux send-keys interaction needed.
-
-  return paneId;
 }
 
 /**
@@ -825,12 +917,16 @@ export async function spawnWorkerForTask(
 export async function killWorkerPane(
   runtime: TeamRuntime,
   workerNameValue: string,
-  paneId: string
+  paneId: string,
+  options: { strict?: boolean } = {},
 ): Promise<void> {
   try {
     await killTeamPane(paneId);
-  } catch {
-    // idempotent: pane may already be gone
+  } catch (error) {
+    // Watchdog recovery is idempotent: a pane can disappear between the
+    // liveness probe and cleanup. Rollback callers opt into strict cleanup so
+    // an actual kill failure still fails closed instead of hiding an orphan.
+    if (options.strict) throw error;
   }
 
   const paneIndex = runtime.workerPaneIds.indexOf(paneId);
@@ -881,7 +977,7 @@ export async function assignTask(
   // Write to worker inbox
   const inboxPath = join(root, 'workers', targetWorkerName, 'inbox.md');
   await mkdir(join(inboxPath, '..'), { recursive: true });
-  const msg = `\n\n---\n## New Task Assignment\nTask ID: ${taskId}\nClaim and execute task from: .omq/state/team/${teamName}/tasks/${taskId}.json\n`;
+  const msg = `\n\n---\n## New Task Assignment\nTask ID: ${taskId}\nClaim and execute task from: .omc/state/team/${teamName}/tasks/${taskId}.json\n`;
   const { appendFile } = await import('fs/promises');
   await appendFile(inboxPath, msg, 'utf-8');
 
@@ -914,7 +1010,7 @@ export async function shutdownTeam(
   workerPaneIds?: string[],
   leaderPaneId?: string,
   ownsWindow?: boolean,
-): Promise<void> {
+): Promise<boolean> {
   const root = stateRoot(cwd, teamName);
 
   // Write shutdown request
@@ -929,7 +1025,7 @@ export async function shutdownTeam(
   // Polling for ACK files on CLI worker teams wastes the full timeoutMs on every shutdown.
   // Detect CLI worker teams by checking if all agent types are known CLI types, and skip
   // ACK polling — the tmux kill below handles process cleanup instead.
-  const CLI_AGENT_TYPES = new Set<string>(['qwen', 'codex', 'gemini', 'grok', 'cursor']);
+  const CLI_AGENT_TYPES = new Set<string>(['claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity']);
   const agentTypes: string[] = configData?.agentTypes ?? [];
   const isCliWorkerTeam = agentTypes.length > 0 && agentTypes.every(t => CLI_AGENT_TYPES.has(t));
 
@@ -960,18 +1056,27 @@ export async function shutdownTeam(
   const effectiveWorkerPaneIds = sessionMode === 'split-pane'
     ? await resolveSplitPaneWorkerPaneIds(sessionName, workerPaneIds, leaderPaneId)
     : workerPaneIds;
-  await killTeamSession(sessionName, effectiveWorkerPaneIds, leaderPaneId, { sessionMode });
+  // Fail closed: split-pane teams with workers but no identity-bound pane evidence
+  // must not report successful cleanup and delete state.
+  if (sessionMode === 'split-pane') {
+    const expectedWorkers = Number(configData?.workerCount ?? 0);
+    if (expectedWorkers > 0 && (!effectiveWorkerPaneIds || effectiveWorkerPaneIds.length === 0)) {
+      return false;
+    }
+  }
+  if (!await killTeamSession(sessionName, effectiveWorkerPaneIds, leaderPaneId, { sessionMode })) return false;
 
   // Clean up state
   try {
-    cleanupTeamWorktrees(teamName, cwd);
+    if (cleanupTeamWorktrees(teamName, cwd).preserved.length > 0) return false;
   } catch {
-    // best-effort: worktree cleanup is dormant in current runtime paths
+    return false;
   }
   try {
     await rm(root, { recursive: true, force: true });
+    return true;
   } catch {
-    // Ignore cleanup errors
+    return false;
   }
 }
 
@@ -986,7 +1091,7 @@ export async function resumeTeam(teamName: string, cwd: string): Promise<TeamRun
   if (!configData) return null;
 
   // Check if session is alive
-  const sName = configData.tmuxSession || `omq-team-${teamName}`;
+  const sName = configData.tmuxSession || `omc-team-${teamName}`;
 
   try {
     await tmuxExecAsync(['has-session', '-t', sName.split(':')[0]]);

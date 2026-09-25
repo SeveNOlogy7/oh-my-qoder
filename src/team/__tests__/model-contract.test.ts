@@ -8,6 +8,8 @@ import {
   parseCliOutput,
   isPromptModeAgent,
   getPromptModeArgs,
+  isHeadlessSupportedOnPlatform,
+  validateCliAvailable,
   isCliAvailable,
   shouldLoadShellRc,
   resolveCliBinaryPath,
@@ -16,16 +18,9 @@ import {
   resolveClaudeWorkerModel,
   shouldUseClaudeBareMode,
   _testInternals,
+  buildValidatedWorkerLaunchDescriptor,
+  validateWorkerLaunchDescriptor,
 } from '../model-contract.js';
-
-// Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
-// The stub deliberately returns the CN name: mocking the resolver back to
-// 'qodercli' would also match the hardcoded value this contract had before the
-// flavor existed, so the assertions would pass either way and guard nothing.
-vi.mock('../../lib/qoder-cli.js', () => ({
-  qoderCliBinary: () => 'qoderclicn',
-  qoderCliNpmPackage: () => '@qodercn-ai/qoderclicn',
-}));
 
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
@@ -44,19 +39,19 @@ function setProcessPlatform(platform: NodeJS.Platform): () => void {
 }
 
 function withAnthropicApiKey(value: string | undefined, fn: () => void): void {
-  const original = process.env.DASHSCOPE_API_KEY;
+  const original = process.env.ANTHROPIC_API_KEY;
   if (value === undefined) {
-    delete process.env.DASHSCOPE_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
   } else {
-    process.env.DASHSCOPE_API_KEY = value;
+    process.env.ANTHROPIC_API_KEY = value;
   }
   try {
     fn();
   } finally {
     if (original === undefined) {
-      delete process.env.DASHSCOPE_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
     } else {
-      process.env.DASHSCOPE_API_KEY = original;
+      process.env.ANTHROPIC_API_KEY = original;
     }
   }
 }
@@ -76,8 +71,8 @@ describe('model-contract', () => {
       mockSpawnSync.mockReturnValue({ status: 0, stdout: '/usr/local/bin/claude\n', stderr: '', pid: 0, output: [], signal: null });
 
       clearResolvedPathCache();
-      expect(resolveCliBinaryPath('qwen')).toBe('/usr/local/bin/claude');
-      expect(resolveCliBinaryPath('qwen')).toBe('/usr/local/bin/claude');
+      expect(resolveCliBinaryPath('claude')).toBe('/usr/local/bin/claude');
+      expect(resolveCliBinaryPath('claude')).toBe('/usr/local/bin/claude');
       expect(mockSpawnSync).toHaveBeenCalledTimes(1);
       clearResolvedPathCache();
     });
@@ -88,7 +83,7 @@ describe('model-contract', () => {
 
       mockSpawnSync.mockReturnValue({ status: 0, stdout: '/tmp/evil/claude\n', stderr: '', pid: 0, output: [], signal: null });
       clearResolvedPathCache();
-      expect(() => resolveCliBinaryPath('qwen')).toThrow('untrusted location');
+      expect(() => resolveCliBinaryPath('claude')).toThrow('untrusted location');
       clearResolvedPathCache();
       mockSpawnSync.mockRestore();
     });
@@ -98,9 +93,9 @@ describe('model-contract', () => {
       mockSpawnSync.mockReturnValue({ status: 0, stdout: '/usr/local/bin/claude\n', stderr: '', pid: 0, output: [], signal: null });
 
       clearResolvedPathCache();
-      expect(validateCliBinaryPath('qwen')).toEqual({
+      expect(validateCliBinaryPath('claude')).toEqual({
         valid: true,
-        binary: 'qwen',
+        binary: 'claude',
         resolvedPath: '/usr/local/bin/claude',
       });
 
@@ -138,15 +133,15 @@ describe('model-contract', () => {
         expect(isTrustedPrefix('/home/tester/.local/bin-evil/cli')).toBe(false);
         expect(isTrustedPrefix('/opt/homebrew-evil/x')).toBe(false);
         expect(isTrustedPrefix('/home/tester/Downloads/cli')).toBe(false);
-        // custom trusted dirs (OMQ_TRUSTED_CLI_DIRS) get the same boundary check
-        const origCustom = process.env.OMQ_TRUSTED_CLI_DIRS;
-        process.env.OMQ_TRUSTED_CLI_DIRS = '/opt/mybins';
+        // custom trusted dirs (OMC_TRUSTED_CLI_DIRS) get the same boundary check
+        const origCustom = process.env.OMC_TRUSTED_CLI_DIRS;
+        process.env.OMC_TRUSTED_CLI_DIRS = '/opt/mybins';
         try {
           expect(isTrustedPrefix('/opt/mybins/grok')).toBe(true);
           expect(isTrustedPrefix('/opt/mybins-evil/grok')).toBe(false);
         } finally {
-          if (origCustom === undefined) delete process.env.OMQ_TRUSTED_CLI_DIRS;
-          else process.env.OMQ_TRUSTED_CLI_DIRS = origCustom;
+          if (origCustom === undefined) delete process.env.OMC_TRUSTED_CLI_DIRS;
+          else process.env.OMC_TRUSTED_CLI_DIRS = origCustom;
         }
       } finally {
         if (origHome === undefined) delete process.env.HOME;
@@ -156,9 +151,9 @@ describe('model-contract', () => {
   });
   describe('getContract', () => {
     it('returns contract for claude', () => {
-      const c = getContract('qwen');
-      expect(c.agentType).toBe('qwen');
-      expect(c.binary).toBe('qoderclicn');
+      const c = getContract('claude');
+      expect(c.agentType).toBe('claude');
+      expect(c.binary).toBe('claude');
     });
     it('returns contract for codex', () => {
       const c = getContract('codex');
@@ -176,22 +171,72 @@ describe('model-contract', () => {
       expect(c.binary).toBe('grok');
       expect(c.supportsPromptMode).toBe(true);
     });
+    it('returns contract for antigravity', () => {
+      const c = getContract('antigravity');
+      expect(c.agentType).toBe('antigravity');
+      expect(c.binary).toBe('agy');
+      expect(c.supportsPromptMode).toBe(true);
+      expect(c.promptModeFlag).toBe('-p');
+      // Points to official install instructions, not a raw pipe-to-shell command.
+      expect(c.installInstructions).toContain('antigravity.google');
+      expect(c.installInstructions).not.toContain('| bash');
+    });
     it('throws for unknown agent type', () => {
       expect(() => getContract('unknown' as any)).toThrow('Unknown agent type');
     });
 
+    describe('antigravity Windows headless guard (omc team)', () => {
+      it('reports antigravity headless unsupported on win32, supported elsewhere', () => {
+        expect(isHeadlessSupportedOnPlatform('antigravity', 'win32')).toBe(false);
+        expect(isHeadlessSupportedOnPlatform('antigravity', 'darwin')).toBe(true);
+        expect(isHeadlessSupportedOnPlatform('antigravity', 'linux')).toBe(true);
+        // Other prompt-mode providers stay supported on Windows.
+        expect(isHeadlessSupportedOnPlatform('gemini', 'win32')).toBe(true);
+        expect(isHeadlessSupportedOnPlatform('grok', 'win32')).toBe(true);
+      });
+
+      it('getPromptModeArgs throws for an antigravity team worker on Windows', () => {
+        const restore = setProcessPlatform('win32');
+        try {
+          expect(() => getPromptModeArgs('antigravity', '/path/to/inbox.md')).toThrow(/not supported on Windows/);
+          // Still works for gemini on Windows (uses its own stdin-safe handling elsewhere).
+          expect(getPromptModeArgs('gemini', '/path/to/inbox.md')).toEqual(['-p', '/path/to/inbox.md']);
+        } finally {
+          restore();
+        }
+      });
+
+      it('getPromptModeArgs builds antigravity args normally on non-Windows', () => {
+        const restore = setProcessPlatform('darwin');
+        try {
+          expect(getPromptModeArgs('antigravity', '/path/to/inbox.md')).toEqual(['-p', '/path/to/inbox.md']);
+        } finally {
+          restore();
+        }
+      });
+
+      it('validateCliAvailable refuses antigravity on Windows with a clear message', () => {
+        const restore = setProcessPlatform('win32');
+        try {
+          expect(() => validateCliAvailable('antigravity')).toThrow(/not supported on Windows/);
+        } finally {
+          restore();
+        }
+      });
+    });
+
     it('blocks codex when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMQ_SECURITY;
-      process.env.OMQ_SECURITY = 'strict';
+      const origSecurity = process.env.OMC_SECURITY;
+      process.env.OMC_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
         expect(() => getContract('codex')).toThrow('blocked by security policy');
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMQ_SECURITY;
+          delete process.env.OMC_SECURITY;
         } else {
-          process.env.OMQ_SECURITY = origSecurity;
+          process.env.OMC_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -199,17 +244,17 @@ describe('model-contract', () => {
     });
 
     it('blocks gemini when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMQ_SECURITY;
-      process.env.OMQ_SECURITY = 'strict';
+      const origSecurity = process.env.OMC_SECURITY;
+      process.env.OMC_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
         expect(() => getContract('gemini')).toThrow('blocked by security policy');
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMQ_SECURITY;
+          delete process.env.OMC_SECURITY;
         } else {
-          process.env.OMQ_SECURITY = origSecurity;
+          process.env.OMC_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -217,17 +262,17 @@ describe('model-contract', () => {
     });
 
     it('blocks grok when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMQ_SECURITY;
-      process.env.OMQ_SECURITY = 'strict';
+      const origSecurity = process.env.OMC_SECURITY;
+      process.env.OMC_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
         expect(() => getContract('grok')).toThrow('blocked by security policy');
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMQ_SECURITY;
+          delete process.env.OMC_SECURITY;
         } else {
-          process.env.OMQ_SECURITY = origSecurity;
+          process.env.OMC_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -235,17 +280,17 @@ describe('model-contract', () => {
     });
 
     it('allows claude even when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMQ_SECURITY;
-      process.env.OMQ_SECURITY = 'strict';
+      const origSecurity = process.env.OMC_SECURITY;
+      process.env.OMC_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
-        expect(() => getContract('qwen')).not.toThrow();
+        expect(() => getContract('claude')).not.toThrow();
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMQ_SECURITY;
+          delete process.env.OMC_SECURITY;
         } else {
-          process.env.OMQ_SECURITY = origSecurity;
+          process.env.OMC_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -255,19 +300,19 @@ describe('model-contract', () => {
 
   describe('buildLaunchArgs', () => {
     it('claude includes --dangerously-skip-permissions', () => {
-      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+      const args = buildLaunchArgs('claude', { teamName: 't', workerName: 'w', cwd: '/tmp' });
       expect(args).toContain('--dangerously-skip-permissions');
     });
-    it('detects Claude bare mode only for non-empty DASHSCOPE_API_KEY', () => {
-      expect(shouldUseClaudeBareMode({ DASHSCOPE_API_KEY: 'sk-test' })).toBe(true);
-      expect(shouldUseClaudeBareMode({ DASHSCOPE_API_KEY: '' })).toBe(false);
-      expect(shouldUseClaudeBareMode({ DASHSCOPE_API_KEY: '   ' })).toBe(false);
+    it('detects Claude bare mode only for non-empty ANTHROPIC_API_KEY', () => {
+      expect(shouldUseClaudeBareMode({ ANTHROPIC_API_KEY: 'sk-test' })).toBe(true);
+      expect(shouldUseClaudeBareMode({ ANTHROPIC_API_KEY: '' })).toBe(false);
+      expect(shouldUseClaudeBareMode({ ANTHROPIC_API_KEY: '   ' })).toBe(false);
       expect(shouldUseClaudeBareMode({})).toBe(false);
     });
-    it('claude omits --bare when DASHSCOPE_API_KEY is absent, empty, or whitespace', () => {
+    it('claude omits --bare when ANTHROPIC_API_KEY is absent, empty, or whitespace', () => {
       for (const value of [undefined, '', '   ']) {
         withAnthropicApiKey(value, () => {
-          const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+          const args = buildLaunchArgs('claude', { teamName: 't', workerName: 'w', cwd: '/tmp' });
           expect(args).toContain('--dangerously-skip-permissions');
           expect(args).not.toContain('--bare');
         });
@@ -275,12 +320,12 @@ describe('model-contract', () => {
     });
     it('claude includes --bare with API-key auth and dedupes exact extra flag', () => {
       withAnthropicApiKey('sk-test', () => {
-        const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+        const args = buildLaunchArgs('claude', { teamName: 't', workerName: 'w', cwd: '/tmp' });
         expect(args).toContain('--dangerously-skip-permissions');
         expect(args).toContain('--bare');
         expect(countArg(args, '--bare')).toBe(1);
 
-        const deduped = buildLaunchArgs('qwen', {
+        const deduped = buildLaunchArgs('claude', {
           teamName: 't',
           workerName: 'w',
           cwd: '/tmp',
@@ -301,6 +346,24 @@ describe('model-contract', () => {
       expect(args).toContain('yolo');
       expect(args).not.toContain('-p');
     });
+    it('antigravity leads with --dangerously-skip-permissions (no --print; -p is appended later by getPromptModeArgs)', () => {
+      const noModel = buildLaunchArgs('antigravity', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+      expect(noModel).toEqual(['--dangerously-skip-permissions']);
+      expect(noModel).not.toContain('--model');
+      // -p is NOT in buildLaunchArgs: agy's -p takes the prompt as its value and
+      // is appended (with the instruction) by getPromptModeArgs.
+      expect(noModel).not.toContain('-p');
+      expect(noModel).not.toContain('--print');
+
+      const withModel = buildLaunchArgs('antigravity', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'Gemini 3.1 Pro (High)' });
+      expect(withModel).toEqual(['--dangerously-skip-permissions', '--model', 'Gemini 3.1 Pro (High)']);
+      // approval flag precedes --model
+      expect(withModel.indexOf('--dangerously-skip-permissions')).toBeLessThan(withModel.indexOf('--model'));
+    });
+    it('antigravity appends extraFlags after the model flag', () => {
+      const args = buildLaunchArgs('antigravity', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'm', extraFlags: ['--foo'] });
+      expect(args).toEqual(['--dangerously-skip-permissions', '--model', 'm', '--foo']);
+    });
     it('grok includes --always-approve with no model and appends --model <m> when given', () => {
       const noModel = buildLaunchArgs('grok', { teamName: 't', workerName: 'w', cwd: '/tmp' });
       expect(noModel).toEqual(['--always-approve']);
@@ -315,32 +378,32 @@ describe('model-contract', () => {
       expect(args).toContain('gpt-4');
     });
     it('normalizes full Claude model ID to alias for claude agent (issue #1415)', () => {
-      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'qwen-plus' });
+      const args = buildLaunchArgs('claude', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'claude-sonnet-4-6' });
       expect(args).toContain('--model');
-      expect(args).toContain('medium');
-      expect(args).not.toContain('qwen-plus');
+      expect(args).toContain('sonnet');
+      expect(args).not.toContain('claude-sonnet-4-6');
     });
     it('passes Bedrock model ID through without normalization for claude agent (issue #1695)', () => {
       withAnthropicApiKey('sk-test', () => {
-        const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'dashscope/qwen-max-v1:0' });
+        const args = buildLaunchArgs('claude', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'us.anthropic.claude-opus-4-6-v1:0' });
         expect(args).toContain('--bare');
         expect(countArg(args, '--bare')).toBe(1);
         expect(args).toContain('--model');
-        expect(args).toContain('dashscope/qwen-max-v1:0');
-        expect(args).not.toContain('high');
+        expect(args).toContain('us.anthropic.claude-opus-4-6-v1:0');
+        expect(args).not.toContain('opus');
       });
     });
     it('passes Bedrock ARN model ID through without normalization (issue #1695)', () => {
-      const arn = 'dashscope/qwen-plus';
-      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: arn });
+      const arn = 'arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-sonnet-4-6-v1:0';
+      const args = buildLaunchArgs('claude', { teamName: 't', workerName: 'w', cwd: '/tmp', model: arn });
       expect(args).toContain('--model');
       expect(args).toContain(arn);
     });
     it('passes Vertex AI model ID through without normalization (issue #1695)', () => {
-      const args = buildLaunchArgs('qwen', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'vertex_ai/qwen-plus@20250514' });
+      const args = buildLaunchArgs('claude', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'vertex_ai/claude-sonnet-4-6@20250514' });
       expect(args).toContain('--model');
-      expect(args).toContain('vertex_ai/qwen-plus@20250514');
-      expect(args).not.toContain('medium');
+      expect(args).toContain('vertex_ai/claude-sonnet-4-6@20250514');
+      expect(args).not.toContain('sonnet');
     });
     it('does not normalize non-Claude models for codex/gemini agents', () => {
       const args = buildLaunchArgs('codex', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'gpt-4o' });
@@ -351,41 +414,47 @@ describe('model-contract', () => {
   describe('getWorkerEnv', () => {
     it('returns correct env vars', () => {
       const env = getWorkerEnv('my-team', 'worker-1', 'codex');
-      expect(env.OMQ_TEAM_WORKER).toBe('my-team/worker-1');
-      expect(env.OMQ_TEAM_NAME).toBe('my-team');
-      expect(env.OMQ_WORKER_AGENT_TYPE).toBe('codex');
+      expect(env.OMC_TEAM_WORKER).toBe('my-team/worker-1');
+      expect(env.OMC_TEAM_NAME).toBe('my-team');
+      expect(env.OMC_WORKER_AGENT_TYPE).toBe('codex');
     });
 
     it('propagates allowlisted model selection env vars into worker startup env', () => {
-      const env = getWorkerEnv('my-team', 'worker-1', 'qwen', {
-        DASHSCOPE_MODEL: 'claude-opus-4-1',
-        QODER_MODEL: 'qwen-plus',
-        DASHSCOPE_BASE_URL: 'https://example-gateway.invalid',
-        OMQ_ROUTING_FORCE_INHERIT: '1',
-        DASHSCOPE_DEFAULT_MAX_MODEL: 'dashscope/qwen-max-v1:0',
-        DASHSCOPE_DEFAULT_PLUS_MODEL: 'dashscope/qwen-plus-v1:0',
-        DASHSCOPE_DEFAULT_TURBO_MODEL: 'dashscope/qwen-turbo-v1:0',
-        OMQ_MODEL_HIGH: 'qwen-max-override',
-        OMQ_MODEL_MEDIUM: 'qwen-plus-override',
-        OMQ_MODEL_LOW: 'qwen-turbo-override',
-        OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL: 'gpt-5',
-        OMQ_GEMINI_DEFAULT_MODEL: 'gemini-2.5-pro',
-        DASHSCOPE_API_KEY: 'should-not-be-forwarded',
+      const env = getWorkerEnv('my-team', 'worker-1', 'claude', {
+        ANTHROPIC_MODEL: 'claude-opus-4-1',
+        CLAUDE_MODEL: 'claude-sonnet-4-5',
+        ANTHROPIC_BASE_URL: 'https://example-gateway.invalid',
+        CLAUDE_CODE_USE_BEDROCK: '1',
+        CLAUDE_CODE_BEDROCK_OPUS_MODEL: 'us.anthropic.claude-opus-4-6-v1:0',
+        CLAUDE_CODE_BEDROCK_SONNET_MODEL: 'us.anthropic.claude-sonnet-4-6-v1:0',
+        CLAUDE_CODE_BEDROCK_HAIKU_MODEL: 'us.anthropic.claude-haiku-4-5-v1:0',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-6-custom',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-6-custom',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-4-5-custom',
+        OMC_MODEL_HIGH: 'claude-opus-4-6-override',
+        OMC_MODEL_MEDIUM: 'claude-sonnet-4-6-override',
+        OMC_MODEL_LOW: 'claude-haiku-4-5-override',
+        OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL: 'gpt-5',
+        OMC_GEMINI_DEFAULT_MODEL: 'gemini-2.5-pro',
+        ANTHROPIC_API_KEY: 'should-not-be-forwarded',
       });
 
-      expect(env.DASHSCOPE_MODEL).toBe('claude-opus-4-1');
-      expect(env.QODER_MODEL).toBe('qwen-plus');
-      expect(env.DASHSCOPE_BASE_URL).toBe('https://example-gateway.invalid');
-      expect(env.OMQ_ROUTING_FORCE_INHERIT).toBe('1');
-      expect(env.DASHSCOPE_DEFAULT_MAX_MODEL).toBe('dashscope/qwen-max-v1:0');
-      expect(env.DASHSCOPE_DEFAULT_PLUS_MODEL).toBe('dashscope/qwen-plus-v1:0');
-      expect(env.DASHSCOPE_DEFAULT_TURBO_MODEL).toBe('dashscope/qwen-turbo-v1:0');
-      expect(env.OMQ_MODEL_HIGH).toBe('qwen-max-override');
-      expect(env.OMQ_MODEL_MEDIUM).toBe('qwen-plus-override');
-      expect(env.OMQ_MODEL_LOW).toBe('qwen-turbo-override');
-      expect(env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL).toBe('gpt-5');
-      expect(env.OMQ_GEMINI_DEFAULT_MODEL).toBe('gemini-2.5-pro');
-      expect(env.DASHSCOPE_API_KEY).toBeUndefined();
+      expect(env.ANTHROPIC_MODEL).toBe('claude-opus-4-1');
+      expect(env.CLAUDE_MODEL).toBe('claude-sonnet-4-5');
+      expect(env.ANTHROPIC_BASE_URL).toBe('https://example-gateway.invalid');
+      expect(env.CLAUDE_CODE_USE_BEDROCK).toBe('1');
+      expect(env.CLAUDE_CODE_BEDROCK_OPUS_MODEL).toBe('us.anthropic.claude-opus-4-6-v1:0');
+      expect(env.CLAUDE_CODE_BEDROCK_SONNET_MODEL).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
+      expect(env.CLAUDE_CODE_BEDROCK_HAIKU_MODEL).toBe('us.anthropic.claude-haiku-4-5-v1:0');
+      expect(env.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('claude-opus-4-6-custom');
+      expect(env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe('claude-sonnet-4-6-custom');
+      expect(env.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('claude-haiku-4-5-custom');
+      expect(env.OMC_MODEL_HIGH).toBe('claude-opus-4-6-override');
+      expect(env.OMC_MODEL_MEDIUM).toBe('claude-sonnet-4-6-override');
+      expect(env.OMC_MODEL_LOW).toBe('claude-haiku-4-5-override');
+      expect(env.OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL).toBe('gpt-5');
+      expect(env.OMC_GEMINI_DEFAULT_MODEL).toBe('gemini-2.5-pro');
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     });
 
     it('rejects invalid team names', () => {
@@ -414,15 +483,15 @@ describe('model-contract', () => {
 
       let argv: string[] = [];
       withAnthropicApiKey('sk-test', () => {
-        argv = buildWorkerArgv('qwen', { teamName: 'my-team', workerName: 'worker-1', cwd: '/tmp' });
+        argv = buildWorkerArgv('claude', { teamName: 'my-team', workerName: 'worker-1', cwd: '/tmp' });
       });
 
-      expect(argv[0]).toBe('qoderclicn');
+      expect(argv[0]).toBe('claude');
       expect(argv).toContain('--dangerously-skip-permissions');
       expect(argv).toContain('--bare');
       expect(countArg(argv, '--bare')).toBe(1);
       expect(argv).not.toContain('exec');
-      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['qoderclicn'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['claude'], { timeout: 5000, encoding: 'utf8' });
       mockSpawnSync.mockRestore();
     });
 
@@ -437,7 +506,7 @@ describe('model-contract', () => {
 
   describe('parseCliOutput', () => {
     it('claude returns trimmed output', () => {
-      expect(parseCliOutput('qwen', '  hello  ')).toBe('hello');
+      expect(parseCliOutput('claude', '  hello  ')).toBe('hello');
     });
     it('codex extracts result from JSONL', () => {
       const jsonl = JSON.stringify({ type: 'result', output: 'the answer' });
@@ -517,7 +586,7 @@ describe('model-contract', () => {
     });
 
     it('claude does not support prompt mode', () => {
-      expect(isPromptModeAgent('qwen')).toBe(false);
+      expect(isPromptModeAgent('claude')).toBe(false);
     });
 
     it('codex launches as a persistent interactive worker, not prompt/exec mode', () => {
@@ -534,6 +603,18 @@ describe('model-contract', () => {
       expect(c.promptModeFlag).toBe('-p');
     });
 
+    it('antigravity supports prompt mode', () => {
+      expect(isPromptModeAgent('antigravity')).toBe(true);
+      const c = getContract('antigravity');
+      expect(c.supportsPromptMode).toBe(true);
+      expect(c.promptModeFlag).toBe('-p');
+    });
+
+    it('getPromptModeArgs returns flag + instruction for antigravity', () => {
+      const args = getPromptModeArgs('antigravity', 'Read inbox');
+      expect(args).toEqual(['-p', 'Read inbox']);
+    });
+
     it('getPromptModeArgs returns flag + instruction for grok', () => {
       const args = getPromptModeArgs('grok', 'Read inbox');
       expect(args).toEqual(['-p', 'Read inbox']);
@@ -546,95 +627,133 @@ describe('model-contract', () => {
 
     it('getPromptModeArgs returns empty array for interactive codex and claude workers', () => {
       expect(getPromptModeArgs('codex', 'Read inbox')).toEqual([]);
-      expect(getPromptModeArgs('qwen', 'Read inbox')).toEqual([]);
+      expect(getPromptModeArgs('claude', 'Read inbox')).toEqual([]);
     });
   });
 
   describe('resolveClaudeWorkerModel (issue #1695)', () => {
-    it('returns undefined when OMQ_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', 'true');
-      vi.stubEnv('DASHSCOPE_MODEL', 'dashscope/qwen-plus-20250929-v1:0');
-      vi.stubEnv('QODER_MODEL', 'dashscope/qwen-max-v1:0');
-      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', 'dashscope/qwen-plus-v1:0');
-      vi.stubEnv('OMQ_MODEL_MEDIUM', 'dashscope/qwen-plus-20250929-v1:0');
+    it('returns undefined when OMC_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set', () => {
+      vi.stubEnv('OMC_ROUTING_FORCE_INHERIT', 'true');
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+      vi.stubEnv('CLAUDE_MODEL', 'us.anthropic.claude-opus-4-6-v1:0');
+      vi.stubEnv('CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'us.anthropic.claude-sonnet-4-6-v1:0');
+      vi.stubEnv('OMC_MODEL_MEDIUM', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       expect(resolveClaudeWorkerModel()).toBeUndefined();
       vi.unstubAllEnvs();
     });
 
-    it('returns undefined when OMQ_ROUTING_FORCE_INHERIT=true on Vertex', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', 'true');
-      vi.stubEnv('DASHSCOPE_MODEL', 'vertex_ai/qwen-plus@20250514');
+    it('returns undefined when OMC_ROUTING_FORCE_INHERIT=true on Vertex', () => {
+      vi.stubEnv('OMC_ROUTING_FORCE_INHERIT', 'true');
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '');
+      vi.stubEnv('CLAUDE_CODE_USE_VERTEX', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', 'vertex_ai/claude-sonnet-4-6@20250514');
       expect(resolveClaudeWorkerModel()).toBeUndefined();
       vi.unstubAllEnvs();
     });
 
     it('returns undefined when not on Bedrock or Vertex', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', '');
-      vi.stubEnv('QODER_MODEL', '');
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '');
+      vi.stubEnv('CLAUDE_CODE_USE_VERTEX', '');
+      vi.stubEnv('ANTHROPIC_MODEL', '');
+      vi.stubEnv('CLAUDE_MODEL', '');
       expect(resolveClaudeWorkerModel()).toBeUndefined();
       vi.unstubAllEnvs();
     });
 
-    it('returns DASHSCOPE_MODEL on Bedrock when set', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', 'dashscope/qwen-plus-20250929-v1:0');
-      vi.stubEnv('QODER_MODEL', '');
-      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-20250929-v1:0');
+    it('returns ANTHROPIC_MODEL on Bedrock when set', () => {
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+      vi.stubEnv('CLAUDE_MODEL', '');
+      expect(resolveClaudeWorkerModel()).toBe('us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       vi.unstubAllEnvs();
     });
 
-    it('returns QODER_MODEL on Bedrock when DASHSCOPE_MODEL is not set', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', '');
-      vi.stubEnv('QODER_MODEL', 'dashscope/qwen-max-v1:0');
-      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-max-v1:0');
+    it('returns CLAUDE_MODEL on Bedrock when ANTHROPIC_MODEL is not set', () => {
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', '');
+      vi.stubEnv('CLAUDE_MODEL', 'us.anthropic.claude-opus-4-6-v1:0');
+      expect(resolveClaudeWorkerModel()).toBe('us.anthropic.claude-opus-4-6-v1:0');
       vi.unstubAllEnvs();
     });
 
-    it('falls back to DASHSCOPE_DEFAULT_PLUS_MODEL tier env var', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', '');
-      vi.stubEnv('QODER_MODEL', '');
-      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', 'dashscope/qwen-plus-v1:0');
-      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-v1:0');
+    it('falls back to CLAUDE_CODE_BEDROCK_SONNET_MODEL tier env var', () => {
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', '');
+      vi.stubEnv('CLAUDE_MODEL', '');
+      vi.stubEnv('CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'us.anthropic.claude-sonnet-4-6-v1:0');
+      expect(resolveClaudeWorkerModel()).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
       vi.unstubAllEnvs();
     });
 
-    it('falls back to OMQ_MODEL_MEDIUM tier env var', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', '');
-      vi.stubEnv('QODER_MODEL', '');
-      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', '');
-      vi.stubEnv('OMQ_MODEL_MEDIUM', 'dashscope/qwen-plus-20250929-v1:0');
-      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-20250929-v1:0');
+    it('falls back to OMC_MODEL_MEDIUM tier env var', () => {
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', '');
+      vi.stubEnv('CLAUDE_MODEL', '');
+      vi.stubEnv('CLAUDE_CODE_BEDROCK_SONNET_MODEL', '');
+      vi.stubEnv('ANTHROPIC_DEFAULT_SONNET_MODEL', '');
+      vi.stubEnv('OMC_MODEL_MEDIUM', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+      expect(resolveClaudeWorkerModel()).toBe('us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       vi.unstubAllEnvs();
     });
 
-    it('returns DASHSCOPE_MODEL on Vertex when set', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', 'vertex_ai/qwen-plus@20250514');
-      expect(resolveClaudeWorkerModel()).toBe('vertex_ai/qwen-plus@20250514');
+    it('returns ANTHROPIC_MODEL on Vertex when set', () => {
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '');
+      vi.stubEnv('CLAUDE_CODE_USE_VERTEX', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', 'vertex_ai/claude-sonnet-4-6@20250514');
+      expect(resolveClaudeWorkerModel()).toBe('vertex_ai/claude-sonnet-4-6@20250514');
       vi.unstubAllEnvs();
     });
 
-    it('returns undefined when no non-default provider indicators are present', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', '');
-      vi.stubEnv('QODER_MODEL', '');
-      vi.stubEnv('DASHSCOPE_DEFAULT_PLUS_MODEL', '');
-      vi.stubEnv('OMQ_MODEL_MEDIUM', '');
+    it('returns undefined on Bedrock when no model env vars are set', () => {
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
+      vi.stubEnv('ANTHROPIC_MODEL', '');
+      vi.stubEnv('CLAUDE_MODEL', '');
+      vi.stubEnv('CLAUDE_CODE_BEDROCK_SONNET_MODEL', '');
+      vi.stubEnv('ANTHROPIC_DEFAULT_SONNET_MODEL', '');
+      vi.stubEnv('OMC_MODEL_MEDIUM', '');
       expect(resolveClaudeWorkerModel()).toBeUndefined();
       vi.unstubAllEnvs();
     });
 
-    it('detects Bedrock from model ID pattern even without OMQ_ROUTING_FORCE_INHERIT', () => {
-      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', '');
-      vi.stubEnv('DASHSCOPE_MODEL', 'dashscope/qwen-plus-20250929-v1:0');
-      vi.stubEnv('QODER_MODEL', '');
-      // isNonDefaultProvider() detects Bedrock from the model ID pattern
-      expect(resolveClaudeWorkerModel()).toBe('dashscope/qwen-plus-20250929-v1:0');
+    it('detects Bedrock from model ID pattern even without CLAUDE_CODE_USE_BEDROCK', () => {
+      vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '');
+      vi.stubEnv('CLAUDE_CODE_USE_VERTEX', '');
+      vi.stubEnv('ANTHROPIC_MODEL', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+      vi.stubEnv('CLAUDE_MODEL', '');
+      // isBedrock() detects Bedrock from the model ID pattern
+      expect(resolveClaudeWorkerModel()).toBe('us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       vi.unstubAllEnvs();
     });
   });
+  describe('worker launch descriptors', () => {
+    it('captures exact binary model and appended prompt argv', () => {
+      const descriptor = buildValidatedWorkerLaunchDescriptor('gemini', {
+        teamName: 'team', workerName: 'worker-1', cwd: '/tmp', model: 'gemini-2.5-pro',
+        resolvedBinaryPath: '/usr/bin/gemini',
+      }, ['-p', 'read inbox']);
+      expect(descriptor).toEqual({ schema_version: 1, provider: 'gemini', model: 'gemini-2.5-pro',
+        binary: '/usr/bin/gemini', args: ['--approval-mode', 'yolo', '--model', 'gemini-2.5-pro', '-p', 'read inbox'] });
+    });
+
+    it.each([
+      { schema_version: 2, provider: 'claude', model: null, binary: '/usr/bin/claude', args: [] },
+      { schema_version: 1, provider: 'unknown', model: null, binary: '/usr/bin/unknown', args: [] },
+      { schema_version: 1, provider: 'claude', binary: '/usr/bin/claude', args: [] },
+      { schema_version: 1, provider: 'claude', model: null, binary: 'claude', args: [] },
+      { schema_version: 1, provider: 'claude', model: null, binary: '/usr/bin/claude\0x', args: [] },
+      { schema_version: 1, provider: 'claude', model: null, binary: '/usr/bin/claude', args: ['ok\0bad'] },
+    ])('rejects malformed persisted descriptor %#', value => {
+      expect(() => validateWorkerLaunchDescriptor(value)).toThrow();
+    });
+
+    it('returns a defensive argv copy', () => {
+      const source = { schema_version: 1 as const, provider: 'codex' as const, model: null,
+        binary: '/usr/bin/codex', args: ['--flag'] };
+      const validated = validateWorkerLaunchDescriptor(source);
+      validated.args.push('--changed');
+      expect(source.args).toEqual(['--flag']);
+    });
+  });
+
 });

@@ -9,17 +9,17 @@
 
 /**
  * TERMINOLOGY:
- * - "Task" (capitalized): New Qoder CLI Task system (~/.qoder/tasks/)
- * - "todo" (lowercase): Legacy todo system (~/.qoder/todos/)
+ * - "Task" (capitalized): New Claude Code Task system (~/.claude/tasks/)
+ * - "todo" (lowercase): Legacy todo system (~/.claude/todos/)
  * - "item": Generic term for either Task or todo
  */
 
 /**
  * Debug logging for task/todo operations.
- * Set OMQ_DEBUG=1 or OMQ_DEBUG=todo-continuation for verbose output.
+ * Set OMC_DEBUG=1 or OMC_DEBUG=todo-continuation for verbose output.
  */
 function debugLog(message: string, ...args: unknown[]): void {
-  const debug = process.env.OMQ_DEBUG;
+  const debug = process.env.OMC_DEBUG;
   if (debug === '1' || debug === 'todo-continuation' || debug === 'true') {
     console.error('[todo-continuation]', message, ...args);
   }
@@ -27,8 +27,8 @@ function debugLog(message: string, ...args: unknown[]): void {
 
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
-import { getOmqRoot } from '../../lib/worktree-paths.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
 
 /**
  * Validates that a session ID is safe to use in file paths.
@@ -57,11 +57,11 @@ export interface Todo {
 }
 
 /**
- * Qoder CLI Task system task
+ * Claude Code Task system task
  *
  * IMPORTANT: This interface is based on observed behavior and the TaskCreate/TaskUpdate
- * tool schema. The file structure ~/.qoder/tasks/{sessionId}/{taskId}.json is inferred
- * from Qoder CLI's implementation and may change in future versions.
+ * tool schema. The file structure ~/.claude/tasks/{sessionId}/{taskId}.json is inferred
+ * from Claude Code's implementation and may change in future versions.
  *
  * As of 2025-01, Anthropic has not published official documentation for the Task system
  * file format. This implementation should be verified empirically when issues arise.
@@ -96,15 +96,15 @@ export interface IncompleteTodosResult {
  * Context from Stop hook event
  *
  * NOTE: Field names support both camelCase and snake_case variants
- * for compatibility with different Qoder CLI versions.
+ * for compatibility with different Claude Code versions.
  *
  * IMPORTANT: The abort detection patterns below are assumed. Verify
- * actual stop_reason values from Qoder CLI before finalizing.
+ * actual stop_reason values from Claude Code before finalizing.
  */
 export interface StopContext {
-  /** Reason for stop (from Qoder CLI) - snake_case variant */
+  /** Reason for stop (from Claude Code) - snake_case variant */
   stop_reason?: string;
-  /** Reason for stop (from Qoder CLI) - camelCase variant */
+  /** Reason for stop (from Claude Code) - camelCase variant */
   stopReason?: string;
   /** End turn reason (from API) - snake_case variant */
   end_turn_reason?: string;
@@ -249,7 +249,7 @@ function getOversizeStopEvidence(context?: StopContext): string {
 
 /**
  * Detect Stop events that are not actual user/task stalls, but the synthetic
- * turn boundary Qoder CLI emits after an oversized tool result is redirected
+ * turn boundary Claude Code emits after an oversized tool result is redirected
  * to a `tool-results/*.txt` file pointer.
  */
 export function isOversizeToolResultRedirectStop(context?: StopContext): boolean {
@@ -290,7 +290,7 @@ export interface TodoContinuationHook {
  * It is kept as defensive code in case the behavior changes.
  *
  * If the hook fails to detect user aborts correctly, these patterns
- * should be updated based on observed Qoder CLI behavior.
+ * should be updated based on observed Claude Code behavior.
  */
 export function isUserAbort(context?: StopContext): boolean {
   if (!context) return false;
@@ -326,8 +326,8 @@ export function isExplicitCancelCommand(context?: StopContext): boolean {
 
   const prompt = (context.prompt ?? '').trim();
   if (prompt) {
-    const slashCancelPattern = /^\/(?:oh-my-qoder:)?cancel(?:\s+--force)?\s*$/i;
-    const keywordCancelPattern = /^(?:cancelomq|stopomq)\s*$/i;
+    const slashCancelPattern = /^\/(?:oh-my-claudecode:)?cancel(?:\s+--force)?\s*$/i;
+    const keywordCancelPattern = /^(?:cancelomc|stopomc)\s*$/i;
     if (slashCancelPattern.test(prompt) || keywordCancelPattern.test(prompt)) {
       return true;
     }
@@ -351,7 +351,7 @@ export function isExplicitCancelCommand(context?: StopContext): boolean {
   const toolInput = (context.tool_input ?? context.toolInput) as Record<string, unknown> | undefined;
   if (toolName.includes('skill') && toolInput && typeof toolInput.skill === 'string') {
     const skill = toolInput.skill.toLowerCase();
-    if (skill === 'oh-my-qoder:cancel' || skill.endsWith(':cancel')) {
+    if (skill === 'oh-my-claudecode:cancel' || skill.endsWith(':cancel')) {
       return true;
     }
   }
@@ -361,11 +361,11 @@ export function isExplicitCancelCommand(context?: StopContext): boolean {
 
 /**
  * Detect if stop was triggered by context-limit related reasons.
- * When context is exhausted, Qoder CLI needs to stop so it can compact.
+ * When context is exhausted, Claude Code needs to stop so it can compact.
  * Blocking these stops causes a deadlock: can't compact because can't stop,
  * can't continue because context is full.
  *
- * See: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/213
+ * See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
  */
 export function isContextLimitStop(context?: StopContext): boolean {
   const contextPatterns = [
@@ -380,12 +380,12 @@ export function isContextLimitStop(context?: StopContext): boolean {
 
 /**
  * Detect if stop was triggered by rate limiting (HTTP 429 / quota exhausted).
- * When the API is rate-limited, Qoder CLI stops the session.
+ * When the API is rate-limited, Claude Code stops the session.
  * Blocking these stops causes an infinite retry loop: the persistent-mode hook
  * injects a continuation prompt, Claude immediately hits the rate limit again,
  * stops again, and the cycle repeats indefinitely.
  *
- * Fix for: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/777
+ * Fix for: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/777
  */
 export function isRateLimitStop(context?: StopContext): boolean {
   if (!context) return false;
@@ -408,7 +408,7 @@ export function isRateLimitStop(context?: StopContext): boolean {
 
 /**
  * Scheduled wake-up stops should not trigger persistent-mode re-enforcement.
- * Qoder CLI can resume `/loop` work through the native ScheduleWakeup path,
+ * Claude Code can resume `/loop` work through the native ScheduleWakeup path,
  * and stale prior-mode state must not inject continuation/cancel prompts into
  * that scheduled resume turn.
  */
@@ -479,7 +479,7 @@ export function isAuthenticationError(context?: StopContext): boolean {
  * Get possible todo file locations
  */
 function getTodoFilePaths(sessionId?: string, directory?: string): string[] {
-  const claudeDir = getQoderConfigDir();
+  const claudeDir = getClaudeConfigDir();
   const paths: string[] = [];
 
   // Session-specific todos
@@ -490,7 +490,7 @@ function getTodoFilePaths(sessionId?: string, directory?: string): string[] {
 
   // Project-specific todos
   if (directory) {
-    paths.push(join(getOmqRoot(directory), 'todos.json'));
+    paths.push(join(getOmcRoot(directory), 'todos.json'));
     paths.push(join(directory, '.claude', 'todos.json'));
   }
 
@@ -546,16 +546,30 @@ function isIncomplete(todo: Todo): boolean {
 /**
  * Get the Task directory for a session
  *
- * NOTE: This path (~/.qoder/tasks/{sessionId}/) is inferred from Qoder CLI's
- * implementation. Anthropic has not officially documented this structure.
- * The Task files are created by Qoder CLI's TaskCreate tool.
+ * NOTE: This path (~/.claude/tasks/{taskListId}/) mirrors Claude Code's task
+ * store. The store identity is NOT always the session id: when the documented
+ * CLAUDE_CODE_TASK_LIST_ID env override is set, Claude Code reads and writes
+ * the store keyed by that id. Hook payloads carry only session_id and no
+ * observable team/teammate identity field, so OmC honors exactly the
+ * observable contract: the env override when set and valid, otherwise the
+ * session id (the single-session default).
+ *
+ * Issue #3732: reading with the session id while Claude Code writes under a
+ * CLAUDE_CODE_TASK_LIST_ID identity makes successful writes invisible to OmC
+ * readers — the "tasks disappeared" symptom.
  */
 export function getTaskDirectory(sessionId: string): string {
-  // Security: validate sessionId before constructing path
-  if (!isValidSessionId(sessionId)) {
+  // Claude Code's documented task-list identity override takes precedence.
+  const override = process.env.CLAUDE_CODE_TASK_LIST_ID;
+  const identity =
+    typeof override === 'string' && override.trim() && isValidSessionId(override)
+      ? override.trim()
+      : sessionId;
+  // Security: validate identity before constructing path
+  if (!isValidSessionId(identity)) {
     return ''; // Return empty string for invalid sessions
   }
-  return join(getQoderConfigDir(), 'tasks', sessionId);
+  return join(getClaudeConfigDir(), 'tasks', identity);
 }
 
 /**
@@ -587,7 +601,7 @@ export function readTaskFiles(sessionId: string): Task[] {
   const tasks: Task[] = [];
   try {
     for (const file of readdirSync(taskDir)) {
-      // Skip non-JSON files and .lock file (used by Qoder CLI for atomic writes)
+      // Skip non-JSON files and .lock file (used by Claude Code for atomic writes)
       // The .lock file prevents concurrent modifications to task files
       if (!file.endsWith('.json') || file === '.lock') continue;
       try {

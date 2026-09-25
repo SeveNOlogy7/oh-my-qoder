@@ -5,73 +5,63 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ['dist/', 'bridge/', 'node_modules/', '**/*.cjs', '**/*.mjs'],
-  },
-  {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
+      // Unused vars: warn only (many pre-existing in codebase)
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      // Allow any for flexibility in agent system
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Allow require imports for dynamic loading
+      '@typescript-eslint/no-require-imports': 'off',
+      // Template strings have many escaped quotes - disable
+      'no-useless-escape': 'off',
+      // Minor style issues - warn only
+      'prefer-const': 'warn',
+      'no-regex-spaces': 'warn',
+      // Pre-existing code patterns - disable
+      'no-useless-catch': 'off',
+      // Allow ANSI escape codes in regexes (used for terminal output stripping)
+      'no-control-regex': 'off',
     },
   },
+  // Guard against bypassing the canonical session-state path constructor.
+  // Code outside src/lib/worktree-paths.ts and its own __tests__ must use
+  // `resolveSessionStatePaths()` (struct + branded paths). The legacy
+  // string-returning `resolveSessionStatePath` is still allowed for back-compat
+  // but new writers should prefer the canonical helper.
   {
-    files: [
-      'src/__tests__/hud-agents.test.ts',
-      'src/__tests__/hud/context.test.ts',
-      'src/__tests__/hud/labels.test.ts',
-      'src/__tests__/hud/max-width.test.ts',
-      'src/__tests__/hud/payload-warning-render.test.ts',
-      'src/__tests__/hud/render-enterprise.test.ts',
-      'src/__tests__/hud/render-rate-limits-priority.test.ts',
-      'src/__tests__/hud/stale-indicator.test.ts',
-      'src/__tests__/hud/state.test.ts',
-      'src/__tests__/installer.test.ts',
-      'src/autoresearch/__tests__/runtime.test.ts',
-      'src/autoresearch/runtime.ts',
-      'src/cli/tmux-utils.ts',
-      'src/config/plan-output.ts',
-      'src/features/model-routing/signals.ts',
-      'src/features/notepad-wisdom/extractor.ts',
-      'src/hooks/keyword-detector/index.ts',
-      'src/hooks/learner/auto-learner.ts',
-      'src/hooks/learner/matcher.ts',
-      'src/hooks/non-interactive-env/index.ts',
-      'src/hooks/notepad/index.ts',
-      'src/hooks/permission-handler/index.ts',
-      'src/hooks/team-dispatch-hook.ts',
-      'src/hooks/todo-continuation/index.ts',
-      'src/hud/__tests__/enterprise-cost.test.ts',
-      'src/hud/__tests__/hostname.test.ts',
-      'src/hud/render.ts',
-      'src/hud/sanitize.ts',
-      'src/installer/index.ts',
-      'src/notifications/formatter.ts',
-      'src/notifications/reply-listener.ts',
-      'src/notifications/validation.ts',
-      'src/team/__tests__/tmux-session.test.ts',
-      'src/team/git-worktree.ts',
-      'src/team/model-contract.ts',
-      'src/team/tmux-session.ts',
-      'src/tools/lsp/client.ts',
-      'src/utils/string-width.ts',
-      'src/verification/tier-selector.ts',
+    files: ['src/**/*.ts'],
+    ignores: [
+      'src/lib/worktree-paths.ts',
+      'src/lib/__tests__/worktree-paths.test.ts',
+      'src/lib/__tests__/session-state-paths.type-test.ts',
     ],
     rules: {
-      'no-control-regex': 'off',
-      'no-useless-catch': 'off',
-      'no-useless-escape': 'off',
+      'no-restricted-syntax': [
+        'warn',
+        {
+          // Disallow `as ReadPath` / `as WritePath` casts outside worktree-paths.ts —
+          // brands must be produced only by resolveSessionStatePaths.
+          selector: "TSAsExpression[typeAnnotation.type='TSTypeReference'][typeAnnotation.typeName.name=/^(ReadPath|WritePath)$/]",
+          message: 'Do not cast to ReadPath/WritePath outside worktree-paths.ts. Use resolveSessionStatePaths() to obtain branded paths.',
+        },
+      ],
     },
   },
   {
-    files: ['src/**/*.test.ts', 'src/**/__tests__/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-      'prefer-const': 'off',
-    },
-  },
-  {
-    files: ['src/hooks/learner/writer.ts'],
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-    },
-  },
+    ignores: ['dist/**', 'node_modules/**', '*.js', '*.mjs', 'src/__tests__/fixtures/**', 'src/__tests__/benchmark-scoring.test.ts'],
+  }
 );

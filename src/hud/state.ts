@@ -1,5 +1,5 @@
 /**
- * OMQ HUD - State Management
+ * OMC HUD - State Management
  *
  * Manages HUD state file for background task tracking.
  * Follows patterns from ultrawork-state.
@@ -7,10 +7,10 @@
 
 import { existsSync, readFileSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
-import { getQoderConfigDir } from "../utils/config-dir.js";
+import { getClaudeConfigDir } from "../utils/config-dir.js";
 import {
   validateWorkingDirectory,
-  getOmqRoot,
+  getOmcRoot,
   ensureSessionStateDir,
   resolveSessionStatePath,
 } from "../lib/worktree-paths.js";
@@ -19,7 +19,7 @@ import {
   atomicWriteJsonSync,
 } from "../lib/atomic-write.js";
 import type {
-  OmqHudState,
+  OmcHudState,
   BackgroundTask,
   HudConfig,
   HudElementConfig,
@@ -46,17 +46,17 @@ import {
 // ============================================================================
 
 /**
- * Get the HUD state file path in the project's .omq/state directory
+ * Get the HUD state file path in the project's .omc/state directory
  */
 function getLocalStateFilePath(directory?: string): string {
   const baseDir = validateWorkingDirectory(directory);
-  const omqStateDir = join(getOmqRoot(baseDir), "state");
-  return join(omqStateDir, "hud-state.json");
+  const omcStateDir = join(getOmcRoot(baseDir), "state");
+  return join(omcStateDir, "hud-state.json");
 }
 
 function getLegacyRootStateFilePath(directory?: string): string {
   const baseDir = validateWorkingDirectory(directory);
-  return join(getOmqRoot(baseDir), "hud-state.json");
+  return join(getOmcRoot(baseDir), "hud-state.json");
 }
 
 function getStateFilePath(directory?: string, sessionId?: string): string {
@@ -68,17 +68,17 @@ function getStateFilePath(directory?: string, sessionId?: string): string {
 }
 
 /**
- * Get Qoder CLI settings.json path
+ * Get Claude Code settings.json path
  */
 function getSettingsFilePath(): string {
-  return join(getQoderConfigDir(), "settings.json");
+  return join(getClaudeConfigDir(), "settings.json");
 }
 
 /**
  * Get the HUD config file path (legacy)
  */
 function getConfigFilePath(): string {
-  return join(getQoderConfigDir(), ".omq", "hud-config.json");
+  return join(getClaudeConfigDir(), ".omc", "hud-config.json");
 }
 
 function readJsonFile<T>(filePath: string): T | null {
@@ -161,13 +161,13 @@ function mergeElementsForWrite(
 }
 
 /**
- * Ensure the .omq/state directory exists
+ * Ensure the .omc/state directory exists
  */
 function ensureStateDir(directory?: string): void {
   const baseDir = validateWorkingDirectory(directory);
-  const omqStateDir = join(getOmqRoot(baseDir), "state");
-  if (!existsSync(omqStateDir)) {
-    mkdirSync(omqStateDir, { recursive: true });
+  const omcStateDir = join(getOmcRoot(baseDir), "state");
+  if (!existsSync(omcStateDir)) {
+    mkdirSync(omcStateDir, { recursive: true });
   }
 }
 
@@ -201,7 +201,7 @@ type HudConfigInput = Omit<
 export function readHudState(
   directory?: string,
   sessionId?: string,
-): OmqHudState | null {
+): OmcHudState | null {
   // Session-scoped HUD state should never fall back to root/legacy files.
   // This prevents a stale root state from being revived after a pane/session
   // recreation when the current session has already been identified.
@@ -223,7 +223,7 @@ export function readHudState(
     }
   }
 
-  // Check new local state first (.omq/state/hud-state.json)
+  // Check new local state first (.omc/state/hud-state.json)
   const localStateFile = getLocalStateFilePath(directory);
   if (existsSync(localStateFile)) {
     try {
@@ -238,7 +238,7 @@ export function readHudState(
     }
   }
 
-  // Check legacy local state (.omq/hud-state.json)
+  // Check legacy local state (.omc/hud-state.json)
   const legacyStateFile = getLegacyRootStateFilePath(directory);
   if (existsSync(legacyStateFile)) {
     try {
@@ -260,7 +260,7 @@ export function readHudState(
  * Write HUD state to disk (local only)
  */
 export function writeHudState(
-  state: OmqHudState,
+  state: OmcHudState,
   directory?: string,
   sessionId?: string,
 ): boolean {
@@ -282,7 +282,7 @@ export function writeHudState(
         }
         try {
           const content = readFileSync(legacyFile, "utf-8");
-          const legacyState = JSON.parse(content) as Partial<OmqHudState>;
+          const legacyState = JSON.parse(content) as Partial<OmcHudState>;
           if (!legacyState.sessionId || legacyState.sessionId === sessionId) {
             unlinkSync(legacyFile);
           }
@@ -305,7 +305,7 @@ export function writeHudState(
 /**
  * Create a new empty HUD state
  */
-export function createEmptyHudState(): OmqHudState {
+export function createEmptyHudState(): OmcHudState {
   return {
     timestamp: new Date().toISOString(),
     backgroundTasks: [],
@@ -315,7 +315,7 @@ export function createEmptyHudState(): OmqHudState {
 /**
  * Get running background tasks from state
  */
-export function getRunningTasks(state: OmqHudState | null): BackgroundTask[] {
+export function getRunningTasks(state: OmcHudState | null): BackgroundTask[] {
   if (!state) return [];
   return state.backgroundTasks.filter((task) => task.status === "running");
 }
@@ -323,7 +323,7 @@ export function getRunningTasks(state: OmqHudState | null): BackgroundTask[] {
 /**
  * Get background task count string (e.g., "3/5")
  */
-export function getBackgroundTaskCount(state: OmqHudState | null): {
+export function getBackgroundTaskCount(state: OmcHudState | null): {
   running: number;
   max: number;
 } {
@@ -349,33 +349,33 @@ export function readHudConfig(): HudConfig {
   if (existsSync(settingsFile)) {
     try {
       const content = readFileSync(settingsFile, "utf-8");
-      const settings = JSON.parse(content) as { omqHud?: HudConfigInput };
-      if (settings.omqHud) {
+      const settings = JSON.parse(content) as { omcHud?: HudConfigInput };
+      if (settings.omcHud) {
         return mergeWithDefaults({
           ...legacyConfig,
-          ...settings.omqHud,
+          ...settings.omcHud,
           elements: mergeElements(
             legacyConfig?.elements,
-            settings.omqHud.elements,
+            settings.omcHud.elements,
           ),
           thresholds: mergeThresholds(
             legacyConfig?.thresholds,
-            settings.omqHud.thresholds,
+            settings.omcHud.thresholds,
           ),
           contextLimitWarning: mergeContextLimitWarning(
             legacyConfig?.contextLimitWarning,
-            settings.omqHud.contextLimitWarning,
+            settings.omcHud.contextLimitWarning,
           ),
           missionBoard: mergeMissionBoardConfig(
             legacyConfig?.missionBoard,
-            settings.omqHud.missionBoard,
+            settings.omcHud.missionBoard,
           ),
-          locale: isHudLocale(settings.omqHud.locale)
-            ? settings.omqHud.locale
+          locale: isHudLocale(settings.omcHud.locale)
+            ? settings.omcHud.locale
             : legacyConfig?.locale,
           labels: {
             ...sanitizeHudLabels(legacyConfig?.labels),
-            ...sanitizeHudLabels(settings.omqHud.labels),
+            ...sanitizeHudLabels(settings.omcHud.labels),
           },
         });
       }
@@ -391,7 +391,7 @@ export function readHudConfig(): HudConfig {
     return mergeWithDefaults(legacyConfig);
   }
 
-  return DEFAULT_HUD_CONFIG;
+  return mergeWithDefaults({});
 }
 
 /**
@@ -453,7 +453,7 @@ function mergeWithDefaults(config: HudConfigInput): HudConfig {
 }
 
 /**
- * Write HUD configuration to ~/.qoder/settings.json (omqHud key)
+ * Write HUD configuration to ~/.claude/settings.json (omcHud key)
  */
 export function writeHudConfig(config: HudConfig): boolean {
   try {
@@ -486,7 +486,7 @@ export function writeHudConfig(config: HudConfig): boolean {
       },
     });
 
-    settings.omqHud = mergedConfig;
+    settings.omcHud = mergedConfig;
     atomicWriteFileSync(settingsFile, JSON.stringify(settings, null, 2));
     return true;
   } catch (error) {

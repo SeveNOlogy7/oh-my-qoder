@@ -13,19 +13,25 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, openSync, closeSync, unlinkSync, writeSync, constants as fsConstants } from 'fs';
 import { join, basename, dirname } from 'path';
 import { homedir } from 'os';
-import { getQoderConfigDir } from './lib/config-dir.mjs';
+import { getClaudeConfigDir } from './lib/config-dir.mjs';
 import { readStdin } from './lib/stdin.mjs';
 import { createRequire } from 'module';
 import { atomicWriteFileSync, ensureDirSync } from './lib/atomic-write.mjs';
 
-// Try to load the compiled bridge bundle
-const require = createRequire(import.meta.url);
+const skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map(token => token.trim());
+const isDisabled = process.env.DISABLE_OMC === '1' ||
+  process.env.DISABLE_OMC === 'true' ||
+  skipHooks.includes('skill-injector');
+
 let bridge = null;
-try {
-  bridge = require('../dist/hooks/skill-bridge.cjs');
-} catch {
-  // Bridge not available - use fallback (first run before build, or dist/ missing)
-}
+let USER_SKILLS_DIR;
+let GLOBAL_SKILLS_DIR;
+let PROJECT_SKILLS_SUBDIR;
+let SKILL_EXTENSION;
+let MAX_SKILLS_PER_SESSION;
+let MAX_LEARNED_SKILL_DESCRIPTOR_CHARS;
+let MAX_LEARNED_SKILLS_CONTEXT_CHARS;
+
 
 // ============================================================================
 // Session ID resolution (mirrors src/lib/session-id.ts — inlined for .mjs)
@@ -34,7 +40,7 @@ try {
 
 /**
  * Resolve the session id for hook context.
- * Payload session_id takes priority; falls back to OMQ_SESSION_ID env var.
+ * Payload session_id takes priority; falls back to OMC_SESSION_ID env var.
  *
  * @param {object|null} hookPayload - Parsed stdin payload (may be null)
  * @returns {string|undefined}
@@ -49,8 +55,8 @@ function resolveHookSessionId(hookPayload) {
       : undefined;
 
   const envId =
-    process.env.OMQ_SESSION_ID && process.env.OMQ_SESSION_ID.trim()
-      ? process.env.OMQ_SESSION_ID.trim()
+    process.env.OMC_SESSION_ID && process.env.OMC_SESSION_ID.trim()
+      ? process.env.OMC_SESSION_ID.trim()
       : undefined;
 
   return payloadId ?? envId;
@@ -77,32 +83,32 @@ function validateSessionId(sessionId) {
 }
 
 // ============================================================================
-// OMQ root resolver — walk up from cwd looking for workspace markers.
-// Mirrors getOmqRoot from src/lib/worktree-paths.ts — inlined for .mjs.
+// OMC root resolver — walk up from cwd looking for workspace markers.
+// Mirrors getOmcRoot from src/lib/worktree-paths.ts — inlined for .mjs.
 // ============================================================================
 
 /**
- * Walk up from startDir looking for .omq-workspace, then .git, then fallback
- * to startDir itself. Returns the .omq subdirectory of the found root.
- * Mirrors getOmqRoot from src/lib/worktree-paths.ts — inlined synchronously for .mjs.
+ * Walk up from startDir looking for .omc-workspace, then .git, then fallback
+ * to startDir itself. Returns the .omc subdirectory of the found root.
+ * Mirrors getOmcRoot from src/lib/worktree-paths.ts — inlined synchronously for .mjs.
  *
- * NOTE: OMQ_STATE_DIR with content-hash is handled asynchronously in state-root.mjs.
- * This inline sync resolver skips OMQ_STATE_DIR and always uses the walk-up result,
- * which is correct for the fallback path (bridge handles OMQ_STATE_DIR when available).
+ * NOTE: OMC_STATE_DIR with content-hash is handled asynchronously in state-root.mjs.
+ * This inline sync resolver skips OMC_STATE_DIR and always uses the walk-up result,
+ * which is correct for the fallback path (bridge handles OMC_STATE_DIR when available).
  *
  * @param {string} startDir - Directory to start from (data.cwd)
- * @returns {string} Absolute path to the .omq root directory
+ * @returns {string} Absolute path to the .omc root directory
  */
 function resolveOmcRootSync(startDir) {
   let dir = startDir;
 
-  // Walk up looking for .omq-workspace or .git
+  // Walk up looking for .omc-workspace or .git
   while (dir) {
-    if (existsSync(join(dir, '.omq-workspace'))) {
-      return join(dir, '.omq');
+    if (existsSync(join(dir, '.omc-workspace'))) {
+      return join(dir, '.omc');
     }
     if (existsSync(join(dir, '.git'))) {
-      return join(dir, '.omq');
+      return join(dir, '.omc');
     }
     const parent = dirname(dir);
     if (parent === dir) break; // filesystem root reached
@@ -110,7 +116,7 @@ function resolveOmcRootSync(startDir) {
   }
 
   // Fallback: use startDir
-  return join(startDir, '.omq');
+  return join(startDir, '.omc');
 }
 
 // ============================================================================
@@ -119,22 +125,22 @@ function resolveOmcRootSync(startDir) {
 
 /**
  * Resolve the skill-sessions-fallback state file path.
- * Session-scoped: <omqRoot>/state/sessions/<sid>/skill-sessions-fallback-state.json
- * Legacy:         <omqRoot>/state/skill-sessions-fallback.json
+ * Session-scoped: <omcRoot>/state/sessions/<sid>/skill-sessions-fallback-state.json
+ * Legacy:         <omcRoot>/state/skill-sessions-fallback.json
  *
- * @param {string} omqRoot - Resolved .omq root directory
+ * @param {string} omcRoot - Resolved .omc root directory
  * @param {string|undefined} sessionId - Validated session id (or undefined)
  * @returns {{ statePath: string, stateDir: string }}
  */
-function resolveSkillFallbackStatePaths(omqRoot, sessionId) {
+function resolveSkillFallbackStatePaths(omcRoot, sessionId) {
   if (sessionId) {
-    const sessionDir = join(omqRoot, 'state', 'sessions', sessionId);
+    const sessionDir = join(omcRoot, 'state', 'sessions', sessionId);
     return {
       stateDir: sessionDir,
       statePath: join(sessionDir, 'skill-sessions-fallback-state.json'),
     };
   }
-  const stateDir = join(omqRoot, 'state');
+  const stateDir = join(omcRoot, 'state');
   return {
     stateDir,
     statePath: join(stateDir, 'skill-sessions-fallback.json'),
@@ -267,14 +273,7 @@ function withFileLockSync(lockPath, fn) {
 }
 
 // Constants (used by fallback)
-const cfgDir = getQoderConfigDir();
-const USER_SKILLS_DIR = join(cfgDir, 'skills', 'omq-learned');
-const GLOBAL_SKILLS_DIR = join(homedir(), '.omq', 'skills');
-const PROJECT_SKILLS_SUBDIR = join('.omq', 'skills');
-const SKILL_EXTENSION = '.md';
-const MAX_SKILLS_PER_SESSION = 5;
-const MAX_LEARNED_SKILL_DESCRIPTOR_CHARS = 1000;
-const MAX_LEARNED_SKILLS_CONTEXT_CHARS = 3000;
+// Initialized only after the early disable decision.
 
 // =============================================================================
 // Fallback Implementation (used when bridge bundle not available)
@@ -285,8 +284,8 @@ const MAX_LEARNED_SKILLS_CONTEXT_CHARS = 3000;
 // in-memory Map always starts empty — skills were re-injected on every turn.
 // Persisting to a session-scoped JSON state file preserves the injected-set
 // across process spawns, matching bridge behaviour.
-// Storage: {omqRoot}/state/sessions/{sid}/skill-sessions-fallback-state.json
-// Legacy (no sessionId): {omqRoot}/state/skill-sessions-fallback.json
+// Storage: {omcRoot}/state/sessions/{sid}/skill-sessions-fallback-state.json
+// Legacy (no sessionId): {omcRoot}/state/skill-sessions-fallback.json
 const FALLBACK_SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour (same as bridge)
 
 function readFallbackState(statePath) {
@@ -392,13 +391,13 @@ function findSkillFilesFallback(directory) {
 }
 
 // Find matching skills (fallback)
-function findMatchingSkillsFallback(prompt, directory, sessionId, omqRoot) {
+function findMatchingSkillsFallback(prompt, directory, sessionId, omcRoot) {
   const promptLower = prompt.toLowerCase();
   const candidates = findSkillFilesFallback(directory);
   const matches = [];
 
   // Resolve session-scoped (or legacy) state file paths
-  const { stateDir, statePath } = resolveSkillFallbackStatePaths(omqRoot, sessionId);
+  const { stateDir, statePath } = resolveSkillFallbackStatePaths(omcRoot, sessionId);
   const lockPath = lockPathFor(statePath);
 
   // Score candidates outside the lock (read-only file access, no shared state)
@@ -480,7 +479,7 @@ function findMatchingSkillsFallback(prompt, directory, sessionId, omqRoot) {
 // =============================================================================
 
 // Find matching skills - delegates to bridge or fallback
-function findMatchingSkills(prompt, directory, sessionId, omqRoot) {
+function findMatchingSkills(prompt, directory, sessionId, omcRoot) {
   if (bridge) {
     // Use bridge (RECURSIVE discovery, persistent session cache)
     const matches = bridge.matchSkillsForInjection(prompt, directory, sessionId, {
@@ -496,7 +495,7 @@ function findMatchingSkills(prompt, directory, sessionId, omqRoot) {
   }
 
   // Fallback (NON-RECURSIVE, file-based dedup via session-scoped state file)
-  return findMatchingSkillsFallback(prompt, directory, sessionId, omqRoot);
+  return findMatchingSkillsFallback(prompt, directory, sessionId, omcRoot);
 }
 
 function compactText(text, maxChars) {
@@ -583,8 +582,8 @@ async function main() {
     const rawSessionId = resolveHookSessionId(data);
     const sessionId = validateSessionId(rawSessionId) ?? (data.session_id || data.sessionId || 'unknown');
 
-    // Resolve OMQ root (walk up from data.cwd looking for workspace markers)
-    const omqRoot = resolveOmcRootSync(directory);
+    // Resolve OMC root (walk up from data.cwd looking for workspace markers)
+    const omcRoot = resolveOmcRootSync(directory);
 
     // Skip if no prompt
     if (!prompt) {
@@ -592,7 +591,7 @@ async function main() {
       return;
     }
 
-    const matchingSkills = findMatchingSkills(prompt, directory, sessionId, omqRoot);
+    const matchingSkills = findMatchingSkills(prompt, directory, sessionId, omcRoot);
 
     // Record skill activations to flow trace (best-effort)
     if (matchingSkills.length > 0) {
@@ -621,4 +620,23 @@ async function main() {
   }
 }
 
-main();
+if (isDisabled) {
+  console.log(JSON.stringify({ continue: true }));
+} else {
+  const require = createRequire(import.meta.url);
+  try {
+    bridge = require('../dist/hooks/skill-bridge.cjs');
+  } catch {
+    // Bridge not available - use fallback (first run before build, or dist/ missing)
+  }
+
+  const cfgDir = getClaudeConfigDir();
+  USER_SKILLS_DIR = join(cfgDir, 'skills', 'omc-learned');
+  GLOBAL_SKILLS_DIR = join(homedir(), '.omc', 'skills');
+  PROJECT_SKILLS_SUBDIR = join('.omc', 'skills');
+  SKILL_EXTENSION = '.md';
+  MAX_SKILLS_PER_SESSION = 5;
+  MAX_LEARNED_SKILL_DESCRIPTOR_CHARS = 1000;
+  MAX_LEARNED_SKILLS_CONTEXT_CHARS = 3000;
+  main();
+}

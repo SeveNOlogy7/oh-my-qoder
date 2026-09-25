@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  compactOmqStartupGuidance,
+  compactOmcStartupGuidance,
   generateConfigSchema,
   loadConfig,
   loadContextFromFiles,
@@ -11,23 +11,29 @@ import {
 import { saveAndClear, restore } from "./test-helpers.js";
 
 const ALL_KEYS = [
-  "OMQ_ROUTING_FORCE_INHERIT",
-  "OMQ_ROUTING_FORCE_INHERIT",
-  "QODER_MODEL",
-  "DASHSCOPE_MODEL",
-  "DASHSCOPE_BASE_URL",
-  "OMQ_ROUTING_FORCE_INHERIT",
-  "OMQ_MODEL_HIGH",
-  "OMQ_MODEL_MEDIUM",
-  "OMQ_MODEL_LOW",
-  "DASHSCOPE_DEFAULT_MAX_MODEL",
-  "DASHSCOPE_DEFAULT_PLUS_MODEL",
-  "DASHSCOPE_DEFAULT_TURBO_MODEL",
-  "DASHSCOPE_DEFAULT_MAX_MODEL",
-  "DASHSCOPE_DEFAULT_PLUS_MODEL",
-  "DASHSCOPE_DEFAULT_TURBO_MODEL",
-  "OMQ_DELEGATION_ROUTING_ENABLED",
-  "OMQ_DELEGATION_ROUTING_DEFAULT_PROVIDER",
+  "CLAUDE_CODE_USE_BEDROCK",
+  "CLAUDE_CODE_USE_VERTEX",
+  "CLAUDE_MODEL",
+  "ANTHROPIC_MODEL",
+  "ANTHROPIC_BASE_URL",
+  "OMC_ROUTING_FORCE_INHERIT",
+  "OMC_MODEL_HIGH",
+  "OMC_MODEL_MEDIUM",
+  "OMC_MODEL_LOW",
+  "CLAUDE_CODE_BEDROCK_OPUS_MODEL",
+  "CLAUDE_CODE_BEDROCK_SONNET_MODEL",
+  "CLAUDE_CODE_BEDROCK_HAIKU_MODEL",
+  "CLAUDE_CODE_BEDROCK_FABLE_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+  "ANTHROPIC_DEFAULT_FABLE_MODEL",
+  "OMC_MODEL_ALIAS_HAIKU",
+  "OMC_MODEL_ALIAS_SONNET",
+  "OMC_MODEL_ALIAS_OPUS",
+  "OMC_MODEL_ALIAS_FABLE",
+  "OMC_DELEGATION_ROUTING_ENABLED",
+  "OMC_DELEGATION_ROUTING_DEFAULT_PROVIDER",
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -44,73 +50,73 @@ describe("loadConfig() — auto-forceInherit for non-standard providers", () => 
   });
 
   it("auto-enables forceInherit for global. Bedrock inference profile with [1m] suffix", () => {
-    process.env.DASHSCOPE_MODEL = "dashscope/qwen-plus[1m]";
+    process.env.ANTHROPIC_MODEL = "global.anthropic.claude-sonnet-4-6[1m]";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(true);
   });
 
-  it("auto-enables forceInherit when OMQ_ROUTING_FORCE_INHERIT=true", () => {
-    process.env.OMQ_ROUTING_FORCE_INHERIT = "true";
+  it("auto-enables forceInherit when CLAUDE_CODE_USE_BEDROCK=1", () => {
+    process.env.CLAUDE_CODE_USE_BEDROCK = "1";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(true);
   });
 
   it("auto-enables forceInherit for us. Bedrock region prefix", () => {
-    process.env.DASHSCOPE_MODEL = "dashscope/qwen-max-v1";
+    process.env.ANTHROPIC_MODEL = "us.anthropic.claude-opus-4-6-v1";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(true);
   });
 
   it("auto-enables forceInherit for Bedrock inference-profile ARN model IDs", () => {
-    process.env.DASHSCOPE_MODEL =
-      "dashscope/qwen-max";
+    process.env.ANTHROPIC_MODEL =
+      "arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(true);
   });
 
-  it("auto-enables forceInherit when OMQ_ROUTING_FORCE_INHERIT=true", () => {
-    process.env.OMQ_ROUTING_FORCE_INHERIT = "true";
+  it("auto-enables forceInherit when CLAUDE_CODE_USE_VERTEX=1", () => {
+    process.env.CLAUDE_CODE_USE_VERTEX = "1";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(true);
   });
 
   it("does NOT auto-enable forceInherit for non-Claude Anthropic family-default tier env vars", () => {
-    process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = "kimi-k2.6:cloud";
+    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = "kimi-k2.6:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
     expect(config.agents?.executor?.model).toBe("kimi-k2.6:cloud");
   });
 
-  it("does NOT auto-enable forceInherit for non-Claude OMQ tier env vars", () => {
-    process.env.OMQ_MODEL_MEDIUM = "glm-5.1:cloud";
+  it("does NOT auto-enable forceInherit for non-Claude OMC tier env vars", () => {
+    process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
     expect(config.agents?.executor?.model).toBe("glm-5.1:cloud");
   });
 
-  it("does NOT auto-enable forceInherit when direct Claude QODER_MODEL beats stale DASHSCOPE_MODEL", () => {
-    process.env.QODER_MODEL = "qwen-plus";
-    process.env.DASHSCOPE_MODEL = "kimi-k2.6:cloud";
+  it("does NOT auto-enable forceInherit when direct Claude CLAUDE_MODEL beats stale ANTHROPIC_MODEL", () => {
+    process.env.CLAUDE_MODEL = "claude-sonnet-5";
+    process.env.ANTHROPIC_MODEL = "kimi-k2.6:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
   });
 
-  it("does NOT auto-enable forceInherit when direct Claude QODER_MODEL beats stale OMQ tier env vars", () => {
-    process.env.QODER_MODEL = "qwen-plus";
-    process.env.OMQ_MODEL_MEDIUM = "glm-5.1:cloud";
+  it("does NOT auto-enable forceInherit when direct Claude CLAUDE_MODEL beats stale OMC tier env vars", () => {
+    process.env.CLAUDE_MODEL = "claude-sonnet-5";
+    process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
   });
 
-  it("does NOT auto-enable forceInherit when direct Claude DASHSCOPE_MODEL beats stale OMQ tier env vars", () => {
-    process.env.DASHSCOPE_MODEL = "qwen-plus";
-    process.env.OMQ_MODEL_MEDIUM = "glm-5.1:cloud";
+  it("does NOT auto-enable forceInherit when direct Claude ANTHROPIC_MODEL beats stale OMC tier env vars", () => {
+    process.env.ANTHROPIC_MODEL = "claude-sonnet-5";
+    process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
   });
 
   it("does NOT auto-enable forceInherit for standard Anthropic API usage", () => {
-    process.env.DASHSCOPE_MODEL = "qwen-plus";
+    process.env.ANTHROPIC_MODEL = "claude-sonnet-5";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
   });
@@ -120,66 +126,104 @@ describe("loadConfig() — auto-forceInherit for non-standard providers", () => 
     expect(config.routing?.forceInherit).toBe(false);
   });
 
-  it("respects explicit OMQ_ROUTING_FORCE_INHERIT=false even on Bedrock", () => {
+  it("respects explicit OMC_ROUTING_FORCE_INHERIT=false even on Bedrock", () => {
     // When user explicitly sets the var (even to false), auto-detection is skipped.
-    // This matches the guard: process.env.OMQ_ROUTING_FORCE_INHERIT === undefined
-    process.env.DASHSCOPE_MODEL = "dashscope/qwen-plus[1m]";
-    process.env.OMQ_ROUTING_FORCE_INHERIT = "false";
+    // This matches the guard: process.env.OMC_ROUTING_FORCE_INHERIT === undefined
+    process.env.ANTHROPIC_MODEL = "global.anthropic.claude-sonnet-4-6[1m]";
+    process.env.OMC_ROUTING_FORCE_INHERIT = "false";
     const config = loadConfig();
     // env var is defined → auto-detection skipped → remains at default (false)
     expect(config.routing?.forceInherit).toBe(false);
   });
 
   it("maps Bedrock family env vars into agent defaults and routing tiers", () => {
-    process.env.DASHSCOPE_DEFAULT_MAX_MODEL =
-      "dashscope/qwen-max-v1:0";
-    process.env.DASHSCOPE_DEFAULT_PLUS_MODEL =
-      "dashscope/qwen-plus-v1:0";
-    process.env.DASHSCOPE_DEFAULT_TURBO_MODEL =
-      "dashscope/qwen-turbo-v1:0";
+    process.env.CLAUDE_CODE_BEDROCK_OPUS_MODEL =
+      "us.anthropic.claude-opus-4-6-v1:0";
+    process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL =
+      "us.anthropic.claude-sonnet-4-6-v1:0";
+    process.env.CLAUDE_CODE_BEDROCK_HAIKU_MODEL =
+      "us.anthropic.claude-haiku-4-5-v1:0";
 
     const config = loadConfig();
 
     expect(config.agents?.architect?.model).toBe(
-      "dashscope/qwen-max-v1:0",
+      "us.anthropic.claude-opus-4-6-v1:0",
     );
     expect(config.agents?.executor?.model).toBe(
-      "dashscope/qwen-plus-v1:0",
+      "us.anthropic.claude-sonnet-4-6-v1:0",
     );
     expect(config.agents?.explore?.model).toBe(
-      "dashscope/qwen-turbo-v1:0",
+      "us.anthropic.claude-haiku-4-5-v1:0",
     );
     expect(config.routing?.tierModels?.HIGH).toBe(
-      "dashscope/qwen-max-v1:0",
+      "us.anthropic.claude-opus-4-6-v1:0",
     );
     expect(config.routing?.tierModels?.MEDIUM).toBe(
-      "dashscope/qwen-plus-v1:0",
+      "us.anthropic.claude-sonnet-4-6-v1:0",
     );
     expect(config.routing?.tierModels?.LOW).toBe(
-      "dashscope/qwen-turbo-v1:0",
+      "us.anthropic.claude-haiku-4-5-v1:0",
     );
   });
 
   it("supports Anthropic family-default env vars for tiered routing defaults", () => {
-    process.env.DASHSCOPE_DEFAULT_MAX_MODEL = "qwen-max-custom";
-    process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = "qwen-plus-custom";
-    process.env.DASHSCOPE_DEFAULT_TURBO_MODEL = "qwen-turbo-custom";
+    process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = "claude-opus-4-6-custom";
+    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = "claude-sonnet-4-6-custom";
+    process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = "claude-haiku-4-5-custom";
 
     const config = loadConfig();
 
-    expect(config.agents?.architect?.model).toBe("qwen-max-custom");
-    expect(config.agents?.executor?.model).toBe("qwen-plus-custom");
-    expect(config.agents?.explore?.model).toBe("qwen-turbo-custom");
+    expect(config.agents?.architect?.model).toBe("claude-opus-4-6-custom");
+    expect(config.agents?.executor?.model).toBe("claude-sonnet-4-6-custom");
+    expect(config.agents?.explore?.model).toBe("claude-haiku-4-5-custom");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Model alias env overrides (issue #1211, issue #3726)
+// ---------------------------------------------------------------------------
+describe("loadConfig() — model alias env overrides", () => {
+  let saved: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    saved = saveAndClear(ALL_KEYS);
+  });
+  afterEach(() => {
+    restore(saved);
+  });
+
+  it("reads OMC_MODEL_ALIAS_OPUS=fable into routing.modelAliases (issue #3726)", () => {
+    process.env.OMC_MODEL_ALIAS_OPUS = "fable";
+    const config = loadConfig();
+    expect(config.routing?.modelAliases?.opus).toBe("fable");
+  });
+
+  it("reads OMC_MODEL_ALIAS_FABLE into routing.modelAliases (issue #3726)", () => {
+    process.env.OMC_MODEL_ALIAS_FABLE = "opus";
+    const config = loadConfig();
+    expect(config.routing?.modelAliases?.fable).toBe("opus");
+  });
+
+  it("lowercases alias env values", () => {
+    process.env.OMC_MODEL_ALIAS_HAIKU = "SONNET";
+    const config = loadConfig();
+    expect(config.routing?.modelAliases?.haiku).toBe("sonnet");
+  });
+
+  it("preserves inherit as an alias target", () => {
+    process.env.OMC_MODEL_ALIAS_OPUS = "inherit";
+    const config = loadConfig();
+    expect(config.routing?.modelAliases?.opus).toBe("inherit");
   });
 });
 
 describe("startup context compaction", () => {
-  it("compacts only OMQ-style guidance in loadContextFromFiles while preserving key sections", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-loader-context-"));
+  it("compacts only OMC-style guidance in loadContextFromFiles while preserving key sections", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-loader-context-"));
 
     try {
-      const omqAgentsPath = join(tempDir, "AGENTS.md");
-      const omqGuidance = `# oh-my-qoder - Intelligent Multi-Agent Orchestration
+      const omcAgentsPath = join(tempDir, "AGENTS.md");
+      const omcGuidance = `# oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
 <guidance_schema_contract>
 schema
@@ -207,9 +251,9 @@ schema
 - verify this stays
 </verification>`;
 
-      writeFileSync(omqAgentsPath, omqGuidance);
+      writeFileSync(omcAgentsPath, omcGuidance);
 
-      const loaded = loadContextFromFiles([omqAgentsPath]);
+      const loaded = loadContextFromFiles([omcAgentsPath]);
 
       expect(loaded).toContain("<operating_principles>");
       expect(loaded).toContain("<verification>");
@@ -217,7 +261,7 @@ schema
       expect(loaded).not.toContain("<skills>");
       expect(loaded).not.toContain("<team_compositions>");
       expect(loaded.length).toBeLessThan(
-        omqGuidance.length + `## Context from ${omqAgentsPath}\n\n`.length - 40,
+        omcGuidance.length + `## Context from ${omcAgentsPath}\n\n`.length - 40,
       );
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
@@ -225,13 +269,13 @@ schema
   });
 
   it("caps aggregated context across multiple files", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-loader-context-aggregate-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-loader-context-aggregate-"));
 
     try {
       const fileA = join(tempDir, "AGENTS.md");
       const fileB = join(tempDir, "nested", "CLAUDE.md");
       require("node:fs").mkdirSync(join(tempDir, "nested"), { recursive: true });
-      const largeSection = `# oh-my-qoder - Intelligent Multi-Agent Orchestration
+      const largeSection = `# oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
 <guidance_schema_contract>schema</guidance_schema_contract>
 
@@ -255,8 +299,8 @@ ${"- keep this\n".repeat(900)}
     }
   });
 
-  it("caps very large OMQ guidance after preserving high-value sections", () => {
-    const largeOmq = `# oh-my-qoder - Intelligent Multi-Agent Orchestration
+  it("caps very large OMC guidance after preserving high-value sections", () => {
+    const largeOmc = `# oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
 <guidance_schema_contract>
 schema
@@ -274,22 +318,22 @@ ${"- drop catalog\n".repeat(1000)}
 - verify this stays before truncation
 </verification>`;
 
-    const compacted = compactOmqStartupGuidance(largeOmq);
+    const compacted = compactOmcStartupGuidance(largeOmc);
 
     expect(compacted.length).toBeLessThanOrEqual(8000);
     expect(compacted).toContain("<operating_principles>");
     expect(compacted).not.toContain("<agent_catalog>");
-    expect(compacted).toContain("OMQ startup guidance truncated");
+    expect(compacted).toContain("OMC startup guidance truncated");
   });
 
-  it("leaves non-OMQ guidance unchanged even if it uses similar tags", () => {
-    const nonOmq = `# Project guide
+  it("leaves non-OMC guidance unchanged even if it uses similar tags", () => {
+    const nonOmc = `# Project guide
 
 <skills>
 Keep this custom section.
 </skills>`;
 
-    expect(compactOmqStartupGuidance(nonOmq)).toBe(nonOmq);
+    expect(compactOmcStartupGuidance(nonOmc)).toBe(nonOmc);
   });
 });
 
@@ -310,7 +354,7 @@ describe("plan output configuration", () => {
   it("includes plan output defaults", () => {
     const config = loadConfig();
     expect(config.planOutput).toEqual({
-      directory: ".omq/plans",
+      directory: ".omc/plans",
       filenameTemplate: "{{name}}.md",
     });
   });
@@ -323,13 +367,13 @@ describe("plan output configuration", () => {
   });
 
   it("loads plan output overrides from project config", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-plan-output-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-plan-output-"));
 
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           planOutput: {
             directory: "docs/plans",
@@ -373,13 +417,13 @@ describe("company context configuration", () => {
   });
 
   it("loads company context overrides from project config", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-company-context-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-company-context-"));
 
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           companyContext: {
             tool: "mcp__vendor__get_company_context",
@@ -416,7 +460,7 @@ describe("team.roleRouting (Option E)", () => {
   let originalCwd: string;
 
   beforeEach(() => {
-    saved = saveAndClear([...ALL_KEYS, "OMQ_TEAM_ROLE_OVERRIDES"] as const);
+    saved = saveAndClear([...ALL_KEYS, "OMC_TEAM_ROLE_OVERRIDES"] as const);
     originalCwd = process.cwd();
   });
 
@@ -433,12 +477,12 @@ describe("team.roleRouting (Option E)", () => {
   });
 
   it("merges per-role file overrides into team.roleRouting", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-routing-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: {
             roleRouting: {
@@ -462,13 +506,13 @@ describe("team.roleRouting (Option E)", () => {
     }
   });
 
-  it("accepts cursor as team defaultAgentType and roleRouting provider", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-routing-cursor-"));
+  it("accepts cursor as team defaultAgentType and executor roleRouting provider", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-cursor-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: {
             ops: { defaultAgentType: "cursor" },
@@ -487,18 +531,42 @@ describe("team.roleRouting (Option E)", () => {
     }
   });
 
-  it("OMQ_TEAM_ROLE_OVERRIDES env wins over file config", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-routing-env-"));
+
+
+  it("rejects cursor for non-executor team roleRouting providers", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-cursor-reviewer-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
-          team: { roleRouting: { critic: { provider: "qwen", model: "HIGH" } } },
+          team: {
+            roleRouting: {
+              "code-reviewer": { provider: "cursor" },
+            },
+          },
         }),
       );
-      process.env.OMQ_TEAM_ROLE_OVERRIDES = JSON.stringify({
+      process.chdir(tempDir);
+      expect(() => loadConfig()).toThrow(/cursor is only supported for executor-style roles/);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("OMC_TEAM_ROLE_OVERRIDES env wins over file config", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-env-"));
+    try {
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
+      writeFileSync(
+        join(claudeDir, "omc.jsonc"),
+        JSON.stringify({
+          team: { roleRouting: { critic: { provider: "claude", model: "HIGH" } } },
+        }),
+      );
+      process.env.OMC_TEAM_ROLE_OVERRIDES = JSON.stringify({
         critic: { provider: "codex" },
       });
       process.chdir(tempDir);
@@ -509,14 +577,14 @@ describe("team.roleRouting (Option E)", () => {
     }
   });
 
-  it("OMQ_TEAM_ROLE_OVERRIDES with invalid JSON is ignored with warning", () => {
+  it("OMC_TEAM_ROLE_OVERRIDES with invalid JSON is ignored with warning", () => {
     const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      process.env.OMQ_TEAM_ROLE_OVERRIDES = "{not valid json";
+      process.env.OMC_TEAM_ROLE_OVERRIDES = "{not valid json";
       const config = loadConfig();
       expect(config.team?.roleRouting).toEqual({});
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("OMQ_TEAM_ROLE_OVERRIDES"),
+        expect.stringContaining("OMC_TEAM_ROLE_OVERRIDES"),
       );
     } finally {
       consoleWarnSpy.mockRestore();
@@ -524,12 +592,12 @@ describe("team.roleRouting (Option E)", () => {
   });
 
   it("rejects invalid provider value with descriptive error", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-bad-provider-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-bad-provider-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { critic: { provider: "openai" } } },
         }),
@@ -542,12 +610,12 @@ describe("team.roleRouting (Option E)", () => {
   });
 
   it("rejects orchestrator.provider override (orchestrator is pinned to claude)", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-orch-pin-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-orch-pin-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: {
             roleRouting: { orchestrator: { provider: "codex", model: "HIGH" } },
@@ -562,12 +630,12 @@ describe("team.roleRouting (Option E)", () => {
   });
 
   it("rejects unknown agent name", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-bad-agent-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-bad-agent-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { executor: { agent: "nonExistentAgent" } } },
         }),
@@ -580,12 +648,12 @@ describe("team.roleRouting (Option E)", () => {
   });
 
   it("accepts 'reviewer' alias and preserves the raw key for later alias-aware resolution", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-alias-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-alias-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { reviewer: { provider: "codex" } } },
         }),
@@ -604,12 +672,12 @@ describe("team.roleRouting (Option E)", () => {
   });
 
   it("rejects unsupported team.ops.defaultAgentType values", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-default-agent-type-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-default-agent-type-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { ops: { defaultAgentType: "executor" } },
         }),
@@ -622,14 +690,14 @@ describe("team.roleRouting (Option E)", () => {
   });
 
   it("rejects unknown role with descriptive error", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-team-bad-role-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-team-bad-role-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
-          team: { roleRouting: { "totally-fake-role": { provider: "qwen" } } },
+          team: { roleRouting: { "totally-fake-role": { provider: "claude" } } },
         }),
       );
       process.chdir(tempDir);
@@ -658,7 +726,7 @@ describe("delegation routing deprecation warnings", () => {
   });
 
   it("warns when env delegation default provider is deprecated", () => {
-    process.env.OMQ_DELEGATION_ROUTING_DEFAULT_PROVIDER = "gemini";
+    process.env.OMC_DELEGATION_ROUTING_DEFAULT_PROVIDER = "gemini";
 
     loadConfig();
 
@@ -671,13 +739,13 @@ describe("delegation routing deprecation warnings", () => {
   });
 
   it("warns when project config uses deprecated delegation role provider", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omq-delegation-routing-warning-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omc-delegation-routing-warning-"));
 
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           delegationRouting: {
             enabled: true,
@@ -700,5 +768,182 @@ describe("delegation routing deprecation warnings", () => {
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("loadConfig() — autopilot team worker config", () => {
+  const originalCwd = process.cwd();
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "omc-autopilot-config-"));
+    process.chdir(tempDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("loads autopilot.execution=team with Cursor team agentTypes", () => {
+    require("node:fs").mkdirSync(join(tempDir, ".claude"), { recursive: true });
+    writeFileSync(
+      join(tempDir, ".claude", "omc.jsonc"),
+      `{
+        "autopilot": {
+          "execution": "team",
+          "team": { "agentTypes": ["cursor"] }
+        }
+      }`,
+    );
+
+    const config = loadConfig();
+
+    expect(config.autopilot?.execution).toBe("team");
+    expect(config.autopilot?.team?.agentTypes).toEqual(["cursor"]);
+  });
+
+  it("rejects unsupported autopilot team agentTypes", () => {
+    require("node:fs").mkdirSync(join(tempDir, ".claude"), { recursive: true });
+    writeFileSync(
+      join(tempDir, ".claude", "omc.jsonc"),
+      `{
+        "autopilot": {
+          "execution": "team",
+          "team": { "agentTypes": ["security-review"] }
+        }
+      }`,
+    );
+
+    expect(() => loadConfig()).toThrow(/autopilot\.team\.agentTypes/);
+  });
+
+  it("advertises autopilot.team.agentTypes in generated config schema", () => {
+    const schema = generateConfigSchema() as {
+      properties?: Record<string, { properties?: Record<string, unknown> }>;
+    };
+
+    expect(schema.properties?.autopilot).toBeDefined();
+    expect(schema.properties?.autopilot?.properties?.team).toBeDefined();
+  });
+});
+
+describe("loadConfig() — autopilot.workflows", () => {
+  const originalCwd = process.cwd();
+  const originalConfigHome = process.env.XDG_CONFIG_HOME;
+  let tempDir: string;
+  let configHome: string;
+
+  const writeProjectConfig = (content: string) => {
+    require("node:fs").mkdirSync(join(tempDir, ".claude"), { recursive: true });
+    writeFileSync(join(tempDir, ".claude", "omc.jsonc"), content);
+  };
+
+  const writeUserConfig = (content: string) => {
+    const path = join(configHome, "claude-omc");
+    require("node:fs").mkdirSync(path, { recursive: true });
+    writeFileSync(join(path, "config.jsonc"), content);
+  };
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "omc-workflow-config-"));
+    configHome = join(tempDir, "config");
+    process.env.XDG_CONFIG_HOME = configHome;
+    process.chdir(tempDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    if (originalConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = originalConfigHome;
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it.each([
+    ["ralplan, execution", ["ralplan", "execution"]],
+    ["ralplan, execution, ralph", ["ralplan", "execution", "ralph"]],
+    ["ralplan, execution, qa", ["ralplan", "execution", "qa"]],
+    ["ralplan, execution, ralph, qa", ["ralplan", "execution", "ralph", "qa"]],
+  ])("accepts the v1 sequence %s", (_label, stages) => {
+    writeProjectConfig(JSON.stringify({
+      autopilot: { workflows: { "plan-build": { version: 1, stages } } },
+    }));
+
+    expect(loadConfig().autopilot?.workflows?.["plan-build"]?.stages).toEqual(stages);
+  });
+
+  it.each([
+    ["stageModels", { version: 1, stages: ["ralplan", "execution"], stageModels: {} }, /project autopilot\.workflows\.plan-build\.stageModels/],
+    ["wrong order", { version: 1, stages: ["execution", "ralplan"] }, /project autopilot\.workflows\.plan-build\.stages/],
+    ["duplicate stage", { version: 1, stages: ["ralplan", "execution", "qa", "qa"] }, /project autopilot\.workflows\.plan-build\.stages/],
+    ["missing version", { stages: ["ralplan", "execution"] }, /project autopilot\.workflows\.plan-build\.version/],
+    ["comma-bearing composite stage", { version: 1, stages: ["ralplan", "execution,qa"] }, /project autopilot\.workflows\.plan-build\.stages/],
+    ["nested stage array", { version: 1, stages: [["ralplan", "execution"]] }, /project autopilot\.workflows\.plan-build\.stages/],
+  ])("rejects %s with a path-specific error", (_label, profile, error) => {
+    writeProjectConfig(JSON.stringify({ autopilot: { workflows: { "plan-build": profile } } }));
+    expect(() => loadConfig()).toThrow(error);
+  });
+
+  it.each(["default", "autopilot", "ralplan", "ultrawork", "ultragoal", "ultrapilot"]) (
+    "rejects reserved workflow name %s",
+    (name) => {
+      writeProjectConfig(JSON.stringify({
+        autopilot: { workflows: { [name]: { version: 1, stages: ["ralplan", "execution"] } } },
+      }));
+      expect(() => loadConfig()).toThrow(new RegExp(`project autopilot\\.workflows\\.${name}: name .*reserved`));
+    },
+  );
+
+  it("validates malformed user and project workflow blocks before composition", () => {
+    writeUserConfig(JSON.stringify({
+      autopilot: { workflows: { "user-flow": { version: 1, stages: ["execution"] } } },
+    }));
+    expect(() => loadConfig()).toThrow(/user autopilot\.workflows\.user-flow\.stages/);
+
+    writeUserConfig(JSON.stringify({
+      autopilot: { workflows: { "same-flow": { version: 1, stages: ["ralplan", "execution"] } } },
+    }));
+    writeProjectConfig(JSON.stringify({
+      autopilot: { workflows: { "same-flow": { version: 1, stages: ["ralplan", "execution"], stageModels: {} } } },
+    }));
+    expect(() => loadConfig()).toThrow(/project autopilot\.workflows\.same-flow\.stageModels/);
+  });
+
+  it("replaces same-named profiles atomically and composes distinct names", () => {
+    writeUserConfig(JSON.stringify({
+      autopilot: {
+        workflows: {
+          "same-flow": { version: 1, stages: ["ralplan", "execution", "ralph"] },
+          "user-flow": { version: 1, stages: ["ralplan", "execution", "qa"] },
+        },
+      },
+    }));
+    writeProjectConfig(JSON.stringify({
+      autopilot: {
+        workflows: {
+          "same-flow": { version: 1, stages: ["ralplan", "execution"] },
+          "project-flow": { version: 1, stages: ["ralplan", "execution", "ralph", "qa"] },
+        },
+      },
+    }));
+
+    expect(loadConfig().autopilot?.workflows).toEqual({
+      "same-flow": { version: 1, stages: ["ralplan", "execution"] },
+      "user-flow": { version: 1, stages: ["ralplan", "execution", "qa"] },
+      "project-flow": { version: 1, stages: ["ralplan", "execution", "ralph", "qa"] },
+    });
+  });
+
+  it("publishes the closed workflow schema", () => {
+    const schema = generateConfigSchema() as {
+      properties?: Record<string, { properties?: Record<string, { additionalProperties?: unknown }> }>;
+    };
+    const workflows = schema.properties?.autopilot?.properties?.workflows as {
+      additionalProperties?: { additionalProperties?: boolean; required?: string[]; properties?: Record<string, unknown> };
+    };
+
+    expect(workflows.additionalProperties?.additionalProperties).toBe(false);
+    expect(workflows.additionalProperties?.required).toEqual(["version", "stages"]);
+    expect(workflows.additionalProperties?.properties).not.toHaveProperty("stageModels");
   });
 });

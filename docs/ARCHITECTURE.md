@@ -1,14 +1,14 @@
 # Architecture
 
-> How oh-my-qoder orchestrates multi-agent workflows.
+> How oh-my-claudecode orchestrates multi-agent workflows.
 
 ## Overview
 
-oh-my-qoder enables Qoder CLI to orchestrate specialized agents through a skill-based routing system. It is built on four interlocking systems: **Hooks** detect lifecycle events, **Skills** inject behaviors, **Agents** execute specialized work, and **State** tracks progress across context resets.
+oh-my-claudecode enables Claude Code to orchestrate specialized agents through a skill-based routing system. It is built on four interlocking systems: **Hooks** detect lifecycle events, **Skills** inject behaviors, **Agents** execute specialized work, and **State** tracks progress across context resets.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         OH-MY-QODER                                 │
+│                         OH-MY-CLAUDECODE                                 │
 │                     Intelligent Skill Activation                         │
 └─────────────────────────────────────────────────────────────────────────┘
 
@@ -49,7 +49,7 @@ User Input --> Hooks (event detection) --> Skills (behavior injection)
 
 ### Overview
 
-OMQ provides 19 specialized agents organized into 4 lanes. Each agent is invoked as `oh-my-qoder:<agent-name>` and runs on the appropriate model tier.
+OMC provides 19 specialized agents organized into 4 lanes. Each agent is invoked as `oh-my-claudecode:<agent-name>` and runs on the appropriate model tier.
 
 ### Build/Analysis Lane
 
@@ -100,7 +100,7 @@ Challenges plans and designs made by other agents. A plan passes only when no ga
 
 ### Model Routing
 
-OMQ uses three model tiers:
+OMC uses three model tiers:
 
 | Tier | Model | Characteristics | Cost |
 |------|-------|-----------------|------|
@@ -119,7 +119,7 @@ Work is delegated through the Task tool with intelligent model routing:
 
 ```typescript
 Task(
-  subagent_type="oh-my-qoder:executor",
+  subagent_type="oh-my-claudecode:executor",
   model="sonnet",
   prompt="Implement feature..."
 )
@@ -175,7 +175,7 @@ explore --> analyst --> planner --> critic --> executor --> verifier
 
 ### Overview
 
-Skills are **behavior injections** that modify how the orchestrator operates. Instead of swapping agents, skills add capabilities on top of existing agents. OMQ provides 31 skills total (28 user-invocable + 3 internal/pipeline).
+Skills are **behavior injections** that modify how the orchestrator operates. Instead of swapping agents, skills add capabilities on top of existing agents. OMC provides 31 skills total (28 user-invocable + 3 internal/pipeline).
 
 ### Skill Layers
 
@@ -212,9 +212,9 @@ Active skills: ultrawork + default + git-master
 
 **Slash commands:**
 ```bash
-/oh-my-qoder:autopilot build me a todo app
-/oh-my-qoder:ralph refactor the auth module
-/oh-my-qoder:team 3:executor "implement fullstack app"
+/oh-my-claudecode:autopilot build me a todo app
+/oh-my-claudecode:ralph refactor the auth module
+/oh-my-claudecode:team 3:executor "implement fullstack app"
 ```
 
 **Magic keywords** — include a keyword in natural language and the skill activates automatically:
@@ -250,11 +250,11 @@ ultrawork implement user authentication with OAuth
 #### team
 Coordinates N Claude agents with a 5-stage pipeline: `plan → prd → exec → verify → fix`
 ```bash
-/oh-my-qoder:team 3:executor "implement fullstack todo app"
+/oh-my-claudecode:team 3:executor "implement fullstack todo app"
 ```
 
 #### ccg (Claude-Codex-Gemini)
-Fans out to Codex and Gemini simultaneously; Claude synthesizes the results.
+Fans out to Codex and Antigravity simultaneously; Claude synthesizes the results. Gemini remains available as an enterprise/API-key fallback when using the legacy Gemini CLI.
 - Trigger: `ccg`, `claude-codex-gemini`
 ```bash
 ccg: review this authentication implementation
@@ -271,20 +271,20 @@ ralplan this feature
 
 | Skill | Description | Command |
 |-------|-------------|---------|
-| `cancel` | Cancel active execution mode | `/oh-my-qoder:cancel` |
-| `hud` | Status bar configuration | `/oh-my-qoder:hud` |
-| `omq-setup` | Initial setup wizard | `/oh-my-qoder:omq-setup` |
-| `omq-doctor` | Diagnose installation | `/oh-my-qoder:omq-doctor` |
-| `skillify` | Extract reusable skills from session | `/oh-my-qoder:skillify` (`learner` deprecated alias) |
-| `skill` | Manage local skills (list/add/remove) | `/oh-my-qoder:skill` |
-| `trace` | Evidence-driven causal tracing | `/oh-my-qoder:trace` |
-| `release` | Automated release workflow | `/oh-my-qoder:release` |
-| `deepinit` | Generate hierarchical AGENTS.md | `/oh-my-qoder:deepinit` |
+| `cancel` | Cancel active execution mode | `/oh-my-claudecode:cancel` |
+| `hud` | Status bar configuration | `/oh-my-claudecode:hud` |
+| `omc-setup` | Initial setup wizard | `/oh-my-claudecode:omc-setup` |
+| `omc-doctor` | Diagnose installation | `/oh-my-claudecode:omc-doctor` |
+| `skillify` | Extract reusable skills from session | `/oh-my-claudecode:skillify` (`learner` deprecated alias) |
+| `skill` | Manage local skills (list/add/remove) | `/oh-my-claudecode:skill` |
+| `trace` | Evidence-driven causal tracing | `/oh-my-claudecode:trace` |
+| `release` | Automated release workflow | `/oh-my-claudecode:release` |
+| `deepinit` | Generate hierarchical AGENTS.md | `/oh-my-claudecode:deepinit` |
 | `deep-interview` | Socratic deep interview | `/deep-interview` |
-| `sciomc` | Parallel scientist agent orchestration | `/oh-my-qoder:sciomc` |
-| `external-context` | Parallel document-specialist research | `/oh-my-qoder:external-context` |
-| `ai-slop-cleaner` | Clean AI expression patterns | `/oh-my-qoder:ai-slop-cleaner` |
-| `writer-memory` | Memory system for writing projects | `/oh-my-qoder:writer-memory` |
+| `sciomc` | Parallel scientist agent orchestration | `/oh-my-claudecode:sciomc` |
+| `external-context` | Parallel document-specialist research | `/oh-my-claudecode:external-context` |
+| `ai-slop-cleaner` | Clean AI expression patterns | `/oh-my-claudecode:ai-slop-cleaner` |
+| `writer-memory` | Memory system for writing projects | `/oh-my-claudecode:writer-memory` |
 
 ### Magic Keyword Reference
 
@@ -293,7 +293,7 @@ ralplan this feature
 | `ultrawork`, `ulw`, `uw` | Parallel agent orchestration |
 | `autopilot`, `build me`, `I want a`, `handle it all`, `end to end`, `e2e this` | Autonomous execution pipeline |
 | `ralph`, `don't stop`, `must complete`, `until done` | Loop until verified complete |
-| `ccg`, `claude-codex-gemini` | 3-model orchestration |
+| `ccg`, `claude-codex-gemini` | 3-model orchestration (use `antigravity` workers when using the Antigravity CLI) |
 | `ralplan` | Consensus-based planning |
 | `deep interview`, `ouroboros` | Socratic deep interview |
 | `code review`, `review code` | Comprehensive code review mode |
@@ -303,7 +303,7 @@ ralplan this feature
 | `ultrathink`, `think hard`, `think deeply` | Deep reasoning mode |
 | `tdd`, `test first`, `red green` | TDD workflow |
 | `deslop`, `anti-slop` | AI expression cleanup |
-| `cancelomq`, `stopomq` | Cancel active execution mode |
+| `cancelomc`, `stopomc` | Cancel active execution mode |
 
 ### Keyword Detection Sources
 
@@ -322,13 +322,13 @@ The `autopilot`, `ralph`, and `ccg` triggers are hardcoded in the hook and canno
 
 ### Overview
 
-Hooks are code that reacts to Qoder CLI lifecycle events. They run automatically when a user submits a prompt, uses a tool, or starts/ends a session. OMQ implements agent delegation, keyword detection, and state persistence through this hook system.
+Hooks are code that reacts to Claude Code lifecycle events. They run automatically when a user submits a prompt, uses a tool, or starts/ends a session. OMC implements agent delegation, keyword detection, and state persistence through this hook system.
 
 ### Lifecycle Events
 
-Qoder CLI provides 11 lifecycle events. OMQ registers hooks on these events:
+Claude Code provides 11 lifecycle events. OMC registers hooks on these events:
 
-| Event | When It Fires | OMQ Usage |
+| Event | When It Fires | OMC Usage |
 |-------|---------------|-----------|
 | `UserPromptSubmit` | User submits a prompt | Magic keyword detection, skill injection |
 | `SessionStart` | Session begins | Initial setup, project memory load |
@@ -338,7 +338,7 @@ Qoder CLI provides 11 lifecycle events. OMQ registers hooks on these events:
 | `PostToolUseFailure` | After a tool fails | Error recovery handling |
 | `SubagentStart` | Subagent starts | Agent tracking |
 | `SubagentStop` | Subagent stops | Agent tracking, output verification |
-| `PreCompact` | Before context compaction | Preserve critical information, save project memory |
+| `PreCompact` | Before context compaction | Preserve critical information (modes, TODOs, plan anchors), save project memory; restored post-compact via SessionStart |
 | `Stop` | Claude is about to stop | Persistent mode enforcement, code simplification |
 | `SessionEnd` | Session ends | Session data cleanup |
 
@@ -367,7 +367,7 @@ Injected pattern meanings:
 
 **persistent-mode** — fires on `Stop`. When a persistent mode (ralph, ultrawork) is active, prevents Claude from stopping until work is verified complete.
 
-**pre-compact** — fires on `PreCompact`. Saves critical information to the notepad before the context window is compressed.
+**pre-compact** — fires on `PreCompact`. Saves critical information (active modes, TODOs, background jobs, and durable plan anchors: PRD/boulder references) to a checkpoint before the context window is compressed. The `SessionStart` hook restores the newest matching checkpoint when `source === "compact"`, so plan detail survives auto-compaction (issue #3730).
 
 **subagent-tracker** — fires on `SubagentStart` and `SubagentStop`. Tracks currently running agents; validates output on stop.
 
@@ -388,7 +388,7 @@ Enable via config:
 
 ### Hook Registration Structure
 
-OMQ hooks are declared in `hooks.json`. Each hook is a Node.js script with a timeout:
+OMC hooks are declared in `hooks.json`. Each hook is a Node.js script with a timeout:
 
 ```json
 {
@@ -415,12 +415,12 @@ OMQ hooks are declared in `hooks.json`. Each hook is a Node.js script with a tim
 
 Disable all hooks:
 ```bash
-export DISABLE_OMQ=1
+export DISABLE_OMC=1
 ```
 
 Skip specific hooks (comma-separated):
 ```bash
-export OMQ_SKIP_HOOKS="keyword-detector,persistent-mode"
+export OMC_SKIP_HOOKS="keyword-detector,persistent-mode"
 ```
 
 ---
@@ -429,12 +429,12 @@ export OMQ_SKIP_HOOKS="keyword-detector,persistent-mode"
 
 ### Overview
 
-OMQ stores task progress and project knowledge in the `.omq/` directory. The state system preserves critical information even when context compaction resets the context window.
+OMC stores task progress and project knowledge in the `.omc/` directory. The state system preserves critical information even when context compaction resets the context window.
 
 ### Directory Structure
 
 ```
-.omq/
+.omc/
 ├── state/                    # Per-mode state files
 │   ├── autopilot-state.json  # autopilot progress
 │   ├── ralph-state.json      # ralph loop state
@@ -460,16 +460,16 @@ OMQ stores task progress and project knowledge in the `.omq/` directory. The sta
 
 ### Control Plane vs Data Plane
 
-OMQ keeps orchestration metadata separate from large durable artifacts:
+OMC keeps orchestration metadata separate from large durable artifacts:
 
-- **Control plane**: queue state, worker assignment, session state, and cross-tool task/message envelopes under `.omq/state/**`.
-- **Data plane**: plans, specs, prompts, results, traces, and other durable artifacts under paths such as `.omq/plans/`, `.omq/notepads/`, `.omq/prompts/`, and `.omq/state/interop/artifacts/**`.
+- **Control plane**: queue state, worker assignment, session state, and cross-tool task/message envelopes under `.omc/state/**`.
+- **Data plane**: plans, specs, prompts, results, traces, and other durable artifacts under paths such as `.omc/plans/`, `.omc/notepads/`, `.omc/prompts/`, and `.omc/state/interop/artifacts/**`.
 - **Concrete handoff examples**:
-  - shared interop state keeps task/message metadata inline while storing oversized task descriptions, task results, and message bodies under `.omq/state/interop/artifacts/**`
-  - prompt persistence stores durable prompt/response files under `.omq/prompts/**` and records descriptor metadata alongside job status
+  - shared interop state keeps task/message metadata inline while storing oversized task descriptions, task results, and message bodies under `.omc/state/interop/artifacts/**`
+  - prompt persistence stores durable prompt/response files under `.omc/prompts/**` and records descriptor metadata alongside job status
 
 **Global State:**
-- `~/.omq/state/{name}.json` — user preferences and global config
+- `~/.omc/state/{name}.json` — user preferences and global config
 
 Legacy locations are auto-migrated on read.
 
@@ -498,7 +498,7 @@ When a handoff needs to reference a large artifact, prefer a descriptor/handle o
 
 ### Notepad
 
-**File:** `.omq/notepad.md`
+**File:** `.omc/notepad.md`
 
 The notepad survives context compaction. Content written to it persists even after the context window is reset.
 
@@ -522,7 +522,7 @@ Notes can be saved using the `notepad_write_manual` MCP tool or the `notepad_wri
 
 ### Project Memory
 
-**File:** `.omq/project-memory.json`
+**File:** `.omc/project-memory.json`
 
 Project memory is a persistent store for project-level knowledge. It survives across sessions.
 
@@ -542,13 +542,13 @@ Project memory is a persistent store for project-level knowledge. It survives ac
 
 ### Session Scope
 
-**Path:** `.omq/state/sessions/{sessionId}/`
+**Path:** `.omc/state/sessions/{sessionId}/`
 
 Stores state isolated per session. Multiple sessions on the same project run simultaneously without state conflicts.
 
 ### Plan Notepad (Per-Plan Knowledge Capture)
 
-**Path:** `.omq/notepads/{plan-name}/`
+**Path:** `.omc/notepads/{plan-name}/`
 
 Stores learnings from each execution plan separately.
 
@@ -563,16 +563,16 @@ All entries are timestamped automatically.
 
 ### Centralized State (Optional)
 
-By default, state is stored in the project's `.omq/` directory and is deleted when the worktree is removed.
+By default, state is stored in the project's `.omc/` directory and is deleted when the worktree is removed.
 
-To preserve state across worktree deletions, set the `OMQ_STATE_DIR` environment variable:
+To preserve state across worktree deletions, set the `OMC_STATE_DIR` environment variable:
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-export OMQ_STATE_DIR="$HOME/.qoder/omq"
+export OMC_STATE_DIR="$HOME/.claude/omc"
 ```
 
-State is then stored at `~/.qoder/omq/{project-identifier}/`. The project identifier is a hash of the Git remote URL, so the same repository shares state across different worktrees.
+State is then stored at `~/.claude/omc/{project-identifier}/`. The project identifier is a hash of the Git remote URL, so the same repository shares state across different worktrees.
 
 ### Persistent Memory Tags
 

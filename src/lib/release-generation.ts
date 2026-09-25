@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-const DEFAULT_REPO_URL = 'https://github.com/qoder-plugins/oh-my-qoder';
+const DEFAULT_REPO_URL = 'https://github.com/Yeachan-Heo/oh-my-claudecode';
 
 export interface ReleasePullRequest {
   number: string;
@@ -225,7 +225,7 @@ export function generateChangelog(
   const otherCount = categories.get('other')?.length ?? 0;
   const statsLine = `- **${pluralize(prCount, 'PR merged', 'PRs merged')}** | **${pluralize(featCount, 'new feature')}** | **${pluralize(fixCount, 'bug fix', 'bug fixes')}** | **${pluralize(secCount, 'security/hardening improvement')}** | **${pluralize(otherCount, 'other change')}**`;
 
-  let md = `# oh-my-qoder v${version}: ${title}\n\n`;
+  let md = `# oh-my-claudecode v${version}: ${title}\n\n`;
   md += `## Release Notes\n\n${summary}\n`;
 
   for (const section of sections) {
@@ -247,10 +247,15 @@ export function generateReleaseBody(
   let body = changelog;
 
   body += `\n### Install / Update\n\n`;
-  body += 'Fresh install:\n```bash\n';
-  body += `git clone ${repoUrl}.git\ncd oh-my-qoder && npm install && npm run build\nqodercli plugins install "$(pwd)"\n`;
+  body += 'The npm CLI and the Claude Code marketplace/plugin are separate install tracks, not either/or replacements. Update whichever track you use; if you have both installed, update both. CLI-dependent skill paths such as `ask`, `ccg`, and CLI-backed `team` require the `omc` CLI from the npm package.\n\n';
+  body += '**CLI / runtime:**\n\n';
+  body += '```bash\n';
+  body += `npm install -g oh-my-claude-sisyphus@${version}\n`;
   body += '```\n\n';
-  body += 'Already installed? Update in place:\n```bash\ngit pull && npm run build\n```\nThen run `/plugins reload` inside Qoder CLI.\n';
+  body += '**Claude Code plugin:**\n\n';
+  body += '```text\n';
+  body += '/plugin marketplace update omc\n';
+  body += '```\n';
 
   if (prevTag) {
     body += `\n**Full Changelog**: ${repoUrl}/compare/${prevTag}...v${version}\n`;

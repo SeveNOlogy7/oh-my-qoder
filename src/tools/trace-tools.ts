@@ -15,7 +15,7 @@ import {
 } from '../hooks/subagent-tracker/session-replay.js';
 import {
   validateWorkingDirectory,
-  getOmqRoot,
+  getOmcRoot,
 } from '../lib/worktree-paths.js';
 import { ToolDefinition } from './types.js';
 import { sessionSearchTool } from './session-history-tools.js';
@@ -30,7 +30,7 @@ const REPLAY_PREFIX = 'agent-replay-';
  * Find the latest session ID from replay files
  */
 function findLatestSessionId(directory: string): string | null {
-  const stateDir = join(getOmqRoot(directory), 'state');
+  const stateDir = join(getOmcRoot(directory), 'state');
   try {
     const files = readdirSync(stateDir)
       .filter(f => f.startsWith(REPLAY_PREFIX) && f.endsWith('.jsonl'))
@@ -84,8 +84,13 @@ function formatTimelineEvent(event: ReplayEvent): string {
       if (event.model) detail += ` (${event.model})`;
       break;
     case 'agent_stop':
-      detail = `[${event.agent}] ${event.agent_type || 'unknown'} ${event.success ? 'completed' : 'FAILED'}`;
-      if (event.duration_ms) detail += ` (${(event.duration_ms / 1000).toFixed(1)}s)`;
+      if (event.synthetic || event.telemetry_status === 'unmatched_stop') {
+        detail = `[${event.agent}] ${event.agent_type || 'untracked-native-fork'} UNTRACKED_STOP`;
+        if (event.reason) detail += ` - ${event.reason}`;
+      } else {
+        detail = `[${event.agent}] ${event.agent_type || 'unknown'} ${event.success ? 'completed' : 'FAILED'}`;
+        if (event.duration_ms) detail += ` (${(event.duration_ms / 1000).toFixed(1)}s)`;
+      }
       break;
     case 'tool_start':
       detail = `[${event.agent}] ${event.tool} started`;
@@ -195,6 +200,10 @@ function buildExecutionFlow(events: ReplayEvent[]): string[] {
       }
       case 'agent_stop': {
         const type = event.agent_type || 'unknown';
+        if (event.synthetic || event.telemetry_status === 'unmatched_stop') {
+          flow.push(`${type} agent stop was untracked (${event.agent})`);
+          break;
+        }
         const status = event.success ? 'completed' : 'FAILED';
         const dur = event.duration_ms ? ` ${(event.duration_ms / 1000).toFixed(1)}s` : '';
         flow.push(`${type} agent ${status} (${event.agent}${dur})`);
@@ -337,7 +346,10 @@ export const traceSummaryTool: ToolDefinition<{
         `### Overview`,
         `- **Duration:** ${summary.duration_seconds.toFixed(1)}s`,
         `- **Total Events:** ${summary.total_events}`,
-        `- **Agents:** ${summary.agents_spawned} spawned, ${summary.agents_completed} completed, ${summary.agents_failed} failed`,
+        `- **Agents:** ${summary.agents_spawned} spawned, ${summary.agents_completed} completed, ${summary.agents_failed} failed${summary.agents_untracked_stops ? `, ${summary.agents_untracked_stops} untracked stop(s)` : ''}`,
+        ...(summary.dirty_worktrees
+          ? [`- **Dirty worktrees on stop:** ${summary.dirty_worktrees} agent(s) terminated leaving uncommitted work (issue #3663) — preserve before reset/cleanup; see subagent-tracking state`]
+          : []),
         '',
       ];
 

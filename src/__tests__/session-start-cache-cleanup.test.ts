@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, lstatSync, readlinkSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { join, relative } from 'path';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
+import { pathIdentity, publishCacheOccupancy, readOccupiedPluginRoots } from '../utils/cache-occupancy.js';
+import { purgeStalePluginCacheVersions } from '../utils/paths.js';
 
 const SCRIPT_PATH = join(__dirname, '..', '..', 'scripts', 'session-start.mjs');
 const NODE = process.execPath;
@@ -10,10 +12,10 @@ const NODE = process.execPath;
 /**
  * Integration tests for the plugin cache cleanup logic in session-start.mjs.
  *
- * The script's cleanup block scans ~/.qoder/plugins/cache/omq/oh-my-qoder/
+ * The script's cleanup block scans ~/.claude/plugins/cache/omc/oh-my-claudecode/
  * for version directories, keeps the latest 2 real directories, and replaces
  * older versions with symlinks pointing to the latest version. This prevents
- * "Cannot find module" errors when a running session's QODER_PLUGIN_ROOT
+ * "Cannot find module" errors when a running session's CLAUDE_PLUGIN_ROOT
  * still points to an old (now-removed) version directory.
  */
 describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
@@ -23,14 +25,14 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
   let fakeProject: string;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'omq-cache-test-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'omc-cache-test-'));
     fakeHome = join(tmpDir, 'home');
-    fakeCacheBase = join(fakeHome, '.qwen', 'plugins', 'cache', 'omq', 'oh-my-qoder');
+    fakeCacheBase = join(fakeHome, '.claude', 'plugins', 'cache', 'omc', 'oh-my-claudecode');
     fakeProject = join(tmpDir, 'project');
 
-    // Create fake project directory with .omq
-    mkdirSync(join(fakeProject, '.omq', 'state'), { recursive: true });
-    // session-start validateCwd requires a real workspace anchor (.git / .omq-workspace)
+    // Create fake project directory with .omc
+    mkdirSync(join(fakeProject, '.omc', 'state'), { recursive: true });
+    // session-start validateCwd requires a real workspace anchor (.git / .omc-workspace)
     mkdirSync(join(fakeProject, '.git'), { recursive: true });
 
     // Create fake cache base
@@ -66,8 +68,8 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
           ...process.env,
           HOME: fakeHome,
           USERPROFILE: fakeHome, // Windows compat
-          QODER_CONFIG_DIR: join(fakeHome, '.qwen'), // Override to use fake home
-          QODER_PLUGIN_ROOT: join(fakeCacheBase, '4.4.3'),
+          CLAUDE_CONFIG_DIR: join(fakeHome, '.claude'), // Override to use fake home
+          CLAUDE_PLUGIN_ROOT: join(fakeCacheBase, '4.4.3'),
           ...env,
         },
         timeout: 15000,
@@ -91,8 +93,8 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
   it('keeps explicit external plugin roots authoritative for update checks', () => {
     createFakeVersion('4.14.5');
     const externalRoot = createExternalPluginRoot('4.14.4');
-    const updateCache = join(fakeHome, '.qwen', '.omq', 'update-check.json');
-    mkdirSync(join(fakeHome, '.qwen', '.omq'), { recursive: true });
+    const updateCache = join(fakeHome, '.claude', '.omc', 'update-check.json');
+    mkdirSync(join(fakeHome, '.claude', '.omc'), { recursive: true });
     writeFileSync(updateCache, JSON.stringify({
       timestamp: Date.now(),
       latestVersion: '4.14.5',
@@ -100,18 +102,18 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
       updateAvailable: true,
     }));
 
-    const output = runSessionStart({ QODER_PLUGIN_ROOT: externalRoot });
+    const output = runSessionStart({ CLAUDE_PLUGIN_ROOT: externalRoot });
     const parsed = JSON.parse(output);
 
-    expect(parsed.systemMessage).toContain('[OMQ UPDATE AVAILABLE]');
+    expect(parsed.systemMessage).toContain('[OMC UPDATE AVAILABLE]');
     expect(parsed.systemMessage).toContain('current: v4.14.4');
   });
 
   it('uses latest managed cache version for stale managed cache roots', () => {
     createFakeVersion('4.14.4');
     createFakeVersion('4.14.5');
-    const updateCache = join(fakeHome, '.qwen', '.omq', 'update-check.json');
-    mkdirSync(join(fakeHome, '.qwen', '.omq'), { recursive: true });
+    const updateCache = join(fakeHome, '.claude', '.omc', 'update-check.json');
+    mkdirSync(join(fakeHome, '.claude', '.omc'), { recursive: true });
     writeFileSync(updateCache, JSON.stringify({
       timestamp: Date.now(),
       latestVersion: '4.14.5',
@@ -119,7 +121,7 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
       updateAvailable: true,
     }));
 
-    const output = runSessionStart({ QODER_PLUGIN_ROOT: join(fakeCacheBase, '4.14.4') });
+    const output = runSessionStart({ CLAUDE_PLUGIN_ROOT: join(fakeCacheBase, '4.14.4') });
     const parsed = JSON.parse(output);
 
     expect(parsed.systemMessage).toBeUndefined();
@@ -229,5 +231,71 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
     const v3Stat = lstatSync(join(fakeCacheBase, '4.4.3'));
     expect(v3Stat.isDirectory()).toBe(true);
     expect(v3Stat.isSymbolicLink()).toBe(false);
+  });
+
+  it('retains a mixed-case occupied root in source purge on simulated Windows', async () => {
+    const staleVersion = createFakeVersion('4.4.1');
+    const configDir = join(fakeHome, '.claude');
+    const installedFile = join(configDir, 'plugins', 'installed_plugins.json');
+    mkdirSync(join(configDir, 'plugins'), { recursive: true });
+    writeFileSync(installedFile, JSON.stringify({
+      version: 2,
+      // Keep the only cache version outside an active sibling namespace so the
+      // purge reaches its destructive no-sibling branch.
+      plugins: { 'other-plugin@other': [{ installPath: join(tmpDir, 'other-plugin', '1.0.0') }] },
+    }));
+
+    const mixedCaseRoot = staleVersion.replace('oh-my-claudecode', 'Oh-My-ClaudeCode');
+    const originalPlatform = process.platform;
+    const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = configDir;
+    try {
+      // Publish through the real occupancy writer so the record carries this
+      // process's live PID/start identity; only the path casing is simulated.
+      expect(await publishCacheOccupancy(mixedCaseRoot, configDir)).toBe(true);
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+      const occupancy = readOccupiedPluginRoots(configDir);
+      expect(occupancy.unavailable).toBe(false);
+      expect(occupancy.roots).toContain(pathIdentity(staleVersion));
+
+      const result = purgeStalePluginCacheVersions({ skipGracePeriod: true });
+
+      expect(result.removed).toBe(0);
+      expect(result.skippedPaths).toContain(staleVersion);
+      expect(lstatSync(staleVersion).isDirectory()).toBe(true);
+      expect(lstatSync(staleVersion).isSymbolicLink()).toBe(false);
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+      if (originalConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+      else process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+    }
+  });
+
+  it('preserves lexical install-path comparison on non-Windows source purge', () => {
+    const staleVersion = createFakeVersion('4.4.1');
+    const configDir = join(fakeHome, '.claude');
+    mkdirSync(join(configDir, 'plugins'), { recursive: true });
+    writeFileSync(join(configDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
+      version: 2,
+      // This resolves to staleVersion, but the historical non-Windows
+      // comparison intentionally treats the relative spelling lexically.
+      plugins: { 'other-plugin@other': [{ installPath: relative(process.cwd(), staleVersion) }] },
+    }));
+
+    const originalPlatform = process.platform;
+    const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = configDir;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      const result = purgeStalePluginCacheVersions({ skipGracePeriod: true });
+
+      expect(result.removed).toBe(1);
+      expect(result.removedPaths).toContain(staleVersion);
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+      if (originalConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+      else process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+    }
   });
 });

@@ -1,11 +1,11 @@
 /**
- * Oh-My-Qoder
+ * Oh-My-ClaudeCode
  *
- * A multi-agent orchestration system for the Qoder Agent SDK.
- * Inspired by oh-my-opencode, reimagined for Qoder CLI.
+ * A multi-agent orchestration library and Claude Code plugin runtime with Agent SDK helpers.
+ * Inspired by oh-my-opencode, reimagined for Claude Code.
  *
  * Main features:
- * - OMQ: Primary orchestrator that delegates to specialized subagents
+ * - OMC: Primary orchestrator that delegates to specialized subagents
  * - Parallel execution: Background agents run concurrently
  * - LSP/AST tools: IDE-like capabilities for agents
  * - Context management: Auto-injection from AGENTS.md/CLAUDE.md
@@ -14,9 +14,9 @@
  */
 
 import { loadConfig, findContextFiles, loadContextFromFiles } from './config/loader.js';
-import { getAgentDefinitions, omqSystemPrompt } from './agents/definitions.js';
+import { getAgentDefinitions, omcSystemPrompt } from './agents/definitions.js';
 import { getDefaultMcpServers, toSdkMcpFormat } from './mcp/servers.js';
-import { omqToolsServer, getOmqToolNames } from './mcp/omq-tools-server.js';
+import { omcToolsServer, getOmcToolNames } from './mcp/omc-tools-server.js';
 import { createMagicKeywordProcessor, detectMagicKeywords } from './features/magic-keywords.js';
 import { continuationSystemPromptAddition } from './features/continuation-enforcement.js';
 import { appendSkininthegamebrosGuidance } from './agents/skininthegamebros-guidance.js';
@@ -28,10 +28,10 @@ import {
 } from './features/background-tasks.js';
 import type { PluginConfig, SessionState } from './shared/types.js';
 
-export { loadConfig, getAgentDefinitions, omqSystemPrompt };
+export { loadConfig, getAgentDefinitions, omcSystemPrompt };
 export { getDefaultMcpServers, toSdkMcpFormat } from './mcp/servers.js';
 export { lspTools, astTools, allCustomTools } from './tools/index.js';
-export { omqToolsServer, omqToolNames, getOmqToolNames } from './mcp/omq-tools-server.js';
+export { omcToolsServer, omcToolNames, getOmcToolNames } from './mcp/omc-tools-server.js';
 export { createMagicKeywordProcessor, detectMagicKeywords } from './features/magic-keywords.js';
 export {
   createBackgroundTaskManager,
@@ -53,7 +53,7 @@ export {
   REPO_OWNER,
   REPO_NAME,
   GITHUB_API_URL,
-  QODER_CONFIG_DIR,
+  CLAUDE_CONFIG_DIR,
   VERSION_FILE,
   // Auto-update functions
   getInstalledVersion,
@@ -70,6 +70,28 @@ export * from './shared/index.js';
 // Hooks module exports
 export * from './hooks/index.js';
 
+
+// Team recovery and worker checkpoint public clients.
+export {
+  recoverDeadWorkerV2,
+  readRecoverDeadWorkerV2Outcome,
+  readRecoverDeadWorkerV2Result,
+  teamPublishTaskRecoveryCheckpoint,
+} from './team/index.js';
+export type {
+  RecoverDeadWorkerV2Options,
+  RecoverDeadWorkerV2Error,
+  RecoverDeadWorkerV2Result,
+  RecoverDeadWorkerV2Success,
+  RecoverDeadWorkerV2Failure,
+  PublishTaskRecoveryCheckpointInput,
+  PublishTaskRecoveryCheckpointResult,
+} from './team/index.js';
+export type {
+  RecoveryDurableOutcome,
+  RecoveryOutcomePending,
+  RecoveryOutcomeFinal,
+} from './team/index.js';
 // Features module exports (boulder-state, context-injector)
 export {
   // Boulder State
@@ -128,8 +150,7 @@ export {
   type AgentFactory,
   type AvailableAgent,
   isGptModel,
-  isQwenModel,
-  
+  isClaudeModel,
   getDefaultModelForCategory,
   // Utilities
   createAgentToolRestrictions,
@@ -186,8 +207,8 @@ export {
   install,
   isInstalled,
   getInstallInfo,
-  isQoderCliInstalled,
-  QODER_CONFIG_DIR as INSTALLER_QODER_CONFIG_DIR,
+  isClaudeInstalled,
+  CLAUDE_CONFIG_DIR as INSTALLER_CLAUDE_CONFIG_DIR,
   AGENTS_DIR,
   COMMANDS_DIR,
   VERSION as INSTALLER_VERSION,
@@ -196,9 +217,9 @@ export {
 } from './installer/index.js';
 
 /**
- * Options for creating a OMQ session
+ * Options for creating a OMC session
  */
-export interface OmqOptions {
+export interface OmcOptions {
   /** Custom configuration (merged with loaded config) */
   config?: Partial<PluginConfig>;
   /** Working directory (default: process.cwd()) */
@@ -209,20 +230,17 @@ export interface OmqOptions {
   skipContextInjection?: boolean;
   /** Custom system prompt addition */
   customSystemPrompt?: string;
-  /** API key (default: from DASHSCOPE_API_KEY env) */
+  /** API key (default: from ANTHROPIC_API_KEY env) */
   apiKey?: string;
-  /** Qoder SDK auth token (default: from QODER_PERSONAL_ACCESS_TOKEN env) */
-  accessToken?: string;
 }
 
 /**
- * Result of creating a OMQ session
+ * Result of creating a OMC session
  */
-export interface OmqSession {
-  /** The query options to pass to Qoder Agent SDK */
+export interface OmcSession {
+  /** The query options to pass to Claude Agent SDK */
   queryOptions: {
     options: {
-      auth: { type: string; token?: string; envVar?: string };
       systemPrompt: string;
       agents: Record<string, { description: string; prompt: string; tools?: string[]; model?: string }>;
       mcpServers: Record<string, { command: string; args: string[] }>;
@@ -245,19 +263,20 @@ export interface OmqSession {
 }
 
 /**
- * Create a OMQ orchestration session
+ * Create a OMC orchestration session
  *
- * This prepares all the configuration and options needed
- * to run a query with the Qoder Agent SDK.
+ * Prepare configuration and options needed to run a local Node.js query
+ * with the Claude Agent SDK. This helper does not install or drive the
+ * interactive Claude Code plugin UI.
  *
  * @example
  * ```typescript
- * import { createOmqSession } from 'oh-my-qoder';
- * import { query } from '@qoder-ai/qoder-agent-sdk';
+ * import { createOmcSession } from 'oh-my-claudecode';
+ * import { query } from '@anthropic-ai/claude-agent-sdk';
  *
- * const session = createOmqSession();
+ * const session = createOmcSession();
  *
- * // Use with Qoder Agent SDK
+ * // Use with Claude Agent SDK
  * for await (const message of query({
  *   prompt: session.processPrompt("ultrawork refactor the authentication module"),
  *   ...session.queryOptions
@@ -266,7 +285,7 @@ export interface OmqSession {
  * }
  * ```
  */
-export function createOmqSession(options?: OmqOptions): OmqSession {
+export function createOmcSession(options?: OmcOptions): OmcSession {
   // Load configuration
   const loadedConfig = options?.skipConfigLoad ? {} : loadConfig();
   const config: PluginConfig = {
@@ -284,7 +303,7 @@ export function createOmqSession(options?: OmqOptions): OmqSession {
   }
 
   // Build system prompt
-  let systemPrompt = appendSkininthegamebrosGuidance(omqSystemPrompt, 'system');
+  let systemPrompt = appendSkininthegamebrosGuidance(omcSystemPrompt, 'system');
 
   // Add continuation enforcement
   if (config.features?.continuationEnforcement !== false) {
@@ -313,7 +332,7 @@ export function createOmqSession(options?: OmqOptions): OmqSession {
 
   // Build allowed tools list
   const allowedTools: string[] = [
-    'Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Agent', 'TodoWrite'
+    'Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Task', 'TodoWrite'
   ];
 
   if (config.permissions?.allowBash !== false) {
@@ -333,13 +352,13 @@ export function createOmqSession(options?: OmqOptions): OmqSession {
     allowedTools.push(`mcp__${serverName}__*`);
   }
 
-  // Add OMQ custom tools in MCP format (LSP, AST, python_repl)
-  const omqTools = getOmqToolNames({
+  // Add OMC custom tools in MCP format (LSP, AST, python_repl)
+  const omcTools = getOmcToolNames({
     includeLsp: config.features?.lspTools !== false,
     includeAst: config.features?.astTools !== false,
     includePython: true
   });
-  allowedTools.push(...omqTools);
+  allowedTools.push(...omcTools);
 
   // Create magic keyword processor
   const processPrompt = createMagicKeywordProcessor(config.magicKeywords);
@@ -357,14 +376,11 @@ export function createOmqSession(options?: OmqOptions): OmqSession {
   return {
     queryOptions: {
       options: {
-        auth: options?.accessToken
-          ? { type: 'access_token', token: options.accessToken }
-          : { type: 'access_token_env', envVar: 'QODER_PERSONAL_ACCESS_TOKEN' },
         systemPrompt,
         agents,
         mcpServers: {
           ...toSdkMcpFormat(externalMcpServers),
-          't': omqToolsServer as any
+          't': omcToolsServer as any
         },
         allowedTools,
         permissionMode: 'acceptEdits'
@@ -384,7 +400,7 @@ export function createOmqSession(options?: OmqOptions): OmqSession {
 }
 
 /**
- * Quick helper to process a prompt with OMQ enhancements
+ * Quick helper to process a prompt with OMC enhancements
  */
 export function enhancePrompt(prompt: string, config?: PluginConfig): string {
   const processor = createMagicKeywordProcessor(config?.magicKeywords);
@@ -394,11 +410,11 @@ export function enhancePrompt(prompt: string, config?: PluginConfig): string {
 /**
  * Get the system prompt for the orchestrator (for direct use)
  */
-export function getOmqSystemPrompt(options?: {
+export function getOmcSystemPrompt(options?: {
   includeContinuation?: boolean;
   customAddition?: string;
 }): string {
-  let prompt = appendSkininthegamebrosGuidance(omqSystemPrompt, 'system');
+  let prompt = appendSkininthegamebrosGuidance(omcSystemPrompt, 'system');
 
   if (options?.includeContinuation !== false) {
     prompt += continuationSystemPromptAddition;

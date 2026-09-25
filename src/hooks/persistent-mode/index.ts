@@ -4,18 +4,19 @@
  * Unified handler for persistent work modes: ultrawork, ralph, and todo-continuation.
  * This hook intercepts Stop events and enforces work continuation based on:
  * 1. Active ultrawork mode with pending todos
- * 2. Active ralph loop (until cancelled via /oh-my-qoder:cancel)
+ * 2. Active ralph loop (until cancelled via /oh-my-claudecode:cancel)
  * 3. Any pending todos (general enforcement)
  *
  * Priority order: Ralph > Ultrawork > Todo Continuation
  */
 
+import { createHash } from 'crypto';
 import { existsSync, readFileSync, unlinkSync, statSync, openSync, readSync, closeSync, mkdirSync } from 'fs';
 import { atomicWriteJsonSync } from '../../lib/atomic-write.js';
 import { join } from 'path';
 import { getHardMaxIterations } from '../../lib/security-config.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
-import { getGlobalOmqConfigCandidates } from '../../utils/paths.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
+import { getGlobalOmcConfigCandidates } from '../../utils/paths.js';
 import {
   readUltraworkState,
   writeUltraworkState,
@@ -24,8 +25,8 @@ import {
   getUltraworkPersistenceMessage,
   type UltraworkState
 } from '../ultrawork/index.js';
-import { resolveToWorktreeRoot, resolveSessionStatePath, getOmqRoot, getProcessSessionId } from '../../lib/worktree-paths.js';
-import { readModeState, writeModeState } from '../../lib/mode-state-io.js';
+import { resolveToWorktreeRoot, resolveSessionStatePath, resolveStatePath, getOmcRoot } from '../../lib/worktree-paths.js';
+import { readModeState, writeModeState, withStateFileMutationLock } from '../../lib/mode-state-io.js';
 import {
   readRalphState,
   writeRalphState,
@@ -50,7 +51,8 @@ import {
 import { checkIncompleteTodos, getNextPendingTodo, StopContext, isUserAbort, isContextLimitStop, isRateLimitStop, isExplicitCancelCommand, isAuthenticationError, isScheduledWakeupStop, isOversizeToolResultRedirectStop } from '../todo-continuation/index.js';
 import { TODO_CONTINUATION_PROMPT } from '../../installer/hooks.js';
 import {
-  isAutopilotActive
+  isAutopilotActive,
+  readAutopilotState,
 } from '../autopilot/index.js';
 import { checkAutopilot } from '../autopilot/enforcement.js';
 import { readTeamPipelineState } from '../team-pipeline/state.js';
@@ -59,6 +61,8 @@ import { getActiveAgentSnapshot } from '../subagent-tracker/index.js';
 import type { IdleNotificationRepoState } from './idle-repo-state.js';
 import { truncatePromptForEcho } from '../../lib/truncate-prompt.js';
 import { isModeActive } from '../mode-registry/index.js';
+import { namedWorkflowRuntimeSupported, validateNamedWorkflowState } from '../autopilot/named-workflow-resume-validator.js';
+import type { AutopilotState } from '../autopilot/types.js';
 
 export interface ToolErrorState {
   tool_name: string;
@@ -92,6 +96,7 @@ export interface PersistentModeResult {
 /** Maximum todo-continuation attempts before giving up (prevents infinite loops) */
 const MAX_TODO_CONTINUATION_ATTEMPTS = 5;
 const CANCEL_SIGNAL_TTL_MS = 30_000;
+const CANCEL_SIGNAL_CLOCK_SKEW_MS = 5_000;
 const STALE_STATE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 const PENDING_ASYNC_STATE_STALE_MS = 24 * 60 * 60 * 1000;
 const OVERSIZE_TOOL_RESULT_REDIRECT_STOP_MAX = 3;
@@ -108,6 +113,42 @@ const TERMINAL_WORKFLOW_PHASES = new Set([
   'stopped',
 ]);
 
+function hasNamedWorkflowMarkers(state: unknown): boolean {
+  return Boolean(
+    state &&
+      typeof state === 'object' &&
+      ['workflow', 'workflowRunId', 'pipelineTracking'].some((marker) =>
+        Object.prototype.hasOwnProperty.call(state, marker),
+      ),
+  );
+}
+
+function isEnforceableNamedAutopilotState(
+  state: Record<string, unknown> | null,
+  directory: string,
+  sessionId?: string,
+): boolean {
+  if (
+    !state ||
+    !sessionId ||
+    !hasNamedWorkflowMarkers(state) ||
+    state.active !== true ||
+    state.session_id !== sessionId ||
+    isTerminalWorkflowModeState(state) ||
+    typeof state.project_path !== 'string' ||
+    !namedWorkflowRuntimeSupported()
+  ) {
+    return false;
+  }
+
+  try {
+    return resolveToWorktreeRoot(state.project_path) === resolveToWorktreeRoot(directory)
+      && Boolean(validateNamedWorkflowState(state as unknown as AutopilotState, sessionId));
+  } catch {
+    return false;
+  }
+}
+
 /** Track todo-continuation attempts per session to prevent infinite loops */
 const todoContinuationAttempts = new Map<string, number>();
 
@@ -115,51 +156,180 @@ export function shouldWriteStateBack(statePath: string | null | undefined): bool
   return Boolean(statePath && existsSync(statePath));
 }
 
-/**
- * Check whether this session is in an explicit cancel window.
- * Used to prevent stop-hook re-enforcement races during /cancel.
- */
-function isSessionCancelInProgress(directory: string, sessionId?: string): boolean {
-  let cancelSignalPath: string | undefined;
+interface LoadedAutopilotTarget {
+  path: string;
+  state: Record<string, unknown>;
+}
 
+interface SessionCancelCheck {
+  autopilotCancellation: boolean;
+  nonAutopilotCancellation: boolean;
+  enforceableAutopilot?: LoadedAutopilotTarget;
+}
+
+function resolveAutopilotTargetPath(directory: string, sessionId?: string): string {
+  return sessionId
+    ? resolveSessionStatePath('autopilot', sessionId, directory)
+    : resolveStatePath('autopilot', directory);
+}
+
+function readAutopilotTarget(directory: string, sessionId?: string): LoadedAutopilotTarget | null {
+  const path = resolveAutopilotTargetPath(directory, sessionId);
+  if (!readAutopilotState(directory, sessionId)) return null;
+  try {
+    const state = JSON.parse(readFileSync(path, 'utf-8'));
+    return state && typeof state === 'object' && !Array.isArray(state)
+      ? { path, state: state as Record<string, unknown> }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isCurrentAutopilotTarget(
+  state: Record<string, unknown>,
+  directory: string,
+  sessionId?: string,
+): boolean {
+  if (
+    state.active !== true ||
+    state.session_id !== sessionId ||
+    typeof state.project_path !== 'string' ||
+    isTerminalWorkflowModeState(state)
+  ) {
+    return false;
+  }
+  try {
+    return resolveToWorktreeRoot(state.project_path) === resolveToWorktreeRoot(directory);
+  } catch {
+    return false;
+  }
+}
+
+function isAuthenticatedAutopilotCancelSignal(
+  signal: Record<string, unknown>,
+  target: LoadedAutopilotTarget,
+): boolean {
+  if (signal.active !== true || signal.mode !== 'autopilot' || typeof signal.source !== 'string' || signal.source.length === 0) {
+    return false;
+  }
+  const now = Date.now();
+  const requestedAt = typeof signal.requested_at === 'string' ? new Date(signal.requested_at).getTime() : NaN;
+  const expiresAt = typeof signal.expires_at === 'string' ? new Date(signal.expires_at).getTime() : NaN;
+  if (
+    !Number.isFinite(requestedAt) ||
+    requestedAt > now + CANCEL_SIGNAL_CLOCK_SKEW_MS ||
+    now - requestedAt > CANCEL_SIGNAL_TTL_MS ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= requestedAt ||
+    expiresAt - requestedAt > CANCEL_SIGNAL_TTL_MS ||
+    expiresAt <= now
+  ) {
+    return false;
+  }
+  const digest = createHash('sha256').update(JSON.stringify(target.state)).digest('hex');
+  if (
+    typeof signal.target_state_sha256 !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(signal.target_state_sha256) ||
+    signal.target_state_sha256 !== digest
+  ) {
+    return false;
+  }
+  const workflowRunId = target.state.workflowRunId;
+  return typeof workflowRunId === 'string'
+    ? signal.target_workflow_run_id === workflowRunId
+    : signal.target_workflow_run_id === undefined;
+}
+
+function isSessionCancelInProgress(directory: string, sessionId?: string): SessionCancelCheck {
+  const autopilotPath = resolveAutopilotTargetPath(directory, sessionId);
+  let cancelSignalPath: string | undefined;
   if (sessionId) {
     try {
       cancelSignalPath = resolveSessionStatePath('cancel-signal', sessionId, directory);
     } catch {
-      // fall through to legacy path
+      // Fall through to the legacy path.
     }
   }
-
-  // Fallback: check legacy (non-session-scoped) cancel signal
   if (!cancelSignalPath) {
-    cancelSignalPath = join(getOmqRoot(directory), 'state', 'cancel-signal-state.json');
+    cancelSignalPath = join(getOmcRoot(directory), 'state', 'cancel-signal-state.json');
   }
 
-  if (!existsSync(cancelSignalPath)) {
-    return false;
-  }
+  const validateSignal = (target: LoadedAutopilotTarget | null): boolean => {
+    const locked = withStateFileMutationLock(cancelSignalPath, () => {
+      let raw: Record<string, unknown>;
+      try {
+        const parsed = JSON.parse(readFileSync(cancelSignalPath!, 'utf-8'));
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+        raw = parsed as Record<string, unknown>;
+      } catch {
+        return false;
+      }
+      const now = Date.now();
+      const requestedAt = typeof raw.requested_at === 'string' ? new Date(raw.requested_at).getTime() : NaN;
+      const expiresAt = typeof raw.expires_at === 'string' ? new Date(raw.expires_at).getTime() : NaN;
+      if (target) {
+        if (Number.isFinite(expiresAt) && expiresAt <= now && existsSync(cancelSignalPath!)) unlinkSync(cancelSignalPath!);
+        return isAuthenticatedAutopilotCancelSignal(raw, target);
+      }
+      // A requested-at-only signal belongs to Ralph/Ultrawork. It must never be
+      // interpreted as an unauthenticated autopilot cancellation.
+      if (
+        raw.mode === 'autopilot' ||
+        raw.target_state_sha256 !== undefined ||
+        raw.target_workflow_run_id !== undefined
+      ) {
+        return false;
+      }
+      const effectiveExpiry = Number.isFinite(expiresAt)
+        ? expiresAt
+        : Number.isFinite(requestedAt) ? requestedAt + CANCEL_SIGNAL_TTL_MS : NaN;
+      if (
+        !Number.isFinite(requestedAt) ||
+        requestedAt > now + CANCEL_SIGNAL_CLOCK_SKEW_MS ||
+        now - requestedAt > CANCEL_SIGNAL_TTL_MS ||
+        !Number.isFinite(effectiveExpiry) ||
+        effectiveExpiry <= requestedAt ||
+        effectiveExpiry - requestedAt > CANCEL_SIGNAL_TTL_MS ||
+        effectiveExpiry <= now
+      ) {
+        if (Number.isFinite(effectiveExpiry) && effectiveExpiry <= now && existsSync(cancelSignalPath!)) unlinkSync(cancelSignalPath!);
+        return false;
+      }
+      return true;
+    }, target !== null);
+    return locked.acquired && locked.value === true;
+  };
 
-  try {
-    const raw = JSON.parse(readFileSync(cancelSignalPath, 'utf-8')) as {
-      requested_at?: string;
-      expires_at?: string;
-    };
-
-    const now = Date.now();
-    const expiresAt = raw.expires_at ? new Date(raw.expires_at).getTime() : NaN;
-    const requestedAt = raw.requested_at ? new Date(raw.requested_at).getTime() : NaN;
-    const fallbackExpiry = Number.isFinite(requestedAt) ? requestedAt + CANCEL_SIGNAL_TTL_MS : NaN;
-    const effectiveExpiry = Number.isFinite(expiresAt) ? expiresAt : fallbackExpiry;
-
-    if (!Number.isFinite(effectiveExpiry) || effectiveExpiry <= now) {
-      unlinkSync(cancelSignalPath);
-      return false;
+  // A target-bearing signal must hold both locks. On runtimes without flock,
+  // requested-at-only Ralph/Ultrawork cancellation may proceed only after
+  // canonical discovery proves this session has no enforceable autopilot state.
+  const locked = withStateFileMutationLock(autopilotPath, () => {
+    const current = readAutopilotTarget(directory, sessionId);
+    if (!current || !isCurrentAutopilotTarget(current.state, directory, sessionId)) {
+      return { autopilotCancellation: false, nonAutopilotCancellation: validateSignal(null) };
     }
-
-    return true;
-  } catch {
-    return false;
+    // Named integrity failures deliberately fail closed so checkAutopilot()
+    // can propagate its diagnostic instead of a forged cancel hiding it.
+    if (hasNamedWorkflowMarkers(current.state) && !isEnforceableNamedAutopilotState(current.state, directory, sessionId)) {
+      return { autopilotCancellation: false, nonAutopilotCancellation: false };
+    }
+    return {
+      autopilotCancellation: validateSignal(current),
+      nonAutopilotCancellation: false,
+      enforceableAutopilot: current,
+    };
+  }, true);
+  if (locked.acquired && locked.value) return locked.value;
+  if (namedWorkflowRuntimeSupported()) {
+    return { autopilotCancellation: false, nonAutopilotCancellation: false };
   }
+
+  const current = readAutopilotTarget(directory, sessionId);
+  if (current && isCurrentAutopilotTarget(current.state, directory, sessionId)) {
+    return { autopilotCancellation: false, nonAutopilotCancellation: false, enforceableAutopilot: current };
+  }
+  return { autopilotCancellation: false, nonAutopilotCancellation: validateSignal(null) };
 }
 
 /**
@@ -203,7 +373,7 @@ function isFreshTimestamp(value: unknown, ttlMs = PENDING_ASYNC_STATE_STALE_MS):
 
 function hasPendingBackgroundTask(directory: string, sessionId?: string): boolean {
   try {
-    const stateRoot = join(getOmqRoot(directory), 'state');
+    const stateRoot = join(getOmcRoot(directory), 'state');
     const hudPath = sessionId
       ? join(stateRoot, 'sessions', sessionId, 'hud-state.json')
       : join(stateRoot, 'hud-state.json');
@@ -225,7 +395,7 @@ function hasPendingBackgroundTask(directory: string, sessionId?: string): boolea
 }
 
 function readPendingWakeupState(directory: string, sessionId?: string): Array<Record<string, unknown>> {
-  const stateRoot = join(getOmqRoot(directory), 'state');
+  const stateRoot = join(getOmcRoot(directory), 'state');
   const dirs = sessionId
     ? [join(stateRoot, 'sessions', sessionId), stateRoot]
     : [stateRoot];
@@ -346,7 +516,7 @@ export function hasPendingOwnedAsyncWork(directory: string, sessionId?: string):
  * Returns null if file doesn't exist or error is stale (>60 seconds old).
  */
 export function readLastToolError(directory: string): ToolErrorState | null {
-  const stateDir = join(getOmqRoot(directory), 'state');
+  const stateDir = join(getOmcRoot(directory), 'state');
   const errorPath = join(stateDir, 'last-tool-error.json');
 
   try {
@@ -381,7 +551,7 @@ export function readLastToolError(directory: string): ToolErrorState | null {
  * Clear tool error state file atomically.
  */
 export function clearToolErrorState(directory: string): void {
-  const stateDir = join(getOmqRoot(directory), 'state');
+  const stateDir = join(getOmcRoot(directory), 'state');
   const errorPath = join(stateDir, 'last-tool-error.json');
 
   try {
@@ -454,11 +624,11 @@ export function resetTodoContinuationAttempts(sessionId: string): void {
 }
 
 /**
- * Read the session-idle notification cooldown in seconds from global OMQ config.
+ * Read the session-idle notification cooldown in seconds from global OMC config.
  * Default: 60 seconds. 0 = disabled (no cooldown).
  */
 export function getIdleNotificationCooldownSeconds(): number {
-  for (const configPath of getGlobalOmqConfigCandidates('config.json')) {
+  for (const configPath of getGlobalOmcConfigCandidates('config.json')) {
     try {
       if (!existsSync(configPath)) continue;
       const config = JSON.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
@@ -875,7 +1045,7 @@ function checkArchitectApprovalInTranscript(
   sessionId: string,
   verificationState?: Pick<VerificationState, 'request_id' | 'story_id' | 'critic_mode'>
 ): boolean {
-  const claudeDir = getQoderConfigDir();
+  const claudeDir = getClaudeConfigDir();
   const possiblePaths = [join(claudeDir, 'sessions', sessionId, 'messages.json')];
 
   for (const transcriptPath of possiblePaths) {
@@ -899,7 +1069,7 @@ function checkArchitectApprovalInTranscript(
  * Check for architect rejection in session transcript
  */
 function checkArchitectRejectionInTranscript(sessionId: string): { rejected: boolean; feedback: string } {
-  const claudeDir = getQoderConfigDir();
+  const claudeDir = getClaudeConfigDir();
   const possiblePaths = [
     join(claudeDir, 'sessions', sessionId, 'transcript.md'),
     join(claudeDir, 'sessions', sessionId, 'messages.json'),
@@ -933,7 +1103,9 @@ async function checkRalphLoop(
 ): Promise<PersistentModeResult | null> {
   const workingDir = resolveToWorktreeRoot(directory);
   const state = readRalphState(workingDir, sessionId);
-  const ralphStatePath = resolveSessionStatePath('ralph', sessionId || getProcessSessionId(), workingDir);
+  const ralphStatePath = sessionId
+    ? resolveSessionStatePath('ralph', sessionId, workingDir)
+    : resolveStatePath('ralph', workingDir);
 
   if (!state || !state.active || isStaleState(state)) {
     return null;
@@ -1031,6 +1203,25 @@ async function checkRalphLoop(
   let verificationState = readVerificationState(workingDir, sessionId);
 
   if (verificationState?.pending) {
+    const prdStatus = getPrdCompletionStatus(workingDir, sessionId);
+    const verifiedStory = verificationState.verification_scope === 'story' && verificationState.story_id
+      ? getStory(workingDir, verificationState.story_id, sessionId)
+      : undefined;
+    const staleVerification = verificationState.verification_scope === 'story'
+      ? !verifiedStory?.passes || verifiedStory.architectVerified === true
+      : prdStatus.hasPrd && !prdStatus.allComplete;
+
+    if (staleVerification) {
+      clearVerificationState(workingDir, sessionId);
+      const refreshedState = readRalphState(workingDir, sessionId);
+      if (refreshedState) {
+        refreshedState.current_story_id = prdStatus.nextStory?.id;
+        writeRalphState(workingDir, refreshedState, sessionId);
+      }
+      verificationState = null;
+    }
+
+    if (verificationState?.pending) {
     // Verification is in progress - check for architect's response
     if (sessionId) {
       // Check for architect approval
@@ -1089,6 +1280,7 @@ async function checkRalphLoop(
           };
         }
       }
+    }
     }
 
     if (verificationState?.pending) {
@@ -1175,7 +1367,7 @@ async function checkRalphLoop(
     writeRalphState(workingDir, state, sessionId);
     return {
       shouldBlock: true,
-      message: `[RALPH - HARD LIMIT] Reached hard max iterations (${hardMax}). Mode auto-disabled. Restart with /oh-my-qoder:ralph if needed.`,
+      message: `[RALPH - HARD LIMIT] Reached hard max iterations (${hardMax}). Mode auto-disabled. Restart with /oh-my-claudecode:ralph if needed.`,
       mode: 'ralph',
       metadata: { iteration: state.iteration, maxIterations: state.max_iterations }
     };
@@ -1209,7 +1401,7 @@ async function checkRalphLoop(
   const ralphContext = getRalphContext(workingDir, sessionId);
   const activePrdPath = prdStatus.hasPrd ? findPrdPath(workingDir, sessionId) : null;
   const prdInstruction = prdStatus.hasPrd
-    ? `2. Check ${activePrdPath ?? 'prd.json'} - verify the current story's acceptance criteria are met, then mark it passes: true. Are ALL stories complete?`
+    ? `2. Check ${activePrdPath ?? 'prd.json'} - verify the current story's acceptance criteria are met, then mark it passes: true. If implementation proves an acceptance criterion empirically false, record an evidence-backed amendment (replace or supersede it, retaining the original verbatim in the story's criterionAmendments ledger with reason, evidence, authority, and timestamp) instead of silently deleting the criterion or claiming it passes. Are ALL stories complete?`
     : `2. Check your todo list - are ALL items marked complete?`;
 
   const continuationPrompt = `<ralph-continuation>
@@ -1222,7 +1414,7 @@ CRITICAL INSTRUCTIONS:
 1. Review your progress and the original task
 ${prdInstruction}
 3. Continue from where you left off
-4. When FULLY complete (after ${state.critic_mode === 'codex' ? 'Codex critic' : state.critic_mode === 'critic' ? 'Critic' : 'Architect'} verification), run \`/oh-my-qoder:cancel\` to cleanly exit and clean up state files. If cancel fails, retry with \`/oh-my-qoder:cancel --force\`.
+4. When FULLY complete (after ${state.critic_mode === 'codex' ? 'Codex critic' : state.critic_mode === 'critic' ? 'Critic' : 'Architect'} verification), run \`/oh-my-claudecode:cancel\` to cleanly exit and clean up state files. If cancel fails, retry with \`/oh-my-claudecode:cancel --force\`.
 5. Do NOT stop until the task is truly done
 
 ${newState.prompt ? `Original task: ${truncatePromptForEcho(newState.prompt)}` : ''}
@@ -1256,8 +1448,8 @@ interface StopBreakerState {
 
 function readStopBreaker(directory: string, name: string, sessionId?: string, ttlMs?: number): number {
   const stateDir = sessionId
-    ? join(getOmqRoot(directory), 'state', 'sessions', sessionId)
-    : join(getOmqRoot(directory), 'state');
+    ? join(getOmcRoot(directory), 'state', 'sessions', sessionId)
+    : join(getOmcRoot(directory), 'state');
   const breakerPath = join(stateDir, `${name}-stop-breaker.json`);
 
   try {
@@ -1278,8 +1470,8 @@ function readStopBreaker(directory: string, name: string, sessionId?: string, tt
 
 function writeStopBreaker(directory: string, name: string, count: number, sessionId?: string): void {
   const stateDir = sessionId
-    ? join(getOmqRoot(directory), 'state', 'sessions', sessionId)
-    : join(getOmqRoot(directory), 'state');
+    ? join(getOmcRoot(directory), 'state', 'sessions', sessionId)
+    : join(getOmcRoot(directory), 'state');
 
   try {
     mkdirSync(stateDir, { recursive: true });
@@ -1289,6 +1481,177 @@ function writeStopBreaker(directory: string, name: string, count: number, sessio
   } catch {
     // Ignore write errors — fail-open
   }
+}
+
+// ---------------------------------------------------------------------------
+// Thinking-only streak guard (issue #3280)
+//
+// A persistent mode (ralph/autopilot/team/ralplan/ultrawork/…) re-injects a
+// continuation prompt on every Stop while the mode is active. If the agent
+// answers each continuation with only thinking blocks and never a tool_use,
+// no work happens but tokens keep burning. Bound that failure: count
+// consecutive thinking-only assistant turns and release the stop once the
+// streak hits a conservative threshold. Any tool_use turn resets the streak,
+// and every read/parse path fails open (keep enforcing) so a flaky transcript
+// never short-circuits a healthy persistent mode.
+// ---------------------------------------------------------------------------
+
+const THINKING_ONLY_STREAK_BREAKER = 'thinking-only-streak';
+const THINKING_ONLY_STREAK_MAX = 3;
+const THINKING_ONLY_STREAK_TTL_MS = 5 * 60 * 1000; // 5 min
+const THINKING_ONLY_STREAK_BAILOUT_MESSAGE =
+  `[PERSISTENT MODE PAUSED - NO TOOL PROGRESS] The last ${THINKING_ONLY_STREAK_MAX} assistant turns ` +
+  'produced only thinking with no tool calls, so the persistent-mode stop guard is releasing this ' +
+  'stop to avoid an infinite loop. Resume manually with a concrete next action (run a tool/command) ' +
+  'or /cancel the active mode.';
+
+type ThinkingOnlyClassification = 'tool_use' | 'thinking_only' | 'indeterminate';
+
+/**
+ * Does a user-role transcript record carry a tool_result block? A tool_result
+ * only exists because the assistant invoked a tool earlier in the same turn, so
+ * its presence proves the most recent assistant turn made tool progress.
+ */
+function userRecordHasToolResult(content: unknown): boolean {
+  if (!Array.isArray(content)) return false;
+  return content.some(
+    (block) => (block as { type?: unknown } | null)?.type === 'tool_result',
+  );
+}
+
+/**
+ * Classify the most recent assistant *turn* in a transcript as making tool
+ * progress, being thinking-only, or indeterminate. A turn spans every assistant
+ * record (and interleaved tool_result records) back to the preceding real user
+ * message, so a productive turn whose final record is plain text — tool_use
+ * earlier, trailing text before stop — still classifies as tool_use rather than
+ * leaking through as indeterminate.
+ *
+ * Reads only the bounded transcript tail (never the whole file) and treats any
+ * unreadable/ambiguous shape as indeterminate so callers fail open.
+ */
+function classifyLastAssistantTurn(transcriptPath: string): ThinkingOnlyClassification {
+  let lines: string[];
+  try {
+    lines = readTranscriptTailLines(transcriptPath);
+  } catch {
+    return 'indeterminate';
+  }
+
+  let sawAssistant = false;
+  let hasThinking = false;
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index]?.trim();
+    if (!line) continue;
+
+    let parsed: { type?: string; message?: { role?: string; content?: unknown } };
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      // Skip non-JSON/truncated lines and keep scanning backward.
+      continue;
+    }
+
+    const role = parsed?.message?.role;
+    const isAssistant = parsed?.type === 'assistant' || role === 'assistant';
+    if (isAssistant) {
+      sawAssistant = true;
+      const content = parsed.message?.content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          const blockType = (block as { type?: unknown } | null)?.type;
+          if (blockType === 'tool_use') {
+            // Any tool_use anywhere in the most recent turn is real progress.
+            return 'tool_use';
+          }
+          if (blockType === 'thinking' || blockType === 'redacted_thinking') {
+            hasThinking = true;
+          }
+        }
+      }
+      // Non-array (string/missing) content carries no structured block; keep
+      // scanning the rest of the turn rather than bailing out early.
+      continue;
+    }
+
+    const isUser = parsed?.type === 'user' || role === 'user';
+    if (isUser) {
+      // A tool_result confirms the turn invoked a tool, so it made progress.
+      if (userRecordHasToolResult(parsed.message?.content)) {
+        return 'tool_use';
+      }
+      // A real user message marks the start of the most recent assistant turn.
+      break;
+    }
+
+    // Other record types (system/summary/…) are turn-neutral; keep scanning.
+  }
+
+  if (!sawAssistant) return 'indeterminate';
+  return hasThinking ? 'thinking_only' : 'indeterminate';
+}
+
+/**
+ * Bound persistent-mode continuation loops that make no tool progress.
+ *
+ * Only acts when a mode would otherwise block the stop. A tool_use turn resets
+ * the streak; a thinking-only turn increments it and, once it reaches
+ * THINKING_ONLY_STREAK_MAX, releases the stop (and clears the counter) instead
+ * of re-injecting another continuation prompt. Indeterminate/unreadable
+ * transcripts leave the streak untouched and keep the original blocking result.
+ */
+function applyThinkingOnlyStreakGuard(
+  result: PersistentModeResult,
+  workingDir: string,
+  sessionId?: string,
+  stopContext?: StopContext,
+): PersistentModeResult {
+  // Non-blocking results already let the session stop — no loop to bound.
+  if (!result.shouldBlock) return result;
+
+  const transcriptPath = stopContext?.transcript_path ?? stopContext?.transcriptPath;
+  if (!transcriptPath || !existsSync(transcriptPath)) {
+    return result; // fail open: cannot classify without a transcript
+  }
+
+  let classification: ThinkingOnlyClassification;
+  try {
+    classification = classifyLastAssistantTurn(transcriptPath);
+  } catch {
+    return result; // fail open on any unexpected read/parse error
+  }
+
+  if (classification === 'tool_use') {
+    // Real progress — reset the streak and keep enforcing.
+    writeStopBreaker(workingDir, THINKING_ONLY_STREAK_BREAKER, 0, sessionId);
+    return result;
+  }
+
+  if (classification === 'indeterminate') {
+    // Cannot confirm a thinking-only stall — keep enforcing, leave streak as is.
+    return result;
+  }
+
+  const streak = readStopBreaker(
+    workingDir,
+    THINKING_ONLY_STREAK_BREAKER,
+    sessionId,
+    THINKING_ONLY_STREAK_TTL_MS,
+  ) + 1;
+
+  if (streak >= THINKING_ONLY_STREAK_MAX) {
+    // Bail out: release the stop and clear the counter for a clean restart.
+    writeStopBreaker(workingDir, THINKING_ONLY_STREAK_BREAKER, 0, sessionId);
+    return {
+      shouldBlock: false,
+      message: THINKING_ONLY_STREAK_BAILOUT_MESSAGE,
+      mode: 'none',
+    };
+  }
+
+  writeStopBreaker(workingDir, THINKING_ONLY_STREAK_BREAKER, streak, sessionId);
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -1412,7 +1775,7 @@ async function checkTeamPipeline(
 
 The team pipeline is active in phase "${phase}". Continue working on the team workflow.
 Do not stop until the pipeline reaches a terminal state (complete/failed/cancelled).
-When done, run \`/oh-my-qoder:cancel\` to cleanly exit.
+When done, run \`/oh-my-claudecode:cancel\` to cleanly exit.
 
 </team-pipeline-continuation>
 
@@ -1482,8 +1845,18 @@ async function checkAutoresearch(
   cancelInProgress?: boolean
 ): Promise<PersistentModeResult | null> {
   const workingDir = resolveToWorktreeRoot(directory);
-  const stateSourceSessionId = sessionId;
-  const state = readModeState<AutoresearchStopState>('autoresearch', workingDir, sessionId);
+  let stateSourceSessionId = sessionId;
+  let state = readModeState<AutoresearchStopState>('autoresearch', workingDir, sessionId);
+
+  // Autoresearch predates session-scoped state files. Preserve strict sessioned reads
+  // first, then allow a narrow legacy/shared bridge only for matching or unbound state.
+  if (!state && sessionId) {
+    const legacyState = readModeState<AutoresearchStopState>('autoresearch', workingDir);
+    if (!legacyState?.session_id || legacyState.session_id === sessionId) {
+      state = legacyState;
+      stateSourceSessionId = undefined;
+    }
+  }
 
   const stateRecord = state as Record<string, unknown> | null;
   const hasTimestampFields = Boolean(
@@ -1649,7 +2022,7 @@ async function checkRalplan(
   // SubagentStop/post-tool-use bookkeeping lands after the stop event. Only
   // trust the bypass when the tracker itself was updated recently enough to
   // look live; otherwise fail closed and keep consensus enforcement active.
-  const activeAgents = getActiveAgentSnapshot(workingDir, sessionId);
+  const activeAgents = getActiveAgentSnapshot(workingDir);
   const activeAgentStateUpdatedAt = activeAgents.lastUpdatedAt ? new Date(activeAgents.lastUpdatedAt).getTime() : NaN;
   const hasFreshActiveAgentState =
     Number.isFinite(activeAgentStateUpdatedAt)
@@ -1694,7 +2067,7 @@ async function checkRalplan(
 The ralplan consensus workflow is active. Continue the Planner/Architect/Critic planning loop only.
 Ralplan is read-only/planning mode: do not implement, invoke execution skills, edit source, commit, push, or open PRs from this continuation.
 When consensus is reached, stop at a pending-approval handoff and require explicit user approval before execution.
-When done, run \`/oh-my-qoder:cancel\` to cleanly exit.
+When done, run \`/oh-my-claudecode:cancel\` to cleanly exit.
 
 </ralplan-continuation>
 
@@ -1760,7 +2133,7 @@ async function checkUltrawork(
     deactivateUltrawork(workingDir, sessionId);
     return {
       shouldBlock: true,
-      message: '[ULTRAWORK - HARD LIMIT] Reached hard max iterations (' + hardMax + '). Mode auto-disabled. Restart with /oh-my-qoder:ultrawork if needed.',
+      message: '[ULTRAWORK - HARD LIMIT] Reached hard max iterations (' + hardMax + '). Mode auto-disabled. Restart with /oh-my-claudecode:ultrawork if needed.',
       mode: 'ultrawork',
       metadata: { reinforcementCount: state.reinforcement_count }
     };
@@ -1856,10 +2229,30 @@ ${TODO_CONTINUATION_PROMPT}
 }
 
 /**
- * Main persistent mode checker
- * Checks all persistent modes in priority order and returns appropriate action
+ * Main persistent mode checker.
+ * Resolves which mode (if any) should block, then applies the thinking-only
+ * streak guard so an active mode cannot loop forever re-injecting continuation
+ * prompts while the agent only emits thinking blocks and never tool_use (#3280).
  */
 export async function checkPersistentModes(
+  sessionId?: string,
+  directory?: string,
+  stopContext?: StopContext  // NEW: from todo-continuation types
+): Promise<PersistentModeResult> {
+  const result = await resolvePersistentModeBlock(sessionId, directory, stopContext);
+  return applyThinkingOnlyStreakGuard(
+    result,
+    resolveToWorktreeRoot(directory),
+    sessionId,
+    stopContext,
+  );
+}
+
+/**
+ * Resolve which persistent mode (if any) should block this stop event.
+ * Checks all persistent modes in priority order and returns appropriate action.
+ */
+async function resolvePersistentModeBlock(
   sessionId?: string,
   directory?: string,
   stopContext?: StopContext  // NEW: from todo-continuation types
@@ -1867,17 +2260,17 @@ export async function checkPersistentModes(
   const workingDir = resolveToWorktreeRoot(directory);
 
   // Hard bypass invariants: never enforce stop continuation under any of these
-  // environment-level kill switches. bridge.ts also guards DISABLE_OMQ and
-  // OMQ_SKIP_HOOKS at hook-entry, but we re-check here so direct callers and
+  // environment-level kill switches. bridge.ts also guards DISABLE_OMC and
+  // OMC_SKIP_HOOKS at hook-entry, but we re-check here so direct callers and
   // nested helpers (team workers, tests) observe the same contract.
   if (
-    process.env.DISABLE_OMQ === '1' ||
-    process.env.DISABLE_OMQ === 'true' ||
-    process.env.OMQ_TEAM_WORKER
+    process.env.DISABLE_OMC === '1' ||
+    process.env.DISABLE_OMC === 'true' ||
+    process.env.OMC_TEAM_WORKER
   ) {
     return { shouldBlock: false, message: '', mode: 'none' };
   }
-  const skipHooks = (process.env.OMQ_SKIP_HOOKS ?? '')
+  const skipHooks = (process.env.OMC_SKIP_HOOKS ?? '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
@@ -1893,8 +2286,8 @@ export async function checkPersistentModes(
   await reconcileTerminalWorkflowSlots(workingDir, sessionId);
 
   // CRITICAL: Never block context-limit/critical-context stops.
-  // Blocking these causes a deadlock where Qoder CLI cannot compact or exit.
-  // See: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/213
+  // Blocking these causes a deadlock where Claude Code cannot compact or exit.
+  // See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
   if (isCriticalContextStop(stopContext)) {
     return {
       shouldBlock: false,
@@ -1914,10 +2307,11 @@ export async function checkPersistentModes(
     };
   }
 
-  // Session-scoped cancel signal from state_clear during /cancel flow.
-  // Cache once and pass to sub-functions to avoid TOCTOU re-reads (issue #1058).
-  const cancelInProgress = isSessionCancelInProgress(workingDir, sessionId);
-  if (cancelInProgress) {
+  // Session-scoped cancel signals are authenticated against the current
+  // autopilot generation while its mutation lock is held.
+  const cancelCheck = isSessionCancelInProgress(workingDir, sessionId);
+  const cancelInProgress = cancelCheck.nonAutopilotCancellation;
+  if (cancelCheck.autopilotCancellation) {
     return {
       shouldBlock: false,
       message: '',
@@ -1935,10 +2329,10 @@ export async function checkPersistentModes(
   }
 
   // CRITICAL: Never block rate-limit stops.
-  // When the API returns 429 / quota-exhausted, Qoder CLI stops the session.
+  // When the API returns 429 / quota-exhausted, Claude Code stops the session.
   // Blocking these stops creates an infinite retry loop: the hook injects a
   // continuation prompt → Claude hits the rate limit again → stops again → loops.
-  // Fix for: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/777
+  // Fix for: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/777
   if (isRateLimitStop(stopContext)) {
     return {
       shouldBlock: false,
@@ -1972,7 +2366,7 @@ export async function checkPersistentModes(
     };
   }
 
-  // Oversized tool outputs can cause Qoder CLI to end the current turn after
+  // Oversized tool outputs can cause Claude Code to end the current turn after
   // redirecting the payload to a `tool-results/*.txt` file pointer. That stop is
   // not a real idle/stall signal: injecting a visible Ralph/Ultrawork/todo
   // continuation banner immediately after the redirect spams the transcript
@@ -2048,14 +2442,18 @@ export async function checkPersistentModes(
   const runAutopilotPriority = async (): Promise<PersistentModeResult | null> => {
     if (
       tombstonedWorkflowModes.has('autopilot') ||
-      !isAutopilotActive(workingDir, sessionId)
+      !(cancelCheck.enforceableAutopilot || isAutopilotActive(workingDir, sessionId))
     ) {
       return null;
     }
     const autopilotResult = await checkAutopilot(sessionId, workingDir);
-    if (!autopilotResult?.shouldBlock) return null;
+    if (!autopilotResult) return null;
+    const isNamedDiagnostic =
+      autopilotResult.message === 'workflow_descriptor_integrity_failed' ||
+      autopilotResult.message.startsWith('[AUTOPILOT NAMED WORKFLOW UNSUPPORTED]');
+    if (!autopilotResult.shouldBlock && !isNamedDiagnostic) return null;
     return {
-      shouldBlock: true,
+      shouldBlock: autopilotResult.shouldBlock,
       message: autopilotResult.message,
       mode: 'autopilot',
       metadata: {
@@ -2077,6 +2475,20 @@ export async function checkPersistentModes(
     if (tombstonedWorkflowModes.has('ralph') || !isModeActive('ralph', workingDir, sessionId)) return null;
     return checkRalphLoop(sessionId, workingDir, cancelInProgress);
   };
+
+  if (cancelInProgress) {
+    // Requested-at-only signals may cancel Ralph/Ultrawork, never autopilot.
+    // Recheck autopilot after signal consumption so an active replacement wins.
+    const autopilotResult = await runAutopilotPriority();
+    // Terminal named diagnostics are not enforceable autopilot targets and
+    // must not alter the established generic-cancellation result contract.
+    if (autopilotResult?.shouldBlock) return autopilotResult;
+    return {
+      shouldBlock: false,
+      message: '',
+      mode: 'none',
+    };
+  }
 
   if (autopilotPriorityFirst) {
     const autopilotResult = await runAutopilotPriority();
@@ -2157,7 +2569,7 @@ export async function checkPersistentModes(
 }
 
 /**
- * Create hook output for Qoder CLI.
+ * Create hook output for Claude Code.
  * Returns `continue: false` when `shouldBlock` is true to hard-block the stop event.
  * Returns `continue: true` for terminal states, escape hatches, and errors.
  */

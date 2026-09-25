@@ -1,5 +1,5 @@
 /**
- * OMQ HUD - Model Element
+ * OMC HUD - Model Element
  *
  * Renders the current model name.
  */
@@ -10,19 +10,30 @@ import { DEFAULT_HUD_LABELS, type HudLabels, type ModelFormat } from '../types.j
 
 /**
  * Extract version from a model ID string.
- * E.g., 'qwen-max-0428' -> null (no embedded version)
- *       'qwen-plus-2025-04-28' -> null
- *       'qwen-turbo-latest' -> null
- *       'qwen-max-v2' -> '2'
- *       'qwen-plus 2.5' -> '2.5'
+ * E.g., 'claude-opus-4-8-20260528' -> '4.8'
+ *       'claude-sonnet-4-6-20260217' -> '4.6'
+ *       'claude-haiku-4-5-20251001' -> '4.5'
+ *       'claude-3-5-sonnet-20241022' -> '3.5'
+ *       'claude-3-opus-20240229' -> '3'
+ *       'claude-sonnet-5' -> '5'
  */
 function extractVersion(modelId: string): string | null {
-  // Match hyphenated version patterns like max-v2, plus-v3
-  const versionMatch = modelId.match(/(?:max|plus|turbo)-v(\d+(?:\.\d+)?)/i);
-  if (versionMatch) return versionMatch[1];
+  // Match hyphenated ID patterns like opus-4-6, sonnet-4-5, haiku-4-5
+  const idMatch = modelId.match(/(?:opus|sonnet|haiku)-(\d+)-(\d+)/i);
+  if (idMatch) return `${idMatch[1]}.${idMatch[2]}`;
 
-  // Match display name patterns like "Max 2.5", "Plus 3.0"
-  const displayMatch = modelId.match(/(?:max|plus|turbo)\s+(\d+(?:\.\d+)?)/i);
+  // Match Claude family IDs with a single trailing numeric version like claude-sonnet-5
+  const singleSegmentIdMatch = modelId.match(/(?:^|[.-])claude-(?:opus|sonnet|haiku)-(\d+)$/i);
+  if (singleSegmentIdMatch) return singleSegmentIdMatch[1];
+
+  // Match legacy raw ID patterns like claude-3-5-sonnet-20241022 and claude-3-opus-20240229
+  const legacyIdMatch = modelId.match(/claude-(\d+)(?:-(\d+))?-(?:opus|sonnet|haiku)/i);
+  if (legacyIdMatch) {
+    return legacyIdMatch[2] ? `${legacyIdMatch[1]}.${legacyIdMatch[2]}` : legacyIdMatch[1];
+  }
+
+  // Match display name patterns like "Sonnet 4.5", "Opus 4.8"
+  const displayMatch = modelId.match(/(?:opus|sonnet|haiku)\s+(\d+(?:\.\d+)?)/i);
   if (displayMatch) return displayMatch[1];
 
   return null;
@@ -42,9 +53,9 @@ export function formatModelName(modelId: string | null | undefined, format: Mode
   const id = modelId.toLowerCase();
   let shortName: string | null = null;
 
-  if (id.includes('qwen-max') || id.includes('qwen_max')) shortName = 'Max';
-  else if (id.includes('qwen-plus') || id.includes('qwen_plus')) shortName = 'Plus';
-  else if (id.includes('qwen-turbo') || id.includes('qwen_turbo')) shortName = 'Turbo';
+  if (id.includes('opus')) shortName = 'Opus';
+  else if (id.includes('sonnet')) shortName = 'Sonnet';
+  else if (id.includes('haiku')) shortName = 'Haiku';
 
   if (!shortName) {
     // Return original if not recognized (CJK-aware truncation)

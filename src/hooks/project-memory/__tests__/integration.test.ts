@@ -11,19 +11,19 @@ import {
   registerProjectMemoryContext,
   clearProjectMemorySession,
 } from "../index.js";
-import { loadProjectMemory, getMemoryPath } from "../storage.js";
+import { loadProjectMemory, saveProjectMemory, getMemoryPath } from "../storage.js";
 import { learnFromToolOutput } from "../learner.js";
 
 describe("Project Memory Integration", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    delete process.env.OMQ_STATE_DIR;
+    delete process.env.OMC_STATE_DIR;
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "integration-test-"));
   });
 
   afterEach(async () => {
-    delete process.env.OMQ_STATE_DIR;
+    delete process.env.OMC_STATE_DIR;
     contextCollector.clear("test-session-1");
     contextCollector.clear("test-session-2");
     contextCollector.clear("test-session-3a");
@@ -70,20 +70,20 @@ describe("Project Memory Integration", () => {
       expect(memory?.techStack.packageManager).toBe("pnpm");
       expect(memory?.build.buildCommand).toBe("pnpm build");
 
-      const omqDir = path.join(tempDir, ".omq");
-      const omqStat = await fs.stat(omqDir);
-      expect(omqStat.isDirectory()).toBe(true);
+      const omcDir = path.join(tempDir, ".omc");
+      const omcStat = await fs.stat(omcDir);
+      expect(omcStat.isDirectory()).toBe(true);
 
       const pending = contextCollector.getPending(sessionId);
       expect(pending.merged).toContain("[Project Environment]");
     });
 
-    it("should persist to centralized state dir without creating local .omq when OMQ_STATE_DIR is set", async () => {
+    it("should persist to centralized state dir without creating local .omc when OMC_STATE_DIR is set", async () => {
       const stateDir = await fs.mkdtemp(
         path.join(os.tmpdir(), "integration-state-"),
       );
       try {
-        process.env.OMQ_STATE_DIR = stateDir;
+        process.env.OMC_STATE_DIR = stateDir;
 
         const packageJson = {
           name: "test-app",
@@ -107,10 +107,10 @@ describe("Project Memory Integration", () => {
         const content = await fs.readFile(memoryPath, "utf-8");
         expect(JSON.parse(content).projectRoot).toBe(tempDir);
         await expect(
-          fs.access(path.join(tempDir, ".omq", "project-memory.json")),
+          fs.access(path.join(tempDir, ".omc", "project-memory.json")),
         ).rejects.toThrow();
       } finally {
-        delete process.env.OMQ_STATE_DIR;
+        delete process.env.OMC_STATE_DIR;
         contextCollector.clear("test-session-centralized");
         await fs.rm(stateDir, { recursive: true, force: true });
       }
@@ -427,7 +427,7 @@ describe("Project Memory Integration", () => {
   });
 
   describe("End-to-end PostToolUse learning flow", () => {
-    it("should learn build command from Bash execution", async () => {
+    it("should not learn build or test commands from Bash execution history", async () => {
       const packageJson = { name: "test", scripts: {} };
       await fs.writeFile(
         path.join(tempDir, "package.json"),
@@ -439,6 +439,7 @@ describe("Project Memory Integration", () => {
 
       let memory = await loadProjectMemory(tempDir);
       expect(memory?.build.buildCommand).toBeNull();
+      expect(memory?.build.testCommand).toBeNull();
 
       await learnFromToolOutput(
         "Bash",
@@ -446,9 +447,26 @@ describe("Project Memory Integration", () => {
         "",
         tempDir,
       );
+      await learnFromToolOutput("Bash", { command: "npm test" }, "", tempDir);
 
       memory = await loadProjectMemory(tempDir);
-      expect(memory?.build.buildCommand).toBe("npm run build");
+      expect(memory?.build.buildCommand).toBeNull();
+      expect(memory?.build.testCommand).toBeNull();
+
+      memory!.build.buildCommand = "trusted build";
+      memory!.build.testCommand = "trusted test";
+      await saveProjectMemory(tempDir, memory!);
+
+      await learnFromToolOutput(
+        "Bash",
+        { command: "npm run build && npm test" },
+        "",
+        tempDir,
+      );
+
+      memory = await loadProjectMemory(tempDir);
+      expect(memory?.build.buildCommand).toBe("trusted build");
+      expect(memory?.build.testCommand).toBe("trusted test");
     });
 
     it("should learn environment hints from command output", async () => {

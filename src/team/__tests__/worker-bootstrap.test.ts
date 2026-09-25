@@ -4,11 +4,12 @@ import {
   generatePromptModeStartupPrompt,
   generateTriggerMessage,
   generateWorkerOverlay,
+  renderRecoveryContinuationInstruction,
   getWorkerEnv,
 } from '../worker-bootstrap.js';
 
 describe('worker-bootstrap', () => {
-  const originalPluginRoot = process.env.QODER_PLUGIN_ROOT;
+  const originalPluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
   const originalPath = process.env.PATH;
   const baseParams = {
     teamName: 'test-team',
@@ -22,9 +23,9 @@ describe('worker-bootstrap', () => {
 
   beforeEach(() => {
     if (originalPluginRoot === undefined) {
-      delete process.env.QODER_PLUGIN_ROOT;
+      delete process.env.CLAUDE_PLUGIN_ROOT;
     } else {
-      process.env.QODER_PLUGIN_ROOT = originalPluginRoot;
+      process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
     }
     if (originalPath === undefined) {
       delete process.env.PATH;
@@ -35,9 +36,9 @@ describe('worker-bootstrap', () => {
 
   afterEach(() => {
     if (originalPluginRoot === undefined) {
-      delete process.env.QODER_PLUGIN_ROOT;
+      delete process.env.CLAUDE_PLUGIN_ROOT;
     } else {
-      process.env.QODER_PLUGIN_ROOT = originalPluginRoot;
+      process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
     }
     if (originalPath === undefined) {
       delete process.env.PATH;
@@ -48,10 +49,10 @@ describe('worker-bootstrap', () => {
 
   describe('generateWorkerOverlay', () => {
     it('uses urgent trigger wording that requires immediate work and concrete progress', () => {
-      expect(generateTriggerMessage('test-team', 'worker-1')).toContain('.omq/state/team/test-team/workers/worker-1/inbox.md');
+      expect(generateTriggerMessage('test-team', 'worker-1')).toContain('.omc/state/team/test-team/workers/worker-1/inbox.md');
       expect(generateTriggerMessage('test-team', 'worker-1')).toContain('execute now');
       expect(generateTriggerMessage('test-team', 'worker-1')).toContain('concrete progress');
-      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2)).toContain('.omq/state/team/test-team/mailbox/worker-1.json');
+      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2)).toContain('.omc/state/team/test-team/mailbox/worker-1.json');
       expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2)).toContain('act now');
       expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2)).toContain('concrete progress');
     });
@@ -66,32 +67,34 @@ describe('worker-bootstrap', () => {
     });
 
     it('supports team-root placeholders for worktree-backed trigger paths', () => {
-      expect(generateTriggerMessage('test-team', 'worker-1', '$OMQ_TEAM_STATE_ROOT'))
-        .toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
-      expect(generateTriggerMessage('test-team', 'worker-1', '$OMQ_TEAM_STATE_ROOT'))
-        .not.toContain('$OMQ_TEAM_STATE_ROOT/team/test-team');
-      expect(generateTriggerMessage('test-team', 'worker-1', '$OMQ_TEAM_STATE_ROOT'))
+      expect(generateTriggerMessage('test-team', 'worker-1', '$OMC_TEAM_STATE_ROOT'))
+        .toContain('$OMC_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
+      expect(generateTriggerMessage('test-team', 'worker-1', '$OMC_TEAM_STATE_ROOT'))
+        .not.toContain('$OMC_TEAM_STATE_ROOT/team/test-team');
+      expect(generateTriggerMessage('test-team', 'worker-1', '$OMC_TEAM_STATE_ROOT'))
         .toContain('work now');
-      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMQ_TEAM_STATE_ROOT'))
-        .toContain('$OMQ_TEAM_STATE_ROOT/mailbox/worker-1.json');
-      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMQ_TEAM_STATE_ROOT'))
-        .not.toContain('$OMQ_TEAM_STATE_ROOT/team/test-team');
-      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMQ_TEAM_STATE_ROOT'))
+      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMC_TEAM_STATE_ROOT'))
+        .toContain('$OMC_TEAM_STATE_ROOT/mailbox/worker-1.json');
+      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMC_TEAM_STATE_ROOT'))
+        .not.toContain('$OMC_TEAM_STATE_ROOT/team/test-team');
+      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMC_TEAM_STATE_ROOT'))
         .toContain('report progress');
     });
 
     it('renders canonical team-root paths in worktree overlays', () => {
-      const overlay = generateWorkerOverlay({ ...baseParams, instructionStateRoot: '$OMQ_TEAM_STATE_ROOT' });
-      expect(overlay).toContain('touch $OMQ_TEAM_STATE_ROOT/workers/worker-1/.ready');
-      expect(overlay).toContain('Read $OMQ_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
-      expect(overlay).toContain('Write to $OMQ_TEAM_STATE_ROOT/workers/worker-1/status.json');
-      expect(overlay).toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-1/shutdown-ack.json');
-      expect(overlay).not.toContain('$OMQ_TEAM_STATE_ROOT/team/test-team');
+      const overlay = generateWorkerOverlay({ ...baseParams, instructionStateRoot: '$OMC_TEAM_STATE_ROOT' });
+      expect(overlay).toContain('touch $OMC_TEAM_STATE_ROOT/workers/worker-1/.ready');
+      expect(overlay).toContain('Read $OMC_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
+      expect(overlay).toContain('Write to $OMC_TEAM_STATE_ROOT/workers/worker-1/status.json');
+      expect(overlay).toContain('$OMC_TEAM_STATE_ROOT/workers/worker-1/shutdown-ack.json');
+      expect(overlay).toContain('OMC_WORKER_LAUNCH_ATTEMPT_ID');
+      expect(overlay).toContain('"launch_attempt_id": "<exact OMC_WORKER_LAUNCH_ATTEMPT_ID>"');
+      expect(overlay).not.toContain('$OMC_TEAM_STATE_ROOT/team/test-team');
     });
 
     it('uses a short prompt-mode startup pointer instead of lifecycle/task text', () => {
       const prompt = generatePromptModeStartupPrompt('test-team', 'worker-1');
-      expect(prompt).toContain('.omq/state/team/test-team/workers/worker-1/inbox.md');
+      expect(prompt).toContain('.omc/state/team/test-team/workers/worker-1/inbox.md');
       expect(prompt).toContain('Open');
       expect(prompt).not.toContain('claim-task');
       expect(prompt).not.toContain('transition-task-status');
@@ -173,15 +176,23 @@ describe('worker-bootstrap', () => {
       expect(overlay).not.toContain('Read your task file at');
     });
 
-    it('renders plugin-safe CLI lifecycle examples when omq is unavailable in plugin installs', () => {
-      process.env.QODER_PLUGIN_ROOT = '/plugin-root';
+    it('renders required task versions in ordinary and adopted checkpoint commands', () => {
+      expect(generateWorkerOverlay(baseParams)).toContain('\\"task_version\\":<current_task_version>');
+      const recovery = renderRecoveryContinuationInstruction({ teamName: 'test-team', workerName: 'worker-1',
+        taskId: '1', taskVersion: 7, claimToken: 'claim-token', sequence: 4, resumePayload: { cursor: 3 } });
+      expect(recovery).toContain('\\"task_version\\":7');
+      expect(recovery).not.toContain('<current_task_version>');
+    });
+
+    it('renders plugin-safe CLI lifecycle examples when omc is unavailable in plugin installs', () => {
+      process.env.CLAUDE_PLUGIN_ROOT = '/plugin-root';
       process.env.PATH = '';
 
       const overlay = generateWorkerOverlay(baseParams);
 
-      expect(overlay).toContain('node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs team api read-task');
-      expect(overlay).toContain('node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs team api claim-task');
-      expect(overlay).toContain('node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs team api transition-task-status');
+      expect(overlay).toContain('node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs team api read-task');
+      expect(overlay).toContain('node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs team api claim-task');
+      expect(overlay).toContain('node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs team api transition-task-status');
     });
 
   });
@@ -189,9 +200,29 @@ describe('worker-bootstrap', () => {
   describe('getWorkerEnv', () => {
     it('returns correct env vars', () => {
       const env = getWorkerEnv('my-team', 'worker-2', 'gemini');
-      expect(env.OMQ_TEAM_WORKER).toBe('my-team/worker-2');
-      expect(env.OMQ_TEAM_NAME).toBe('my-team');
-      expect(env.OMQ_WORKER_AGENT_TYPE).toBe('gemini');
+      expect(env.OMC_TEAM_WORKER).toBe('my-team/worker-2');
+      expect(env.OMC_TEAM_NAME).toBe('my-team');
+      expect(env.OMC_WORKER_AGENT_TYPE).toBe('gemini');
+    });
+  });
+  describe('overlay control character safety', () => {
+    it('generated overlay rejects all disallowed control bytes (NUL, BEL, BS, etc.)', () => {
+      const overlay = generateWorkerOverlay(baseParams);
+      // Reject all C0 control characters except HT (\t=0x09), LF (\n=0x0a), CR (\r=0x0d).
+      // This catches NUL bytes and any other invisible control characters that could
+      // corrupt terminal rendering or Markdown parsing in the worker overlay.
+      for (let i = 0; i < overlay.length; i++) {
+        const code = overlay.charCodeAt(i);
+        if (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) {
+          throw new Error(`Overlay contains disallowed control character 0x${code.toString(16).padStart(2, '0')} at offset ${i}`);
+        }
+      }
+    });
+
+    it('overlay uses backtick-delimited metadata references instead of NUL bytes', () => {
+      const overlay = generateWorkerOverlay(baseParams);
+      expect(overlay).toContain('`OMC_WORKER_LAUNCH_ATTEMPT_ID`');
+      expect(overlay).toContain('`launch_attempt_id`');
     });
   });
 });

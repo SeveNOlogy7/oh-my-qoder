@@ -36,7 +36,7 @@ function runKeywordDetector(prompt: string, cwd: string, sessionId: string) {
     env: {
       ...process.env,
       NODE_ENV: 'test',
-      OMQ_SKIP_HOOKS: '',
+      OMC_SKIP_HOOKS: '',
     },
     timeout: 15000,
   }).trim();
@@ -52,7 +52,7 @@ function runKeywordDetector(prompt: string, cwd: string, sessionId: string) {
 }
 
 function stateFile(cwd: string, sessionId: string, name: string) {
-  return join(cwd, '.omq', 'state', 'sessions', sessionId, `${name}-state.json`);
+  return join(cwd, '.omc', 'state', 'sessions', sessionId, `${name}-state.json`);
 }
 
 describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
@@ -63,7 +63,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
     const sid = 'sess-bare-ralph';
     const prompt = [
       '[RALPH LOOP - ITERATION 3/100] Work is NOT done. Continue working.',
-      'When FULLY complete (after Architect verification), run /oh-my-qoder:cancel to cleanly exit ralph mode and clean up all state files. If cancel fails, retry with /oh-my-qoder:cancel --force.',
+      'When FULLY complete (after Architect verification), run /oh-my-claudecode:cancel to cleanly exit ralph mode and clean up all state files. If cancel fails, retry with /oh-my-claudecode:cancel --force.',
       'Task: keep iterating on ralph until tests pass',
     ].join('\n');
 
@@ -122,7 +122,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
     const prompt = [
       'Stop hook feedback:',
       '[RALPH LOOP - ITERATION 5/100] Work is NOT done.',
-      'When FULLY complete (after Architect verification), run /oh-my-qoder:cancel ...',
+      'When FULLY complete (after Architect verification), run /oh-my-claudecode:cancel ...',
       'Task: previous ralph task prompt',
     ].join('\n');
 
@@ -136,7 +136,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
     const cwd = makeCwd('kd-echo-real-invocation-');
     const sid = 'sess-real-ralph';
 
-    const output = runKeywordDetector('ralph로 이 문제 계속 고쳐주세요', cwd, sid);
+    const output = runKeywordDetector('/ralph 이 문제 계속 고쳐주세요', cwd, sid);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
 
     expect(output.continue).toBe(true);
@@ -146,7 +146,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
 
   // Regression for Codex automated review P1/P2 (third round): the previous
   // revision added standalone single-line strippers for `Task:\s`,
-  // `When FULLY complete`, and `run /oh-my-qoder:cancel`, which meant
+  // `When FULLY complete`, and `run /oh-my-claudecode:cancel`, which meant
   // a user's legitimate "Task: ralph로 이거 해줘" prompt would have its
   // only line removed before keyword dispatch. Continuation stripping must
   // happen ONLY in the context of an echo block header.
@@ -154,7 +154,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
     const cwd = makeCwd('kd-task-standalone-');
     const sid = 'sess-task-standalone';
 
-    const output = runKeywordDetector('Task: ralph로 이 문제 계속 고쳐주세요', cwd, sid);
+    const output = runKeywordDetector('Task: run ralph on 이 문제 계속 고쳐주세요', cwd, sid);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
 
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
@@ -177,7 +177,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
     const prompt = [
       '[RALPH LOOP - ITERATION 2/100] Work is NOT done.',
       'Task: previous task',
-      'ralph로 새 작업 계속 진행',
+      'run ralph on 새 작업 계속 진행',
     ].join('\n');
 
     const output = runKeywordDetector(prompt, cwd, sid);
@@ -206,7 +206,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
       '[RALPH LOOP - ITERATION 4/100] Work is NOT done.',
       'Task: previous task',
       '',
-      'ralph로 새 작업 계속해줘',
+      'run ralph on 새 작업 계속해줘',
     ].join('\n');
 
     const output = runKeywordDetector(prompt, cwd, sid);
@@ -229,7 +229,7 @@ describe('keyword-detector.mjs — state.prompt sanitization', () => {
     const cwd = makeCwd('kd-prompt-len-');
     const sid = 'sess-prompt-len';
     const longTail = 'x'.repeat(2000);
-    const prompt = `ralph로 다음 긴 지시사항을 수행해주세요:\n${longTail}`;
+    const prompt = `/ralph 다음 긴 지시사항을 수행해주세요:\n${longTail}`;
 
     runKeywordDetector(prompt, cwd, sid);
     const path = stateFile(cwd, sid, 'ralph');
@@ -244,7 +244,7 @@ describe('keyword-detector.mjs — state.prompt sanitization', () => {
     const cwd = makeCwd('kd-setat-ralph-');
     const sid = 'sess-setat-ralph';
 
-    runKeywordDetector('ralph로 시작해주세요', cwd, sid);
+    runKeywordDetector('/ralph 시작해주세요', cwd, sid);
     const path = stateFile(cwd, sid, 'ralph');
     expect(existsSync(path)).toBe(true);
 

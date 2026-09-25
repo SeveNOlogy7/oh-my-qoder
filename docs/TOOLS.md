@@ -1,6 +1,6 @@
 # MCP Tools
 
-> OMQ provides MCP tools for state management, code intelligence, and data analysis.
+> OMC provides MCP tools for state management, code intelligence, and data analysis.
 
 Unlike skills that users invoke directly, tools are used internally by agents during task execution.
 
@@ -22,12 +22,12 @@ Unlike skills that users invoke directly, tools are used internally by agents du
 
 ## State
 
-State tools manage the state of OMQ execution modes (autopilot, ralph, ultrawork, etc.). Each mode records its current progress, active status, and configuration in state files.
+State tools manage the state of OMC execution modes (autopilot, ralph, ultrawork, etc.). Each mode records its current progress, active status, and configuration in state files.
 
 ### Storage Path
 
 ```
-.omq/state/
+.omc/state/
 ├── sessions/{sessionId}/     # Session-scoped state
 │   ├── autopilot-state.json
 │   ├── ralph-state.json
@@ -84,7 +84,7 @@ Lists all currently active sessions.
 state_list_active()
 ```
 
-Returns all session IDs and their corresponding modes under `.omq/state/sessions/`.
+Returns all session IDs and their corresponding modes under `.omc/state/sessions/`.
 
 #### `state_get_status`
 
@@ -100,12 +100,12 @@ Includes the active mode name and whether dependent modes exist.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OMQ_STATE_DIR` | (unset) | Centralized state directory. When set, state persists even if the worktree is deleted. |
+| `OMC_STATE_DIR` | (unset) | Centralized state directory. When set, state persists even if the worktree is deleted. |
 
-When `OMQ_STATE_DIR` is set, state is stored at `$OMQ_STATE_DIR/{project-id}/`.
+When `OMC_STATE_DIR` is set, state is stored at `$OMC_STATE_DIR/{project-id}/`.
 
 ```bash
-export OMQ_STATE_DIR="$HOME/.qoder/omq"
+export OMC_STATE_DIR="$HOME/.claude/omc"
 ```
 
 ### Usage Patterns
@@ -142,7 +142,7 @@ Notepad is a persistent note system that survives context window compaction. In 
 ### Storage Path
 
 ```
-.omq/notepad.md
+.omc/notepad.md
 ```
 
 ### Tools
@@ -222,7 +222,7 @@ notepad_read()
 
 ### Compaction Behavior
 
-When Qoder CLI compacts context:
+When Claude Code compacts context:
 
 1. Notepad contents are included in the compaction result
 2. Priority notes are restored first
@@ -240,7 +240,7 @@ Project Memory manages long-term per-project memory. It persists project structu
 ### Storage Path
 
 ```
-.omq/project-memory.json
+.omc/project-memory.json
 ```
 
 ### Tools
@@ -302,7 +302,7 @@ Use for coding rules, prohibitions, and requirements.
 |---|---|---|
 | Scope | Current session | Entire project (persists across sessions) |
 | Purpose | In-progress notes | Project rules, structure, learned knowledge |
-| File | `.omq/notepad.md` | `.omq/project-memory.json` |
+| File | `.omc/notepad.md` | `.omc/project-memory.json` |
 | Compaction | Restored during compaction | Always available |
 
 ### Usage Patterns
@@ -441,14 +441,14 @@ lsp_servers()
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OMQ_LSP_TIMEOUT_MS` | `15000` | LSP request timeout in ms. Increase for large repos or slow servers. |
+| `OMC_LSP_TIMEOUT_MS` | `15000` | LSP request timeout in ms. Increase for large repos or slow servers. |
 
 ### Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
 | LSP tools not working | Install the language server: `npm install -g typescript-language-server` |
-| Timeout errors | Increase `OMQ_LSP_TIMEOUT_MS` |
+| Timeout errors | Increase `OMC_LSP_TIMEOUT_MS` |
 | Check server status | Run `lsp_servers()` to verify installation |
 
 ---
@@ -546,40 +546,28 @@ TypeScript, JavaScript, TSX, JSX, Python, Go, Rust, Java, C, C++, C#, Ruby, Swif
 
 ## Python REPL
 
-Python REPL is a Python execution environment where state persists across calls within a session. Used for data analysis, statistical computation, visualization, and prototyping.
+Python REPL is a sandboxed Python execution environment where state persists across calls within a session. Used for in-memory data analysis, statistical computation, and prototyping.
 
 ### Tool
 
 #### `python_repl`
 
-Executes Python code and returns the result.
+Executes Python code and returns the result. Execution is sandboxed: imports, file I/O, and dynamic code execution are blocked, so code must be self-contained using built-in functions and persistent variables.
 
 ```
-python_repl(code="import json; data = json.loads('{\"key\": \"value\"}'); print(data)")
+python_repl(code="data = [3, 1, 2]; print(sorted(data))")
 ```
 
 ### Features
 
-**Persistent state:** Variables, functions, and imports defined in one call remain available in subsequent calls.
+**Persistent state:** Variables and functions defined in one call remain available in subsequent calls.
 
 ```python
 # First call
-python_repl(code="import pandas as pd; df = pd.read_csv('data.csv')")
+python_repl(code="data = [3, 1, 4, 1, 5, 9, 2, 6]")
 
-# Second call (df is still available)
-python_repl(code="print(df.describe())")
-```
-
-**Data analysis:**
-
-```python
-python_repl(code="""
-import json
-with open('.omq/research/session-1/state.json') as f:
-    state = json.load(f)
-print(f"Stages: {len(state['stages'])}")
-print(f"Status: {state['status']}")
-""")
+# Second call (data is still available)
+python_repl(code="print(sum(data) / len(data))")
 ```
 
 **Computation and transformation:**
@@ -594,21 +582,14 @@ print(f"Estimated cost: ${cost:.4f}")
 """)
 ```
 
-**File processing:**
+**In-memory analysis:**
 
 ```python
 python_repl(code="""
-import os
-
-# Project file statistics
-extensions = {}
-for root, dirs, files in os.walk('src'):
-    for f in files:
-        ext = os.path.splitext(f)[1]
-        extensions[ext] = extensions.get(ext, 0) + 1
-
-for ext, count in sorted(extensions.items(), key=lambda x: -x[1]):
-    print(f"{ext}: {count} files")
+prices = [102.5, 98.3, 101.2, 99.8, 103.1]
+print(f"Mean: {sum(prices) / len(prices):.2f}")
+print(f"Max: {max(prices)}")
+print(f"Min: {min(prices)}")
 """)
 ```
 
@@ -616,10 +597,8 @@ for ext, count in sorted(extensions.items(), key=lambda x: -x[1]):
 
 | Use Case | Description |
 |----------|-------------|
-| Data analysis | Analyze CSV/JSON files, compute statistics |
+| In-memory data analysis | Compute statistics on data constructed in code |
 | Prototyping | Validate algorithms, test logic |
-| File processing | File transformation, batch processing |
-| Visualization | Generate charts with matplotlib or plotly |
 | Computation | Math calculations, cost estimation |
 
 ### Integration with scientist Agent
@@ -643,6 +622,10 @@ session_search(query="authentication refactor")
 ```
 
 Returns session IDs, timestamps, source paths, and matching excerpts as structured JSON.
+
+### Related CLI: `omc session friction report`
+
+Use `omc session friction report --since 24h` for a local-only context-bloat and operator-friction report. The report summarizes metadata from local transcript/session/replay artifacts with counts, sizes, timestamps, and signal codes, and avoids raw prompt/session content by default. Use `--json` for local dashboards or audit scripts.
 
 ---
 
@@ -724,28 +707,28 @@ Internal skill management tools used by the runtime to load and list available s
 
 ### Tools
 
-#### `load_omq_skills_local`
+#### `load_omc_skills_local`
 
-Loads skills from the local project directory (`.omq/skills/`).
-
-```
-load_omq_skills_local()
-```
-
-#### `load_omq_skills_global`
-
-Loads skills from the global user directory (`~/.qoder/skills/`).
+Loads skills from the local project directory (`.omc/skills/`).
 
 ```
-load_omq_skills_global()
+load_omc_skills_local()
 ```
 
-#### `list_omq_skills`
+#### `load_omc_skills_global`
 
-Lists all available OMQ skills (built-in + local + global).
+Loads skills from the global user directory (`~/.claude/skills/`).
 
 ```
-list_omq_skills()
+load_omc_skills_global()
+```
+
+#### `list_omc_skills`
+
+Lists all available OMC skills (built-in + local + global).
+
+```
+list_omc_skills()
 ```
 
 ---
@@ -778,4 +761,4 @@ deepinit_manifest(action="save")
 deepinit_manifest(action="check")
 ```
 
-Used internally by the `deepinit` skill (`/oh-my-qoder:deepinit`) to enable incremental AGENTS.md regeneration instead of full re-scans.
+Used internally by the `deepinit` skill (`/oh-my-claudecode:deepinit`) to enable incremental AGENTS.md regeneration instead of full re-scans.

@@ -17,13 +17,13 @@ describe('Consolidation contracts', () => {
       const names = listBuiltinSkillNames();
 
       expect(names).toContain('autopilot');
-      expect(names).toContain('ultrawork');
-      expect(names).toContain('ralph');
+      expect(names).toContain('execute');
+      expect(names).toContain('ultragoal');
       expect(names).toContain('team');
     });
 
     it('resolves Tier-0 skills via getBuiltinSkill()', () => {
-      const tier0 = ['autopilot', 'ultrawork', 'ralph', 'team'] as const;
+      const tier0 = ['autopilot', 'execute', 'ultragoal', 'team'] as const;
 
       for (const name of tier0) {
         const skill = getBuiltinSkill(name);
@@ -40,11 +40,11 @@ describe('Consolidation contracts', () => {
       expect(swarm).toBeUndefined();
     });
 
-    it('keeps native-command collisions prefixed to omq-* names', () => {
+    it('keeps native-command collisions prefixed to omc-* names', () => {
       const names = listBuiltinSkillNames();
 
-      expect(names).toContain('omq-plan');
-      expect(names).toContain('omq-doctor');
+      expect(names).toContain('omc-plan');
+      expect(names).toContain('omc-doctor');
       expect(names).not.toContain('plan');
       expect(names).not.toContain('doctor');
       expect(names).not.toContain('help');
@@ -57,7 +57,7 @@ describe('Consolidation contracts', () => {
       expect(names).not.toContain('build-fix');
       expect(names).not.toContain('tdd');
       expect(names).not.toContain('code-review');
-      expect(names).not.toContain('omq-security-review');
+      expect(names).not.toContain('omc-security-review');
     });
 
     it('hides deprecated compatibility aliases from default listings', () => {
@@ -93,11 +93,11 @@ describe('Consolidation contracts', () => {
       const researcherRoute = resolveDelegation({ agentRole: 'researcher' });
       const tddGuideRoute = resolveDelegation({ agentRole: 'tdd-guide' });
 
-      expect(researcherRoute.provider).toBe('qwen');
+      expect(researcherRoute.provider).toBe('claude');
       expect(researcherRoute.tool).toBe('Task');
       expect(researcherRoute.agentOrModel).toBe('document-specialist');
 
-      expect(tddGuideRoute.provider).toBe('qwen');
+      expect(tddGuideRoute.provider).toBe('claude');
       expect(tddGuideRoute.tool).toBe('Task');
       expect(tddGuideRoute.agentOrModel).toBe('test-engineer');
     });

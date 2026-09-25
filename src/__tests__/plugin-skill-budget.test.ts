@@ -18,7 +18,7 @@ import { compactPluginSkillPayload, copyPluginSyncPayload } from '../installer/i
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = join(__dirname, '..', '..');
-const PLUGIN_JSON = join(REPO_ROOT, '.qoder-plugin', 'plugin.json');
+const PLUGIN_JSON = join(REPO_ROOT, '.claude-plugin', 'plugin.json');
 const SKILLS_DIR = join(REPO_ROOT, 'skills');
 const COMMANDS_DIR = join(REPO_ROOT, 'commands');
 const COMPACT_PLUGIN_SKILL_BUDGET_BYTES = 64 * 1024;
@@ -54,12 +54,13 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
     const defaultSkillDirs = pluginSkillDirs();
     const allSkillDirs = bundledSkillDirs();
 
-    expect(allSkillDirs.length).toBeGreaterThan(30);
+    // 5.0.0 retired 15 legacy skills; the bundled surface is intentionally smaller.
+    expect(allSkillDirs.length).toBeGreaterThan(20);
     expect(defaultSkillDirs).toEqual(allSkillDirs);
   });
 
   it('compacts installed plugin SKILL.md files while archiving full on-demand skill bodies', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-plugin-skill-budget-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-plugin-skill-budget-'));
     try {
       cpSync(SKILLS_DIR, join(tempRoot, 'skills'), { recursive: true });
       const originalBytes = skillPayloadBytes(tempRoot);
@@ -70,7 +71,10 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
 
       expect(result.errors).toEqual([]);
       expect(result.compacted).toBe(allSkillDirs.length);
-      expect(originalBytes).toBeGreaterThan(400 * 1024);
+      // Precondition: the uncompacted payload is still large enough that
+      // compaction is doing real work. Lowered from 400KB after the 5.0.0
+      // retirement removed 15 skills from the bundled surface.
+      expect(originalBytes).toBeGreaterThan(300 * 1024);
       expect(compactBytes).toBeLessThan(COMPACT_PLUGIN_SKILL_BUDGET_BYTES);
       expect(result.totalBytes).toBe(compactBytes);
 
@@ -83,9 +87,9 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
 
         expect(Buffer.byteLength(shim), `${skillDir} compact shim size`).toBeLessThan(COMPACT_PLUGIN_SKILL_PER_FILE_BUDGET_BYTES);
         expect(shim, `${skillDir} shim should point to archived body`).toContain(`../../skill-bodies/${skillDir}/SKILL.md`);
-        expect(shim, `${skillDir} shim should expose runtime body override`).toContain('omq-full-body:');
+        expect(shim, `${skillDir} shim should expose runtime body override`).toContain('omc-full-body:');
         expect(shim, `${skillDir} shim should prefer plugin root env vars`).toContain(
-          `\${QODER_PLUGIN_ROOT:-\${OMQ_PLUGIN_ROOT}}/skill-bodies/${skillDir}/SKILL.md`,
+          `\${CLAUDE_PLUGIN_ROOT:-\${OMC_PLUGIN_ROOT}}/skill-bodies/${skillDir}/SKILL.md`,
         );
         expect(shim, `${skillDir} shim should define plugin root by containing directories`).toContain(
           'The plugin root is the directory containing both `skills/` and `skill-bodies/`.',
@@ -104,7 +108,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('uses platform-safe containment for archived full-body skill paths', () => {
-    const winRoot = 'C:\\Users\\me\\.qwen\\plugins\\cache\\omq\\oh-my-qoder\\4.13.7';
+    const winRoot = 'C:\\Users\\me\\.claude\\plugins\\cache\\omc\\oh-my-claudecode\\4.13.7';
     const winArchivedBody = win32.join(winRoot, 'skill-bodies', 'plan', 'SKILL.md');
     const winEscapedBody = win32.join(winRoot, '..', 'other-plugin', 'SKILL.md');
 
@@ -132,27 +136,28 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('materializes declared plugin command wrappers into cache sync targets', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-plugin-commands-cache-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-plugin-commands-cache-'));
     try {
       const sourceRoot = join(tempRoot, 'source');
-      const targetRoot = join(tempRoot, 'cache', 'omq', 'oh-my-qoder', '4.14.1');
-      mkdirSync(join(sourceRoot, '.qoder-plugin'), { recursive: true });
+      const targetRoot = join(tempRoot, 'cache', 'omc', 'oh-my-claudecode', '4.14.1');
+      mkdirSync(join(sourceRoot, '.claude-plugin'), { recursive: true });
       mkdirSync(join(sourceRoot, 'commands'), { recursive: true });
       mkdirSync(join(sourceRoot, 'dist', 'hooks'), { recursive: true });
       mkdirSync(join(sourceRoot, 'bridge'), { recursive: true });
       mkdirSync(join(sourceRoot, 'hooks'), { recursive: true });
       mkdirSync(join(sourceRoot, 'skills', 'plan'), { recursive: true });
-      writeFileSync(join(sourceRoot, '.qoder-plugin', 'plugin.json'), JSON.stringify({
-        name: 'oh-my-qoder',
+      writeFileSync(join(sourceRoot, '.claude-plugin', 'plugin.json'), JSON.stringify({
+        name: 'oh-my-claudecode',
         commands: './commands/',
         skills: ['./skills/plan/'],
       }, null, 2));
-      writeFileSync(join(sourceRoot, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n');
+      writeFileSync(join(sourceRoot, 'commands', 'omc-setup.md'), 'Read skills/omc-setup/SKILL.md and pass $ARGUMENTS.\n');
       writeFileSync(join(sourceRoot, 'dist', 'hooks', 'skill-bridge.cjs'), 'console.log("skill bridge");\n');
       writeFileSync(join(sourceRoot, 'bridge', 'cli.cjs'), 'console.log("bridge");\n');
+      writeFileSync(join(sourceRoot, 'bridge', 'claude-md-coordinator.cjs'), 'console.log("CLAUDE.md coordinator");\n');
       writeFileSync(join(sourceRoot, 'hooks', 'hooks.json'), '{}\n');
       writeFileSync(join(sourceRoot, 'skills', 'plan', 'SKILL.md'), 'name: plan\n');
-      writeFileSync(join(sourceRoot, 'package.json'), JSON.stringify({ name: 'oh-my-qoder', version: '4.14.1' }));
+      writeFileSync(join(sourceRoot, 'package.json'), JSON.stringify({ name: 'oh-my-claude-sisyphus', version: '4.14.1' }));
 
       const result = copyPluginSyncPayload(sourceRoot, [targetRoot]);
 
@@ -160,19 +165,20 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
       expect(result.synced).toBe(true);
 
       const manifest = JSON.parse(
-        readFileSync(join(targetRoot, '.qoder-plugin', 'plugin.json'), 'utf-8')
+        readFileSync(join(targetRoot, '.claude-plugin', 'plugin.json'), 'utf-8')
       ) as { commands?: string; skills?: string[] };
       expect(manifest.commands).toBe('./commands/');
       expect(manifest.skills).toEqual(['./skills/plan/']);
       expect(existsSync(join(targetRoot, 'commands'))).toBe(true);
-      expect(readFileSync(join(targetRoot, 'commands', 'omq-setup.md'), 'utf-8')).toContain('$ARGUMENTS');
+      expect(readFileSync(join(targetRoot, 'commands', 'omc-setup.md'), 'utf-8')).toContain('$ARGUMENTS');
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
   });
 
   it('preserves deprecated slash aliases as command wrappers', () => {
-    expect(readFileSync(join(COMMANDS_DIR, 'learner.md'), 'utf-8')).toContain('skills/skillify/SKILL.md');
+    // learner.md was retired in 5.0.0; psm remains the surviving command alias.
     expect(readFileSync(join(COMMANDS_DIR, 'psm.md'), 'utf-8')).toContain('skills/project-session-manager/SKILL.md');
+    expect(existsSync(join(COMMANDS_DIR, 'learner.md'))).toBe(false);
   });
 });

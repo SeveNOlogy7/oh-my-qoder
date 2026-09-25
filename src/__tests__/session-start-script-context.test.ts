@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -13,11 +13,11 @@ describe('session-start.mjs regression #1386', () => {
   let fakeProject: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omq-session-start-script-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'omc-session-start-script-'));
     fakeHome = join(tempDir, 'home');
     fakeProject = join(tempDir, 'project');
-    mkdirSync(join(fakeProject, '.omq', 'state', 'sessions', 'session-1386'), { recursive: true });
-    // session-start validateCwd requires a real workspace anchor (.git / .omq-workspace)
+    mkdirSync(join(fakeProject, '.omc', 'state', 'sessions', 'session-1386'), { recursive: true });
+    // session-start validateCwd requires a real workspace anchor (.git / .omc-workspace)
     mkdirSync(join(fakeProject, '.git'), { recursive: true });
   });
 
@@ -27,7 +27,7 @@ describe('session-start.mjs regression #1386', () => {
 
   it('marks restored ultrawork state as prior-session context instead of imperative continuation', () => {
     writeFileSync(
-      join(fakeProject, '.omq', 'state', 'sessions', 'session-1386', 'ultrawork-state.json'),
+      join(fakeProject, '.omc', 'state', 'sessions', 'session-1386', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'session-1386',
@@ -62,9 +62,9 @@ describe('session-start.mjs regression #1386', () => {
   });
 
   it('injects persisted project memory into session-start additionalContext', () => {
-    mkdirSync(join(fakeProject, '.omq'), { recursive: true });
+    mkdirSync(join(fakeProject, '.omc'), { recursive: true });
     writeFileSync(
-      join(fakeProject, '.omq', 'project-memory.json'),
+      join(fakeProject, '.omc', 'project-memory.json'),
       JSON.stringify({
         version: '1.0.0',
         lastScanned: Date.now(),
@@ -158,7 +158,7 @@ describe('session-start.mjs regression #1386', () => {
   it('injects model routing override for non-standard providers before lower-priority context', () => {
     writeFileSync(
       join(fakeProject, 'AGENTS.md'),
-      `# oh-my-qoder - Intelligent Multi-Agent Orchestration
+      `# oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
 <guidance_schema_contract>schema</guidance_schema_contract>
 
@@ -178,7 +178,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
-        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        CLAUDE_CODE_USE_BEDROCK: '1',
       },
       timeout: 15000,
     }).trim();
@@ -192,23 +192,23 @@ ${'- oversized startup guidance\n'.repeat(700)}
     expect(output.continue).toBe(true);
     expect(context).toContain('[MODEL ROUTING OVERRIDE');
     expect(context).toContain('tier alias');
-    expect(context).toMatch(/\b(high|medium|low)\b/);
+    expect(context).toMatch(/\b(sonnet|opus|haiku)\b/);
     expect(context).not.toContain('Do NOT pass the `model` parameter');
     expect(context).not.toContain('Omit it entirely');
     expect(context.length).toBeLessThanOrEqual(6000);
   });
 
   it('surfaces update notices through systemMessage without injecting them into additionalContext', () => {
-    const claudeDir = join(fakeHome, '.qoder');
+    const claudeDir = join(fakeHome, '.claude');
     const pluginRoot = join(tempDir, 'plugin');
-    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
+    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(pluginRoot, { recursive: true });
     writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '1.0.0', type: 'module' }));
-    writeFileSync(join(claudeDir, 'hud', 'omq-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omq-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omq', 'update-check.json'),
+      join(claudeDir, '.omc', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '999.0.0',
@@ -228,10 +228,10 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
-        QODER_PLUGIN_ROOT: pluginRoot,
-        OMQ_NOTIFY: '0',
+        CLAUDE_PLUGIN_ROOT: pluginRoot,
+        OMC_NOTIFY: '0',
       },
-      timeout: 25000,
+      timeout: 15000,
     });
 
     expect(result.status).toBe(0);
@@ -242,27 +242,27 @@ ${'- oversized startup guidance\n'.repeat(700)}
       hookSpecificOutput?: { additionalContext?: string };
     };
     expect(output.continue).toBe(true);
-    expect(output.systemMessage).toContain('[OMQ UPDATE AVAILABLE]');
+    expect(output.systemMessage).toContain('[OMC UPDATE AVAILABLE]');
     expect(output.systemMessage).toContain('v999.0.0');
-    expect(output.systemMessage).toContain('git pull && npm run build');
-    expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('[OMQ UPDATE AVAILABLE]');
+    expect(output.systemMessage).toContain('/update');
+    expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('[OMC UPDATE AVAILABLE]');
     expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('999.0.0');
   });
 
-  it('does not show update notice when stale QODER_PLUGIN_ROOT is older than plugin cache', () => {
-    const claudeDir = join(fakeHome, '.qoder');
-    const stalePluginRoot = join(claudeDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.14.4');
-    const latestPluginRoot = join(claudeDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.14.5');
-    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
+  it('does not show update notice when stale CLAUDE_PLUGIN_ROOT is older than plugin cache', () => {
+    const claudeDir = join(fakeHome, '.claude');
+    const stalePluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.14.4');
+    const latestPluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.14.5');
+    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(stalePluginRoot, { recursive: true });
     mkdirSync(latestPluginRoot, { recursive: true });
     writeFileSync(join(stalePluginRoot, 'package.json'), JSON.stringify({ version: '4.14.4', type: 'module' }));
     writeFileSync(join(latestPluginRoot, 'package.json'), JSON.stringify({ version: '4.14.5', type: 'module' }));
-    writeFileSync(join(claudeDir, 'hud', 'omq-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omq-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omq', 'update-check.json'),
+      join(claudeDir, '.omc', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '4.14.5',
@@ -282,8 +282,8 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
-        QODER_PLUGIN_ROOT: stalePluginRoot,
-        OMQ_NOTIFY: '0',
+        CLAUDE_PLUGIN_ROOT: stalePluginRoot,
+        OMC_NOTIFY: '0',
       },
       timeout: 15000,
     });
@@ -296,9 +296,268 @@ ${'- oversized startup guidance\n'.repeat(700)}
       hookSpecificOutput?: { additionalContext?: string };
     };
     expect(output.continue).toBe(true);
-    expect(output.systemMessage ?? '').not.toContain('[OMQ UPDATE AVAILABLE]');
+    expect(output.systemMessage ?? '').not.toContain('[OMC UPDATE AVAILABLE]');
     expect(output.systemMessage ?? '').not.toContain('4.14.4');
-    expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('[OMQ UPDATE AVAILABLE]');
+    expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('[OMC UPDATE AVAILABLE]');
+  });
+
+
+  it('suppresses plugin update notices when npm latest is newer than the marketplace channel', () => {
+    const claudeDir = join(fakeHome, '.claude');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
+    const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
+    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, 'hud'), { recursive: true });
+    mkdirSync(join(pluginRoot), { recursive: true });
+    mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '4.15.4', type: 'module' }));
+    writeFileSync(join(marketplaceRoot, 'package.json'), JSON.stringify({ version: '4.15.4', type: 'module' }));
+    writeFileSync(join(marketplaceRoot, '.claude-plugin', 'marketplace.json'), JSON.stringify({
+      plugins: [{ name: 'oh-my-claudecode', version: '4.15.4' }],
+      version: '4.15.4',
+    }));
+    writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(
+      join(claudeDir, '.omc', 'update-check.json'),
+      JSON.stringify({
+        timestamp: Date.now(),
+        latestVersion: '4.15.5',
+        currentVersion: '4.15.4',
+        updateAvailable: true,
+        source: 'npm',
+      }),
+    );
+
+    const result = spawnSync(NODE, [SCRIPT_PATH], {
+      input: JSON.stringify({
+        hook_event_name: 'SessionStart',
+        session_id: 'session-marketplace-channel-current',
+        cwd: fakeProject,
+      }),
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        HOME: fakeHome,
+        USERPROFILE: fakeHome,
+        CLAUDE_PLUGIN_ROOT: pluginRoot,
+        OMC_NOTIFY: '0',
+      },
+      timeout: 15000,
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    const output = JSON.parse(result.stdout) as { systemMessage?: string; hookSpecificOutput?: { additionalContext?: string } };
+    expect(output.systemMessage ?? '').not.toContain('[OMC UPDATE AVAILABLE]');
+    expect(output.systemMessage ?? '').not.toContain('4.15.5');
+    expect(output.hookSpecificOutput?.additionalContext ?? '').not.toContain('[OMC UPDATE AVAILABLE]');
+  });
+
+  it('does not fall back to npm notices when marketplace metadata is unavailable', () => {
+    const claudeDir = join(fakeHome, '.claude');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
+    const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
+    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, 'hud'), { recursive: true });
+    mkdirSync(pluginRoot, { recursive: true });
+    mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '4.15.4', type: 'module' }));
+    writeFileSync(join(marketplaceRoot, 'package.json'), JSON.stringify({ version: '999.0.0', type: 'module' }));
+    writeFileSync(join(marketplaceRoot, '.claude-plugin', 'plugin.json'), JSON.stringify({
+      name: 'oh-my-claudecode',
+      version: '999.0.0',
+    }));
+    writeFileSync(join(marketplaceRoot, '.claude-plugin', 'marketplace.json'), JSON.stringify({
+      plugins: [{ name: 'oh-my-claudecode', version: '999x.0.0' }],
+    }));
+    writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(
+      join(claudeDir, '.omc', 'update-check.json'),
+      JSON.stringify({
+        timestamp: Date.now(),
+        latestVersion: '4.15.5',
+        currentVersion: '4.15.4',
+        updateAvailable: true,
+        source: 'npm',
+      }),
+    );
+
+    const result = spawnSync(NODE, [SCRIPT_PATH], {
+      input: JSON.stringify({
+        hook_event_name: 'SessionStart',
+        session_id: 'session-marketplace-channel-unavailable',
+        cwd: fakeProject,
+      }),
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        HOME: fakeHome,
+        USERPROFILE: fakeHome,
+        CLAUDE_PLUGIN_ROOT: pluginRoot,
+        OMC_NOTIFY: '0',
+      },
+      timeout: 15000,
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    const output = JSON.parse(result.stdout) as { systemMessage?: string };
+    expect(output.systemMessage ?? '').not.toContain('[OMC UPDATE AVAILABLE]');
+    expect(output.systemMessage ?? '').not.toContain('4.15.5');
+    expect(JSON.parse(readFileSync(join(claudeDir, '.omc', 'update-check.json'), 'utf-8'))).toMatchObject({
+      latestVersion: '4.15.4',
+      currentVersion: '4.15.4',
+      updateAvailable: false,
+      source: 'marketplace-unavailable',
+    });
+  });
+
+  it('treats a stable marketplace version as newer than the matching prerelease', () => {
+    const claudeDir = join(fakeHome, '.claude');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.16.0-beta.1');
+    const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
+    mkdirSync(join(claudeDir, 'hud'), { recursive: true });
+    mkdirSync(pluginRoot, { recursive: true });
+    mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '4.16.0-beta.1', type: 'module' }));
+    writeFileSync(join(marketplaceRoot, '.claude-plugin', 'marketplace.json'), JSON.stringify({
+      plugins: [{ name: 'oh-my-claudecode', version: '4.16.0' }],
+    }));
+    writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+
+    const result = spawnSync(NODE, [SCRIPT_PATH], {
+      input: JSON.stringify({
+        hook_event_name: 'SessionStart',
+        session_id: 'session-marketplace-stable-after-prerelease',
+        cwd: fakeProject,
+      }),
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        HOME: fakeHome,
+        USERPROFILE: fakeHome,
+        CLAUDE_PLUGIN_ROOT: pluginRoot,
+        OMC_NOTIFY: '0',
+      },
+      timeout: 15000,
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    const output = JSON.parse(result.stdout) as { systemMessage?: string };
+    expect(output.systemMessage).toContain('[OMC UPDATE AVAILABLE]');
+    expect(output.systemMessage).toContain('v4.16.0');
+  });
+
+  it('uses the marketplace clone version for plugin update notices instead of npm latest', () => {
+    const claudeDir = join(fakeHome, '.claude');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.3');
+    const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
+    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, 'hud'), { recursive: true });
+    mkdirSync(join(pluginRoot), { recursive: true });
+    mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '4.15.3', type: 'module' }));
+    writeFileSync(join(marketplaceRoot, '.claude-plugin', 'marketplace.json'), JSON.stringify({
+      plugins: [{ name: 'oh-my-claudecode', version: '4.15.4' }],
+      version: '4.15.4',
+    }));
+    writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(
+      join(claudeDir, '.omc', 'update-check.json'),
+      JSON.stringify({
+        timestamp: Date.now(),
+        latestVersion: '4.15.5',
+        currentVersion: '4.15.3',
+        updateAvailable: true,
+        source: 'npm',
+      }),
+    );
+
+    const result = spawnSync(NODE, [SCRIPT_PATH], {
+      input: JSON.stringify({
+        hook_event_name: 'SessionStart',
+        session_id: 'session-marketplace-channel-update',
+        cwd: fakeProject,
+      }),
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        HOME: fakeHome,
+        USERPROFILE: fakeHome,
+        CLAUDE_PLUGIN_ROOT: pluginRoot,
+        OMC_NOTIFY: '0',
+      },
+      timeout: 15000,
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    const output = JSON.parse(result.stdout) as { systemMessage?: string };
+    expect(output.systemMessage).toContain('[OMC UPDATE AVAILABLE]');
+    expect(output.systemMessage).toContain('v4.15.4');
+    expect(output.systemMessage).not.toContain('4.15.5');
+    expect(output.systemMessage).toContain('/plugin marketplace update omc && /omc-setup');
+    expect(output.systemMessage).not.toContain('/update');
+  });
+
+  it('does not emit npm-channel drift guidance when managed marketplace plugin is current', () => {
+    const claudeDir = join(fakeHome, '.claude');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
+    const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
+    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, 'hud'), { recursive: true });
+    mkdirSync(pluginRoot, { recursive: true });
+    mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '4.15.4', type: 'module' }));
+    writeFileSync(join(marketplaceRoot, '.claude-plugin', 'marketplace.json'), JSON.stringify({
+      plugins: [{ name: 'oh-my-claudecode', version: '4.15.4' }],
+    }));
+    writeFileSync(join(claudeDir, '.omc-version.json'), JSON.stringify({ version: '4.15.5' }));
+    writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(
+      join(claudeDir, '.omc', 'update-check.json'),
+      JSON.stringify({
+        timestamp: Date.now(),
+        latestVersion: '4.15.5',
+        currentVersion: '4.15.4',
+        updateAvailable: true,
+        source: 'npm',
+      }),
+    );
+
+    const result = spawnSync(NODE, [SCRIPT_PATH], {
+      input: JSON.stringify({
+        hook_event_name: 'SessionStart',
+        session_id: 'session-marketplace-current-npm-newer',
+        cwd: fakeProject,
+      }),
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        HOME: fakeHome,
+        USERPROFILE: fakeHome,
+        CLAUDE_PLUGIN_ROOT: pluginRoot,
+        OMC_NOTIFY: '0',
+      },
+      timeout: 15000,
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    const output = JSON.parse(result.stdout) as {
+      systemMessage?: string;
+      hookSpecificOutput?: { additionalContext?: string };
+    };
+    const combined = `${output.systemMessage ?? ''}\n${output.hookSpecificOutput?.additionalContext ?? ''}`;
+    expect(combined).not.toContain('[OMC VERSION DRIFT DETECTED]');
+    expect(combined).not.toContain("Run 'omc update'");
+    expect(combined).not.toContain('4.15.5');
   });
 
 });

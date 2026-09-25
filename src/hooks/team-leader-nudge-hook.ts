@@ -15,6 +15,7 @@ import { join } from 'path';
 import { appendTeamEvent } from '../team/events.js';
 import { deriveTeamLeaderGuidance } from '../team/leader-nudge-guidance.js';
 import { createSwallowedErrorLogger } from '../lib/swallowed-error.js';
+import { scanMailboxOutstanding } from '../team/mailbox-outstanding.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -76,24 +77,24 @@ const defaultTmux: TmuxRunner = {
 const DEFAULT_LEADER_STALE_MS = 120_000; // 2 minutes
 const DEFAULT_NUDGE_COOLDOWN_MS = 60_000; // 1 minute between nudges
 const DEFAULT_MAX_NUDGE_COUNT = 5;
-const INJECT_MARKER = '[OMQ_TMUX_INJECT]';
+const INJECT_MARKER = '[OMC_TMUX_INJECT]';
 
 function resolveLeaderStaleMs(): number {
-  const raw = safeString(process.env.OMQ_TEAM_LEADER_STALE_MS || '');
+  const raw = safeString(process.env.OMC_TEAM_LEADER_STALE_MS || '');
   const parsed = asNumber(raw);
   if (parsed !== null && parsed >= 10_000 && parsed <= 600_000) return parsed;
   return DEFAULT_LEADER_STALE_MS;
 }
 
 function resolveNudgeCooldownMs(): number {
-  const raw = safeString(process.env.OMQ_TEAM_LEADER_NUDGE_COOLDOWN_MS || '');
+  const raw = safeString(process.env.OMC_TEAM_LEADER_NUDGE_COOLDOWN_MS || '');
   const parsed = asNumber(raw);
   if (parsed !== null && parsed >= 5_000 && parsed <= 600_000) return parsed;
   return DEFAULT_NUDGE_COOLDOWN_MS;
 }
 
 function resolveMaxNudgeCount(): number {
-  const raw = safeString(process.env.OMQ_TEAM_LEADER_MAX_NUDGE_COUNT || '');
+  const raw = safeString(process.env.OMC_TEAM_LEADER_MAX_NUDGE_COUNT || '');
   const parsed = asNumber(raw);
   if (parsed !== null && parsed >= 1 && parsed <= 100) return parsed;
   return DEFAULT_MAX_NUDGE_COUNT;
@@ -151,6 +152,11 @@ export async function checkLeaderStaleness(params: {
   let aliveWorkerCount = 0;
   let nonReportingWorkerCount = 0;
 
+  // Outstanding directed-work metadata (issue #3662): a worker with
+  // queued/unanswered directed mailbox messages is not idle/available.
+  const mailboxDir = join(teamDir, 'mailbox');
+  const outstandingByWorker = await scanMailboxOutstanding(mailboxDir);
+
   for (const worker of workers) {
     const statusPath = join(teamDir, 'workers', worker.name, 'status.json');
     const status = await readJsonSafe<{ state?: string; updated_at?: string }>(statusPath, {});
@@ -167,7 +173,11 @@ export async function checkLeaderStaleness(params: {
     }
 
     if (status.state === 'idle' || status.state === 'done') {
-      idleWorkerCount++;
+      // Queued/unanswered directed work means the worker is not truly idle.
+      const outstanding = outstandingByWorker[worker.name]?.undeliveredInbound ?? 0;
+      if (outstanding === 0) {
+        idleWorkerCount++;
+      }
     }
   }
 
@@ -339,7 +349,7 @@ export async function maybeNudgeLeader(params: {
   if (!leaderPaneId) return { nudged: false, reason: 'no_leader_pane_id' };
 
   // Send nudge
-  const message = `[OMQ] Leader nudge (${guidance.nextAction}): ${guidance.message} ${INJECT_MARKER}`;
+  const message = `[OMC] Leader nudge (${guidance.nextAction}): ${guidance.message} ${INJECT_MARKER}`;
   const logNudgePersistenceFailure = createSwallowedErrorLogger(
     'hooks.team-leader-nudge maybeNudgeLeader persistence failed',
   );

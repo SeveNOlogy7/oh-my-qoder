@@ -1,6 +1,6 @@
 /**
- * Native tmux shell launch for omq
- * Launches Qoder CLI with tmux session management
+ * Native tmux shell launch for omc
+ * Launches Claude Code with tmux session management
  */
 
 import { execFileSync } from 'child_process';
@@ -9,17 +9,22 @@ import {
   copyFileSync,
   existsSync,
   lstatSync,
+  linkSync,
   mkdirSync,
   readFileSync,
+  readlinkSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'fs';
-import { basename, dirname, join } from 'path';
+import { homedir } from 'os';
+import { basename, dirname, isAbsolute, join, resolve } from 'path';
+import { atomicWriteJsonSync } from '../lib/atomic-write.js';
+import { lockPathFor, withFileLockSync } from '../lib/file-lock.js';
 import { resolvePluginDirArg } from '../lib/plugin-dir.js';
-import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { stripRetiredTeamMcpServers } from '../installer/mcp-registry.js';
-import { getQoderConfigDir, getQoderRootConfigFileName, isDefaultQoderConfigDir } from '../utils/config-dir.js';
+import { getClaudeConfigDir } from '../utils/config-dir.js';
 import {
   resolveLaunchPolicy,
   buildTmuxSessionName,
@@ -27,14 +32,14 @@ import {
   buildTmuxShellCommandWithEnv,
   isNativeWindowsShell,
   wrapWithLoginShell,
-  isQoderCliAvailable,
+  isClaudeAvailable,
   isTmuxAvailable,
   quoteShellArg,
   tmuxExec,
 } from './tmux-utils.js';
 import { configureTmuxClipboardForCurrentSession, configureTmuxClipboardForSession } from './tmux-clipboard.js';
-import { OMQ_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
-import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
+import { OMC_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
+import { OMC_CONFIG_FILE_REL } from '../lib/paths.js';
 
 // Flag mapping
 const MADMAX_FLAG = '--madmax';
@@ -46,12 +51,12 @@ const TELEGRAM_FLAG = '--telegram';
 const DISCORD_FLAG = '--discord';
 const SLACK_FLAG = '--slack';
 const WEBHOOK_FLAG = '--webhook';
-const OMQ_RUNTIME_DIRNAME = '.omq-launch';
+const OMC_RUNTIME_DIRNAME = '.omc-launch';
 
-function hasOmqMarkers(path: string): boolean {
+function hasOmcMarkers(path: string): boolean {
   if (!existsSync(path)) return false;
   const content = readFileSync(path, 'utf-8');
-  return content.includes('<!-- OMQ:START -->') && content.includes('<!-- OMQ:END -->');
+  return content.includes('<!-- OMC:START -->') && content.includes('<!-- OMC:END -->');
 }
 
 function ensureMirroredPath(
@@ -96,6 +101,10 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
 function readJsonObject(path: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
@@ -105,92 +114,497 @@ function readJsonObject(path: string): Record<string, unknown> | null {
   }
 }
 
-function refreshRuntimeClaudeJsonMcpServers(baseConfigDir: string, runtimeClaudeJsonPath: string): void {
-  const sourceClaudeJsonPath = join(dirname(baseConfigDir), getQoderRootConfigFileName(baseConfigDir));
-  const sourceClaudeJson = readJsonObject(sourceClaudeJsonPath);
-  if (!sourceClaudeJson || !isJsonObject(sourceClaudeJson.mcpServers)) {
-    return;
-  }
-
-  const runtimeClaudeJson = readJsonObject(runtimeClaudeJsonPath) ?? {};
-  runtimeClaudeJson.mcpServers = sourceClaudeJson.mcpServers;
-  writeFileSync(runtimeClaudeJsonPath, JSON.stringify(runtimeClaudeJson, null, 2));
+interface OAuthCredentialCandidate {
+  nested: boolean;
+  expiresAt: number;
+  fields: Record<string, unknown>;
 }
 
-export function prepareOmqLaunchConfigDir(baseConfigDir = getQoderConfigDir()): string {
-  const companionPath = join(baseConfigDir, 'AGENTS-omq.md');
-  if (!hasOmqMarkers(companionPath)) {
-    return baseConfigDir;
+interface CredentialFileInspection {
+  exists: boolean;
+  regularFile: boolean;
+  readable: boolean;
+  valid: boolean;
+  parsed: Record<string, unknown> | null;
+  candidate: OAuthCredentialCandidate | null;
+}
+
+const OAUTH_CREDENTIAL_FIELDS = [
+  'accessToken',
+  'refreshToken',
+  'expiresAt',
+  'scopes',
+  'subscriptionType',
+  'rateLimitTier',
+  'organizationUuid',
+  'accountUuid',
+  'emailAddress',
+  'email',
+  'hasExtraUsageEnabled',
+] as const;
+
+function extractOAuthCandidate(parsed: Record<string, unknown>): OAuthCredentialCandidate | null {
+  const inspect = (record: Record<string, unknown>, nested: boolean): OAuthCredentialCandidate | null => {
+    const accessToken = record.accessToken;
+    const expiresAt = record.expiresAt;
+    if (typeof accessToken !== 'string' || accessToken.trim().length === 0) return null;
+    if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt)) return null;
+
+    const fields: Record<string, unknown> = {};
+    for (const key of OAUTH_CREDENTIAL_FIELDS) {
+      if (hasOwn(record, key)) fields[key] = record[key];
+    }
+    return { nested, expiresAt, fields };
+  };
+
+  if (isJsonObject(parsed.claudeAiOauth)) {
+    const nestedCandidate = inspect(parsed.claudeAiOauth, true);
+    if (nestedCandidate) return nestedCandidate;
+  }
+  return inspect(parsed, false);
+}
+
+function hasLinkableCredentials(inspection: CredentialFileInspection): boolean {
+  if (inspection.candidate) return true;
+  if (!inspection.parsed) return false;
+  const source = isJsonObject(inspection.parsed.claudeAiOauth)
+    ? inspection.parsed.claudeAiOauth
+    : inspection.parsed;
+  return typeof source.accessToken === 'string' && source.accessToken.trim().length > 0;
+}
+
+function inspectCredentialFile(path: string): CredentialFileInspection {
+  let stat: ReturnType<typeof lstatSync>;
+  try {
+    stat = lstatSync(path);
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+    if (code !== 'ENOENT' && code !== 'ENOTDIR') {
+      return { exists: true, regularFile: false, readable: false, valid: false, parsed: null, candidate: null };
+    }
+    return { exists: false, regularFile: false, readable: false, valid: false, parsed: null, candidate: null };
   }
 
-  const runtimeConfigDir = join(baseConfigDir, OMQ_RUNTIME_DIRNAME);
-  const runtimeClaudeJsonPath = join(runtimeConfigDir, '.qoder.json');
-  const preservedClaudeJson = existsSync(runtimeClaudeJsonPath)
-    ? readFileSync(runtimeClaudeJsonPath)
-    : null;
-
-  rmSync(runtimeConfigDir, { recursive: true, force: true });
-  mkdirSync(runtimeConfigDir, { recursive: true });
-  if (preservedClaudeJson) {
-    writeFileSync(runtimeClaudeJsonPath, preservedClaudeJson);
-  }
-  refreshRuntimeClaudeJsonMcpServers(baseConfigDir, runtimeClaudeJsonPath);
-  copyFileSync(companionPath, join(runtimeConfigDir, 'AGENTS.md'));
-
-  for (const entry of [
-    'agents',
-    'commands',
-    'hooks',
-    'hud',
-    'plugins',
-    'projects',
-    'rules',
-    'skills',
-    'themes',
-    OMQ_CONFIG_FILE_REL,
-    '.omq-version.json',
-    '.omq-silent-update.json',
-    'keybindings.json',
-    'settings.json',
-    'settings.local.json',
-    '.credentials.json',
-  ]) {
-    ensureMirroredPath(
-      join(baseConfigDir, entry),
-      join(runtimeConfigDir, basename(entry)),
-      { allowCopyFallback: entry !== '.credentials.json' },
-    );
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
+  } catch {
+    return {
+      exists: true,
+      regularFile: stat.isFile(),
+      readable: false,
+      valid: false,
+      parsed: null,
+      candidate: null,
+    };
   }
 
-  const runtimeSettingsPath = join(runtimeConfigDir, 'settings.json');
-  if (existsSync(runtimeSettingsPath)) {
+  if (!isJsonObject(parsed)) {
+    return {
+      exists: true,
+      regularFile: stat.isFile(),
+      readable: true,
+      valid: false,
+      parsed: null,
+      candidate: null,
+    };
+  }
+
+  return {
+    exists: true,
+    regularFile: stat.isFile(),
+    readable: true,
+    valid: true,
+    parsed,
+    candidate: extractOAuthCandidate(parsed),
+  };
+}
+
+function credentialExpiry(parsed: Record<string, unknown>): number | null {
+  const source = isJsonObject(parsed.claudeAiOauth) ? parsed.claudeAiOauth : parsed;
+  const expiresAt = source.expiresAt;
+  return typeof expiresAt === 'number' && Number.isFinite(expiresAt) ? expiresAt : null;
+}
+
+function resolveCredentialWritePath(path: string): string {
+  let current = resolve(path);
+  const visited = new Set<string>();
+
+  while (true) {
+    if (visited.has(current)) {
+      throw new Error('Claude credential symlink chain contains a cycle');
+    }
+    visited.add(current);
+
+    let stat: ReturnType<typeof lstatSync>;
     try {
-      const rawSettings = JSON.parse(readFileSync(runtimeSettingsPath, 'utf-8')) as Record<string, unknown>;
-      const repaired = stripRetiredTeamMcpServers(rawSettings);
-      if (repaired.changed) {
-        writeFileSync(runtimeSettingsPath, JSON.stringify(repaired.settings, null, 2));
-      }
-    } catch {
-      // Best-effort compatibility repair; launch must continue even if a legacy
-      // settings file cannot be parsed or rewritten.
+      stat = lstatSync(current);
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error
+        ? (error as { code?: unknown }).code
+        : undefined;
+      if (code === 'ENOENT' || code === 'ENOTDIR') return current;
+      throw error;
+    }
+
+    if (!stat.isSymbolicLink()) return current;
+    const target = readlinkSync(current);
+    current = isAbsolute(target) ? resolve(target) : resolve(dirname(current), target);
+  }
+}
+
+/** True only when source and runtime can be proven to be the same account. */
+function accountsProvenSame(
+  sourceClaudeJson: Record<string, unknown> | null,
+  runtimeClaudeJson: Record<string, unknown> | null,
+): boolean {
+  const sourceAccount = isJsonObject(sourceClaudeJson?.oauthAccount) ? sourceClaudeJson.oauthAccount : null;
+  const runtimeAccount = isJsonObject(runtimeClaudeJson?.oauthAccount) ? runtimeClaudeJson.oauthAccount : null;
+  if (!sourceAccount || !runtimeAccount) return false;
+
+  const sourceUuid = typeof sourceAccount.accountUuid === 'string' ? sourceAccount.accountUuid.trim() : '';
+  const runtimeUuid = typeof runtimeAccount.accountUuid === 'string' ? runtimeAccount.accountUuid.trim() : '';
+  if (sourceUuid && runtimeUuid) return sourceUuid === runtimeUuid;
+
+  let compared = false;
+  for (const key of ['emailAddress', 'email'] as const) {
+    const sourceValue = sourceAccount[key];
+    const runtimeValue = runtimeAccount[key];
+    const sourceEmail = typeof sourceValue === 'string' ? sourceValue.trim() : '';
+    const runtimeEmail = typeof runtimeValue === 'string' ? runtimeValue.trim() : '';
+    if (!sourceEmail || !runtimeEmail) continue;
+    compared = true;
+    if (sourceEmail.toLowerCase() !== runtimeEmail.toLowerCase()) return false;
+  }
+  return compared;
+}
+
+function credentialIdentitiesConflict(
+  baseCandidate: OAuthCredentialCandidate | null,
+  runtimeCandidate: OAuthCredentialCandidate,
+): boolean {
+  if (!baseCandidate) return false;
+
+  const baseUuid = typeof baseCandidate.fields.accountUuid === 'string'
+    ? baseCandidate.fields.accountUuid.trim()
+    : '';
+  const runtimeUuid = typeof runtimeCandidate.fields.accountUuid === 'string'
+    ? runtimeCandidate.fields.accountUuid.trim()
+    : '';
+  if (baseUuid || runtimeUuid) {
+    return !baseUuid || !runtimeUuid || baseUuid !== runtimeUuid;
+  }
+
+  for (const key of ['emailAddress', 'email'] as const) {
+    const baseValue = baseCandidate.fields[key];
+    const runtimeValue = runtimeCandidate.fields[key];
+    const baseEmail = typeof baseValue === 'string' ? baseValue.trim() : '';
+    const runtimeEmail = typeof runtimeValue === 'string' ? runtimeValue.trim() : '';
+    if (!baseEmail && !runtimeEmail) continue;
+    if (!baseEmail || !runtimeEmail) return true;
+    if (baseEmail.toLowerCase() !== runtimeEmail.toLowerCase()) return true;
+  }
+
+  return false;
+}
+
+function compareOnboardingVersion(left: unknown, right: unknown): number | null {
+  const toParts = (value: unknown): number[] | null => {
+    if (typeof value === 'number') return Number.isFinite(value) ? [value] : null;
+    if (typeof value !== 'string' || value.trim().length === 0) return null;
+    const parts = value.trim().split(/[.+-]/).map((part) => {
+      if (part.length === 0 || !/^\d+$/.test(part)) return Number.NaN;
+      return Number(part);
+    });
+    if (parts.some((part) => !Number.isFinite(part))) return null;
+    return parts;
+  };
+
+  const leftParts = toParts(left);
+  const rightParts = toParts(right);
+  if (!leftParts || !rightParts) return null;
+  const length = Math.max(leftParts.length, rightParts.length);
+  for (let index = 0; index < length; index += 1) {
+    const a = leftParts[index] ?? 0;
+    const b = rightParts[index] ?? 0;
+    if (a > b) return 1;
+    if (a < b) return -1;
+  }
+  return 0;
+}
+
+function refreshRuntimeClaudeJson(
+  baseConfigDir: string,
+  runtimeClaudeJsonPath: string,
+  sourceClaudeJson = readJsonObject(join(dirname(baseConfigDir), '.claude.json')),
+): void {
+  if (!sourceClaudeJson) return;
+
+  const runtimeClaudeJson = readJsonObject(runtimeClaudeJsonPath) ?? {};
+  let changed = false;
+
+  if (sourceClaudeJson.hasCompletedOnboarding === true && runtimeClaudeJson.hasCompletedOnboarding !== true) {
+    runtimeClaudeJson.hasCompletedOnboarding = true;
+    changed = true;
+  }
+
+  const sourceVersion = sourceClaudeJson.lastOnboardingVersion;
+  if (typeof sourceVersion === 'string' || typeof sourceVersion === 'number') {
+    const runtimeHasVersion = hasOwn(runtimeClaudeJson, 'lastOnboardingVersion');
+    const compared = compareOnboardingVersion(sourceVersion, runtimeClaudeJson.lastOnboardingVersion);
+    if (!runtimeHasVersion || (compared !== null && compared > 0)) {
+      runtimeClaudeJson.lastOnboardingVersion = sourceVersion;
+      changed = true;
     }
   }
 
-  writeFileSync(
-    join(runtimeConfigDir, '.omq-launch-profile.json'),
-    JSON.stringify({ sourceConfigDir: baseConfigDir, sourceClaudeMd: companionPath }, null, 2),
-  );
+  if (hasOwn(sourceClaudeJson, 'oauthAccount')) {
+    const sourceAccount = sourceClaudeJson.oauthAccount;
+    if (sourceAccount === null || sourceAccount === undefined) {
+      if (hasOwn(runtimeClaudeJson, 'oauthAccount')) {
+        delete runtimeClaudeJson.oauthAccount;
+        changed = true;
+      }
+    } else if (!hasOwn(runtimeClaudeJson, 'oauthAccount')) {
+      runtimeClaudeJson.oauthAccount = sourceAccount;
+      changed = true;
+    } else if (!accountsProvenSame(sourceClaudeJson, runtimeClaudeJson)) {
+      // Prefer source account metadata when identities cannot be proven equal.
+      runtimeClaudeJson.oauthAccount = sourceAccount;
+      changed = true;
+    }
+  }
 
-  return runtimeConfigDir;
+
+  if (isJsonObject(sourceClaudeJson.mcpServers)) {
+    runtimeClaudeJson.mcpServers = sourceClaudeJson.mcpServers;
+    changed = true;
+  }
+
+  if (changed) {
+    writeFileSync(runtimeClaudeJsonPath, JSON.stringify(runtimeClaudeJson, null, 2));
+  }
 }
 
-function isDefaultQoderConfigDirPath(configDir: string): boolean {
-  return isDefaultQoderConfigDir(configDir);
+function ensureMirroredCredentials(
+  sourcePath: string,
+  targetPath: string,
+  hasEligibleSourceCredentials: boolean,
+): void {
+  if (!existsSync(sourcePath)) return;
+
+  const removeExistingTarget = (): void => {
+    try {
+      lstatSync(targetPath);
+      rmSync(targetPath, { recursive: true, force: true });
+    } catch {
+      // A missing target is expected in a fresh staged directory.
+    }
+  };
+
+  removeExistingTarget();
+  try {
+    symlinkSync(sourcePath, targetPath, 'file');
+    return;
+  } catch {
+    removeExistingTarget();
+  }
+
+  try {
+    linkSync(sourcePath, targetPath);
+    return;
+  } catch {
+    removeExistingTarget();
+    if (hasEligibleSourceCredentials) {
+      throw new Error('Unable to mirror Claude credentials without copying credential content');
+    }
+  }
+}
+
+function pathExists(path: string): boolean {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function reconcileRuntimeCredentials(
+  baseConfigDir: string,
+  runtimeCredentialsPath: string,
+  sourceClaudeJson: Record<string, unknown> | null,
+  preservedRuntimeClaudeJson: Record<string, unknown> | null,
+): void {
+  const runtimeInspection = inspectCredentialFile(runtimeCredentialsPath);
+  const runtimeCandidate = runtimeInspection.candidate;
+  if (!runtimeCandidate) return;
+
+  const baseCredentialsPath = join(baseConfigDir, '.credentials.json');
+  const baseInspection = inspectCredentialFile(baseCredentialsPath);
+  if (!baseInspection.exists) return;
+
+  if (!baseInspection.readable || !baseInspection.valid || !baseInspection.parsed) {
+    if (runtimeInspection.regularFile) {
+      throw new Error('Unable to read or parse base Claude credentials');
+    }
+    return;
+  }
+
+  const baseExpiresAt = credentialExpiry(baseInspection.parsed);
+  if (baseExpiresAt === null || runtimeCandidate.expiresAt <= baseExpiresAt) return;
+  // Fail closed unless both sides prove the same account identity.
+  if (!accountsProvenSame(sourceClaudeJson, preservedRuntimeClaudeJson)) return;
+  // Credential fields may veto promotion but cannot establish account identity.
+  if (credentialIdentitiesConflict(baseInspection.candidate, runtimeCandidate)) return;
+
+  const mergedBaseCredentials = { ...baseInspection.parsed };
+  if (hasOwn(baseInspection.parsed, 'claudeAiOauth') || runtimeCandidate.nested) {
+    const existingNested = isJsonObject(baseInspection.parsed.claudeAiOauth)
+      ? baseInspection.parsed.claudeAiOauth
+      : {};
+    mergedBaseCredentials.claudeAiOauth = { ...existingNested, ...runtimeCandidate.fields };
+  } else {
+    Object.assign(mergedBaseCredentials, runtimeCandidate.fields);
+  }
+
+  atomicWriteJsonSync(resolveCredentialWritePath(baseCredentialsPath), mergedBaseCredentials);
+}
+
+function swapRuntimeConfigDir(runtimeConfigDir: string, nextConfigDir: string): void {
+  const previousConfigDir = `${runtimeConfigDir}.prev`;
+  let movedPrevious = false;
+  try {
+    rmSync(previousConfigDir, { recursive: true, force: true });
+    if (pathExists(runtimeConfigDir)) {
+      renameSync(runtimeConfigDir, previousConfigDir);
+      movedPrevious = true;
+    }
+    renameSync(nextConfigDir, runtimeConfigDir);
+  } catch (error) {
+    try {
+      if (movedPrevious && !pathExists(runtimeConfigDir) && pathExists(previousConfigDir)) {
+        renameSync(previousConfigDir, runtimeConfigDir);
+      }
+    } catch {
+      // Keep the original swap error; the previous directory remains available for recovery.
+    }
+    rmSync(nextConfigDir, { recursive: true, force: true });
+    throw error;
+  }
+
+  try {
+    rmSync(previousConfigDir, { recursive: true, force: true });
+  } catch {
+    // Best effort cleanup; the new runtime directory is already active.
+  }
+}
+
+export function prepareOmcLaunchConfigDir(baseConfigDir = getClaudeConfigDir()): string {
+  const companionPath = join(baseConfigDir, 'CLAUDE-omc.md');
+  if (!hasOmcMarkers(companionPath)) {
+    return baseConfigDir;
+  }
+
+  const runtimeConfigDir = join(baseConfigDir, OMC_RUNTIME_DIRNAME);
+  const nextConfigDir = `${runtimeConfigDir}.next`;
+  const runtimeClaudeJsonPath = join(runtimeConfigDir, '.claude.json');
+  const runtimeCredentialsPath = join(runtimeConfigDir, '.credentials.json');
+  const sourceClaudeJsonPath = join(dirname(baseConfigDir), '.claude.json');
+  const lifecycleLockPath = lockPathFor(join(baseConfigDir, '.omc-launch.prepare.lock'));
+
+  return withFileLockSync(lifecycleLockPath, () => {
+    const preservedClaudeJson = pathExists(runtimeClaudeJsonPath)
+      ? readFileSync(runtimeClaudeJsonPath)
+      : null;
+    const preservedRuntimeClaudeJson = readJsonObject(runtimeClaudeJsonPath);
+    const sourceClaudeJson = readJsonObject(sourceClaudeJsonPath);
+
+    reconcileRuntimeCredentials(
+      baseConfigDir,
+      runtimeCredentialsPath,
+      sourceClaudeJson,
+      preservedRuntimeClaudeJson,
+    );
+
+    rmSync(nextConfigDir, { recursive: true, force: true });
+    try {
+      mkdirSync(nextConfigDir, { recursive: true });
+      const nextClaudeJsonPath = join(nextConfigDir, '.claude.json');
+      if (preservedClaudeJson) {
+        writeFileSync(nextClaudeJsonPath, preservedClaudeJson);
+      }
+      refreshRuntimeClaudeJson(baseConfigDir, nextClaudeJsonPath, sourceClaudeJson);
+      copyFileSync(companionPath, join(nextConfigDir, 'CLAUDE.md'));
+
+      for (const entry of [
+        'agents',
+        'commands',
+        'hooks',
+        'hud',
+        'plugins',
+        'projects',
+        'rules',
+        'skills',
+        'themes',
+        OMC_CONFIG_FILE_REL,
+        '.omc-version.json',
+        '.omc-silent-update.json',
+        'keybindings.json',
+        'settings.json',
+        'settings.local.json',
+      ]) {
+        ensureMirroredPath(
+          join(baseConfigDir, entry),
+          join(nextConfigDir, basename(entry)),
+        );
+      }
+
+      const baseCredentialsPath = join(baseConfigDir, '.credentials.json');
+      const baseCredentialInspection = inspectCredentialFile(baseCredentialsPath);
+      ensureMirroredCredentials(
+        baseCredentialsPath,
+        join(nextConfigDir, '.credentials.json'),
+        hasLinkableCredentials(baseCredentialInspection),
+      );
+
+      const runtimeSettingsPath = join(nextConfigDir, 'settings.json');
+      if (existsSync(runtimeSettingsPath)) {
+        try {
+          const rawSettings = JSON.parse(readFileSync(runtimeSettingsPath, 'utf-8')) as Record<string, unknown>;
+          const repaired = stripRetiredTeamMcpServers(rawSettings);
+          if (repaired.changed) {
+            writeFileSync(runtimeSettingsPath, JSON.stringify(repaired.settings, null, 2));
+          }
+        } catch {
+          // Best-effort compatibility repair; launch must continue even if a legacy
+          // settings file cannot be parsed or rewritten.
+        }
+      }
+
+      writeFileSync(
+        join(nextConfigDir, '.omc-launch-profile.json'),
+        JSON.stringify({ sourceConfigDir: baseConfigDir, sourceClaudeMd: companionPath }, null, 2),
+      );
+    } catch (error) {
+      rmSync(nextConfigDir, { recursive: true, force: true });
+      throw error;
+    }
+
+    swapRuntimeConfigDir(runtimeConfigDir, nextConfigDir);
+    return runtimeConfigDir;
+  }, { timeoutMs: 5000, retryDelayMs: 50 });
+}
+
+function isDefaultClaudeConfigDirPath(configDir: string): boolean {
+  return configDir === join(homedir(), '.claude');
 }
 
 /**
- * Extract the OMQ-specific --notify flag from launch args.
- * --notify false  → disable notifications (OMQ_NOTIFY=0)
+ * Extract the OMC-specific --notify flag from launch args.
+ * --notify false  → disable notifications (OMC_NOTIFY=0)
  * --notify true   → enable notifications (default)
  * This flag must be stripped before passing args to Claude CLI.
  */
@@ -221,9 +635,9 @@ export function extractNotifyFlag(args: string[]): { notifyEnabled: boolean; rem
 }
 
 /**
- * Extract the OMQ-specific --openclaw flag from launch args.
+ * Extract the OMC-specific --openclaw flag from launch args.
  * Purely presence-based (like --madmax/--yolo):
- *   --openclaw        -> enable OpenClaw (OMQ_OPENCLAW=1)
+ *   --openclaw        -> enable OpenClaw (OMC_OPENCLAW=1)
  *   --openclaw=true   -> enable OpenClaw
  *   --openclaw=false  -> disable OpenClaw
  *   --openclaw=1      -> enable OpenClaw
@@ -256,9 +670,9 @@ export function extractOpenClawFlag(args: string[]): { openclawEnabled: boolean 
 }
 
 /**
- * Extract the OMQ-specific --telegram flag from launch args.
+ * Extract the OMC-specific --telegram flag from launch args.
  * Purely presence-based:
- *   --telegram        -> enable Telegram notifications (OMQ_TELEGRAM=1)
+ *   --telegram        -> enable Telegram notifications (OMC_TELEGRAM=1)
  *   --telegram=true   -> enable
  *   --telegram=false  -> disable
  *   --telegram=1      -> enable
@@ -283,9 +697,9 @@ export function extractTelegramFlag(args: string[]): { telegramEnabled: boolean 
 }
 
 /**
- * Extract the OMQ-specific --discord flag from launch args.
+ * Extract the OMC-specific --discord flag from launch args.
  * Purely presence-based:
- *   --discord        -> enable Discord notifications (OMQ_DISCORD=1)
+ *   --discord        -> enable Discord notifications (OMC_DISCORD=1)
  *   --discord=true   -> enable
  *   --discord=false  -> disable
  *   --discord=1      -> enable
@@ -310,9 +724,9 @@ export function extractDiscordFlag(args: string[]): { discordEnabled: boolean | 
 }
 
 /**
- * Extract the OMQ-specific --slack flag from launch args.
+ * Extract the OMC-specific --slack flag from launch args.
  * Purely presence-based:
- *   --slack        -> enable Slack notifications (OMQ_SLACK=1)
+ *   --slack        -> enable Slack notifications (OMC_SLACK=1)
  *   --slack=true   -> enable
  *   --slack=false  -> disable
  *   --slack=1      -> enable
@@ -337,9 +751,9 @@ export function extractSlackFlag(args: string[]): { slackEnabled: boolean | unde
 }
 
 /**
- * Extract the OMQ-specific --webhook flag from launch args.
+ * Extract the OMC-specific --webhook flag from launch args.
  * Purely presence-based:
- *   --webhook        -> enable Webhook notifications (OMQ_WEBHOOK=1)
+ *   --webhook        -> enable Webhook notifications (OMC_WEBHOOK=1)
  *   --webhook=true   -> enable
  *   --webhook=false  -> disable
  *   --webhook=1      -> enable
@@ -421,7 +835,7 @@ export function isPrintMode(args: string[]): boolean {
 
 /**
  * Detect raw --madmax / --yolo tokens in launch args. Used before
- * normalizeClaudeLaunchArgs strips them so we can apply OMQ-specific
+ * normalizeClaudeLaunchArgs strips them so we can apply OMC-specific
  * launch contracts (e.g. tmux-mandatory on macOS).
  */
 export function hasMadmaxFlag(args: string[]): boolean {
@@ -437,11 +851,11 @@ class MadmaxTmuxRequiredError extends Error {
 
 function abortMadmaxRequiresTmux(reason: 'missing' | 'launch-failed'): never {
   if (reason === 'missing') {
-    console.error('[omq] Error: --madmax/--yolo on macOS requires tmux, but tmux is not installed.');
+    console.error('[omc] Error: --madmax/--yolo on macOS requires tmux, but tmux is not installed.');
     console.error('  Install it with: brew install tmux');
   } else {
-    console.error('[omq] Error: --madmax/--yolo on macOS requires tmux, but launching tmux failed.');
-    console.error('  Verify tmux works: tmux -V && tmux new-session -d -s _omq_probe \\; kill-session -t _omq_probe');
+    console.error('[omc] Error: --madmax/--yolo on macOS requires tmux, but launching tmux failed.');
+    console.error('  Verify tmux works: tmux -V && tmux new-session -d -s _omc_probe \\; kill-session -t _omc_probe');
   }
   process.exit(1);
   // process.exit may be intercepted by tests; throwing guarantees the caller
@@ -519,7 +933,7 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
 
   // Launch Claude in current pane
   try {
-    execFileSync(qoderCliBinary(), args, {
+    execFileSync('claude', args, {
       cwd,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -527,10 +941,10 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { status?: number | null };
     if (err.code === 'ENOENT') {
-      console.error(`[omq] Error: ${qoderCliBinary()} not found in PATH.`);
+      console.error('[omc] Error: claude CLI not found in PATH.');
       process.exit(1);
     }
-    // Propagate Claude's exit code so omq does not swallow failures
+    // Propagate Claude's exit code so omc does not swallow failures
     process.exit(typeof err.status === 'number' ? err.status : 1);
   }
 }
@@ -538,20 +952,20 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
 /**
  * Env vars that must be forwarded into tmux sessions.
  * tmux new-session inherits the *server's* environment, not the calling
- * process's, so vars set on process.env (e.g. QODER_CONFIG_DIR at launch)
+ * process's, so vars set on process.env (e.g. CLAUDE_CONFIG_DIR at launch)
  * are silently lost.  We inject them as `export` statements into the shell
  * command that runs inside the tmux pane, *after* .zshrc/.bashrc sourcing
  * so our values take precedence.
  */
 export const TMUX_ENV_FORWARD = [
-  'QODER_CONFIG_DIR',
-  'OMQ_NOTIFY',
-  'OMQ_OPENCLAW',
-  'OMQ_TELEGRAM',
-  'OMQ_DISCORD',
-  'OMQ_SLACK',
-  'OMQ_WEBHOOK',
-  OMQ_PLUGIN_ROOT_ENV,
+  'CLAUDE_CONFIG_DIR',
+  'OMC_NOTIFY',
+  'OMC_OPENCLAW',
+  'OMC_TELEGRAM',
+  'OMC_DISCORD',
+  'OMC_SLACK',
+  'OMC_WEBHOOK',
+  OMC_PLUGIN_ROOT_ENV,
 ];
 
 export function buildEnvExportPrefix(vars: string[]): string {
@@ -583,8 +997,8 @@ function runClaudeOutsideTmux(
       .filter(([, value]) => value !== undefined),
   ) as Record<string, string>;
   const rawClaudeCmd = isNativeWindowsShell()
-    ? buildTmuxShellCommandWithEnv(qoderCliBinary(), args, forwardedEnv)
-    : buildTmuxShellCommand(qoderCliBinary(), args);
+    ? buildTmuxShellCommandWithEnv('claude', args, forwardedEnv)
+    : buildTmuxShellCommand('claude', args);
   const envPrefix = !isNativeWindowsShell() && Object.keys(forwardedEnv).length > 0
     ? buildEnvExportPrefix(TMUX_ENV_FORWARD)
     : '';
@@ -646,7 +1060,7 @@ function runClaudeOutsideTmux(
  */
 function runClaudeDirect(cwd: string, args: string[]): void {
   try {
-    execFileSync(qoderCliBinary(), args, {
+    execFileSync('claude', args, {
       cwd,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -654,10 +1068,10 @@ function runClaudeDirect(cwd: string, args: string[]): void {
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { status?: number | null };
     if (err.code === 'ENOENT') {
-      console.error(`[omq] Error: ${qoderCliBinary()} not found in PATH.`);
+      console.error('[omc] Error: claude CLI not found in PATH.');
       process.exit(1);
     }
-    // Propagate Claude's exit code so omq does not swallow failures
+    // Propagate Claude's exit code so omc does not swallow failures
     process.exit(typeof err.status === 'number' ? err.status : 1);
   }
 }
@@ -682,7 +1096,7 @@ export async function postLaunch(_cwd: string, _sessionId: string): Promise<void
  * Parse `--plugin-dir <path>` / `--plugin-dir=<path>` from launch args (non-consuming).
  *
  * Returns the resolved absolute path if found, or null. The flag is NOT removed
- * from `args` — it must still forward to Qoder CLI's plugin loader untouched.
+ * from `args` — it must still forward to Claude Code's plugin loader untouched.
  */
 export function parsePluginDirArg(args: string[]): string | null {
   for (let i = 0; i < args.length; i++) {
@@ -704,90 +1118,90 @@ export function parsePluginDirArg(args: string[]): string | null {
 
 export async function launchCommand(args: string[]): Promise<void> {
   // Capture --plugin-dir <path> so the HUD wrapper (and any other env-aware
-  // child of Qoder CLI) can resolve the active plugin root via OMQ_PLUGIN_ROOT.
-  // Non-consuming: the flag still flows through to Qoder CLI untouched.
+  // child of Claude Code) can resolve the active plugin root via OMC_PLUGIN_ROOT.
+  // Non-consuming: the flag still flows through to Claude Code untouched.
   const pluginDir = parsePluginDirArg(args);
   if (pluginDir) {
-    process.env[OMQ_PLUGIN_ROOT_ENV] = pluginDir;
+    process.env[OMC_PLUGIN_ROOT_ENV] = pluginDir;
   }
 
-  // Extract OMQ-specific --notify flag before passing remaining args to Claude CLI
+  // Extract OMC-specific --notify flag before passing remaining args to Claude CLI
   const { notifyEnabled, remainingArgs } = extractNotifyFlag(args);
   if (!notifyEnabled) {
-    process.env.OMQ_NOTIFY = '0';
+    process.env.OMC_NOTIFY = '0';
   }
 
-  // Extract OMQ-specific --openclaw flag (presence-based, no value consumption)
+  // Extract OMC-specific --openclaw flag (presence-based, no value consumption)
   const { openclawEnabled, remainingArgs: argsAfterOpenclaw } = extractOpenClawFlag(remainingArgs);
   if (openclawEnabled === true) {
-    process.env.OMQ_OPENCLAW = '1';
+    process.env.OMC_OPENCLAW = '1';
   } else if (openclawEnabled === false) {
-    process.env.OMQ_OPENCLAW = '0';
+    process.env.OMC_OPENCLAW = '0';
   }
 
-  // Extract OMQ-specific --telegram flag (presence-based)
+  // Extract OMC-specific --telegram flag (presence-based)
   const { telegramEnabled, remainingArgs: argsAfterTelegram } = extractTelegramFlag(argsAfterOpenclaw);
   if (telegramEnabled === true) {
-    process.env.OMQ_TELEGRAM = '1';
+    process.env.OMC_TELEGRAM = '1';
   } else if (telegramEnabled === false) {
-    process.env.OMQ_TELEGRAM = '0';
+    process.env.OMC_TELEGRAM = '0';
   }
 
-  // Extract OMQ-specific --discord flag (presence-based)
+  // Extract OMC-specific --discord flag (presence-based)
   const { discordEnabled, remainingArgs: argsAfterDiscord } = extractDiscordFlag(argsAfterTelegram);
   if (discordEnabled === true) {
-    process.env.OMQ_DISCORD = '1';
+    process.env.OMC_DISCORD = '1';
   } else if (discordEnabled === false) {
-    process.env.OMQ_DISCORD = '0';
+    process.env.OMC_DISCORD = '0';
   }
 
-  // Extract OMQ-specific --slack flag (presence-based)
+  // Extract OMC-specific --slack flag (presence-based)
   const { slackEnabled, remainingArgs: argsAfterSlack } = extractSlackFlag(argsAfterDiscord);
   if (slackEnabled === true) {
-    process.env.OMQ_SLACK = '1';
+    process.env.OMC_SLACK = '1';
   } else if (slackEnabled === false) {
-    process.env.OMQ_SLACK = '0';
+    process.env.OMC_SLACK = '0';
   }
 
-  // Extract OMQ-specific --webhook flag (presence-based)
+  // Extract OMC-specific --webhook flag (presence-based)
   const { webhookEnabled, remainingArgs: argsAfterWebhook } = extractWebhookFlag(argsAfterSlack);
   if (webhookEnabled === true) {
-    process.env.OMQ_WEBHOOK = '1';
+    process.env.OMC_WEBHOOK = '1';
   } else if (webhookEnabled === false) {
-    process.env.OMQ_WEBHOOK = '0';
+    process.env.OMC_WEBHOOK = '0';
   }
 
   const cwd = process.cwd();
 
   // Pre-flight: check for nested session
   if (process.env.CLAUDECODE) {
-    console.error('[omq] Error: Already inside a Qoder CLI session. Nested launches are not supported.');
+    console.error('[omc] Error: Already inside a Claude Code session. Nested launches are not supported.');
     process.exit(1);
   }
 
-  // Pre-flight: check the host CLI availability
-  if (!isQoderCliAvailable()) {
-    console.error(`[omq] Error: ${qoderCliBinary()} not found. Install Qoder CLI first:`);
-    console.error('  curl -fsSL https://qoder.com/install | bash');
+  // Pre-flight: check claude CLI availability
+  if (!isClaudeAvailable()) {
+    console.error('[omc] Error: claude CLI not found. Install Claude Code first:');
+    console.error('  https://code.claude.com/docs/en/setup');
     process.exit(1);
   }
 
-  const launchConfigDir = prepareOmqLaunchConfigDir();
-  if (isDefaultQoderConfigDirPath(launchConfigDir)) {
-    delete process.env.QODER_CONFIG_DIR;
+  const launchConfigDir = prepareOmcLaunchConfigDir();
+  if (isDefaultClaudeConfigDirPath(launchConfigDir)) {
+    delete process.env.CLAUDE_CONFIG_DIR;
   } else {
-    process.env.QODER_CONFIG_DIR = launchConfigDir;
+    process.env.CLAUDE_CONFIG_DIR = launchConfigDir;
   }
 
   const normalizedArgs = normalizeClaudeLaunchArgs(argsAfterWebhook);
-  const sessionId = `omq-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
+  const sessionId = `omc-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
 
   // Phase 1: preLaunch
   try {
     await preLaunch(cwd, sessionId);
   } catch (err) {
     // preLaunch errors must NOT prevent Claude from starting
-    console.error(`[omq] preLaunch warning: ${err instanceof Error ? err.message : err}`);
+    console.error(`[omc] preLaunch warning: ${err instanceof Error ? err.message : err}`);
   }
 
   // Phase 2: run

@@ -1,13 +1,13 @@
 /**
- * Hooks Module for Oh-My-Qoder
+ * Hooks Module for Oh-My-ClaudeCode
  *
- * This module provides the TypeScript bridge for Qoder CLI's native shell hook system.
+ * This module provides the TypeScript bridge for Claude Code's native shell hook system.
  * Shell scripts call these TypeScript functions for complex logic processing.
  *
  * Architecture:
- * - Qoder CLI runs shell scripts on hook events (UserPromptSubmit, Stop, etc.)
+ * - Claude Code runs shell scripts on hook events (UserPromptSubmit, Stop, etc.)
  * - Shell scripts invoke Node.js bridge for complex processing
- * - Bridge returns JSON response that shell passes back to Qoder CLI
+ * - Bridge returns JSON response that shell passes back to Claude Code
  */
 
 export {
@@ -28,7 +28,6 @@ export {
   clearRalphState,
   clearLinkedUltraworkState,
   incrementRalphIteration,
-  isUltraQAActive,
   // PRD Integration
   hasPrd,
   getPrdCompletionStatus,
@@ -38,17 +37,28 @@ export {
   recordStoryProgress,
   recordPattern,
   shouldCompleteByPrd,
+  // PRD Stale-State Detection & Reconciliation (#3669)
+  detectStalePrd,
+  formatStalePrdWarning,
+  getSessionEndStalePrdWarning,
+  reconcileStalePrd,
+  reconcileStalePrdForStartup,
+  runObservableCheck,
+  PRD_RECONCILIATION_AUDIT_FILENAME,
+  DEFAULT_STALE_PRD_AFTER_MS,
   // PRD (Structured Task Tracking)
   readPrd,
   writePrd,
   findPrdPath,
   getPrdPath,
-  getOmqPrdPath,
+  getOmcPrdPath,
   getPrdStatus,
   markStoryComplete,
   markStoryIncomplete,
   getStory,
   getNextStory,
+  amendCriterion,
+  supersedeCriterion,
   createPrd,
   createSimplePrd,
   initPrd,
@@ -56,6 +66,7 @@ export {
   formatStory,
   formatPrd,
   formatNextStoryPrompt,
+  formatCriterionAmendments,
   PRD_FILENAME,
   PRD_EXAMPLE_FILENAME,
   // Progress (Memory Persistence)
@@ -64,7 +75,7 @@ export {
   parseProgress,
   findProgressPath,
   getProgressPath,
-  getOmqProgressPath,
+  getOmcProgressPath,
   initProgress,
   appendProgress,
   addPattern,
@@ -94,6 +105,10 @@ export {
   type PRD,
   type PRDStatus,
   type UserStory,
+  type CriterionAmendment,
+  type CriterionAmendmentInput,
+  type CriterionAmendmentResult,
+  type CriterionAmendmentKind,
   type UserStoryInput,
   type ProgressEntry,
   type CodebasePattern,
@@ -171,8 +186,8 @@ export {
 } from './rules-injector/index.js';
 
 export {
-  // OMQ Orchestrator
-  createOmqOrchestratorHook,
+  // OMC Orchestrator
+  createOmcOrchestratorHook,
   isAllowedPath,
   isWriteEditTool,
   getGitDiffStats,
@@ -183,7 +198,7 @@ export {
   checkBoulderContinuation,
   processOrchestratorPreTool,
   processOrchestratorPostTool,
-  HOOK_NAME as OMQ_ORCHESTRATOR_HOOK_NAME,
+  HOOK_NAME as OMC_ORCHESTRATOR_HOOK_NAME,
   ALLOWED_PATH_PREFIX,
   WRITE_EDIT_TOOLS,
   DIRECT_WORK_REMINDER,
@@ -193,7 +208,7 @@ export {
   SINGLE_TASK_DIRECTIVE,
   type ToolExecuteInput as OrchestratorToolInput,
   type ToolExecuteOutput as OrchestratorToolOutput
-} from './omq-orchestrator/index.js';
+} from './omc-orchestrator/index.js';
 
 export {
   // Auto Slash Command
@@ -462,23 +477,6 @@ export {
   type PreCommitResult
 } from './plugin-patterns/index.js';
 
-export {
-  // UltraQA Loop (QA cycling workflow)
-  readUltraQAState,
-  writeUltraQAState,
-  clearUltraQAState,
-  startUltraQA,
-  recordFailure,
-  completeUltraQA,
-  stopUltraQA,
-  cancelUltraQA,
-  getGoalCommand,
-  formatProgressMessage,
-  type UltraQAState,
-  type UltraQAGoalType,
-  type UltraQAOptions,
-  type UltraQAResult
-} from './ultraqa/index.js';
 
 export {
   // Notepad (Compaction-Resilient Memory)
@@ -638,6 +636,7 @@ export {
   ensureStateDir as ensureModeStateDir,
   getStateFilePath as getModeStateFilePath,
   getMarkerFilePath as getModeMarkerFilePath,
+  getGlobalStateFilePath,
   clearModeState,
   hasModeState,
   getActiveModes,
@@ -713,6 +712,7 @@ export {
   exportWisdomToNotepad,
   saveModeSummary,
   createCompactCheckpoint,
+  collectPlanRefs,
   formatCompactSummary as formatPreCompactSummary,
   isCompactionInProgress,
   getCompactionQueueDepth,
@@ -720,6 +720,16 @@ export {
   type CompactCheckpoint,
   type HookOutput as PreCompactHookOutput
 } from './pre-compact/index.js';
+
+export {
+  // PreCompact Restore (issue #3730)
+  findLatestCheckpointForRestore,
+  formatCheckpointRestoreContext,
+  markCheckpointRestored,
+  CHECKPOINT_MAX_AGE_MS,
+  CHECKPOINT_MAX_BYTES,
+  type RestoreCandidate
+} from './pre-compact/restore.js';
 
 export {
   // Permission Handler Hook
@@ -810,7 +820,7 @@ export {
   processCodeSimplifier,
   isCodeSimplifierEnabled,
   getModifiedFiles,
-  readOmqConfig,
+  readOmcConfig,
   isAlreadyTriggered,
   writeTriggerMarker,
   clearTriggerMarker,
