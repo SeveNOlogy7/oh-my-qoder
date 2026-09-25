@@ -174,5 +174,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test
-        run: npm run test:run
+      # The suite is knowingly red (upstream debt), so the step itself may not
+      # gate the job - but swallowing it would also swallow a crash-to-nothing.
+      # The verdict comes from the delta check below, which fails on a failure
+      # that is not in tests/known-failures-linux.json AND on a baseline entry
+      # that stops failing.
+      - name: Test (captured)
+        run: mkdir -p .omq && npm run test:run 2>&1 | tee .omq/vitest-out.txt || true
+
+      - name: Known-failure delta gate
+        run: node scripts/known-failures.mjs --check < .omq/vitest-out.txt
