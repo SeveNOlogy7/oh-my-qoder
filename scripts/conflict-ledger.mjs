@@ -344,6 +344,8 @@ export function pickObservation(path, { testFiles, testBodies, coChangedTests = 
     if (coChanged.has(testFile)) s += 2;
     return s;
   };
+  // No cap on candidates: a lane that stops measuring at the eighth reference
+  // silently reports INVALID for a patch whose guard sits at number nine.
   const referencing = [...testBodies.entries()]
     .filter(([file, body]) => file !== path && body.includes(specifier))
     .map(([file]) => file)
@@ -359,7 +361,7 @@ export function pickObservation(path, { testFiles, testBodies, coChangedTests = 
       observation: conventional,
       rule: 'conventional',
       candidates: 1,
-      alternates: referencing.filter((file) => file !== conventional).slice(0, 8),
+      alternates: referencing.filter((file) => file !== conventional),
     };
   }
   if (referencing.length) {
@@ -368,7 +370,7 @@ export function pickObservation(path, { testFiles, testBodies, coChangedTests = 
       observation,
       rule: coChanged.has(observation) ? 'reference-and-co-changed' : 'reference',
       candidates: referencing.length,
-      alternates: referencing.slice(1, 9),
+      alternates: referencing.slice(1),
     };
   }
   return { observation: null, rule: 'none', candidates: 0, alternates: [] };
