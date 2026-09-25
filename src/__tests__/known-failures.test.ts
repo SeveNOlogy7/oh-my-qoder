@@ -125,7 +125,7 @@ Test Files  1 passed | 1 total
     });
 
     it('handles empty actual', () => {
-      const actual = [];
+      const actual: string[] = [];
       const baseline = ['test1', 'test2'];
       
       const result = compareFailures(actual, baseline);
@@ -136,7 +136,7 @@ Test Files  1 passed | 1 total
 
     it('handles empty baseline', () => {
       const actual = ['test1', 'test2'];
-      const baseline = [];
+      const baseline: string[] = [];
       
       const result = compareFailures(actual, baseline);
       expect(result.newFailures).toEqual(['test1', 'test2']);
