@@ -1,6 +1,22 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error - .mjs file has no type declarations
-import { stripAnsi, parseVitestOutput, compareFailures } from '../../scripts/known-failures.mjs';
+import { stripAnsi, parseVitestOutput, compareFailures, stripRunnerPrefix } from '../../scripts/known-failures.mjs';
+
+describe('stripRunnerPrefix', () => {
+  it('removes a job/step/timestamp prefix whose step name contains spaces', () => {
+    const line = 'windows-test	Test (captured)	2026-09-25T15:20:35.9602849Z  FAIL  src/a.test.ts > works';
+    expect(stripRunnerPrefix(line)).toBe(' FAIL  src/a.test.ts > works');
+  });
+
+  it('does not cut early on a Z inside the test title', () => {
+    const line = 'test	Test (captured)	2026-09-25T15:20:35Z  FAIL  src/z.test.ts > parses Zulu zones';
+    expect(stripRunnerPrefix(line)).toBe(' FAIL  src/z.test.ts > parses Zulu zones');
+  });
+
+  it('leaves a plain vitest line untouched', () => {
+    expect(stripRunnerPrefix(' FAIL  src/a.test.ts > works')).toBe(' FAIL  src/a.test.ts > works');
+  });
+});
 
 describe('known-failures script', () => {
   describe('stripAnsi', () => {
