@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { readAutopilotStateForHud } from '../omc-state.js';
+import { readAutopilotStateForHud } from '../omq-state.js';
 import { renderAutopilot } from '../elements/autopilot.js';
 import { redactAutopilotPublicState } from '../../tools/state-tools.js';
 import { formatAutopilotRuntimeInsight } from '../../hooks/autopilot/runtime-insight.js';

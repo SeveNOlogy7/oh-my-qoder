@@ -1,5 +1,5 @@
 /**
- * OMC HUD - Multi-Repo Element
+ * OMQ HUD - Multi-Repo Element
  *
  * Renders a multi-repo workspace indicator when the cwd is a parent
  * directory holding multiple sibling git repos (e.g. `bidchex-repos/`
@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { cyan, dim, green, yellow } from '../colors.js';
-import { getOmcRoot } from '../../lib/worktree-paths.js';
+import { getOmqRoot } from '../../lib/worktree-paths.js';
 
 /**
  * Liveness window for the session counter. A session dir whose
@@ -103,9 +103,9 @@ function looksLikeRepo(entryPath: string): boolean {
  */
 function countActiveSessions(cwd: string): number {
   // cwd here is verified to be the workspace anchor (marker present),
-  // so getOmcRoot resolves to <cwd>/.omq. Route through the canonical
-  // helper so OMC_STATE_DIR and OMC_DISABLE_MULTIREPO are honored.
-  const sessionsDir = join(getOmcRoot(cwd), 'state', 'sessions');
+  // so getOmqRoot resolves to <cwd>/.omq. Route through the canonical
+  // helper so OMQ_STATE_DIR and OMQ_DISABLE_MULTIREPO are honored.
+  const sessionsDir = join(getOmqRoot(cwd), 'state', 'sessions');
   if (!existsSync(sessionsDir)) return 0;
 
   const now = Date.now();

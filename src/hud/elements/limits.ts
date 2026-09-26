@@ -1,5 +1,5 @@
 /**
- * OMC HUD - Rate Limits Element
+ * OMQ HUD - Rate Limits Element
  *
  * Renders 5-hour and weekly rate limit usage display (built-in providers),
  * and custom rate limit buckets from the rateLimitsProvider command.
@@ -390,7 +390,7 @@ export function renderApiKeyUsageHint(
   if (!apiKeyMode) return null;
   if (hasCustomProvider) return null;
   if (result?.error !== 'no_credentials') return null;
-  return `${DIM}[usage: set omcHud.rateLimitsProvider]${RESET}`;
+  return `${DIM}[usage: set omqHud.rateLimitsProvider]${RESET}`;
 }
 
 // ============================================================================

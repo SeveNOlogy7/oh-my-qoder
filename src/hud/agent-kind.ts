@@ -1,15 +1,15 @@
 /**
- * OMC HUD — Agent kind / ownership classification (issue #3666)
+ * OMQ HUD — Agent kind / ownership classification (issue #3666)
  *
  * Deterministic, backward-compatible metadata that tells a coordinator which
- * mechanism owns an agent or an incoming message sender, and — when OMC can
+ * mechanism owns an agent or an incoming message sender, and — when OMQ can
  * actually observe it — which session spawned the agent.
  *
  * Scope honesty:
  * - `<task-notification>`, `<teammate-message>` and `<agent-message>` are
- *   emitted by Claude Code itself; OMC never rewrites them. OMC's authority
+ *   emitted by Claude Code itself; OMQ never rewrites them. OMQ's authority
  *   here is classification of the senders when the wrappers appear in
- *   transcript content, and enrichment of OMC's own agent model.
+ *   transcript content, and enrichment of OMQ's own agent model.
  * - Identity is taken ONLY from the wrapper's own attributes. Payload bodies
  *   are never parsed for identity (a payload claiming `from: "coordinator"`
  *   cannot launder a peer/teammate message into the coordinator's identity),
@@ -30,7 +30,7 @@ export interface IncomingAgentMessage {
   /** Identity from the wrapper attribute (teammate_id / from / task-id); 'unknown' when absent. */
   senderId: string;
   /**
-   * Owning mechanism when OMC can observe it:
+   * Owning mechanism when OMQ can observe it:
    * - teammate: the native Claude team surface ('native-team')
    * - subagent (task-notification): the session the notice was delivered into
    * - peer-session: absent — a peer is its own session with its own permission
@@ -41,7 +41,7 @@ export interface IncomingAgentMessage {
   redacted: true;
 }
 
-/** Native wrapper tags OMC recognizes (emitted by Claude Code, not OMC). */
+/** Native wrapper tags OMQ recognizes (emitted by Claude Code, not OMQ). */
 const WRAPPER_TAGS = [
   { tag: "task-notification", kind: "subagent" as const },
   { tag: "teammate-message", kind: "teammate" as const },
@@ -53,7 +53,7 @@ const WRAPPER_TAGS = [
  *
  * Named spawns (name="...") are teammates on the native agent team; unnamed
  * spawns are anonymous subagents. `spawnedBy` is the session that issued the
- * tool call — the only spawn evidence OMC observes in the transcript. Legacy
+ * tool call — the only spawn evidence OMQ observes in the transcript. Legacy
  * transcripts without a session id keep the kind but carry no spawner claim.
  */
 export function classifyAgentSpawn(input: {

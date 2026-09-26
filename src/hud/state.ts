@@ -1,5 +1,5 @@
 /**
- * OMC HUD - State Management
+ * OMQ HUD - State Management
  *
  * Manages HUD state file for background task tracking.
  * Follows patterns from ultrawork-state.
@@ -10,7 +10,7 @@ import { join } from "path";
 import { getClaudeConfigDir } from "../utils/config-dir.js";
 import {
   validateWorkingDirectory,
-  getOmcRoot,
+  getOmqRoot,
   ensureSessionStateDir,
   resolveSessionStatePath,
 } from "../lib/worktree-paths.js";
@@ -19,7 +19,7 @@ import {
   atomicWriteJsonSync,
 } from "../lib/atomic-write.js";
 import type {
-  OmcHudState,
+  OmqHudState,
   BackgroundTask,
   HudConfig,
   HudElementConfig,
@@ -50,13 +50,13 @@ import {
  */
 function getLocalStateFilePath(directory?: string): string {
   const baseDir = validateWorkingDirectory(directory);
-  const omcStateDir = join(getOmcRoot(baseDir), "state");
-  return join(omcStateDir, "hud-state.json");
+  const omqStateDir = join(getOmqRoot(baseDir), "state");
+  return join(omqStateDir, "hud-state.json");
 }
 
 function getLegacyRootStateFilePath(directory?: string): string {
   const baseDir = validateWorkingDirectory(directory);
-  return join(getOmcRoot(baseDir), "hud-state.json");
+  return join(getOmqRoot(baseDir), "hud-state.json");
 }
 
 function getStateFilePath(directory?: string, sessionId?: string): string {
@@ -165,9 +165,9 @@ function mergeElementsForWrite(
  */
 function ensureStateDir(directory?: string): void {
   const baseDir = validateWorkingDirectory(directory);
-  const omcStateDir = join(getOmcRoot(baseDir), "state");
-  if (!existsSync(omcStateDir)) {
-    mkdirSync(omcStateDir, { recursive: true });
+  const omqStateDir = join(getOmqRoot(baseDir), "state");
+  if (!existsSync(omqStateDir)) {
+    mkdirSync(omqStateDir, { recursive: true });
   }
 }
 
@@ -201,7 +201,7 @@ type HudConfigInput = Omit<
 export function readHudState(
   directory?: string,
   sessionId?: string,
-): OmcHudState | null {
+): OmqHudState | null {
   // Session-scoped HUD state should never fall back to root/legacy files.
   // This prevents a stale root state from being revived after a pane/session
   // recreation when the current session has already been identified.
@@ -260,7 +260,7 @@ export function readHudState(
  * Write HUD state to disk (local only)
  */
 export function writeHudState(
-  state: OmcHudState,
+  state: OmqHudState,
   directory?: string,
   sessionId?: string,
 ): boolean {
@@ -282,7 +282,7 @@ export function writeHudState(
         }
         try {
           const content = readFileSync(legacyFile, "utf-8");
-          const legacyState = JSON.parse(content) as Partial<OmcHudState>;
+          const legacyState = JSON.parse(content) as Partial<OmqHudState>;
           if (!legacyState.sessionId || legacyState.sessionId === sessionId) {
             unlinkSync(legacyFile);
           }
@@ -305,7 +305,7 @@ export function writeHudState(
 /**
  * Create a new empty HUD state
  */
-export function createEmptyHudState(): OmcHudState {
+export function createEmptyHudState(): OmqHudState {
   return {
     timestamp: new Date().toISOString(),
     backgroundTasks: [],
@@ -315,7 +315,7 @@ export function createEmptyHudState(): OmcHudState {
 /**
  * Get running background tasks from state
  */
-export function getRunningTasks(state: OmcHudState | null): BackgroundTask[] {
+export function getRunningTasks(state: OmqHudState | null): BackgroundTask[] {
   if (!state) return [];
   return state.backgroundTasks.filter((task) => task.status === "running");
 }
@@ -323,7 +323,7 @@ export function getRunningTasks(state: OmcHudState | null): BackgroundTask[] {
 /**
  * Get background task count string (e.g., "3/5")
  */
-export function getBackgroundTaskCount(state: OmcHudState | null): {
+export function getBackgroundTaskCount(state: OmqHudState | null): {
   running: number;
   max: number;
 } {
@@ -349,33 +349,34 @@ export function readHudConfig(): HudConfig {
   if (existsSync(settingsFile)) {
     try {
       const content = readFileSync(settingsFile, "utf-8");
-      const settings = JSON.parse(content) as { omcHud?: HudConfigInput };
-      if (settings.omcHud) {
+      const settings = JSON.parse(content) as { omqHud?: HudConfigInput; omcHud?: HudConfigInput };
+      const hudConfig = settings.omqHud ?? settings.omcHud;
+      if (hudConfig) {
         return mergeWithDefaults({
           ...legacyConfig,
-          ...settings.omcHud,
+          ...hudConfig,
           elements: mergeElements(
             legacyConfig?.elements,
-            settings.omcHud.elements,
+            hudConfig.elements,
           ),
           thresholds: mergeThresholds(
             legacyConfig?.thresholds,
-            settings.omcHud.thresholds,
+            hudConfig.thresholds,
           ),
           contextLimitWarning: mergeContextLimitWarning(
             legacyConfig?.contextLimitWarning,
-            settings.omcHud.contextLimitWarning,
+            hudConfig.contextLimitWarning,
           ),
           missionBoard: mergeMissionBoardConfig(
             legacyConfig?.missionBoard,
-            settings.omcHud.missionBoard,
+            hudConfig.missionBoard,
           ),
-          locale: isHudLocale(settings.omcHud.locale)
-            ? settings.omcHud.locale
+          locale: isHudLocale(hudConfig.locale)
+            ? hudConfig.locale
             : legacyConfig?.locale,
           labels: {
             ...sanitizeHudLabels(legacyConfig?.labels),
-            ...sanitizeHudLabels(settings.omcHud.labels),
+            ...sanitizeHudLabels(hudConfig.labels),
           },
         });
       }
@@ -453,7 +454,7 @@ function mergeWithDefaults(config: HudConfigInput): HudConfig {
 }
 
 /**
- * Write HUD configuration to ~/.claude/settings.json (omcHud key)
+ * Write HUD configuration to ~/.claude/settings.json (omqHud key)
  */
 export function writeHudConfig(config: HudConfig): boolean {
   try {
@@ -486,7 +487,7 @@ export function writeHudConfig(config: HudConfig): boolean {
       },
     });
 
-    settings.omcHud = mergedConfig;
+    settings.omqHud = mergedConfig;
     atomicWriteFileSync(settingsFile, JSON.stringify(settings, null, 2));
     return true;
   } catch (error) {

@@ -35,7 +35,7 @@ function baseContext(payloadBytes?: number): HudRenderContext {
     pendingPermission: null,
     thinkingState: null,
     sessionHealth: null,
-    omcVersion: "4.14.1",
+    omqVersion: "4.14.1",
     updateAvailable: null,
     toolCallCount: 0,
     agentCallCount: 0,
@@ -55,7 +55,7 @@ function config(): HudConfig {
     elements: {
       ...DEFAULT_HUD_CONFIG.elements,
       model: false,
-      omcLabel: false,
+      omqLabel: false,
       rateLimits: false,
       ralph: false,
       autopilot: false,

@@ -1,5 +1,5 @@
 /**
- * OMC HUD Type Definitions
+ * OMQ HUD Type Definitions
  *
  * Type definitions for the HUD state, configuration, and rendering.
  */
@@ -30,7 +30,7 @@ export interface BackgroundTask {
   exitCode?: number; // For tracking abnormal termination
 }
 
-export interface OmcHudState {
+export interface OmqHudState {
   timestamp: string;
   backgroundTasks: BackgroundTask[];
   /** Persisted session start time to survive tail-parsing resets */
@@ -42,7 +42,7 @@ export interface OmcHudState {
 }
 
 // ============================================================================
-// Stdin from Claude Code
+// Stdin from Qoder CLI
 // ============================================================================
 
 export interface StatuslineStdin {
@@ -169,7 +169,7 @@ export interface TranscriptData {
 }
 
 // ============================================================================
-// OMC State Types (read from existing files)
+// OMQ State Types (read from existing files)
 // ============================================================================
 
 export interface RalphStateForHud {
@@ -290,7 +290,7 @@ export interface UsageResult {
 
 /**
  * Custom rate limit provider configuration.
- * Set omcHud.rateLimitsProvider.type = 'custom' to enable.
+ * Set omqHud.rateLimitsProvider.type = 'custom' to enable.
  */
 export interface RateLimitsProviderConfig {
   type: 'custom';
@@ -420,8 +420,8 @@ export interface HudRenderContext {
   /** Session token total (input + output) when transcript parsing is reliable enough to calculate it */
   sessionTotalTokens?: number | null;
 
-  /** Installed OMC version (e.g. "4.1.10") */
-  omcVersion: string | null;
+  /** Installed OMQ version (e.g. "4.1.10") */
+  omqVersion: string | null;
 
   /** Latest available version from npm registry (null if up to date or unknown) */
   updateAvailable: string | null;
@@ -608,8 +608,8 @@ export interface HudElementConfig {
   gitInfoPosition: 'above' | 'below';  // Position of git info relative to main HUD line
   model: boolean;            // Show current model name
   modelFormat: ModelFormat;   // Model name verbosity level
-  omcLabel: boolean;
-  updateNotification?: boolean; // Show available-update prompt text in the OMC label
+  omqLabel: boolean;
+  updateNotification?: boolean; // Show available-update prompt text in the OMQ label
   rateLimits: boolean;  // Show 5h and weekly rate limits
   ralph: boolean;
   autopilot: boolean;
@@ -691,7 +691,7 @@ export interface LayoutConfig {
 export const DEFAULT_ELEMENT_ORDER: Required<LayoutConfig> = {
   line1: ['hostname', 'cwd', 'gitRepo', 'gitBranch', 'gitStatus', 'apiKeySource', 'profile'],
   main: [
-    'omcLabel', 'model', 'enterpriseCost', 'rateLimits', 'customBuckets', 'permission', 'thinking',
+    'omqLabel', 'model', 'enterpriseCost', 'rateLimits', 'customBuckets', 'permission', 'thinking',
     'promptTime', 'session', 'tokens', 'ralph', 'autopilot', 'prd',
     'skills', 'lastSkill', 'contextBar', 'agents', 'background',
     'callCounts', 'lastTool', 'sessionSummary',
@@ -741,7 +741,7 @@ export const DEFAULT_HUD_CONFIG: HudConfig = {
     gitInfoPosition: 'above',  // Git info above main HUD line (backward compatible)
     model: true,              // Show only when Claude Code statusline stdin provides a model
     modelFormat: 'versioned', // Preserve model version by default
-    omcLabel: true,
+    omqLabel: true,
     updateNotification: true, // Preserve existing update prompt behavior by default
     rateLimits: true,  // Show rate limits by default
     ralph: true,
@@ -802,7 +802,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     gitInfoPosition: 'above',
     model: true,
     modelFormat: 'versioned',
-    omcLabel: true,
+    omqLabel: true,
     updateNotification: true,
     rateLimits: true,
     ralph: true,
@@ -845,7 +845,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     gitInfoPosition: 'above',
     model: true,
     modelFormat: 'versioned',
-    omcLabel: true,
+    omqLabel: true,
     updateNotification: true,
     rateLimits: true,
     ralph: true,
@@ -888,7 +888,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     gitInfoPosition: 'above',
     model: true,
     modelFormat: 'versioned',
-    omcLabel: true,
+    omqLabel: true,
     updateNotification: true,
     rateLimits: true,
     ralph: true,
@@ -931,7 +931,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     gitInfoPosition: 'above',
     model: true,
     modelFormat: 'versioned',
-    omcLabel: true,
+    omqLabel: true,
     updateNotification: true,
     rateLimits: false,
     ralph: true,
@@ -974,7 +974,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     gitInfoPosition: 'above',
     model: true,
     modelFormat: 'versioned',
-    omcLabel: true,
+    omqLabel: true,
     updateNotification: true,
     rateLimits: true,
     ralph: true,
@@ -1008,7 +1008,3 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     safeMode: true,
   },
 };
-
-// Ancestor-spelling alias for the state type. Field names inside are still
-// omc-branded; the branding lane renames them, this only stops the import churn.
-export type OmqHudState = OmcHudState;

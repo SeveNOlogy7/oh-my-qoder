@@ -1,5 +1,5 @@
 /**
- * OMC HUD - Usage API
+ * OMQ HUD - Usage API
  *
  * Fetches rate limit usage from Anthropic's OAuth API, with overrides for
  * third-party providers (z.ai, MiniMax, Kimi) detected via ANTHROPIC_BASE_URL.
