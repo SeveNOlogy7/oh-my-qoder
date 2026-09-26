@@ -4,7 +4,7 @@ export type ModelTier = 'LOW' | 'MEDIUM' | 'HIGH';
 export type ClaudeModelFamily = 'HAIKU' | 'SONNET' | 'OPUS' | 'FABLE';
 export type QwenModelFamily = 'TURBO' | 'PLUS' | 'MAX';
 
-const DIRECT_MODEL_ENV_KEYS = ['CLAUDE_MODEL', 'ANTHROPIC_MODEL'] as const;
+const DIRECT_MODEL_ENV_KEYS = ['QODER_MODEL', 'DASHSCOPE_MODEL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL'] as const;
 const DIRECT_QWEN_ENV_KEYS = ['QODER_MODEL', 'DASHSCOPE_MODEL'] as const;
 const INHERIT_TIER_PRIORITY: readonly ModelTier[] = ['MEDIUM', 'HIGH', 'LOW'];
 const CLAUDE_TIER_ALIASES = new Set(['sonnet', 'opus', 'haiku', 'fable']);
@@ -13,16 +13,19 @@ const QODER_TIER_ALIASES = new Set(['high', 'medium', 'low']);
 const TIER_ENV_KEYS: Record<ModelTier, readonly string[]> = {
   LOW: [
     'OMQ_MODEL_LOW',
+    'DASHSCOPE_DEFAULT_TURBO_MODEL',
     'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
     'ANTHROPIC_DEFAULT_HAIKU_MODEL',
   ],
   MEDIUM: [
     'OMQ_MODEL_MEDIUM',
+    'DASHSCOPE_DEFAULT_PLUS_MODEL',
     'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
     'ANTHROPIC_DEFAULT_SONNET_MODEL',
   ],
   HIGH: [
     'OMQ_MODEL_HIGH',
+    'DASHSCOPE_DEFAULT_MAX_MODEL',
     'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
     'ANTHROPIC_DEFAULT_OPUS_MODEL',
   ],
@@ -338,7 +341,7 @@ export function hasExtendedContextSuffix(modelId: string): boolean {
  * like `[1m]` that the sub-agent runtime cannot handle.
  */
 export function isSubagentSafeModelId(modelId: string): boolean {
-  return isProviderSpecificModelId(modelId) && !hasExtendedContextSuffix(modelId);
+  return !hasExtendedContextSuffix(modelId);
 }
 
 /**
