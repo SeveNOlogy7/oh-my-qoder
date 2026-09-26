@@ -229,7 +229,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         HOME: fakeHome,
         USERPROFILE: fakeHome,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
-        OMC_NOTIFY: '0',
+        OMQ_NOTIFY: '0',
       },
       timeout: 15000,
     });
@@ -283,7 +283,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         HOME: fakeHome,
         USERPROFILE: fakeHome,
         CLAUDE_PLUGIN_ROOT: stalePluginRoot,
-        OMC_NOTIFY: '0',
+        OMQ_NOTIFY: '0',
       },
       timeout: 15000,
     });
@@ -341,7 +341,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         HOME: fakeHome,
         USERPROFILE: fakeHome,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
-        OMC_NOTIFY: '0',
+        OMQ_NOTIFY: '0',
       },
       timeout: 15000,
     });
@@ -396,7 +396,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         HOME: fakeHome,
         USERPROFILE: fakeHome,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
-        OMC_NOTIFY: '0',
+        OMQ_NOTIFY: '0',
       },
       timeout: 15000,
     });
@@ -440,7 +440,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         HOME: fakeHome,
         USERPROFILE: fakeHome,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
-        OMC_NOTIFY: '0',
+        OMQ_NOTIFY: '0',
       },
       timeout: 15000,
     });
@@ -490,7 +490,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         HOME: fakeHome,
         USERPROFILE: fakeHome,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
-        OMC_NOTIFY: '0',
+        OMQ_NOTIFY: '0',
       },
       timeout: 15000,
     });
@@ -543,7 +543,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         HOME: fakeHome,
         USERPROFILE: fakeHome,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
-        OMC_NOTIFY: '0',
+        OMQ_NOTIFY: '0',
       },
       timeout: 15000,
     });

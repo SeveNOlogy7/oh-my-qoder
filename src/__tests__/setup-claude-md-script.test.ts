@@ -103,8 +103,8 @@ function buildCoordinatorFixture(pluginRoot: string, claudeMdContent: string, ve
     outfile: join(pluginRoot, 'bridge', 'claude-md-coordinator.cjs'),
     external: ['node:crypto', 'node:fs', 'node:path'],
     define: {
-      __OMC_COORDINATOR_ENGINE_VERSION__: JSON.stringify(version),
-      __OMC_COORDINATOR_SOURCE_SHA256__: JSON.stringify(createHash('sha256').update(claudeMdContent).digest('hex')),
+      __OMQ_COORDINATOR_ENGINE_VERSION__: JSON.stringify(version),
+      __OMQ_COORDINATOR_SOURCE_SHA256__: JSON.stringify(createHash('sha256').update(claudeMdContent).digest('hex')),
     },
   });
   mkdirSync(join(pluginRoot, 'skills', 'wiki'), { recursive: true });
@@ -1549,7 +1549,7 @@ describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)'
           ...process.env,
           HOME: fixture.homeRoot,
           CLAUDE_CONFIG_DIR: join(fixture.homeRoot, '.claude'),
-          OMC_SETUP_REEXEC_DEPTH: '2',
+          OMQ_SETUP_REEXEC_DEPTH: '2',
         },
         encoding: 'utf-8',
         timeout: 10_000,

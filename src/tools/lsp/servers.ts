@@ -252,7 +252,7 @@ const BASEDPYRIGHT_SERVER: LspServerConfig = {
 
 /** Resolve the supported Python language server. Only exact basedpyright opts in. */
 export function resolvePythonServer(): LspServerConfig {
-  return process.env.OMC_PYTHON_LSP === 'basedpyright'
+  return process.env.OMQ_PYTHON_LSP === 'basedpyright'
     ? BASEDPYRIGHT_SERVER
     : LSP_SERVERS.python;
 }

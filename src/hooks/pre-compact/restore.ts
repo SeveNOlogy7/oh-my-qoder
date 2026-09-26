@@ -225,7 +225,7 @@ function publisherPath(): string {
 }
 
 function publisherExecArgs(): string[] {
-  const preload = process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT;
+  const preload = process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT;
   return typeof preload === 'string' && preload.startsWith('file:') ? ['--import', preload] : [];
 }
 

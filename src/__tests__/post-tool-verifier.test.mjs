@@ -499,8 +499,8 @@ describe('agent output summarization / truncation (issue #1373)', () => {
         cwd: process.cwd(),
       },
       {
-        OMC_AGENT_OUTPUT_ANALYSIS_LIMIT: '300',
-        OMC_AGENT_OUTPUT_SUMMARY_LIMIT: '90',
+        OMQ_AGENT_OUTPUT_ANALYSIS_LIMIT: '300',
+        OMQ_AGENT_OUTPUT_SUMMARY_LIMIT: '90',
       },
     );
 
@@ -841,8 +841,8 @@ describe('post-tool hook structured Write/Edit envelopes (issue #2840)', () => {
   });
 });
 
-describe('OMC_QUIET hook message suppression (issue #1646)', () => {
-  it('suppresses routine success/advice messages at OMC_QUIET=1 while keeping failures', () => {
+describe('OMQ_QUIET hook message suppression (issue #1646)', () => {
+  it('suppresses routine success/advice messages at OMQ_QUIET=1 while keeping failures', () => {
     const edit = runPostToolVerifier(
       {
         tool_name: 'Edit',
@@ -850,7 +850,7 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-1',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(edit).toEqual({ continue: true, suppressOutput: true });
@@ -862,7 +862,7 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-1',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(grep).toEqual({ continue: true, suppressOutput: true });
@@ -874,14 +874,14 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-1',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(writeFailure.hookSpecificOutput?.additionalContext)
       .toContain('Write operation failed');
   });
 
-  it('keeps important warnings at OMC_QUIET=2 but suppresses routine task summaries', () => {
+  it('keeps important warnings at OMQ_QUIET=2 but suppresses routine task summaries', () => {
     const nonZero = runPostToolVerifier(
       {
         tool_name: 'Bash',
@@ -889,7 +889,7 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-2',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(nonZero.hookSpecificOutput?.additionalContext)
@@ -913,7 +913,7 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
           session_id: 'quiet-2',
           cwd: tempDir,
         },
-        { OMC_QUIET: '2' },
+        { OMQ_QUIET: '2' },
       );
     });
 

@@ -611,7 +611,7 @@ export interface WaitForShellReadyOptions {
 
 async function waitForShellReady(paneId: string, opts: WaitForShellReadyOptions = {}): Promise<boolean> {
   if (isCmuxSurfaceTarget(paneId)) return true;
-  const envTimeout = Number.parseInt(process.env.OMC_TEAM_SHELL_READY_TIMEOUT_MS ?? '', 10);
+  const envTimeout = Number.parseInt(process.env.OMQ_TEAM_SHELL_READY_TIMEOUT_MS ?? '', 10);
   const timeoutMs = Number.isFinite(opts.timeoutMs) && (opts.timeoutMs ?? 0) > 0
     ? Number(opts.timeoutMs)
     : (Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : 5_000);
@@ -680,7 +680,7 @@ async function verifyWorkerStartCommandSubmitted(
   const compactExpected = normalizeTmuxCaptureForDelivery(startCmd);
   const timeoutMs = Number.isFinite(opts.timeoutMs) && (opts.timeoutMs ?? 0) > 0
     ? Number(opts.timeoutMs)
-    : resolvePositiveIntegerEnv('OMC_TEAM_START_SUBMIT_TIMEOUT_MS', 8_000);
+    : resolvePositiveIntegerEnv('OMQ_TEAM_START_SUBMIT_TIMEOUT_MS', 8_000);
   const maxPollIntervalMs = Number.isFinite(opts.maxPollIntervalMs) && (opts.maxPollIntervalMs ?? 0) > 0
     ? Number(opts.maxPollIntervalMs)
     : 500;
@@ -787,20 +787,20 @@ export function buildWorkerStartCommand(config: WorkerPaneConfig): string {
         // path (never inline): secrets stay out of the process list and tmux
         // scrollback, and the delivered command stays small. The runtime CLI
         // validates and consumes the descriptor before running the provider.
-        OMC_WORKER_LAUNCH_SPEC_FILE: config.launchAttempt.bootstrapDescriptorPath,
+        OMQ_WORKER_LAUNCH_SPEC_FILE: config.launchAttempt.bootstrapDescriptorPath,
       }
     : config.envVars;
-  const shouldSourceRc = process.env.OMC_TEAM_NO_RC !== '1';
+  const shouldSourceRc = process.env.OMQ_TEAM_NO_RC !== '1';
 
   if (process.platform === 'win32' && !isUnixLikeOnWindows()) {
     const windowsEnvVars = { ...envVars };
-    if (windowsEnvVars.OMC_WORKER_LAUNCH_SPEC) {
-      windowsEnvVars.OMC_WORKER_LAUNCH_SPEC_B64 = Buffer.from(windowsEnvVars.OMC_WORKER_LAUNCH_SPEC, 'utf8').toString('base64');
-      delete windowsEnvVars.OMC_WORKER_LAUNCH_SPEC;
+    if (windowsEnvVars.OMQ_WORKER_LAUNCH_SPEC) {
+      windowsEnvVars.OMQ_WORKER_LAUNCH_SPEC_B64 = Buffer.from(windowsEnvVars.OMQ_WORKER_LAUNCH_SPEC, 'utf8').toString('base64');
+      delete windowsEnvVars.OMQ_WORKER_LAUNCH_SPEC;
     }
-    if (windowsEnvVars.OMC_RECOVERY_GATE_SPEC) {
-      windowsEnvVars.OMC_RECOVERY_GATE_SPEC_B64 = Buffer.from(windowsEnvVars.OMC_RECOVERY_GATE_SPEC, 'utf8').toString('base64');
-      delete windowsEnvVars.OMC_RECOVERY_GATE_SPEC;
+    if (windowsEnvVars.OMQ_RECOVERY_GATE_SPEC) {
+      windowsEnvVars.OMQ_RECOVERY_GATE_SPEC_B64 = Buffer.from(windowsEnvVars.OMQ_RECOVERY_GATE_SPEC, 'utf8').toString('base64');
+      delete windowsEnvVars.OMQ_RECOVERY_GATE_SPEC;
     }
     const envPrefix = Object.entries(windowsEnvVars)
       .map(([key, value]) => {
@@ -1312,7 +1312,7 @@ export async function createTeamSession(
 /**
  * Spawn a CLI agent in a specific pane.
 
- * Worker startup: env OMC_TEAM_WORKER={teamName}/workerName shell -lc "exec agentCmd"
+ * Worker startup: env OMQ_TEAM_WORKER={teamName}/workerName shell -lc "exec agentCmd"
  */
 export async function spawnWorkerInPane(
   sessionName: string,
@@ -1353,7 +1353,7 @@ export async function spawnWorkerInPane(
         providerArgv: getLaunchWords(config),
         cwd: config.cwd,
         providerEnv: config.envVars,
-        releaseAfterSpawn: Boolean(config.envVars.OMC_RECOVERY_GATE_SPEC),
+        releaseAfterSpawn: Boolean(config.envVars.OMQ_RECOVERY_GATE_SPEC),
         windowsDelivery: nativeAttemptTransport,
       });
       startCmd = nativeAttemptTransport
@@ -1479,11 +1479,11 @@ export async function spawnOwnedWorkerInPane(
   try {
     const launchEnv: Record<string, string> = {
       ...config.envVars,
-      OMC_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
+      OMQ_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
     };
-    if (launchEnv.OMC_RECOVERY_GATE_SPEC) {
-      const gate = JSON.parse(launchEnv.OMC_RECOVERY_GATE_SPEC) as Record<string, unknown>;
-      launchEnv.OMC_RECOVERY_GATE_SPEC = JSON.stringify({ ...gate, launchAttempt: attempt });
+    if (launchEnv.OMQ_RECOVERY_GATE_SPEC) {
+      const gate = JSON.parse(launchEnv.OMQ_RECOVERY_GATE_SPEC) as Record<string, unknown>;
+      launchEnv.OMQ_RECOVERY_GATE_SPEC = JSON.stringify({ ...gate, launchAttempt: attempt });
     }
     await spawnWorkerInPane(sessionName, ownership.paneId, {
       ...config,
@@ -1679,7 +1679,7 @@ export async function waitForPaneReady(
   paneId: string,
   opts: WaitForPaneReadyOptions = {}
 ): Promise<boolean> {
-  const envTimeout = Number.parseInt(process.env.OMC_SHELL_READY_TIMEOUT_MS ?? '', 10);
+  const envTimeout = Number.parseInt(process.env.OMQ_SHELL_READY_TIMEOUT_MS ?? '', 10);
   const timeoutMs = Number.isFinite(opts.timeoutMs) && (opts.timeoutMs ?? 0) > 0
     ? Number(opts.timeoutMs)
     : (Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : 30_000);
@@ -1698,7 +1698,7 @@ export async function waitForPaneReady(
 
   console.warn(
     `[tmux-session] waitForPaneReady: pane ${paneId} timed out after ${timeoutMs}ms ` +
-    `(set OMC_SHELL_READY_TIMEOUT_MS to tune)`
+    `(set OMQ_SHELL_READY_TIMEOUT_MS to tune)`
   );
   return false;
 }
@@ -1834,7 +1834,7 @@ export function shouldAttemptAdaptiveRetry(args: {
   paneInCopyMode: boolean;
   retriesAttempted: number;
 }): boolean {
-  if (process.env.OMC_TEAM_AUTO_INTERRUPT_RETRY === '0') return false;
+  if (process.env.OMQ_TEAM_AUTO_INTERRUPT_RETRY === '0') return false;
   if (args.retriesAttempted >= 1) return false;
   if (args.paneInCopyMode) return false;
   if (!args.paneBusy) return false;
@@ -1993,7 +1993,7 @@ export async function sendToWorker(
 /**
  * Inject a status message into the leader Claude pane.
  * The message is typed into the leader's input, triggering a new conversation turn.
- * Prefixes with [OMC_TMUX_INJECT] marker to distinguish from user input.
+ * Prefixes with [OMQ_TMUX_INJECT] marker to distinguish from user input.
  * Returns false on error (does not throw).
  */
 export async function injectToLeaderPane(
@@ -2001,7 +2001,7 @@ export async function injectToLeaderPane(
   leaderPaneId: string,
   message: string
 ): Promise<boolean> {
-  const prefixed = `[OMC_TMUX_INJECT] ${message}`.slice(0, 200);
+  const prefixed = `[OMQ_TMUX_INJECT] ${message}`.slice(0, 200);
 
   // If the leader is running a blocking tool (e.g. omc_run_team_wait shows
   // "esc to interrupt"), send C-c first so the message is not queued in the
@@ -2195,7 +2195,7 @@ export async function killTeamSession(
   }
 
   const sessionTarget = sessionName.split(':')[0] ?? sessionName;
-  if (process.env.OMC_TEAM_ALLOW_KILL_CURRENT_SESSION !== '1' && process.env.TMUX) {
+  if (process.env.OMQ_TEAM_ALLOW_KILL_CURRENT_SESSION !== '1' && process.env.TMUX) {
     try {
       const current = await tmuxCmdAsync(['display-message', '-p', '#S']);
       const currentSessionName = current.stdout.trim();

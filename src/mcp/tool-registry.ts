@@ -63,7 +63,7 @@ export const allTools: ToolDef[] = [
   ...tagCategory(skillsTools as unknown as ToolDef[], TOOL_CATEGORIES.SKILLS),
 ];
 
-/** Tools currently enabled for standalone ListTools after OMC_DISABLE_TOOLS filtering. */
+/** Tools currently enabled for standalone ListTools after OMQ_DISABLE_TOOLS filtering. */
 export function getEnabledTools(envValue?: string): ToolDef[] {
   return filterDisabledTools(allTools, envValue);
 }

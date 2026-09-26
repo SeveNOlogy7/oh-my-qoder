@@ -206,7 +206,7 @@ export async function runSessionEndDeferredAction(action: SessionEndDeferredActi
         // OpenClaw wake attempts are terminal in the manifest because remote
         // acceptance can precede an unavailable response.
         case 'openclaw-wake': {
-          if (action.payload.enabled !== true || process.env.OMC_OPENCLAW !== '1') return 'skipped' as const;
+          if (action.payload.enabled !== true || process.env.OMQ_OPENCLAW !== '1') return 'skipped' as const;
           const { wakeOpenClaw } = await import('../../openclaw/index.js');
           const result = await wakeOpenClaw('session-end', { sessionId: context.sessionId, projectPath: context.directory, reason: typeof action.payload.reason === 'string' ? action.payload.reason : context.metrics.reason });
           if (!result?.success) throw new Error('openclaw-wake-not-accepted');

@@ -26,7 +26,7 @@ import { getClaudeConfigDir } from '../utils/config-dir.js';
 import { purgeStalePluginCacheVersions } from '../utils/paths.js';
 import type { NotificationConfig } from '../notifications/types.js';
 import { isAutoUpdateDisabled } from '../lib/security-config.js';
-import { OMC_CONFIG_FILE_REL } from '../lib/paths.js';
+import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
 
 /** GitHub repository information */
 export const REPO_OWNER = 'Yeachan-Heo';
@@ -527,7 +527,7 @@ export function syncPluginCache(verbose: boolean = false): { synced: boolean; sk
 /** Installation paths (respects CLAUDE_CONFIG_DIR env var) */
 export const CLAUDE_CONFIG_DIR = getClaudeConfigDir();
 export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omq-version.json');
-export const CONFIG_FILE = join(CLAUDE_CONFIG_DIR, OMC_CONFIG_FILE_REL);
+export const CONFIG_FILE = join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
 
 /**
  * Stop hook callback configuration for file logging
@@ -1145,9 +1145,9 @@ export async function performUpdate(options?: {
       // CRITICAL FIX: After npm updates the global package, the current process
       // still has OLD code loaded in memory. We must re-exec to run reconciliation
       // with the NEW code. Otherwise, installOmc() runs OLD logic against NEW files.
-      if (!process.env.OMC_UPDATE_RECONCILE) {
+      if (!process.env.OMQ_UPDATE_RECONCILE) {
         // Set flag to prevent infinite loop
-        process.env.OMC_UPDATE_RECONCILE = '1';
+        process.env.OMQ_UPDATE_RECONCILE = '1';
 
         // Find the omc binary path
         const omcPath = resolveOmcBinaryPath();
@@ -1158,7 +1158,7 @@ export async function performUpdate(options?: {
             encoding: 'utf-8',
             stdio: options?.verbose ? 'inherit' : 'pipe',
             timeout: 60000,
-            env: { ...process.env, OMC_UPDATE_RECONCILE: '1' },
+            env: { ...process.env, OMQ_UPDATE_RECONCILE: '1' },
             ...(process.platform === 'win32' ? { windowsHide: true, shell: true } : {}),
           });
         } catch (reconcileError) {
@@ -1296,7 +1296,7 @@ export function backgroundUpdateCheck(callback?: (result: UpdateCheckResult) => 
     })
     .catch(error => {
       // Silently ignore errors in background checks
-      if (process.env.OMC_DEBUG) {
+      if (process.env.OMQ_DEBUG) {
         console.error('Background update check failed:', error);
       }
     });

@@ -204,7 +204,7 @@ describe('SessionEnd durable worker', () => {
 
   it('persists only bounded original OpenClaw routing and clears it from worker ambient environments', () => {
     const directory = project();
-    vi.stubEnv('OMC_OPENCLAW_CONFIG', '/tmp/original-session.json');
+    vi.stubEnv('OMQ_OPENCLAW_CONFIG', '/tmp/original-session.json');
     vi.stubEnv('OPENCLAW_REPLY_CHANNEL', '#original-session');
     vi.stubEnv('OPENCLAW_REPLY_TARGET', '@original-session');
     vi.stubEnv('OPENCLAW_REPLY_THREAD', 'original-thread');
@@ -224,7 +224,7 @@ describe('SessionEnd durable worker', () => {
       tmuxPane: '%42',
     });
     expect(JSON.stringify(routing)).not.toContain('original-secret');
-    expect(workerEnvironment()).not.toHaveProperty('OMC_OPENCLAW_CONFIG');
+    expect(workerEnvironment()).not.toHaveProperty('OMQ_OPENCLAW_CONFIG');
     expect(workerEnvironment()).not.toHaveProperty('OPENCLAW_REPLY_THREAD');
     expect(workerEnvironment()).not.toHaveProperty('TMUX');
     expect(workerEnvironment()).not.toHaveProperty('TMUX_PANE');

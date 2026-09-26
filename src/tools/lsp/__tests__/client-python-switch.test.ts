@@ -1,10 +1,10 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LspClient, LspClientManager } from '../client.js';
 
-const inheritedPythonLsp = process.env.OMC_PYTHON_LSP;
+const inheritedPythonLsp = process.env.OMQ_PYTHON_LSP;
 
 beforeEach(() => {
-  delete process.env.OMC_PYTHON_LSP;
+  delete process.env.OMQ_PYTHON_LSP;
 });
 
 afterEach(() => {
@@ -14,9 +14,9 @@ afterEach(() => {
 
 afterAll(() => {
   if (inheritedPythonLsp === undefined) {
-    delete process.env.OMC_PYTHON_LSP;
+    delete process.env.OMQ_PYTHON_LSP;
   } else {
-    process.env.OMC_PYTHON_LSP = inheritedPythonLsp;
+    process.env.OMQ_PYTHON_LSP = inheritedPythonLsp;
   }
 });
 
@@ -27,16 +27,16 @@ describe('Python LSP client selection cache', () => {
     const manager = new LspClientManager();
 
     try {
-      delete process.env.OMC_PYTHON_LSP;
+      delete process.env.OMQ_PYTHON_LSP;
       const tyClient = await manager.getClientForFile('app.py');
       expect(manager.clientCount).toBe(1);
 
-      vi.stubEnv('OMC_PYTHON_LSP', 'basedpyright');
+      vi.stubEnv('OMQ_PYTHON_LSP', 'basedpyright');
       const basedpyrightClient = await manager.getClientForFile('app.py');
       expect(manager.clientCount).toBe(2);
       expect(basedpyrightClient).not.toBe(tyClient);
 
-      vi.stubEnv('OMC_PYTHON_LSP', 'ty');
+      vi.stubEnv('OMQ_PYTHON_LSP', 'ty');
       const reusedTyClient = await manager.getClientForFile('app.py');
       expect(manager.clientCount).toBe(2);
       expect(reusedTyClient).toBe(tyClient);

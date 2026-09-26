@@ -32,7 +32,7 @@
 /omc-setup
 ```
 
-如果你通过 `omc --plugin-dir <path>` 或 `claude --plugin-dir <path>` 运行 OMC，请在 `omc setup` 中添加 `--plugin-dir-mode`（或提前导出 `OMC_PLUGIN_ROOT`），以避免复制插件在运行时已经提供的技能/代理。有关完整的决策矩阵和所有可用标志，请参阅 [REFERENCE.md 中的 Plugin directory flags 部分](./docs/REFERENCE.md#plugin-directory-flags)。
+如果你通过 `omc --plugin-dir <path>` 或 `claude --plugin-dir <path>` 运行 OMC，请在 `omc setup` 中添加 `--plugin-dir-mode`（或提前导出 `OMQ_PLUGIN_ROOT`），以避免复制插件在运行时已经提供的技能/代理。有关完整的决策矩阵和所有可用标志，请参阅 [REFERENCE.md 中的 Plugin directory flags 部分](./docs/REFERENCE.md#plugin-directory-flags)。
 
 <!-- TODO(i18n): verify translation -->
 
@@ -169,7 +169,7 @@ Team 按阶段化流水线运行：
 
 - **魔法关键词** - `ralph`、`ulw`、`plan` 提供显式控制
 - **HUD 状态栏** - 状态栏实时显示编排指标
-  - 如果你直接使用 `claude --plugin-dir <path>` 启动 Claude Code（绕过 `omc` shim），请在 shell 中导出 `OMC_PLUGIN_ROOT=<path>`，以便 HUD bundle 解析到与插件加载器相同的 checkout。详情见 [REFERENCE.md 中的 Plugin directory flags 部分](./docs/REFERENCE.md#plugin-directory-flags)。
+  - 如果你直接使用 `claude --plugin-dir <path>` 启动 Claude Code（绕过 `omc` shim），请在 shell 中导出 `OMQ_PLUGIN_ROOT=<path>`，以便 HUD bundle 解析到与插件加载器相同的 checkout。详情见 [REFERENCE.md 中的 Plugin directory flags 部分](./docs/REFERENCE.md#plugin-directory-flags)。
 
   <!-- TODO(i18n): verify translation -->
 - **技能学习** - 从会话中提取可复用模式
@@ -305,9 +305,9 @@ omc config-stop-callback discord --clear-tags
 
 | 变量 | 说明 |
 |------|------|
-| `OMC_OPENCLAW=1` | 启用 OpenClaw |
-| `OMC_OPENCLAW_DEBUG=1` | 启用调试日志 |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | 覆盖配置文件路径 |
+| `OMQ_OPENCLAW=1` | 启用 OpenClaw |
+| `OMQ_OPENCLAW_DEBUG=1` | 启用调试日志 |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | 覆盖配置文件路径 |
 
 **支持的钩子事件（bridge.ts 中 6 个活跃）：**
 

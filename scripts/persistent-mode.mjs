@@ -35,7 +35,7 @@ const SAFE_EXIT_FLUSH_TIMEOUT_MS = 100;
 
 
 function getSafetyTimeoutMs() {
-  const parsed = Number.parseInt(process.env.OMC_PERSISTENT_MODE_TIMEOUT_MS || "", 10);
+  const parsed = Number.parseInt(process.env.OMQ_PERSISTENT_MODE_TIMEOUT_MS || "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SAFETY_TIMEOUT_MS;
 }
 
@@ -61,14 +61,14 @@ function writeSafeContinue(onFlushed) {
 }
 
 function shouldSkipPersistentModeHook() {
-  const skipHooks = (process.env.OMC_SKIP_HOOKS || "")
+  const skipHooks = (process.env.OMQ_SKIP_HOOKS || "")
     .split(",")
     .map((hook) => hook.trim())
     .filter(Boolean);
 
   return (
-    process.env.DISABLE_OMC === "1" ||
-    process.env.DISABLE_OMC === "true" ||
+    process.env.DISABLE_OMQ === "1" ||
+    process.env.DISABLE_OMQ === "true" ||
     skipHooks.includes("persistent-mode") ||
     skipHooks.includes("stop-continuation")
   );
@@ -114,12 +114,12 @@ function readJsonFile(path) {
 }
 
 /**
- * Get hard max iterations from OMC_SECURITY / config file.
+ * Get hard max iterations from OMQ_SECURITY / config file.
  * Returns 0 if unlimited (default).
  */
 function getHardMaxIterations() {
-  // OMC_SECURITY=strict → default hard max 200
-  if (process.env.OMC_SECURITY === "strict") {
+  // OMQ_SECURITY=strict → default hard max 200
+  if (process.env.OMQ_SECURITY === "strict") {
     // Check config file for override
     const configOverride = readSecurityConfigValue("hardMaxIterations");
     return typeof configOverride === "number" ? configOverride : 200;
@@ -229,7 +229,7 @@ function recordIdleNotificationSent(stateDir) {
 }
 
 function dispatchIdleNotificationInBackground(sessionId, directory) {
-  if (process.env.OMC_NOTIFY === "0") return false;
+  if (process.env.OMQ_NOTIFY === "0") return false;
 
   const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
   if (!pluginRoot) return false;
@@ -238,7 +238,7 @@ function dispatchIdleNotificationInBackground(sessionId, directory) {
   const payload = {
     sessionId,
     projectPath: directory,
-    profileName: process.env.OMC_NOTIFY_PROFILE,
+    profileName: process.env.OMQ_NOTIFY_PROFILE,
   };
   const childSource = `import(${JSON.stringify(notificationsModuleUrl)})\n` +
     `  .then(({ notify }) => notify("session-idle", ${JSON.stringify(payload)}))\n` +
@@ -251,7 +251,7 @@ function dispatchIdleNotificationInBackground(sessionId, directory) {
       windowsHide: true,
       env: {
         ...process.env,
-        OMC_HOOK_BACKGROUND_CHILD: "1",
+        OMQ_HOOK_BACKGROUND_CHILD: "1",
       },
     });
     child.unref();

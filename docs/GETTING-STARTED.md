@@ -416,7 +416,7 @@ To run delegated work on a different model, use one of the supported surfaces (a
 - **Per-agent override**: `"agents": { "planner": { "model": "fable" } }` — precise, applies to a single agent; the resolved tier alias is injected into the Task call automatically.
 - **Everything inherits**: `"routing": { "forceInherit": true }` — drops per-agent routing entirely (the "nuclear option"; auto-enabled on Bedrock/Vertex/proxy for provider compatibility).
 
-> ℹ️ `routing.modelAliases` / `OMC_MODEL_ALIAS_OPUS=fable` remaps a tier everywhere it is pinned (e.g. every opus agent resolves to Fable while haiku/sonnet pins stay untouched). It is honored by the SDK-side `enforceModel` API, but the plugin hook path does not apply it to `Task`/`Agent` calls, so in a Claude Code plugin session prefer the per-call or per-agent surfaces above.
+> ℹ️ `routing.modelAliases` / `OMQ_MODEL_ALIAS_OPUS=fable` remaps a tier everywhere it is pinned (e.g. every opus agent resolves to Fable while haiku/sonnet pins stay untouched). It is honored by the SDK-side `enforceModel` API, but the plugin hook path does not apply it to `Task`/`Agent` calls, so in a Claude Code plugin session prefer the per-call or per-agent surfaces above.
 
 ### CLAUDE.md configuration
 

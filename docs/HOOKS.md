@@ -75,13 +75,13 @@ Handle code quality, permissions, and subagent tracking.
 ### Disable All Hooks
 
 ```bash
-export DISABLE_OMC=1
+export DISABLE_OMQ=1
 ```
 
 ### Disable Specific Hooks
 
 ```bash
-export OMC_SKIP_HOOKS="keyword-detector,notepad"
+export OMQ_SKIP_HOOKS="keyword-detector,notepad"
 ```
 
 Separate hook names with commas to skip only those hooks.
@@ -158,7 +158,7 @@ Fires when a tool use fails.
 |--------|------|---------|
 | `post-tool-use-failure.mjs` | Provides recovery guidance for failed tool use | 3s |
 
-Disable via `DISABLE_OMC=1` (or `DISABLE_OMC=true`) or `OMC_SKIP_HOOKS=post-tool-use-failure` (the `post-tool-use` token also skips it, alongside `post-tool-verifier.mjs`).
+Disable via `DISABLE_OMQ=1` (or `DISABLE_OMQ=true`) or `OMQ_SKIP_HOOKS=post-tool-use-failure` (the `post-tool-use` token also skips it, alongside `post-tool-verifier.mjs`).
 
 ### SubagentStart
 
@@ -401,8 +401,8 @@ Magic keywords automatically activate OMC skills or execution modes when specifi
 **Safety measures:**
 
 - **Sanitization**: Keywords inside code blocks, within URLs, or in file paths are ignored
-- **Team worker protection**: Disabled when the `OMC_TEAM_WORKER` environment variable is set (prevents infinite spawning)
-- **Disable**: Set `DISABLE_OMC=1` or `OMC_SKIP_HOOKS=keyword-detector`
+- **Team worker protection**: Disabled when the `OMQ_TEAM_WORKER` environment variable is set (prevents infinite spawning)
+- **Disable**: Set `DISABLE_OMQ=1` or `OMQ_SKIP_HOOKS=keyword-detector`
 
 ### Execution Mode Keywords
 

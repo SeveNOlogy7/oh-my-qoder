@@ -46,7 +46,7 @@ describe('persistent-mode hook error handling (issue #319)', () => {
       const result = await runHook('{"cwd":"."}', {
         hookPath,
         closeStdin: false,
-        env: { OMC_PERSISTENT_MODE_TIMEOUT_MS: '250' },
+        env: { OMQ_PERSISTENT_MODE_TIMEOUT_MS: '250' },
       });
 
       expect(result.timedOut).toBe(false);
@@ -58,9 +58,9 @@ describe('persistent-mode hook error handling (issue #319)', () => {
 
   it('honors persistent-mode environment skip before reading stdin', async () => {
     const skipEnvs: Array<Record<string, string>> = [
-      { DISABLE_OMC: '1' },
-      { OMC_SKIP_HOOKS: 'other,persistent-mode' },
-      { OMC_SKIP_HOOKS: 'other,stop-continuation' },
+      { DISABLE_OMQ: '1' },
+      { OMQ_SKIP_HOOKS: 'other,persistent-mode' },
+      { OMQ_SKIP_HOOKS: 'other,stop-continuation' },
     ];
     for (const hookPath of [TEMPLATE_HOOK_PATH, SCRIPT_HOOK_PATH]) {
       for (const env of skipEnvs) {

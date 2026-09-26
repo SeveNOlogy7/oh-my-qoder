@@ -633,7 +633,7 @@ export async function writeWorkerStatus(
   status: WorkerStatus,
   cwd: string,
 ): Promise<void> {
-  const launchAttemptId = process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID;
+  const launchAttemptId = process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID;
   const persisted = launchAttemptId && !status.launch_attempt_id
     ? { ...status, launch_attempt_id: launchAttemptId }
     : status;

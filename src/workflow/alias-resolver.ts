@@ -8,7 +8,7 @@
  *  - diagnostics mapping/telemetry retention
  *  - temporary automation opt-out
  *  - usage receipts (machine-readable)
- *  - resolver flag rollback (`OMC_ALIAS_RESOLVER_ENABLED`)
+ *  - resolver flag rollback (`OMQ_ALIAS_RESOLVER_ENABLED`)
  *
  * Design contract: docs/design/ISSUE-3698-LIGHTWEIGHT-WORKFLOW-PLAN.md
  * Plan head: 0a91273e61dbbd47eb0af4c02844409251e08398
@@ -100,14 +100,14 @@ for (const e of ALIAS_REGISTRY) {
 // ---------------------------------------------------------------------------
 
 export function isResolverEnabled(): boolean {
-  const env = process.env.OMC_ALIAS_RESOLVER_ENABLED;
+  const env = process.env.OMQ_ALIAS_RESOLVER_ENABLED;
   if (env !== undefined) {
     const v = env.trim().toLowerCase();
     if (v === '0' || v === 'false' || v === 'off' || v === 'disabled') return false;
     if (v === '1' || v === 'true' || v === 'on' || v === 'enabled') return true;
   }
   // Also respect generic disable env
-  if (process.env.OMC_DISABLE_ALIAS_RESOLVER === '1') return false;
+  if (process.env.OMQ_DISABLE_ALIAS_RESOLVER === '1') return false;
   return true;
 }
 
@@ -116,10 +116,10 @@ export function isResolverEnabled(): boolean {
 // ---------------------------------------------------------------------------
 
 export function isWarningOptedOut(): boolean {
-  const env = process.env.OMC_ALIAS_WARNINGS ?? process.env.OMC_ALIAS_WARNING_OPT_OUT ?? process.env.OMC_ALIAS_NO_WARNING;
+  const env = process.env.OMQ_ALIAS_WARNINGS ?? process.env.OMQ_ALIAS_WARNING_OPT_OUT ?? process.env.OMQ_ALIAS_NO_WARNING;
   if (env !== undefined) {
     const v = env.trim().toLowerCase();
-    const hasWarningsKey = process.env.OMC_ALIAS_WARNINGS !== undefined;
+    const hasWarningsKey = process.env.OMQ_ALIAS_WARNINGS !== undefined;
     if (['0', 'false', 'off', '1', 'true', 'disabled', 'enabled', 'on', 'no', 'yes'].includes(v)) {
       if (hasWarningsKey) {
         if (['0', 'false', 'off', 'disabled', 'no'].includes(v)) return true;
@@ -128,9 +128,9 @@ export function isWarningOptedOut(): boolean {
       return ['1', 'true', 'on', 'enabled', 'yes'].includes(v);
     }
   }
-  if (process.env.OMC_ALIAS_WARNINGS_DISABLED === '1') return true;
-  // Automation noise: when OMC_QUIET is set, suppress alias warnings as well (bounded)
-  const quiet = process.env.OMC_QUIET;
+  if (process.env.OMQ_ALIAS_WARNINGS_DISABLED === '1') return true;
+  // Automation noise: when OMQ_QUIET is set, suppress alias warnings as well (bounded)
+  const quiet = process.env.OMQ_QUIET;
   if (quiet !== undefined) {
     const q = Number.parseInt(quiet, 10);
     if (!Number.isNaN(q) && q >= 1) return true;

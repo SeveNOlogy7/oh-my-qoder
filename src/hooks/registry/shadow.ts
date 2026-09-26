@@ -11,7 +11,7 @@
  * durations, decision-shape digests, error classes, and verdicts — never
  * prompts, secrets, repository contents, or user text.
  *
- * Rollback: `OMC_HOOK_SHADOW` defaults to off; removing the shadow
+ * Rollback: `OMQ_HOOK_SHADOW` defaults to off; removing the shadow
  * registration (the wrapper in bridge.ts) fully restores prior behavior.
  */
 
@@ -42,7 +42,7 @@ const shadowBuffer: ShadowComparisonRecord[] = [];
 
 /** Feature flag: shadow comparison is opt-in and defaults off. */
 export function isHookShadowEnabled(): boolean {
-  const env = process.env.OMC_HOOK_SHADOW;
+  const env = process.env.OMQ_HOOK_SHADOW;
   if (env === undefined) return false;
   const v = env.trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'on' || v === 'observe';

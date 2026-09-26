@@ -26,7 +26,7 @@ function runHook(script: string, prompt: string, cwd: string, configHome: string
       transcript_path: transcriptPath,
     }),
     encoding: 'utf8',
-    env: { ...process.env, NODE_ENV: 'test', OMC_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, CLAUDE_CONFIG_DIR: join(cwd, 'claude-config'), ...extraEnv },
+    env: { ...process.env, NODE_ENV: 'test', OMQ_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, CLAUDE_CONFIG_DIR: join(cwd, 'claude-config'), ...extraEnv },
   })) as { hookSpecificOutput?: { additionalContext?: string } };
 }
 
@@ -34,7 +34,7 @@ function runHookAsync(script: string, prompt: string, cwd: string, configHome: s
   return new Promise<{ hookSpecificOutput?: { additionalContext?: string } }>((resolve, reject) => {
     const child = spawn(NODE, [script], {
       cwd,
-      env: { ...process.env, NODE_ENV: 'test', OMC_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, CLAUDE_CONFIG_DIR: join(cwd, 'claude-config') },
+      env: { ...process.env, NODE_ENV: 'test', OMQ_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, CLAUDE_CONFIG_DIR: join(cwd, 'claude-config') },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -250,7 +250,7 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
         cwd,
         configHome,
         undefined,
-        { OMC_WORKFLOW_TEST_PLATFORM: 'darwin' },
+        { OMQ_WORKFLOW_TEST_PLATFORM: 'darwin' },
       );
       expect(output.hookSpecificOutput?.additionalContext).toContain('named autopilot workflow profiles require Linux');
       expect(stateBytes(cwd)).toBeNull();
@@ -268,7 +268,7 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
         cwd,
         configHome,
         undefined,
-        { OMC_WORKFLOW_TEST_FLOCK_AVAILABLE: '0' },
+        { OMQ_WORKFLOW_TEST_FLOCK_AVAILABLE: '0' },
       );
       expect(output.hookSpecificOutput?.additionalContext).toContain('require Linux with flock');
       expect(stateBytes(cwd)).toBeNull();
@@ -510,7 +510,7 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
         nonce: randomUUID(),
       });
       const output = runHook(script, '/autopilot --workflow release-flow ship it', cwd, configHome, undefined, {
-        OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID: String(process.pid),
+        OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID: String(process.pid),
       });
       expect(output.hookSpecificOutput?.additionalContext).toContain('workflow_emergency_recovery_failed');
       expect(readFileSync(statePath)).toEqual(original);
@@ -553,8 +553,8 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
       const { quarantinePath } = writeEmergencyJournal(statePath, original, 'clear', 'prepared');
 
       const output = runHook(script, '/autopilot --workflow release-flow ship it', cwd, configHome, undefined, {
-        OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH: statePath,
-        OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64: replacement.toString('base64'),
+        OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH: statePath,
+        OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64: replacement.toString('base64'),
       });
       expect(output.hookSpecificOutput?.additionalContext).toContain('workflow_emergency_recovery_failed');
       expect(readFileSync(statePath)).toEqual(replacement);

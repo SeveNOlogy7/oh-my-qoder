@@ -34,7 +34,7 @@ vi.mock('../../cli/tmux-utils.js', async importOriginal => {
       }
       if (args[0] === 'send-keys' && args.includes('-l')) {
         const command = String(args.at(-1) ?? '');
-        const descriptorMatch = command.match(/OMC_WORKER_LAUNCH_SPEC_FILE='([^']+)'/);
+        const descriptorMatch = command.match(/OMQ_WORKER_LAUNCH_SPEC_FILE='([^']+)'/);
         if (descriptorMatch) {
           // Supervised launches (issue #3655) deliver the attempt-owned
           // descriptor by path; the runtime CLI reads it from disk.
@@ -61,8 +61,8 @@ vi.mock('../../cli/tmux-utils.js', async importOriginal => {
             context: spec.context,
           };
         } else {
-          const encoded = command.match(/OMC_WORKER_LAUNCH_SPEC_B64(?:=|=")'?([A-Za-z0-9+/=]+)/)?.[1];
-          const raw = command.match(/OMC_WORKER_LAUNCH_SPEC='([^']+)'/)?.[1];
+          const encoded = command.match(/OMQ_WORKER_LAUNCH_SPEC_B64(?:=|=")'?([A-Za-z0-9+/=]+)/)?.[1];
+          const raw = command.match(/OMQ_WORKER_LAUNCH_SPEC='([^']+)'/)?.[1];
           if (encoded || raw) {
             const spec = JSON.parse(encoded ? Buffer.from(encoded, 'base64').toString('utf8') : raw!);
             tmuxState.activeAttempt = {
@@ -167,7 +167,7 @@ afterEach(async () => {
   delete process.env.MINGW_PREFIX;
   delete process.env.COMSPEC;
   delete process.env.TMUX;
-  delete process.env.OMC_TEAM_START_ACK_TIMEOUT_MS;
+  delete process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS;
   if (cwd) await rm(cwd, { recursive: true, force: true });
   cwd = '';
 });
@@ -326,7 +326,7 @@ describe('worker pane startup safety', () => {
     await expect(spawnWorkerInPane('startup:0', '%2', {
       teamName: 'startup-team',
       workerName: 'worker-1',
-      envVars: { OMC_TEAM_WORKER: 'startup-team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'startup-team/worker-1' },
       launchBinary: provider === 'codex'
         ? 'C:\\Program Files\\Codex\\codex.exe'
         : 'C:\\Program Files\\Claude\\claude.exe',
@@ -339,7 +339,7 @@ describe('worker pane startup safety', () => {
     const launchSend = tmuxState.args.find(args => args[0] === 'send-keys' && args.includes('-l'));
     expect(launchSend?.at(-1)).toMatch(/^\.omq\\state\\team\\startup-team\\workers\\worker-1\\launch-attempts\\[0-9a-f-]+\\launch\.cmd$/);
     expect(launchSend?.at(-1)).not.toContain('cmd.exe');
-    expect(launchSend?.at(-1)).not.toContain('OMC_TEAM_WORKER');
+    expect(launchSend?.at(-1)).not.toContain('OMQ_TEAM_WORKER');
     expect(launchSend?.at(-1)).not.toContain('Codex');
     expect(launchSend?.at(-1)).not.toContain('Claude');
     const literalIndex = tmuxState.args.indexOf(launchSend!);
@@ -368,7 +368,7 @@ describe('worker pane startup safety', () => {
     await expect(spawnWorkerInPane('startup:0', '%2', {
       teamName: 'startup-team',
       workerName: 'worker-1',
-      envVars: { OMC_TEAM_WORKER: 'startup-team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'startup-team/worker-1' },
       launchBinary: '/usr/bin/codex',
       launchArgs: ['--full-auto'],
       cwd,
@@ -380,10 +380,10 @@ describe('worker pane startup safety', () => {
     const cmd = String(launchSend?.at(-1) ?? '');
     // The delivered command references the attempt-owned descriptor by path;
     // the bootstrap spec never travels inline (issue #3655).
-    expect(cmd).toContain("OMC_WORKER_LAUNCH_SPEC_FILE='");
-    expect(cmd).not.toContain('OMC_WORKER_LAUNCH_SPEC=');
+    expect(cmd).toContain("OMQ_WORKER_LAUNCH_SPEC_FILE='");
+    expect(cmd).not.toContain('OMQ_WORKER_LAUNCH_SPEC=');
     expect(cmd).not.toContain('--full-auto');
-    const descriptorPath = cmd.match(/OMC_WORKER_LAUNCH_SPEC_FILE='([^']+)'/)?.[1];
+    const descriptorPath = cmd.match(/OMQ_WORKER_LAUNCH_SPEC_FILE='([^']+)'/)?.[1];
     expect(descriptorPath).toBe(attempt.bootstrapDescriptorPath);
     const descriptor = JSON.parse(await readFile(descriptorPath!, 'utf8')) as Record<string, unknown>;
     expect(descriptor.attempt_id).toBe(attempt.attempt_id);
@@ -508,7 +508,7 @@ describe('worker pane startup safety', () => {
   });
   it('retires an accepted launch but preserves the pane when provider cleanup is unverified', async () => {
     cwd = await mkdtemp(join(tmpdir(), 'omc-startup-handoff-cleanup-'));
-    process.env.OMC_TEAM_START_ACK_TIMEOUT_MS = '50';
+    process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS = '50';
     processMocks.isProcessIdentityLive.mockResolvedValue('dead');
 
     await expect(spawnOwnedWorkerInPane('startup:0', ownership(), {
@@ -529,7 +529,7 @@ describe('worker pane startup safety', () => {
     const files = await readdir(attemptsRoot, { recursive: true });
     expect(files.some(file => String(file).endsWith('decision.json.retired'))).toBe(true);
     expect(tmuxState.paneStatus).toBe('0 cmd\n');
-    delete process.env.OMC_TEAM_START_ACK_TIMEOUT_MS;
+    delete process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS;
   });
 
 });

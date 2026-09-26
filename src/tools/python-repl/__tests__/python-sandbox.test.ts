@@ -6,25 +6,25 @@ import { tmpdir } from 'os';
 import { isPythonSandboxEnabled, clearSecurityConfigCache } from '../../../lib/security-config.js';
 
 describe('python-repl sandbox env propagation', () => {
-  const originalSecurity = process.env.OMC_SECURITY;
+  const originalSecurity = process.env.OMQ_SECURITY;
 
   afterEach(() => {
     if (originalSecurity === undefined) {
-      delete process.env.OMC_SECURITY;
+      delete process.env.OMQ_SECURITY;
     } else {
-      process.env.OMC_SECURITY = originalSecurity;
+      process.env.OMQ_SECURITY = originalSecurity;
     }
     clearSecurityConfigCache();
   });
 
   it('sandbox disabled by default', () => {
-    delete process.env.OMC_SECURITY;
+    delete process.env.OMQ_SECURITY;
     clearSecurityConfigCache();
     expect(isPythonSandboxEnabled()).toBe(false);
   });
 
-  it('sandbox enabled with OMC_SECURITY=strict', () => {
-    process.env.OMC_SECURITY = 'strict';
+  it('sandbox enabled with OMQ_SECURITY=strict', () => {
+    process.env.OMQ_SECURITY = 'strict';
     clearSecurityConfigCache();
     expect(isPythonSandboxEnabled()).toBe(true);
   });
@@ -35,7 +35,7 @@ function executeBridgeCode(code: string, sandboxEnv = false): { success: boolean
   const tmpScript = join(tmpdir(), `omc-bridge-exec-test-${process.pid}-${Date.now()}.py`);
   const script = [
     'import importlib.util, json, os',
-    sandboxEnv ? 'os.environ["OMC_PYTHON_SANDBOX"] = "1"' : 'os.environ.pop("OMC_PYTHON_SANDBOX", None)',
+    sandboxEnv ? 'os.environ["OMQ_PYTHON_SANDBOX"] = "1"' : 'os.environ.pop("OMQ_PYTHON_SANDBOX", None)',
     `spec = importlib.util.spec_from_file_location("gyoshu_bridge", ${JSON.stringify(bridgePath)})`,
     'mod = importlib.util.module_from_spec(spec)',
     'spec.loader.exec_module(mod)',
@@ -130,7 +130,7 @@ describe('gyoshu bridge execution builtins hardening', () => {
     expect(result.error?.message).toContain('String format field traversal is not available');
   });
 
-  it('uses the same locked-down execution namespace when OMC_PYTHON_SANDBOX=1', () => {
+  it('uses the same locked-down execution namespace when OMQ_PYTHON_SANDBOX=1', () => {
     const result = executeBridgeCode('print("ok")\nimport os', true);
     expect(result.success).toBe(false);
     expect(result.stdout).toBe('');

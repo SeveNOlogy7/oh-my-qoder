@@ -141,7 +141,7 @@ describe('Tier-0 contract docs consistency', () => {
     expect(packageJson.scripts).not.toHaveProperty('build:codex');
     expect(packageJson.scripts).not.toHaveProperty('build:gemini');
     expect(seminarDemo).toContain('# 빠른 모델 (Sonnet 5)');
-    expect(seminarDemo).toContain('export OMC_MODEL=anthropic/claude-sonnet-5');
+    expect(seminarDemo).toContain('export OMQ_MODEL=anthropic/claude-sonnet-5');
     expect(seminarDemo).not.toContain('anthropic/claude-sonnet-4-5');
   });
 });

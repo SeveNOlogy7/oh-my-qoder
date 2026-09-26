@@ -82,7 +82,7 @@ describe("session-end OpenClaw behavior (issue #1456)", () => {
   });
 
   it('defers an enabled OpenClaw wake from the bridge and executes it in the worker adapter', async () => {
-    process.env.OMC_OPENCLAW = '1';
+    process.env.OMQ_OPENCLAW = '1';
 
     await processHook('session-end', {
       session_id: 'session-claw-1',
@@ -120,7 +120,7 @@ describe("session-end OpenClaw behavior (issue #1456)", () => {
   });
 
   it('does not call wakeOpenClaw directly when processSessionEnd is invoked without the bridge', async () => {
-    process.env.OMC_OPENCLAW = '1';
+    process.env.OMQ_OPENCLAW = '1';
 
     await processSessionEnd({
       session_id: 'session-claw-2',
@@ -134,8 +134,8 @@ describe("session-end OpenClaw behavior (issue #1456)", () => {
     expect(wakeOpenClaw).not.toHaveBeenCalled();
   });
 
-  it('does not wake OpenClaw from the worker adapter when OMC_OPENCLAW is not set', async () => {
-    delete process.env.OMC_OPENCLAW;
+  it('does not wake OpenClaw from the worker adapter when OMQ_OPENCLAW is not set', async () => {
+    delete process.env.OMQ_OPENCLAW;
 
     await processSessionEnd({
       session_id: 'session-claw-3',
@@ -151,7 +151,7 @@ describe("session-end OpenClaw behavior (issue #1456)", () => {
   });
 
   it('contains a rejected worker wake without failing session-end processing', async () => {
-    process.env.OMC_OPENCLAW = '1';
+    process.env.OMQ_OPENCLAW = '1';
     vi.mocked(wakeOpenClaw).mockRejectedValueOnce(new Error('gateway down'));
 
     await processSessionEnd({

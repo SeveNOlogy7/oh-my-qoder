@@ -177,14 +177,14 @@ describe('cleanupStaleAgents', () => {
   });
 
   it('fails closed when explicit OMC and Claude plugin roots conflict', async () => {
-    const originalOmcRoot = process.env.OMC_PLUGIN_ROOT;
+    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const omcRoot = join(tempDir, 'omc-plugin-root');
       const claudeRoot = join(tempDir, 'claude-plugin-root');
       createPluginRoot(omcRoot, { 'architect.md': historicalAgent('architect.md') });
       createPluginRoot(claudeRoot, { 'architect.md': Buffer.from('conflicting active architect\n') });
-      process.env.OMC_PLUGIN_ROOT = omcRoot;
+      process.env.OMQ_PLUGIN_ROOT = omcRoot;
       process.env.CLAUDE_PLUGIN_ROOT = claudeRoot;
 
       vi.resetModules();
@@ -204,20 +204,20 @@ describe('cleanupStaleAgents', () => {
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMC_PLUGIN_ROOT;
-      else process.env.OMC_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('uses a valid explicit OMC plugin root to preserve active historical basenames', async () => {
-    const originalOmcRoot = process.env.OMC_PLUGIN_ROOT;
+    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'active-plugin-root');
       createPluginRoot(pluginRoot, { 'build-fixer.md': historicalAgent('build-fixer.md') });
-      process.env.OMC_PLUGIN_ROOT = pluginRoot;
+      process.env.OMQ_PLUGIN_ROOT = pluginRoot;
       delete process.env.CLAUDE_PLUGIN_ROOT;
 
       vi.resetModules();
@@ -228,20 +228,20 @@ describe('cleanupStaleAgents', () => {
       expect(cleanup(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMC_PLUGIN_ROOT;
-      else process.env.OMC_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('preserves a current-package basename when the explicit plugin witness omits it', async () => {
-    const originalOmcRoot = process.env.OMC_PLUGIN_ROOT;
+    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'partial-active-plugin-root');
       createPluginRoot(pluginRoot, { 'executor.md': Buffer.from('active executor\n') });
-      process.env.OMC_PLUGIN_ROOT = pluginRoot;
+      process.env.OMQ_PLUGIN_ROOT = pluginRoot;
       delete process.env.CLAUDE_PLUGIN_ROOT;
 
       vi.resetModules();
@@ -252,18 +252,18 @@ describe('cleanupStaleAgents', () => {
       expect(cleanup(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMC_PLUGIN_ROOT;
-      else process.env.OMC_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
-  it('preserves both destructive-pass candidates when explicit OMC_PLUGIN_ROOT is missing', async () => {
-    const originalOmcRoot = process.env.OMC_PLUGIN_ROOT;
+  it('preserves both destructive-pass candidates when explicit OMQ_PLUGIN_ROOT is missing', async () => {
+    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
-      process.env.OMC_PLUGIN_ROOT = join(tempDir, 'missing-plugin-root');
+      process.env.OMQ_PLUGIN_ROOT = join(tempDir, 'missing-plugin-root');
       delete process.env.CLAUDE_PLUGIN_ROOT;
 
       vi.resetModules();
@@ -277,15 +277,15 @@ describe('cleanupStaleAgents', () => {
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMC_PLUGIN_ROOT;
-      else process.env.OMC_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('preserves when a structurally complete explicit root has a lookalike manifest name', async () => {
-    const originalOmcRoot = process.env.OMC_PLUGIN_ROOT;
+    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'lookalike-plugin-root');
@@ -293,7 +293,7 @@ describe('cleanupStaleAgents', () => {
       writeFileSync(join(pluginRoot, '.claude-plugin', 'plugin.json'), JSON.stringify({
         name: 'oh-my-claudecode-lookalike', commands: 'commands', skills: ['skills/test'],
       }));
-      process.env.OMC_PLUGIN_ROOT = pluginRoot;
+      process.env.OMQ_PLUGIN_ROOT = pluginRoot;
       delete process.env.CLAUDE_PLUGIN_ROOT;
 
       vi.resetModules();
@@ -304,15 +304,15 @@ describe('cleanupStaleAgents', () => {
       expect(prune(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMC_PLUGIN_ROOT;
-      else process.env.OMC_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('preserves when the installed registry has a structurally complete lookalike ID', async () => {
-    const originalOmcRoot = process.env.OMC_PLUGIN_ROOT;
+    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'registry-lookalike-root');
@@ -321,7 +321,7 @@ describe('cleanupStaleAgents', () => {
       writeFileSync(join(tempDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
         plugins: { 'oh-my-claudecode-lookalike@omc': [{ installPath: pluginRoot }] },
       }));
-      delete process.env.OMC_PLUGIN_ROOT;
+      delete process.env.OMQ_PLUGIN_ROOT;
       delete process.env.CLAUDE_PLUGIN_ROOT;
 
       vi.resetModules();
@@ -332,8 +332,8 @@ describe('cleanupStaleAgents', () => {
       expect(cleanup(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMC_PLUGIN_ROOT;
-      else process.env.OMC_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }

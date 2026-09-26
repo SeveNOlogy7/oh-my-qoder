@@ -191,7 +191,7 @@ function assertLeaderBranchAllowed(leaderBranch: string): void {
 
 function assertRuntimeV2Gate(): void {
   if (!isRuntimeV2Enabled()) {
-    throw new Error('auto-merge requires runtime v2 (OMC_RUNTIME_V2 is explicitly disabled).');
+    throw new Error('auto-merge requires runtime v2 (OMQ_RUNTIME_V2 is explicitly disabled).');
   }
 }
 

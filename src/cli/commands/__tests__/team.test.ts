@@ -177,19 +177,19 @@ describe('teamCommand api operations', () => {
   });
 
   it('blocks team start when running inside worker context', async () => {
-    const previousWorker = process.env.OMC_TEAM_WORKER;
+    const previousWorker = process.env.OMQ_TEAM_WORKER;
     const errors: string[] = [];
     const originalError = console.error;
     try {
       console.error = (...args: unknown[]) => errors.push(args.map(String).join(' '));
-      process.env.OMC_TEAM_WORKER = 'demo-team/worker-1';
+      process.env.OMQ_TEAM_WORKER = 'demo-team/worker-1';
       const logs = await captureLog(() => teamCommand(['1:executor', 'do work']));
       expect(logs.join('\n')).not.toContain('Usage: omc team');
       expect(errors.join('\n')).toContain('nested_teams_allowed is false');
       expect(process.exitCode).toBe(1);
     } finally {
       console.error = originalError;
-      process.env.OMC_TEAM_WORKER = previousWorker;
+      process.env.OMQ_TEAM_WORKER = previousWorker;
       process.exitCode = 0;
     }
   });
@@ -225,7 +225,7 @@ describe('teamCommand api operations', () => {
       next_task_id: 1,
     }, null, 2));
 
-    delete process.env.OMC_TEAM_WORKER;
+    delete process.env.OMQ_TEAM_WORKER;
     delete process.env.OMX_TEAM_WORKER;
     await expect(assertTeamSpawnAllowed(wd)).resolves.toBeUndefined();
   });
@@ -270,12 +270,12 @@ describe('teamCommand api operations', () => {
       resize_hook_target: null,
     }));
 
-    const previousWorker = process.env.OMC_TEAM_WORKER;
+    const previousWorker = process.env.OMQ_TEAM_WORKER;
     try {
-      process.env.OMC_TEAM_WORKER = 'demo-team/worker-1';
+      process.env.OMQ_TEAM_WORKER = 'demo-team/worker-1';
       await expect(assertTeamSpawnAllowed(wd, process.env)).resolves.toBeUndefined();
     } finally {
-      process.env.OMC_TEAM_WORKER = previousWorker;
+      process.env.OMQ_TEAM_WORKER = previousWorker;
     }
   });
 });

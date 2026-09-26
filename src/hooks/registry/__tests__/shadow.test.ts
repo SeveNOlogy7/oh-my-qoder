@@ -15,7 +15,7 @@ import {
 } from '../index.js';
 import { processHook } from '../../bridge.js';
 
-const ENV_KEYS = ['OMC_HOOK_SHADOW', 'DISABLE_OMC'] as const;
+const ENV_KEYS = ['OMQ_HOOK_SHADOW', 'DISABLE_OMQ'] as const;
 let savedEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
@@ -59,11 +59,11 @@ describe('shadow mode — feature flag and rollback (#3707)', () => {
 
   it('enables on explicit opt-in values only', () => {
     for (const v of ['1', 'true', 'on', 'observe', ' ON ']) {
-      process.env.OMC_HOOK_SHADOW = v;
+      process.env.OMQ_HOOK_SHADOW = v;
       expect(isHookShadowEnabled()).toBe(true);
     }
     for (const v of ['0', 'false', 'off', 'yes-ish', '']) {
-      process.env.OMC_HOOK_SHADOW = v;
+      process.env.OMQ_HOOK_SHADOW = v;
       expect(isHookShadowEnabled()).toBe(false);
     }
   });
@@ -102,7 +102,7 @@ describe('shadow comparison — decision equivalence (#3707)', () => {
   });
 
   it('runShadowObservation records a comparison for a mapped hook type', async () => {
-    process.env.OMC_HOOK_SHADOW = '1';
+    process.env.OMQ_HOOK_SHADOW = '1';
     const result = await runShadowObservation('keyword-detector', { continue: true }, 3);
     expect(result).not.toBeNull();
     expect(result?.event).toBe('UserPromptSubmit');
@@ -113,7 +113,7 @@ describe('shadow comparison — decision equivalence (#3707)', () => {
   });
 
   it('flags divergence when the dispatcher selects a different set', async () => {
-    process.env.OMC_HOOK_SHADOW = '1';
+    process.env.OMQ_HOOK_SHADOW = '1';
     const result = await runShadowObservation('session-start', { continue: true }, 3);
     expect(result).not.toBeNull();
     // session-start maps to exactly one registry entry; the dispatcher must
@@ -159,7 +159,7 @@ describe('shadow mode — no behavior change through the bridge (#3707)', () => 
     const input = { directory: '/tmp/omc-shadow-test' } as never;
 
     const offOutput = await processHook('code-simplifier', input);
-    process.env.OMC_HOOK_SHADOW = '1';
+    process.env.OMQ_HOOK_SHADOW = '1';
     const onOutput = await processHook('code-simplifier', input);
 
     expect(onOutput).toEqual(offOutput);
@@ -170,7 +170,7 @@ describe('shadow mode — no behavior change through the bridge (#3707)', () => 
   });
 
   it('shadow observation never blocks or alters an erroring legacy path', async () => {
-    process.env.OMC_HOOK_SHADOW = '1';
+    process.env.OMQ_HOOK_SHADOW = '1';
     const output = await processHook('code-simplifier', { directory: '/tmp/omc-shadow-test' } as never);
     expect(output.continue).not.toBe(false);
   });

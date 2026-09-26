@@ -19,16 +19,16 @@ describe('mode-state-io', () => {
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
     clearWorktreeCache();
-    delete process.env.OMC_STATE_DIR;
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_FLOCK_AVAILABLE;
-    delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID;
+    delete process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
+    delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID;
   });
 
   // -----------------------------------------------------------------------
@@ -102,7 +102,7 @@ describe('mode-state-io', () => {
 
     it('releases normal writes without external flock', () => {
       process.env.NODE_ENV = 'test';
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
       expect(writeModeState('autopilot', { active: true }, tempDir)).toBe(true);
       expect(writeModeState('autopilot', { active: false }, tempDir)).toBe(true);
       expect(existsSync(join(tempDir, '.omq', 'state', 'autopilot-state.json.mutation.lock'))).toBe(false);
@@ -110,7 +110,7 @@ describe('mode-state-io', () => {
 
     it('bypasses abandoned generic lock artifacts without flock', () => {
       process.env.NODE_ENV = 'test';
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
       const statePath = join(tempDir, '.omq', 'state', 'autopilot-state.json');
       mkdirSync(dirname(statePath), { recursive: true });
       writeFileSync(`${statePath}.mutation.lock`, JSON.stringify({ version: 1, pid: 999999999, processStart: '1', createdAt: new Date().toISOString(), nonce: randomUUID() }));
@@ -121,7 +121,7 @@ describe('mode-state-io', () => {
 
     it('preserves legacy unlocked writes without flock when a lock artifact exists', () => {
       process.env.NODE_ENV = 'test';
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
       const statePath = join(tempDir, '.omq', 'state', 'autopilot-state.json');
       mkdirSync(dirname(statePath), { recursive: true });
       const stat = readFileSync(`/proc/${process.pid}/stat`, 'utf8');
@@ -189,7 +189,7 @@ describe('mode-state-io', () => {
           cwd: parentDir,
           stdio: 'pipe',
         });
-        process.env.OMC_STATE_DIR = stateDir;
+        process.env.OMQ_STATE_DIR = stateDir;
         clearWorktreeCache();
 
         const submodulePath = join(parentDir, 'mysub');
@@ -202,7 +202,7 @@ describe('mode-state-io', () => {
         expect(existsSync(join(stateDir, submoduleId, 'state', 'sessions', 'session-submodule', 'ralph-state.json'))).toBe(true);
         expect(existsSync(join(stateDir, parentId, 'state', 'sessions', 'session-submodule', 'ralph-state.json'))).toBe(false);
       } finally {
-        delete process.env.OMC_STATE_DIR;
+        delete process.env.OMQ_STATE_DIR;
         clearWorktreeCache();
         rmSync(stateDir, { recursive: true, force: true });
         rmSync(parentDir, { recursive: true, force: true });
@@ -323,7 +323,7 @@ describe('mode-state-io', () => {
   describe('clearModeStateFile', () => {
     it('clears state without consulting stale lock artifacts when flock is unavailable', () => {
       process.env.NODE_ENV = 'test';
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
       const sessionId = 'workflow-session';
       expect(writeModeState('autopilot', { active: true }, tempDir, sessionId)).toBe(true);
       const statePath = join(tempDir, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
@@ -346,8 +346,8 @@ describe('mode-state-io', () => {
       expect(writeModeState('autopilot', { active: true, session_id: sessionId, workflowRunId: 'old-run' }, tempDir)).toBe(true);
       const legacyPath = join(tempDir, '.omq', 'state', 'autopilot-state.json');
       const replacement = { active: true, session_id: 'new-session', workflowRunId: 'new-run' };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = legacyPath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = legacyPath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       expect(clearModeStateFile('autopilot', tempDir, sessionId)).toBe(true);
       expect(JSON.parse(readFileSync(legacyPath, 'utf8'))).toEqual(replacement);
@@ -570,9 +570,9 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'autopilot-state.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: 'one' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'one', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       expect(recoverEmergencyStateFile(path)).toBe(true);
       expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ active: false, run: 'one' });
       expect(existsSync(`${path}.emergency-journal.json`)).toBe(false);
@@ -583,9 +583,9 @@ describe('mode-state-io', () => {
       mkdirSync(dirname(path), { recursive: true });
       const foreign = { active: true, project_path: '/projects/b', run: 'foreign' };
       writeFileSync(path, JSON.stringify(foreign));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'foreign', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       const artifacts = new Map(readdirSync(dirname(path))
         .filter((name) => name.startsWith(`${basename(path)}.emergency-`))
         .map((name) => [name, readFileSync(join(dirname(path), name), 'utf8')]));
@@ -632,9 +632,9 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'shared-home-same-project-recovery.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, project_path: '/projects/a', run: 'same-project' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'same-project', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
 
       expect(recoverEmergencyStateFile(path, { authorizeState: (state) => state.project_path === '/projects/a' })).toBe(true);
       expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({ active: false, project_path: '/projects/a' });
@@ -646,9 +646,9 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'replacement-at-recovery.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, project_path: '/projects/a', run: 'a' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'a', null)).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
 
       const transactionId = randomUUID();
       const quarantinePath = `${path}.emergency-quarantine.${transactionId}`;
@@ -663,8 +663,8 @@ describe('mode-state-io', () => {
         quarantinePath,
         phase: 'quarantined',
       });
-      process.env.OMC_TEST_EMERGENCY_RECOVERY_REPLACEMENT_PATH = path;
-      process.env.OMC_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify([
+      process.env.OMQ_TEST_EMERGENCY_RECOVERY_REPLACEMENT_PATH = path;
+      process.env.OMQ_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify([
         { path: journalPath, content: foreignJournal },
         { path: quarantinePath, content: foreignRaw },
       ])).toString('base64');
@@ -689,10 +689,10 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', `autopilot-${phase}-${operation}.json`);
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: `${phase}-${operation}` }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = phase;
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = phase;
       const transform = operation === 'pause' ? (state: Record<string, unknown>) => ({ ...state, active: false }) : null;
       expect(emergencyMutateStateFileIf(path, (state) => state.run === `${phase}-${operation}`, transform)).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       expect(recoverEmergencyStateFile(path)).toBe(true);
       if (operation === 'pause') expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({ active: false });
       else expect(existsSync(path)).toBe(false);
@@ -702,10 +702,10 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'autopilot-preparing-payload.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: 'preparing-payload' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-payload';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-payload';
 
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'preparing-payload', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       const journal = JSON.parse(readFileSync(`${path}.emergency-journal.json`, 'utf8')) as { phase: string; quarantinePath: string };
       expect(journal.phase).toBe('preparing');
       expect(existsSync(`${journal.quarantinePath}.payload`)).toBe(true);
@@ -720,9 +720,9 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'autopilot-state.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: 'one' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'one', null)).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       const replacement = JSON.stringify({ active: true, run: 'replacement' });
       writeFileSync(path, replacement);
       expect(recoverEmergencyStateFile(path)).toBe(true);
@@ -736,9 +736,9 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'autopilot-pause-replacement.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: 'one' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'one', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       const replacement = JSON.stringify({ active: true, run: 'replacement' });
       writeFileSync(path, replacement);
       expect(recoverEmergencyStateFile(path)).toBe(true);
@@ -752,8 +752,8 @@ describe('mode-state-io', () => {
       writeFileSync(path, JSON.stringify({ active: true, run: 'one' }));
       const replacement = { active: true, run: 'replacement', untouched: true };
       const replacementRaw = JSON.stringify(replacement, null, 2);
-      process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH = path;
-      process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64 = Buffer.from(replacementRaw).toString('base64');
+      process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH = path;
+      process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64 = Buffer.from(replacementRaw).toString('base64');
 
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'one', null)).toBe(false);
       expect(readFileSync(path, 'utf8')).toBe(replacementRaw);
@@ -769,8 +769,8 @@ describe('mode-state-io', () => {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: 'one' }));
       const replacementRaw = JSON.stringify({ active: true, run: 'replacement', untouched: true });
-      process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH = path;
-      process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64 = Buffer.from(replacementRaw).toString('base64');
+      process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH = path;
+      process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64 = Buffer.from(replacementRaw).toString('base64');
 
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'one', null)).toBe(false);
       expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(JSON.parse(replacementRaw));
@@ -782,9 +782,9 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'autopilot-concurrent-emergency.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: 'one' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'before-rename';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'before-rename';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'one', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
 
       // The clear cannot replace the pause journal. It recovers the owner, then
       // observes the paused state and leaves it intact.
@@ -852,7 +852,7 @@ describe('mode-state-io', () => {
         version: 1, transactionId, owner: { pid: process.pid, processStart, nonce: randomUUID() },
         originalDigest: createHash('sha256').update(raw).digest('hex'), intent: 'clear', quarantinePath, phase: 'prepared',
       }));
-      process.env.OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID = String(process.pid);
+      process.env.OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID = String(process.pid);
 
       expect(recoverEmergencyStateFile(path)).toBe(false);
       expect(existsSync(`${path}.emergency-journal.json`)).toBe(true);
@@ -875,7 +875,7 @@ describe('mode-state-io', () => {
       const staleClaim = { version: 1, pid: 999999999, processStart: '1', createdAt: new Date().toISOString(), nonce: randomUUID() };
       writeFileSync(claimPath, JSON.stringify(staleClaim));
       process.env.NODE_ENV = 'test';
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
       expect(recoverEmergencyStateFile(path)).toBe(false);
       expect(JSON.parse(readFileSync(claimPath, 'utf8'))).toEqual(staleClaim);
@@ -912,9 +912,9 @@ describe('mode-state-io', () => {
       const path = join(tempDir, '.omq', 'state', 'autopilot-abandoned-owner.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ active: true, run: 'abandoned-owner' }));
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'before-rename';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'before-rename';
       expect(emergencyMutateStateFileIf(path, (state) => state.run === 'abandoned-owner', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
 
       expect(JSON.parse(readFileSync(`${path}.emergency-journal.json`, 'utf8')).owner.pid).toBe(999999999);
       expect(recoverEmergencyStateFile(path)).toBe(true);
@@ -1036,10 +1036,10 @@ describe('mode-state-io', () => {
         expect(recover(path)).toBe(false);
         expect(existsSync(temp)).toBe(true);
         writeFileSync(temp, 'unpublished');
-        process.env.OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID = String(process.pid);
+        process.env.OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID = String(process.pid);
         expect(recover(path)).toBe(false);
         expect(existsSync(temp)).toBe(true);
-        delete process.env.OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID;
+        delete process.env.OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID;
       }
     });
   });

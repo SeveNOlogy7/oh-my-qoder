@@ -62,15 +62,15 @@ function withPublisherPreload<T>(
   env: Record<string, string>,
   callback: () => T,
 ): T {
-  const previousPreload = process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT;
+  const previousPreload = process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT;
   const previous = new Map(Object.keys(env).map((key) => [key, process.env[key]]));
-  process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT = pathToFileURL(preloadPath).href;
+  process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT = pathToFileURL(preloadPath).href;
   Object.assign(process.env, env);
   try {
     return callback();
   } finally {
-    if (previousPreload === undefined) delete process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT;
-    else process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT = previousPreload;
+    if (previousPreload === undefined) delete process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT;
+    else process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT = previousPreload;
     for (const [key, value] of previous) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
@@ -129,7 +129,7 @@ function writeCheckpoint(
   return file;
 }
 
-/** Minimal mirror of getOmcRoot for tests (no OMC_STATE_DIR in test env). */
+/** Minimal mirror of getOmcRoot for tests (no OMQ_STATE_DIR in test env). */
 function getOmcRootForTest(dir: string): string {
   return join(dir, '.omq');
 }

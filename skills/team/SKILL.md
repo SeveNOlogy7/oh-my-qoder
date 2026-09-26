@@ -846,7 +846,7 @@ If teammates are unresponsive, record the timeout, avoid spawning more work, and
 
 ## Runtime V2 (Event-Driven)
 
-When `OMC_RUNTIME_V2=1` is set, the team runtime uses an event-driven architecture instead of the legacy done.json polling watchdog:
+When `OMQ_RUNTIME_V2=1` is set, the team runtime uses an event-driven architecture instead of the legacy done.json polling watchdog:
 
 - **No done.json**: Task completion is detected via CLI API lifecycle transitions (claim-task, transition-task-status)
 - **Snapshot-based monitoring**: Each poll cycle takes a point-in-time snapshot of tasks and workers, computes deltas, and emits events
@@ -858,7 +858,7 @@ The v2 runtime is feature-flagged and can be enabled per-session. The legacy v1 
 
 ## Dynamic Scaling
 
-When `OMC_TEAM_SCALING_ENABLED=1` is set, the team supports mid-session scaling:
+When `OMQ_TEAM_SCALING_ENABLED=1` is set, the team supports mid-session scaling:
 
 - **scale_up**: Add workers to a running team (respects max_workers limit)
 - **scale_down**: Remove idle workers with graceful drain (workers finish current task before removal)
@@ -867,7 +867,7 @@ When `OMC_TEAM_SCALING_ENABLED=1` is set, the team supports mid-session scaling:
 
 ## Configuration
 
-Optional settings live in `.claude/omc.jsonc` (project) or `~/.config/claude-omc/config.jsonc` (user). Project values override user values; `OMC_TEAM_ROLE_OVERRIDES` (env JSON) supersedes both.
+Optional settings live in `.claude/omc.jsonc` (project) or `~/.config/claude-omc/config.jsonc` (user). Project values override user values; `OMQ_TEAM_ROLE_OVERRIDES` (env JSON) supersedes both.
 
 ```jsonc
 {
@@ -945,10 +945,10 @@ User-friendly aliases normalize via `normalizeDelegationRole()` — e.g. `review
 ### Env override
 
 ```bash
-OMC_TEAM_ROLE_OVERRIDES='{"critic":{"provider":"codex"},"code-reviewer":{"provider":"gemini"}}'
+OMQ_TEAM_ROLE_OVERRIDES='{"critic":{"provider":"codex"},"code-reviewer":{"provider":"gemini"}}'
 ```
 
-Precedence: `OMC_TEAM_ROLE_OVERRIDES` > `.claude/omc.jsonc` (project) > `~/.config/claude-omc/config.jsonc` (user) > built-in defaults. Invalid JSON logs a warning and is ignored — env overrides are best-effort and never abort the run.
+Precedence: `OMQ_TEAM_ROLE_OVERRIDES` > `.claude/omc.jsonc` (project) > `~/.config/claude-omc/config.jsonc` (user) > built-in defaults. Invalid JSON logs a warning and is ignored — env overrides are best-effort and never abort the run.
 
 ### Fallback when a CLI is missing
 
@@ -1038,7 +1038,7 @@ MCP workers can operate in isolated git worktrees to prevent file conflicts betw
 
 ## Parallel session caveats
 
-- **Multi-repo workspace anchor:** drop a `.omq-workspace` marker at the parent directory so multiple sessions across sub-repos share one `.omq/`. Resolution order: `OMC_STATE_DIR > .omq-workspace > git > cwd`. See `docs/REFERENCE.md`.
-- **Session id source:** OMC_SESSION_ID env var wins in CLI contexts; hook payload data.session_id wins in hook contexts.
+- **Multi-repo workspace anchor:** drop a `.omq-workspace` marker at the parent directory so multiple sessions across sub-repos share one `.omq/`. Resolution order: `OMQ_STATE_DIR > .omq-workspace > git > cwd`. See `docs/REFERENCE.md`.
+- **Session id source:** OMQ_SESSION_ID env var wins in CLI contexts; hook payload data.session_id wins in hook contexts.
 - **Plan id (when applicable):** Team state is session-scoped. Team handoffs at `.omq/handoffs/` are shared by design (see Wave G in the workspace plan).
 - **Parallel verdict:** supported (session-scoped + shared handoffs by design)

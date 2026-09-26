@@ -32,7 +32,7 @@ _Claude Code'u öğrenmeyin. Sadece OMC kullanın._
 /oh-my-claudecode:omc-setup
 ```
 
-OMC'yi `omc --plugin-dir <path>` veya `claude --plugin-dir <path>` aracılığıyla çalıştırıyorsanız, `omc setup`'a `--plugin-dir-mode` ekleyin (veya `OMC_PLUGIN_ROOT`'u önceden dışa aktarın) böylece plugin zaten çalışma zamanında sağlayan beceri/ajanları duplike etmez. Tam karar matrisi ve mevcut tüm bayraklar için [REFERENCE.md'deki Plugin directory flags bölümüne](./docs/REFERENCE.md#plugin-directory-flags) bakın.
+OMC'yi `omc --plugin-dir <path>` veya `claude --plugin-dir <path>` aracılığıyla çalıştırıyorsanız, `omc setup`'a `--plugin-dir-mode` ekleyin (veya `OMQ_PLUGIN_ROOT`'u önceden dışa aktarın) böylece plugin zaten çalışma zamanında sağlayan beceri/ajanları duplike etmez. Tam karar matrisi ve mevcut tüm bayraklar için [REFERENCE.md'deki Plugin directory flags bölümüne](./docs/REFERENCE.md#plugin-directory-flags) bakın.
 
 <!-- TODO(i18n): verify translation -->
 
@@ -133,7 +133,7 @@ Farklı kullanım senaryoları için birden fazla strateji — Team destekli ork
 
 - **Sihirli anahtar kelimeler** — Açık kontrol için `ralph`, `ulw`, `eco`, `plan`
 - **HUD statusline** — Durum çubuğunuzda gerçek zamanlı orkestrasyon metrikleri
-  - Claude Code'u doğrudan `claude --plugin-dir <path>` ile başlatıyorsanız (`omc` shim'i atlayarak), shell'de `OMC_PLUGIN_ROOT=<path>` dışa aktarın, böylece HUD paketi plugin yükleyici ile aynı checkout'a çözülür. Ayrıntılar için [REFERENCE.md'deki Plugin directory flags bölümüne](./docs/REFERENCE.md#plugin-directory-flags) bakın.
+  - Claude Code'u doğrudan `claude --plugin-dir <path>` ile başlatıyorsanız (`omc` shim'i atlayarak), shell'de `OMQ_PLUGIN_ROOT=<path>` dışa aktarın, böylece HUD paketi plugin yükleyici ile aynı checkout'a çözülür. Ayrıntılar için [REFERENCE.md'deki Plugin directory flags bölümüne](./docs/REFERENCE.md#plugin-directory-flags) bakın.
 
   <!-- TODO(i18n): verify translation -->
 - **Beceri öğrenimi** — Oturumlarınızdan yeniden kullanılabilir kalıplar çıkarın
@@ -265,9 +265,9 @@ Claude Code oturum olaylarını bir [OpenClaw](https://openclaw.ai/) ağ geçidi
 
 | Değişken | Açıklama |
 |----------|----------|
-| `OMC_OPENCLAW=1` | OpenClaw'ı etkinleştir |
-| `OMC_OPENCLAW_DEBUG=1` | Hata ayıklama günlüklemesini etkinleştir |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | Yapılandırma dosyası yolunu değiştir |
+| `OMQ_OPENCLAW=1` | OpenClaw'ı etkinleştir |
+| `OMQ_OPENCLAW_DEBUG=1` | Hata ayıklama günlüklemesini etkinleştir |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | Yapılandırma dosyası yolunu değiştir |
 
 **Desteklenen hook olayları (bridge.ts'de 6 aktif):**
 

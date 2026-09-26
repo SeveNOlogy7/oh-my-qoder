@@ -24,7 +24,7 @@ describe.skipIf(!isWindows)('cli-detection native Windows integration', () => {
     originalPath = process.env.PATH;
     originalComspec = process.env.ComSpec;
     originalCOMSPEC = process.env.COMSPEC;
-    originalSentinelEnv = process.env.OMC_CLI_DETECTION_EXPECTED_LAUNCH;
+    originalSentinelEnv = process.env.OMQ_CLI_DETECTION_EXPECTED_LAUNCH;
     fixtureRoot = mkdtempSync(join(tmpdir(), 'omc cli detection '));
     sentinelPath = join(fixtureRoot, 'injected-side-effect.txt');
     process.env.PATH = `${fixtureRoot}${delimiter}${originalPath ?? ''}`;
@@ -37,8 +37,8 @@ describe.skipIf(!isWindows)('cli-detection native Windows integration', () => {
     else process.env.ComSpec = originalComspec;
     if (originalCOMSPEC === undefined) delete process.env.COMSPEC;
     else process.env.COMSPEC = originalCOMSPEC;
-    if (originalSentinelEnv === undefined) delete process.env.OMC_CLI_DETECTION_EXPECTED_LAUNCH;
-    else process.env.OMC_CLI_DETECTION_EXPECTED_LAUNCH = originalSentinelEnv;
+    if (originalSentinelEnv === undefined) delete process.env.OMQ_CLI_DETECTION_EXPECTED_LAUNCH;
+    else process.env.OMQ_CLI_DETECTION_EXPECTED_LAUNCH = originalSentinelEnv;
     if (fixtureRoot) rmSync(fixtureRoot, { recursive: true, force: true });
     fixtureRoot = undefined;
     sentinelPath = undefined;
@@ -70,13 +70,13 @@ describe.skipIf(!isWindows)('cli-detection native Windows integration', () => {
       [
         '@echo off',
         'if /i not "%~1"=="--version" exit /b 17',
-        '>>"%OMC_CLI_DETECTION_EXPECTED_LAUNCH%" echo expected-launch',
+        '>>"%OMQ_CLI_DETECTION_EXPECTED_LAUNCH%" echo expected-launch',
         'echo safe-provider 1.0.0',
         '',
       ].join('\r\n'),
       'utf8',
     );
-    process.env.OMC_CLI_DETECTION_EXPECTED_LAUNCH = join(fixtureRoot!, 'expected-launch.txt');
+    process.env.OMQ_CLI_DETECTION_EXPECTED_LAUNCH = join(fixtureRoot!, 'expected-launch.txt');
     process.env.PATH = `${fixtureRoot!}${delimiter}${first}${delimiter}${second}${delimiter}${originalPath ?? ''}`;
 
     const multi = probeCli('omc-multi');
@@ -88,14 +88,14 @@ describe.skipIf(!isWindows)('cli-detection native Windows integration', () => {
     expect(safe).toMatchObject({ found: true, version: 'safe-provider 1.0.0' });
     expect(safe.path).toBeDefined();
     expect(canonicalWindowsPath(safe.path!)).toBe(canonicalWindowsPath(safeBatch));
-    const launches = readFileSync(process.env.OMC_CLI_DETECTION_EXPECTED_LAUNCH!, 'utf8')
+    const launches = readFileSync(process.env.OMQ_CLI_DETECTION_EXPECTED_LAUNCH!, 'utf8')
       .split(/\r?\n/)
       .filter(Boolean);
     expect(launches).toEqual(['expected-launch']);
   });
 
   it('never invokes unsafe legal metacharacter batch paths or creates the sentinel', () => {
-    process.env.OMC_CLI_DETECTION_EXPECTED_LAUNCH = sentinelPath!;
+    process.env.OMQ_CLI_DETECTION_EXPECTED_LAUNCH = sentinelPath!;
 
     for (const character of ['%', '!', '^', '&', '(', ')']) {
       const unsafeDir = join(fixtureRoot!, `unsafe${character}dir`);
@@ -105,7 +105,7 @@ describe.skipIf(!isWindows)('cli-detection native Windows integration', () => {
         unsafeBatch,
         [
           '@echo off',
-          '>>"%OMC_CLI_DETECTION_EXPECTED_LAUNCH%" echo injected',
+          '>>"%OMQ_CLI_DETECTION_EXPECTED_LAUNCH%" echo injected',
           'echo should-not-run',
           '',
         ].join('\r\n'),

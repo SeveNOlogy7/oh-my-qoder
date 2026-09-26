@@ -1485,16 +1485,16 @@ function loadDisabledKeywords(directory) {
 
 // Main
 async function main() {
-  // Skip guard: check OMC_SKIP_HOOKS env var (see issue #838)
-  const _skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map(s => s.trim());
-  if (process.env.DISABLE_OMC === '1' || _skipHooks.includes('keyword-detector')) {
+  // Skip guard: check OMQ_SKIP_HOOKS env var (see issue #838)
+  const _skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map(s => s.trim());
+  if (process.env.DISABLE_OMQ === '1' || _skipHooks.includes('keyword-detector')) {
     console.log(JSON.stringify({ continue: true }));
     return;
   }
 
   // Team worker guard: prevent keyword detection inside team workers to avoid
   // infinite spawning loops (worker detects "team" -> invokes team skill -> spawns more workers)
-  if (process.env.OMC_TEAM_WORKER) {
+  if (process.env.OMQ_TEAM_WORKER) {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }

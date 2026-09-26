@@ -50,7 +50,7 @@ describe('atomicWriteJson', () => {
     fsPromisesControl.renameHook = undefined;
     fsPromisesControl.openHook = undefined;
     fsPromisesControl.writeHook = undefined;
-    delete process.env.OMC_TEST_FLOCK_AVAILABLE;
+    delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
     for (const directory of directories.splice(0)) {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -198,7 +198,7 @@ describe('atomicWriteJson', () => {
     const directory = mkdtempSync(join(tmpdir(), 'atomic-write-lock-'));
     directories.push(directory);
     process.env.NODE_ENV = 'test';
-    process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
     const filePath = join(directory, 'state.json');
     writeFileSync(`${filePath}.mutation.lock`, JSON.stringify({ version: 1, pid: 999999999, processStart: '1', createdAt: new Date().toISOString(), nonce: randomUUID() }));
 
@@ -210,7 +210,7 @@ describe('atomicWriteJson', () => {
     const directory = mkdtempSync(join(tmpdir(), 'atomic-write-lock-live-'));
     directories.push(directory);
     process.env.NODE_ENV = 'test';
-    process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
     const filePath = join(directory, 'state.json');
     const stat = readFileSync(`/proc/${process.pid}/stat`, 'utf8');
     const processStart = stat.slice(stat.lastIndexOf(')') + 2).trim().split(/\s+/)[19];

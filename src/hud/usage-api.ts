@@ -738,7 +738,7 @@ function refreshAccessToken(refreshToken: string): Promise<OAuthCredentials | nu
               // JSON parse failed
             }
           }
-          if (process.env.OMC_DEBUG) {
+          if (process.env.OMQ_DEBUG) {
             console.error(`[usage-api] Token refresh failed: HTTP ${res.statusCode}`);
           }
           resolve(null);
@@ -789,7 +789,7 @@ function fetchUsageFromApi(accessToken: string): Promise<FetchResult<UsageApiRes
               resolve({ data: null });
             }
           } else if (res.statusCode === 429) {
-            if (process.env.OMC_DEBUG) {
+            if (process.env.OMQ_DEBUG) {
               console.error(`[usage-api] Anthropic API returned 429 (rate limited)`);
             }
             resolve({ data: null, rateLimited: true });
@@ -860,7 +860,7 @@ function fetchUsageFromZai(): Promise<FetchResult<ZaiQuotaResponse>> {
                 resolve({ data: null });
               }
             } else if (res.statusCode === 429) {
-              if (process.env.OMC_DEBUG) {
+              if (process.env.OMQ_DEBUG) {
                 console.error(`[usage-api] z.ai API returned 429 (rate limited)`);
               }
               resolve({ data: null, rateLimited: true });
@@ -932,7 +932,7 @@ function writeKeychainCredentials(creds: OAuthCredentials): void {
     });
   } catch {
     // Silent failure - Keychain write-back is best-effort
-    if (process.env.OMC_DEBUG) {
+    if (process.env.OMQ_DEBUG) {
       console.error('[usage-api] Failed to write back refreshed credentials to Keychain');
     }
   }
@@ -995,7 +995,7 @@ function writeBackCredentials(creds: OAuthCredentials): void {
     }
   } catch {
     // Silent failure - credential write-back is best-effort
-    if (process.env.OMC_DEBUG) {
+    if (process.env.OMQ_DEBUG) {
       console.error('[usage-api] Failed to write back refreshed credentials');
     }
   }
@@ -1313,7 +1313,7 @@ export function parseZaiResponse(response: ZaiQuotaResponse): RateLimits | null 
     weeklyBucket = sorted[1];
   }
 
-  if (allTokensLimits.length > 2 && process.env.OMC_DEBUG) {
+  if (allTokensLimits.length > 2 && process.env.OMQ_DEBUG) {
     console.error(
       `[usage-api] z.ai returned ${allTokensLimits.length} TOKENS_LIMIT entries; using unit-based classification`,
     );
@@ -1382,7 +1382,7 @@ function fetchUsageFromMinimax(apiKey: string): Promise<FetchResult<MinimaxCodin
                 resolve({ data: null });
               }
             } else if (res.statusCode === 429) {
-              if (process.env.OMC_DEBUG) {
+              if (process.env.OMQ_DEBUG) {
                 console.error(`[usage-api] MiniMax API returned 429 (rate limited)`);
               }
               resolve({ data: null, rateLimited: true });
@@ -1417,7 +1417,7 @@ export function parseMinimaxResponse(response: MinimaxCodingPlanResponse): RateL
   // Find the primary coding model (first match, case-insensitive)
   const codingModel = models.find(m => m.model_name.toLowerCase().startsWith('minimax-m'));
   if (!codingModel) {
-    if (process.env.OMC_DEBUG) {
+    if (process.env.OMQ_DEBUG) {
       console.error('[usage-api] No MiniMax-M* model found in coding plan response');
     }
     return null;
@@ -1485,7 +1485,7 @@ function fetchUsageFromKimi(apiKey: string): Promise<FetchResult<KimiUsageRespon
 
       // Provider detection accepts any *.kimi.com host; the credential does not.
       if (!KIMI_USAGE_HOSTNAMES.has(hostname)) {
-        if (process.env.OMC_DEBUG) {
+        if (process.env.OMQ_DEBUG) {
           console.error(
             `[usage-api] Refusing to send Kimi credentials to non-canonical host '${hostname}'`,
           );
@@ -1522,7 +1522,7 @@ function fetchUsageFromKimi(apiKey: string): Promise<FetchResult<KimiUsageRespon
                 resolve({ data: null });
               }
             } else if (res.statusCode === 429) {
-              if (process.env.OMC_DEBUG) {
+              if (process.env.OMQ_DEBUG) {
                 console.error(`[usage-api] Kimi API returned 429 (rate limited)`);
               }
               resolve({ data: null, rateLimited: true });
@@ -1682,7 +1682,7 @@ export function parseKimiResponse(response: KimiUsageResponse): RateLimits | nul
     filledFiveHour = true;
     break;
   }
-  if (!filledFiveHour && sawOtherWindow && process.env.OMC_DEBUG) {
+  if (!filledFiveHour && sawOtherWindow && process.env.OMQ_DEBUG) {
     console.error(
       `[usage-api] Kimi limits[] carried no ${KIMI_FIVE_HOUR_WINDOW_MINUTES}-minute window — 5h bucket left empty`,
     );

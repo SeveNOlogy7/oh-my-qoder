@@ -339,9 +339,9 @@ describe("reply-listener", () => {
         path.join(__dirname, "..", "reply-listener.ts"),
         "utf-8",
       );
-      // Should forward OMC_* env vars for getNotificationConfig()
-      expect(source).toContain("OMC_");
-      expect(source).toContain("startsWith('OMC_')");
+      // Should forward OMQ_* env vars for getNotificationConfig()
+      expect(source).toContain("OMQ_");
+      expect(source).toContain("startsWith('OMQ_')");
     });
 
     it("uses minimal env allowlist for daemon", () => {
@@ -659,7 +659,7 @@ describe("reply-listener", () => {
       );
 
       expect(configSource).toContain("parseSlackUserIds");
-      expect(configSource).toContain("OMC_REPLY_SLACK_USER_IDS");
+      expect(configSource).toContain("OMQ_REPLY_SLACK_USER_IDS");
       expect(configSource).toContain("authorizedSlackUserIds");
     });
   });

@@ -17,7 +17,7 @@ function openClawRoutingEnvironment(payload: Record<string, unknown>): NodeJS.Pr
   if (!routing || typeof routing !== 'object' || Array.isArray(routing)) return {};
   const snapshot = routing as OpenClawRoutingSnapshot;
   const values: Array<[keyof OpenClawRoutingSnapshot, string]> = [
-    ['openClawConfig', 'OMC_OPENCLAW_CONFIG'],
+    ['openClawConfig', 'OMQ_OPENCLAW_CONFIG'],
     ['replyChannel', 'OPENCLAW_REPLY_CHANNEL'],
     ['replyTarget', 'OPENCLAW_REPLY_TARGET'],
     ['replyThread', 'OPENCLAW_REPLY_THREAD'],
@@ -28,12 +28,12 @@ function openClawRoutingEnvironment(payload: Record<string, unknown>): NodeJS.Pr
 }
 
 function runnerEnvironment(context: ActionRunContext): NodeJS.ProcessEnv {
-  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'CLAUDE_CONFIG_DIR', 'OMC_STATE_DIR', 'OMC_HOOK_CONFIG', 'OMC_CONFIG_PATH', 'OMC_NOTIFY', 'OMC_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
-  const notificationKeys = ['OMC_TELEGRAM', 'OMC_DISCORD', 'OMC_SLACK', 'OMC_WEBHOOK', 'OMC_DISCORD_MENTION', 'OMC_DISCORD_NOTIFIER_BOT_TOKEN', 'OMC_DISCORD_NOTIFIER_CHANNEL', 'OMC_DISCORD_WEBHOOK_URL', 'OMC_TELEGRAM_BOT_TOKEN', 'OMC_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMC_TELEGRAM_CHAT_ID', 'OMC_TELEGRAM_NOTIFIER_CHAT_ID', 'OMC_TELEGRAM_NOTIFIER_UID', 'OMC_SLACK_WEBHOOK_URL', 'OMC_SLACK_MENTION', 'OMC_SLACK_BOT_TOKEN', 'OMC_SLACK_APP_TOKEN', 'OMC_SLACK_BOT_CHANNEL'];
+  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'CLAUDE_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
+  const notificationKeys = ['OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'OMQ_DISCORD_MENTION', 'OMQ_DISCORD_NOTIFIER_BOT_TOKEN', 'OMQ_DISCORD_NOTIFIER_CHANNEL', 'OMQ_DISCORD_WEBHOOK_URL', 'OMQ_TELEGRAM_BOT_TOKEN', 'OMQ_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMQ_TELEGRAM_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_UID', 'OMQ_SLACK_WEBHOOK_URL', 'OMQ_SLACK_MENTION', 'OMQ_SLACK_BOT_TOKEN', 'OMQ_SLACK_APP_TOKEN', 'OMQ_SLACK_BOT_CHANNEL'];
   const keys = context.actionName === 'callback' || context.actionName === 'notification' ? [...baseKeys, ...notificationKeys] : baseKeys;
   const exact = Object.fromEntries(keys.flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]]]));
   if (context.actionName !== 'openclaw') return exact;
-  const enabled = context.action.payload.openClawEnabled === true ? { OMC_OPENCLAW: '1' } : {};
+  const enabled = context.action.payload.openClawEnabled === true ? { OMQ_OPENCLAW: '1' } : {};
   return { ...exact, ...enabled, ...openClawRoutingEnvironment(context.action.payload) };
 }
 

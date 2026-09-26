@@ -25,7 +25,7 @@ const SHOULD_USE_WINDOWS_SHELL = process.platform === 'win32';
 const ANTIGRAVITY_TIMEOUT_DEFAULT_MS = 300000;
 const ANTIGRAVITY_TIMEOUT_KILL_SIGNAL = 'SIGKILL';
 const ANTIGRAVITY_TIMEOUT_MS = (() => {
-  const raw = process.env.OMC_ANTIGRAVITY_TIMEOUT_MS;
+  const raw = process.env.OMQ_ANTIGRAVITY_TIMEOUT_MS;
   if (raw === undefined || raw === '') {
     return ANTIGRAVITY_TIMEOUT_DEFAULT_MS;
   }
@@ -33,7 +33,7 @@ const ANTIGRAVITY_TIMEOUT_MS = (() => {
   // Require a finite, integer, >=1000ms value; clamp to <=1h. Otherwise warn and
   // fall back to the default so a bad override can't disable or distort the bound.
   if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1000) {
-    console.error(`[ask-antigravity] Ignoring invalid OMC_ANTIGRAVITY_TIMEOUT_MS="${raw}" (need an integer >= 1000); using ${ANTIGRAVITY_TIMEOUT_DEFAULT_MS}ms.`);
+    console.error(`[ask-antigravity] Ignoring invalid OMQ_ANTIGRAVITY_TIMEOUT_MS="${raw}" (need an integer >= 1000); using ${ANTIGRAVITY_TIMEOUT_DEFAULT_MS}ms.`);
     return ANTIGRAVITY_TIMEOUT_DEFAULT_MS;
   }
   return Math.min(parsed, 3600000);
@@ -111,7 +111,7 @@ function shouldPipePromptViaStdin(provider, prompt) {
   return false;
 }
 
-const ASK_ORIGINAL_TASK_ENV = 'OMC_ASK_ORIGINAL_TASK';
+const ASK_ORIGINAL_TASK_ENV = 'OMQ_ASK_ORIGINAL_TASK';
 const ASK_ORIGINAL_TASK_ENV_ALIAS = 'OMX_ASK_ORIGINAL_TASK';
 
 function usage() {

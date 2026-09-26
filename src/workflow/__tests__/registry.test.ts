@@ -174,16 +174,16 @@ describe('workflow registry — retirement policy', () => {
 
 describe('workflow registry — feature flag and resolver adapter seam', () => {
   afterEach(() => {
-    delete process.env.OMC_WORKFLOW_REGISTRY;
+    delete process.env.OMQ_WORKFLOW_REGISTRY;
   });
 
-  it('is enabled by default and disabled via OMC_WORKFLOW_REGISTRY=0 (rollback)', () => {
+  it('is enabled by default and disabled via OMQ_WORKFLOW_REGISTRY=0 (rollback)', () => {
     expect(isRegistryEnabled()).toBe(true);
-    process.env.OMC_WORKFLOW_REGISTRY = '0';
+    process.env.OMQ_WORKFLOW_REGISTRY = '0';
     expect(isRegistryEnabled()).toBe(false);
-    process.env.OMC_WORKFLOW_REGISTRY = 'false';
+    process.env.OMQ_WORKFLOW_REGISTRY = 'false';
     expect(isRegistryEnabled()).toBe(false);
-    process.env.OMC_WORKFLOW_REGISTRY = '1';
+    process.env.OMQ_WORKFLOW_REGISTRY = '1';
     expect(isRegistryEnabled()).toBe(true);
   });
 
@@ -216,7 +216,7 @@ describe('workflow registry — feature flag and resolver adapter seam', () => {
     expect(registryAliasLookup('not-a-thing')).toBeUndefined();
     // utility-to-utility aliases stay with the resolver's own merged table
     expect(registryAliasLookup('learner')).toBeUndefined();
-    process.env.OMC_WORKFLOW_REGISTRY = '0';
+    process.env.OMQ_WORKFLOW_REGISTRY = '0';
     expect(registryAliasLookup('autopilot')).toBeUndefined();
   });
 });

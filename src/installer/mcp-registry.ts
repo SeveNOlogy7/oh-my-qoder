@@ -51,7 +51,7 @@ const DEFAULT_LAUNCHER_MCP_STARTUP_TIMEOUT_SEC = 15;
 const CODEX_MCP_SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export function getUnifiedMcpRegistryPath(): string {
-  return process.env.OMC_MCP_REGISTRY_PATH?.trim() || getGlobalOmcConfigPath('mcp-registry.json');
+  return process.env.OMQ_MCP_REGISTRY_PATH?.trim() || getGlobalOmcConfigPath('mcp-registry.json');
 }
 
 function getUnifiedMcpRegistryStatePath(): string {
@@ -59,8 +59,8 @@ function getUnifiedMcpRegistryStatePath(): string {
 }
 
 function getUnifiedMcpRegistryPathCandidates(): string[] {
-  if (process.env.OMC_MCP_REGISTRY_PATH?.trim()) {
-    return [process.env.OMC_MCP_REGISTRY_PATH.trim()];
+  if (process.env.OMQ_MCP_REGISTRY_PATH?.trim()) {
+    return [process.env.OMQ_MCP_REGISTRY_PATH.trim()];
   }
 
   return getGlobalOmcConfigCandidates('mcp-registry.json');

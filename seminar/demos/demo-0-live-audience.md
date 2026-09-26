@@ -65,10 +65,10 @@ npm run dev
 ```bash
 # 폰트 크기 키우기
 # 불필요한 로그 숨기기
-export OMC_QUIET=true
+export OMQ_QUIET=true
 
 # 빠른 모델 (Sonnet 5)
-export OMC_MODEL=anthropic/claude-sonnet-5
+export OMQ_MODEL=anthropic/claude-sonnet-5
 ```
 
 ### 타이밍

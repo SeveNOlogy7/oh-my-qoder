@@ -18,12 +18,12 @@ describe("Project Memory Integration", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    delete process.env.OMC_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "integration-test-"));
   });
 
   afterEach(async () => {
-    delete process.env.OMC_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     contextCollector.clear("test-session-1");
     contextCollector.clear("test-session-2");
     contextCollector.clear("test-session-3a");
@@ -78,12 +78,12 @@ describe("Project Memory Integration", () => {
       expect(pending.merged).toContain("[Project Environment]");
     });
 
-    it("should persist to centralized state dir without creating local .omq when OMC_STATE_DIR is set", async () => {
+    it("should persist to centralized state dir without creating local .omq when OMQ_STATE_DIR is set", async () => {
       const stateDir = await fs.mkdtemp(
         path.join(os.tmpdir(), "integration-state-"),
       );
       try {
-        process.env.OMC_STATE_DIR = stateDir;
+        process.env.OMQ_STATE_DIR = stateDir;
 
         const packageJson = {
           name: "test-app",
@@ -110,7 +110,7 @@ describe("Project Memory Integration", () => {
           fs.access(path.join(tempDir, ".omq", "project-memory.json")),
         ).rejects.toThrow();
       } finally {
-        delete process.env.OMC_STATE_DIR;
+        delete process.env.OMQ_STATE_DIR;
         contextCollector.clear("test-session-centralized");
         await fs.rm(stateDir, { recursive: true, force: true });
       }

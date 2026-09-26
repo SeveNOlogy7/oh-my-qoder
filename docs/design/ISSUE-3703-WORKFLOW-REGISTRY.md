@@ -62,8 +62,8 @@ workflow surface classification:
 
 ## Rollback
 
-- `OMC_WORKFLOW_REGISTRY=0` disables `registryAliasLookup` (every lookup
-  returns `undefined`); `OMC_ALIAS_RESOLVER_ENABLED=0` (merged #3706) disables
+- `OMQ_WORKFLOW_REGISTRY=0` disables `registryAliasLookup` (every lookup
+  returns `undefined`); `OMQ_ALIAS_RESOLVER_ENABLED=0` (merged #3706) disables
   alias routing entirely. Legacy keyword/skill resolution paths are untouched;
   deleting `src/workflow/registry.ts`, `projections.ts`, and their tests
   fully removes this issue's surface.

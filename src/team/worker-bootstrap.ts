@@ -17,7 +17,7 @@ export interface WorkerBootstrapParams {
    * Worker-facing root used in instructions. The default is the leader cwd
    * relative global state root (`.omq/state`); non-default values are treated as
    * a team-specific root (`.../.omq/state/team/<team>`), matching
-   * `OMC_TEAM_STATE_ROOT` and `teamStateRoot()` semantics.
+   * `OMQ_TEAM_STATE_ROOT` and `teamStateRoot()` semantics.
    */
   instructionStateRoot?: string;
 }
@@ -219,8 +219,8 @@ You MUST complete ALL of these steps. Do NOT skip any step. Do NOT exit without 
 - **Team**: ${teamName}
 - **Worker**: ${workerName}
 - **Agent Type**: ${agentType}
-- **Environment**: OMC_TEAM_WORKER=${teamName}/${workerName}
-- **Launch Attempt**: read the exact value from \`OMC_WORKER_LAUNCH_ATTEMPT_ID\` and preserve it in status updates and task claims.
+- **Environment**: OMQ_TEAM_WORKER=${teamName}/${workerName}
+- **Launch Attempt**: read the exact value from \`OMQ_WORKER_LAUNCH_ATTEMPT_ID\` and preserve it in status updates and task claims.
 
 ## Your Tasks
 ${taskList}
@@ -241,15 +241,15 @@ Use the CLI API for all task lifecycle operations. Do NOT directly edit task fil
   - Completion is rejected with \`missing_delegation_compliance_evidence\` when required evidence is absent.
 
 ## Canonical Team State Root
-- Resolve the team state root in this order: \`OMC_TEAM_STATE_ROOT\` env -> worker identity \`team_state_root\` -> config/manifest \`team_state_root\` -> ${params.cwd}/.omq/state/team/${teamName}.
-- \`OMC_TEAM_STATE_ROOT\` is the team-specific root (\`.../.omq/state/team/${teamName}\`). When it is set, append worker/mailbox paths directly below it; do not append another \`team/${teamName}\` segment.
-- Worktree-backed workers MUST use the canonical leader-owned state root for inbox, mailbox, task lifecycle, status, heartbeat, and shutdown files; do not use a local worktree \`.omq/state\` when \`OMC_TEAM_STATE_ROOT\` is set.
+- Resolve the team state root in this order: \`OMQ_TEAM_STATE_ROOT\` env -> worker identity \`team_state_root\` -> config/manifest \`team_state_root\` -> ${params.cwd}/.omq/state/team/${teamName}.
+- \`OMQ_TEAM_STATE_ROOT\` is the team-specific root (\`.../.omq/state/team/${teamName}\`). When it is set, append worker/mailbox paths directly below it; do not append another \`team/${teamName}\` segment.
+- Worktree-backed workers MUST use the canonical leader-owned state root for inbox, mailbox, task lifecycle, status, heartbeat, and shutdown files; do not use a local worktree \`.omq/state\` when \`OMQ_TEAM_STATE_ROOT\` is set.
 
 ## Communication Protocol
 - **Inbox**: Read ${inboxPath} for new instructions
 - **Status**: Write to ${statusPath}:
   \`\`\`json
-  {"state": "idle", "launch_attempt_id": "<exact OMC_WORKER_LAUNCH_ATTEMPT_ID>", "updated_at": "<ISO timestamp>"}
+  {"state": "idle", "launch_attempt_id": "<exact OMQ_WORKER_LAUNCH_ATTEMPT_ID>", "updated_at": "<ISO timestamp>"}
   \`\`\`
   States: "idle" | "working" | "blocked" | "done" | "failed"
   Every startup status MUST include the exact current \`launch_attempt_id\`; evidence without it belongs to another attempt and is ignored.

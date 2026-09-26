@@ -15,7 +15,7 @@ import {
 } from '../cutover.js';
 
 describe('hook dispatcher cutover flags (#3708)', () => {
-  const envKeys = ['OMC_HOOK_DISPATCHER', 'OMC_HOOK_CUTOVER', 'OMC_HOOK_ROLLBACK', 'OMC_HOOK_DISPATCHER_ROLLBACK'] as const;
+  const envKeys = ['OMQ_HOOK_DISPATCHER', 'OMQ_HOOK_CUTOVER', 'OMQ_HOOK_ROLLBACK', 'OMQ_HOOK_DISPATCHER_ROLLBACK'] as const;
   let saved: Record<string, string | undefined>;
   beforeEach(() => {
     saved = {};
@@ -36,40 +36,40 @@ describe('hook dispatcher cutover flags (#3708)', () => {
   });
 
   it('global off disables every family', () => {
-    process.env.OMC_HOOK_DISPATCHER = 'off';
+    process.env.OMQ_HOOK_DISPATCHER = 'off';
     expect(isDispatcherEnabled()).toBe(false);
     expect(isFamilyCutoverEnabled('PostToolUse')).toBe(false);
     expect(isFamilyCutoverEnabled('PermissionRequest')).toBe(false);
   });
 
-  it('alias OMC_HOOK_CUTOVER disables dispatcher', () => {
-    process.env.OMC_HOOK_CUTOVER = 'false';
+  it('alias OMQ_HOOK_CUTOVER disables dispatcher', () => {
+    process.env.OMQ_HOOK_CUTOVER = 'false';
     expect(isDispatcherEnabled()).toBe(false);
   });
 
   it('per-family rollback keeps other families cut over', () => {
-    process.env.OMC_HOOK_ROLLBACK = 'PreToolUse,PostToolUse';
+    process.env.OMQ_HOOK_ROLLBACK = 'PreToolUse,PostToolUse';
     expect(isFamilyCutoverEnabled('PreToolUse')).toBe(false);
     expect(isFamilyCutoverEnabled('PostToolUse')).toBe(false);
     expect(isFamilyCutoverEnabled('PermissionRequest')).toBe(true);
     expect(isFamilyCutoverEnabled('Stop')).toBe(true);
   });
 
-  it('rollback name OMC_HOOK_DISPATCHER_ROLLBACK is accepted', () => {
-    process.env.OMC_HOOK_DISPATCHER_ROLLBACK = 'Stop';
+  it('rollback name OMQ_HOOK_DISPATCHER_ROLLBACK is accepted', () => {
+    process.env.OMQ_HOOK_DISPATCHER_ROLLBACK = 'Stop';
     expect(isFamilyCutoverEnabled('Stop')).toBe(false);
     expect(isFamilyCutoverEnabled('SessionStart')).toBe(true);
   });
 
   it('wildcard rollback disables all families', () => {
-    process.env.OMC_HOOK_ROLLBACK = '*';
+    process.env.OMQ_HOOK_ROLLBACK = '*';
     expect(isFamilyCutoverEnabled('PostToolUse')).toBe(false);
     expect(isFamilyCutoverEnabled('UserPromptSubmit')).toBe(false);
   });
 
   it('ordinary families loosen to advisory when cut over', () => {
     expect(shouldLoosenOrdinaryEnforcement('PreToolUse')).toBe(true);
-    process.env.OMC_HOOK_ROLLBACK = 'PreToolUse';
+    process.env.OMQ_HOOK_ROLLBACK = 'PreToolUse';
     expect(shouldLoosenOrdinaryEnforcement('PreToolUse')).toBe(false);
   });
 
@@ -95,13 +95,13 @@ describe('hook dispatcher bounded telemetry (#3708)', () => {
   let prevStateDir: string | undefined;
   beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), 'omc-cutover-telemetry-'));
-    prevStateDir = process.env.OMC_STATE_DIR;
-    process.env.OMC_STATE_DIR = tmp;
+    prevStateDir = process.env.OMQ_STATE_DIR;
+    process.env.OMQ_STATE_DIR = tmp;
     clearDispatchTelemetryForTests();
   });
   afterEach(() => {
-    if (prevStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = prevStateDir;
+    if (prevStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = prevStateDir;
     rmSync(tmp, { recursive: true, force: true });
   });
 

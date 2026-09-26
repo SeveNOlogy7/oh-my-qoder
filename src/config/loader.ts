@@ -28,7 +28,6 @@ import {
   getDefaultTierModels,
   BUILTIN_EXTERNAL_MODEL_DEFAULTS,
   shouldAutoForceInherit,
-  isNonDefaultProvider,
 } from "./models.js";
 import { normalizeDelegationRole } from "../features/delegation-routing/types.js";
 import { isDeprecatedMcpProvider } from "../features/delegation-routing/index.js";
@@ -36,12 +35,12 @@ import { isDeprecatedMcpProvider } from "../features/delegation-routing/index.js
 /**
  * Default configuration.
  *
- * Model IDs are resolved from environment variables (OMC_MODEL_HIGH,
- * OMC_MODEL_MEDIUM, OMC_MODEL_LOW) with built-in fallbacks.
+ * Model IDs are resolved from environment variables (OMQ_MODEL_HIGH,
+ * OMQ_MODEL_MEDIUM, OMQ_MODEL_LOW) with built-in fallbacks.
  * User/project config files can further override via deepMerge.
  *
- * Note: env vars for external model defaults (OMC_CODEX_DEFAULT_MODEL,
- * OMC_GEMINI_DEFAULT_MODEL) are read lazily in loadEnvConfig() to avoid
+ * Note: env vars for external model defaults (OMQ_CODEX_DEFAULT_MODEL,
+ * OMQ_GEMINI_DEFAULT_MODEL) are read lazily in loadEnvConfig() to avoid
  * capturing stale values at module load time.
  */
 export function buildDefaultConfig(): PluginConfig {
@@ -287,22 +286,22 @@ export function loadEnvConfig(): Partial<PluginConfig> {
   }
 
   // Feature flags from environment
-  if (process.env.OMC_PARALLEL_EXECUTION !== undefined) {
+  if (process.env.OMQ_PARALLEL_EXECUTION !== undefined) {
     config.features = {
       ...config.features,
-      parallelExecution: process.env.OMC_PARALLEL_EXECUTION === "true",
+      parallelExecution: process.env.OMQ_PARALLEL_EXECUTION === "true",
     };
   }
 
-  if (process.env.OMC_LSP_TOOLS !== undefined) {
+  if (process.env.OMQ_LSP_TOOLS !== undefined) {
     config.features = {
       ...config.features,
-      lspTools: process.env.OMC_LSP_TOOLS === "true",
+      lspTools: process.env.OMQ_LSP_TOOLS === "true",
     };
   }
 
-  if (process.env.OMC_MAX_BACKGROUND_TASKS) {
-    const maxTasks = parseInt(process.env.OMC_MAX_BACKGROUND_TASKS, 10);
+  if (process.env.OMQ_MAX_BACKGROUND_TASKS) {
+    const maxTasks = parseInt(process.env.OMQ_MAX_BACKGROUND_TASKS, 10);
     if (!isNaN(maxTasks)) {
       config.permissions = {
         ...config.permissions,
@@ -312,30 +311,22 @@ export function loadEnvConfig(): Partial<PluginConfig> {
   }
 
   // Routing configuration from environment
-  if (process.env.OMC_ROUTING_ENABLED !== undefined) {
+  if (process.env.OMQ_ROUTING_ENABLED !== undefined) {
     config.routing = {
       ...config.routing,
-      enabled: process.env.OMC_ROUTING_ENABLED === "true",
+      enabled: process.env.OMQ_ROUTING_ENABLED === "true",
     };
   }
 
-  if (process.env.OMC_ROUTING_FORCE_INHERIT !== undefined) {
-    config.routing = {
-      ...config.routing,
-      forceInherit: process.env.OMC_ROUTING_FORCE_INHERIT === "true",
-    };
-  }
-
-  // CN fork: Qwen routing force-inherit env var
-  if (process.env.OMQ_ROUTING_FORCE_INHERIT !== undefined && process.env.OMC_ROUTING_FORCE_INHERIT === undefined) {
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT !== undefined) {
     config.routing = {
       ...config.routing,
       forceInherit: process.env.OMQ_ROUTING_FORCE_INHERIT === "true",
     };
   }
 
-  if (process.env.OMC_ROUTING_DEFAULT_TIER) {
-    const tier = process.env.OMC_ROUTING_DEFAULT_TIER.toUpperCase();
+  if (process.env.OMQ_ROUTING_DEFAULT_TIER) {
+    const tier = process.env.OMQ_ROUTING_DEFAULT_TIER.toUpperCase();
     if (tier === "LOW" || tier === "MEDIUM" || tier === "HIGH") {
       config.routing = {
         ...config.routing,
@@ -348,7 +339,7 @@ export function loadEnvConfig(): Partial<PluginConfig> {
   const aliasKeys = ["HAIKU", "SONNET", "OPUS", "FABLE"] as const;
   const modelAliases: Record<string, string> = {};
   for (const key of aliasKeys) {
-    const envVal = process.env[`OMC_MODEL_ALIAS_${key}`];
+    const envVal = process.env[`OMQ_MODEL_ALIAS_${key}`];
     if (envVal) {
       const lower = key.toLowerCase();
       modelAliases[lower] = envVal.toLowerCase();
@@ -363,61 +354,61 @@ export function loadEnvConfig(): Partial<PluginConfig> {
     };
   }
 
-  if (process.env.OMC_ESCALATION_ENABLED !== undefined) {
+  if (process.env.OMQ_ESCALATION_ENABLED !== undefined) {
     config.routing = {
       ...config.routing,
-      escalationEnabled: process.env.OMC_ESCALATION_ENABLED === "true",
+      escalationEnabled: process.env.OMQ_ESCALATION_ENABLED === "true",
     };
   }
 
   // External models configuration from environment
   const externalModelsDefaults: ExternalModelsConfig["defaults"] = {};
 
-  if (process.env.OMC_EXTERNAL_MODELS_DEFAULT_PROVIDER) {
-    const provider = process.env.OMC_EXTERNAL_MODELS_DEFAULT_PROVIDER;
+  if (process.env.OMQ_EXTERNAL_MODELS_DEFAULT_PROVIDER) {
+    const provider = process.env.OMQ_EXTERNAL_MODELS_DEFAULT_PROVIDER;
     if (provider === "codex" || provider === "gemini" || provider === "antigravity") {
       externalModelsDefaults.provider = provider;
     }
   }
 
-  if (process.env.OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL) {
+  if (process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL) {
     externalModelsDefaults.codexModel =
-      process.env.OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL;
-  } else if (process.env.OMC_CODEX_DEFAULT_MODEL) {
+      process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL;
+  } else if (process.env.OMQ_CODEX_DEFAULT_MODEL) {
     // Legacy fallback
-    externalModelsDefaults.codexModel = process.env.OMC_CODEX_DEFAULT_MODEL;
+    externalModelsDefaults.codexModel = process.env.OMQ_CODEX_DEFAULT_MODEL;
   }
 
-  if (process.env.OMC_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL) {
+  if (process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL) {
     externalModelsDefaults.geminiModel =
-      process.env.OMC_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL;
-  } else if (process.env.OMC_GEMINI_DEFAULT_MODEL) {
+      process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL;
+  } else if (process.env.OMQ_GEMINI_DEFAULT_MODEL) {
     // Legacy fallback
-    externalModelsDefaults.geminiModel = process.env.OMC_GEMINI_DEFAULT_MODEL;
+    externalModelsDefaults.geminiModel = process.env.OMQ_GEMINI_DEFAULT_MODEL;
   }
 
-  if (process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL) {
+  if (process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL) {
     externalModelsDefaults.grokModel =
-      process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
-  } else if (process.env.OMC_GROK_DEFAULT_MODEL) {
+      process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
+  } else if (process.env.OMQ_GROK_DEFAULT_MODEL) {
     // Legacy fallback
-    externalModelsDefaults.grokModel = process.env.OMC_GROK_DEFAULT_MODEL;
+    externalModelsDefaults.grokModel = process.env.OMQ_GROK_DEFAULT_MODEL;
   }
 
-  if (process.env.OMC_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL) {
+  if (process.env.OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL) {
     externalModelsDefaults.antigravityModel =
-      process.env.OMC_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL;
-  } else if (process.env.OMC_ANTIGRAVITY_DEFAULT_MODEL) {
+      process.env.OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL;
+  } else if (process.env.OMQ_ANTIGRAVITY_DEFAULT_MODEL) {
     // Legacy fallback
-    externalModelsDefaults.antigravityModel = process.env.OMC_ANTIGRAVITY_DEFAULT_MODEL;
+    externalModelsDefaults.antigravityModel = process.env.OMQ_ANTIGRAVITY_DEFAULT_MODEL;
   }
 
   const externalModelsFallback: ExternalModelsConfig["fallbackPolicy"] = {
     onModelFailure: "provider_chain",
   };
 
-  if (process.env.OMC_EXTERNAL_MODELS_FALLBACK_POLICY) {
-    const policy = process.env.OMC_EXTERNAL_MODELS_FALLBACK_POLICY;
+  if (process.env.OMQ_EXTERNAL_MODELS_FALLBACK_POLICY) {
+    const policy = process.env.OMQ_EXTERNAL_MODELS_FALLBACK_POLICY;
     if (
       policy === "provider_chain" ||
       policy === "cross_provider" ||
@@ -439,15 +430,15 @@ export function loadEnvConfig(): Partial<PluginConfig> {
   }
 
   // Delegation routing configuration from environment
-  if (process.env.OMC_DELEGATION_ROUTING_ENABLED !== undefined) {
+  if (process.env.OMQ_DELEGATION_ROUTING_ENABLED !== undefined) {
     config.delegationRouting = {
       ...config.delegationRouting,
-      enabled: process.env.OMC_DELEGATION_ROUTING_ENABLED === "true",
+      enabled: process.env.OMQ_DELEGATION_ROUTING_ENABLED === "true",
     };
   }
 
-  if (process.env.OMC_DELEGATION_ROUTING_DEFAULT_PROVIDER) {
-    const provider = process.env.OMC_DELEGATION_ROUTING_DEFAULT_PROVIDER;
+  if (process.env.OMQ_DELEGATION_ROUTING_DEFAULT_PROVIDER) {
+    const provider = process.env.OMQ_DELEGATION_ROUTING_DEFAULT_PROVIDER;
     if (["claude", "codex", "gemini"].includes(provider)) {
       config.delegationRouting = {
         ...config.delegationRouting,
@@ -456,7 +447,7 @@ export function loadEnvConfig(): Partial<PluginConfig> {
     }
   }
 
-  // /team role routing env override (OMC_TEAM_ROLE_OVERRIDES — single JSON var).
+  // /team role routing env override (OMQ_TEAM_ROLE_OVERRIDES — single JSON var).
   // Best-effort: invalid JSON logs and is ignored (no throw on env path).
   const teamRoleOverrides = parseTeamRoleOverridesFromEnv();
   if (teamRoleOverrides) {
@@ -789,20 +780,20 @@ function isValidModelValue(value: unknown): value is string {
 }
 
 function parseTeamRoleOverridesFromEnv(): Record<string, TeamRoleAssignmentSpec> | undefined {
-  const raw = process.env.OMC_TEAM_ROLE_OVERRIDES;
+  const raw = process.env.OMQ_TEAM_ROLE_OVERRIDES;
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       console.warn(
-        "[OMC] OMC_TEAM_ROLE_OVERRIDES: expected a JSON object; ignoring.",
+        "[OMC] OMQ_TEAM_ROLE_OVERRIDES: expected a JSON object; ignoring.",
       );
       return undefined;
     }
     return parsed as Record<string, TeamRoleAssignmentSpec>;
   } catch (err) {
     console.warn(
-      `[OMC] OMC_TEAM_ROLE_OVERRIDES: invalid JSON, ignoring (${(err as Error).message})`,
+      `[OMC] OMQ_TEAM_ROLE_OVERRIDES: invalid JSON, ignoring (${(err as Error).message})`,
     );
     return undefined;
   }
@@ -846,9 +837,8 @@ export function loadConfig(): PluginConfig {
   // CN fork: also triggers for non-Qwen models on DashScope.
   if (
     config.routing?.forceInherit !== true &&
-    process.env.OMC_ROUTING_FORCE_INHERIT === undefined &&
     process.env.OMQ_ROUTING_FORCE_INHERIT === undefined &&
-    (shouldAutoForceInherit() || isNonDefaultProvider())
+    shouldAutoForceInherit()
   ) {
     config.routing = {
       ...config.routing,
@@ -866,13 +856,13 @@ export function loadConfig(): PluginConfig {
   return config;
 }
 
-const OMC_STARTUP_COMPACTABLE_SECTIONS = [
+const OMQ_STARTUP_COMPACTABLE_SECTIONS = [
   "agent_catalog",
   "skills",
   "team_compositions",
 ] as const;
-const OMC_STARTUP_GUIDANCE_MAX_CHARS = 8000;
-const OMC_CONTEXT_FILES_MAX_CHARS = 12000;
+const OMQ_STARTUP_GUIDANCE_MAX_CHARS = 8000;
+const OMQ_CONTEXT_FILES_MAX_CHARS = 12000;
 
 function compactBudgetedText(text: string, maxChars: number): string {
   if (!text || maxChars <= 0) return "";
@@ -886,7 +876,7 @@ function looksLikeOmcGuidance(content: string): boolean {
   return (
     content.includes("<guidance_schema_contract>") &&
     /oh-my-(claudecode|codex)/i.test(content) &&
-    OMC_STARTUP_COMPACTABLE_SECTIONS.some(
+    OMQ_STARTUP_COMPACTABLE_SECTIONS.some(
       (section) =>
         content.includes(`<${section}>`) && content.includes(`</${section}>`),
     )
@@ -901,7 +891,7 @@ export function compactOmcStartupGuidance(content: string): string {
   let compacted = content;
   let removedAny = false;
 
-  for (const section of OMC_STARTUP_COMPACTABLE_SECTIONS) {
+  for (const section of OMQ_STARTUP_COMPACTABLE_SECTIONS) {
     const pattern = new RegExp(
       `\n*<${section}>[\\s\\S]*?</${section}>\n*`,
       "g",
@@ -916,12 +906,12 @@ export function compactOmcStartupGuidance(content: string): string {
     .replace(/\n\n---\n\n---\n\n/g, "\n\n---\n\n")
     .trim();
 
-  if (normalized.length <= OMC_STARTUP_GUIDANCE_MAX_CHARS) {
+  if (normalized.length <= OMQ_STARTUP_GUIDANCE_MAX_CHARS) {
     return removedAny ? normalized : content;
   }
 
   const notice = "\n\n[OMC startup guidance truncated to preserve an 8000-character budget. Read the source file directly for the full document.]";
-  return `${normalized.slice(0, OMC_STARTUP_GUIDANCE_MAX_CHARS - notice.length).trimEnd()}${notice}`;
+  return `${normalized.slice(0, OMQ_STARTUP_GUIDANCE_MAX_CHARS - notice.length).trimEnd()}${notice}`;
 }
 
 /**
@@ -974,7 +964,7 @@ export function loadContextFromFiles(files: string[]): string {
       const content = compactOmcStartupGuidance(readFileSync(file, "utf-8"));
       const contextBlock = `## Context from ${file}\n\n${content}`;
       const separatorLength = contexts.length > 0 ? separator.length : 0;
-      const remainingBudget = OMC_CONTEXT_FILES_MAX_CHARS - used - separatorLength;
+      const remainingBudget = OMQ_CONTEXT_FILES_MAX_CHARS - used - separatorLength;
 
       if (remainingBudget <= 0) break;
       if (contextBlock.length > remainingBudget) {

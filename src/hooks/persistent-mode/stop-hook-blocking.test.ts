@@ -152,15 +152,15 @@ function writeWorkflowTombstone(
 }
 
 function resolveCentralizedStateDir(directory: string, customStateDir: string): string {
-  const previous = process.env.OMC_STATE_DIR;
-  process.env.OMC_STATE_DIR = customStateDir;
+  const previous = process.env.OMQ_STATE_DIR;
+  process.env.OMQ_STATE_DIR = customStateDir;
   try {
     return join(getOmcRoot(directory), "state");
   } finally {
     if (previous === undefined) {
-      delete process.env.OMC_STATE_DIR;
+      delete process.env.OMQ_STATE_DIR;
     } else {
-      process.env.OMC_STATE_DIR = previous;
+      process.env.OMQ_STATE_DIR = previous;
     }
   }
 }
@@ -1724,15 +1724,15 @@ describe("Stop Hook Blocking Contract", () => {
     beforeEach(() => {
       tempDir = mkdtempSync(join(tmpdir(), "stop-hook-cjs-test-"));
       execSync("git init", { cwd: tempDir });
-      delete process.env.OMC_STATE_DIR;
+      delete process.env.OMQ_STATE_DIR;
     });
 
     afterEach(() => {
-      delete process.env.OMC_STATE_DIR;
+      delete process.env.OMQ_STATE_DIR;
       rmSync(tempDir, { recursive: true, force: true });
     });
 
-    it("reads centralized session state when OMC_STATE_DIR is set", () => {
+    it("reads centralized session state when OMQ_STATE_DIR is set", () => {
       const sessionId = "centralized-state-cjs";
       const customStateDir = join(tempDir, "centralized-state");
       const centralizedStateDir = resolveCentralizedStateDir(tempDir, customStateDir);
@@ -1753,7 +1753,7 @@ describe("Stop Hook Blocking Contract", () => {
 
       const output = runScript(
         { directory: tempDir, sessionId },
-        { OMC_STATE_DIR: customStateDir },
+        { OMQ_STATE_DIR: customStateDir },
       );
 
       expect(output.decision).toBe("block");
@@ -1929,7 +1929,7 @@ describe("Stop Hook Blocking Contract", () => {
       expect(existsSync(autopilotPath)).toBe(true);
     });
 
-    it("ignores legacy local state when OMC_STATE_DIR is set", () => {
+    it("ignores legacy local state when OMQ_STATE_DIR is set", () => {
       const sessionId = "legacy-local-cjs";
       const localSessionDir = join(tempDir, ".omq", "state", "sessions", sessionId);
       writePendingTodo(tempDir, "Finish centralized-only task");
@@ -1948,7 +1948,7 @@ describe("Stop Hook Blocking Contract", () => {
 
       const output = runScript(
         { directory: tempDir, sessionId },
-        { OMC_STATE_DIR: join(tempDir, "centralized-state") },
+        { OMQ_STATE_DIR: join(tempDir, "centralized-state") },
       );
 
       expect(output.continue).toBe(true);

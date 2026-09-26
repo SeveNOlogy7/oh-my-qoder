@@ -79,7 +79,7 @@ describe('run.cjs generic hook timeout supervisor', () => {
     const supervisor = spawn(process.execPath, [RUN_CJS_PATH, '--generic-child-supervisor', HUNG_PARENT], {
       stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
       detached: true,
-      env: { ...process.env, OMC_TEST_PIDFILE: pidfile },
+      env: { ...process.env, OMQ_TEST_PIDFILE: pidfile },
     });
     try {
       const deadline = Date.now() + 4000;
@@ -124,9 +124,9 @@ describe('run.cjs generic hook timeout supervisor', () => {
   it('reaps a timed-out generic hook and its POSIX grandchild', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'omc-hung-generic-'));
     const pidfile = join(directory, 'grandchild.pid');
-    const previousPidfile = process.env.OMC_TEST_PIDFILE;
+    const previousPidfile = process.env.OMQ_TEST_PIDFILE;
     let grandchildPid: number | undefined;
-    process.env.OMC_TEST_PIDFILE = pidfile;
+    process.env.OMQ_TEST_PIDFILE = pidfile;
     try {
       const startedAt = Date.now();
       const status = await withWatchdog(runCjs.runGenericChild(HUNG_PARENT, [], 250, null));
@@ -138,8 +138,8 @@ describe('run.cjs generic hook timeout supervisor', () => {
       expect(grandchildPid).toBeGreaterThan(0);
       if (process.platform !== 'win32') await waitForDeath(grandchildPid);
     } finally {
-      if (previousPidfile === undefined) delete process.env.OMC_TEST_PIDFILE;
-      else process.env.OMC_TEST_PIDFILE = previousPidfile;
+      if (previousPidfile === undefined) delete process.env.OMQ_TEST_PIDFILE;
+      else process.env.OMQ_TEST_PIDFILE = previousPidfile;
       killIfAlive(grandchildPid);
       rmSync(directory, { recursive: true, force: true });
     }
@@ -193,7 +193,7 @@ describe('run.cjs generic hook timeout supervisor', () => {
     // runner well before it fires, so only the new signal-handler reap can prevent an orphan.
     const runner = spawn(process.execPath, [RUN_CJS_PATH, HUNG_PARENT], {
       stdio: 'ignore',
-      env: { ...process.env, OMC_TEST_PIDFILE: pidfile },
+      env: { ...process.env, OMQ_TEST_PIDFILE: pidfile },
     });
     try {
       const deadline = Date.now() + 4000;

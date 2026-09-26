@@ -38,7 +38,7 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
     delete process.env.CLAUDE_CONFIG_DIR;
-    delete process.env.OMC_TEST_FLOCK_AVAILABLE;
+    delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
 
   });
 
@@ -100,7 +100,7 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
     const partialNamed = { ...base, [marker]: value } as typeof base;
     writeAutopilotState(testDir, partialNamed, sessionId);
     const statePath = join(testDir, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
-    process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
     const before = readFileSync(statePath);
 
     await expect(checkAutopilot(sessionId, testDir)).resolves.toEqual({
@@ -286,7 +286,7 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
     const validState = readAutopilotState(testDir, sessionId)!;
     const before = readFileSync(statePath);
     expect(validateNamedWorkflowStateStructure(validState, sessionId)).not.toBeNull();
-    process.env.OMC_TEST_FLOCK_AVAILABLE = "0";
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = "0";
 
     const result = await checkAutopilot(sessionId, testDir);
 

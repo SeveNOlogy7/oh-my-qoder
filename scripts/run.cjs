@@ -102,9 +102,9 @@ function flattenHookEntries(rawHooks) {
 }
 
 function isDebugHooksEnabled() {
-  return process.env.OMC_DEBUG_HOOKS === '1' ||
-    process.env.OMC_DEBUG === '1' ||
-    process.env.OMC_DEBUG === 'true';
+  return process.env.OMQ_DEBUG_HOOKS === '1' ||
+    process.env.OMQ_DEBUG === '1' ||
+    process.env.OMQ_DEBUG === 'true';
 }
 
 function resolveTimeoutCushionMs(manifestTimeoutMs, hookEvent) {
@@ -325,7 +325,7 @@ function superviseGenericChild(targetPath, extraArgs) {
     stdio: 'inherit',
     env: {
       ...process.env,
-      OMC_SESSION_OWNER_PID: process.env.OMC_SESSION_OWNER_PID || String(process.ppid),
+      OMQ_SESSION_OWNER_PID: process.env.OMQ_SESSION_OWNER_PID || String(process.ppid),
     },
     windowsHide: true,
     detached: process.platform !== 'win32',
@@ -360,7 +360,7 @@ function runGenericChild(targetPath, extraArgs, timeoutMs, manifestHook) {
       stdio: process.platform === 'win32' ? ['inherit', 'inherit', 'inherit', 'ipc'] : 'inherit',
       env: {
         ...process.env,
-        OMC_SESSION_OWNER_PID: process.env.OMC_SESSION_OWNER_PID || String(process.ppid),
+        OMQ_SESSION_OWNER_PID: process.env.OMQ_SESSION_OWNER_PID || String(process.ppid),
       },
       windowsHide: true,
       detached: true,

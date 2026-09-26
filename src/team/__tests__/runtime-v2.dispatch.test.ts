@@ -63,7 +63,7 @@ const modelContractMocks = vi.hoisted(() => ({
   buildWorkerArgv: vi.fn((_agentType: string, _config: unknown) => ['/usr/bin/claude']),
   resolveValidatedBinaryPath: vi.fn(() => '/usr/bin/claude'),
   clearResolvedPathCache: vi.fn(),
-  getWorkerEnv: vi.fn(() => ({ OMC_TEAM_WORKER: 'dispatch-team/worker-1' })),
+  getWorkerEnv: vi.fn(() => ({ OMQ_TEAM_WORKER: 'dispatch-team/worker-1' })),
   isPromptModeAgent: vi.fn(() => false),
   getPromptModeArgs: vi.fn((_agentType: string, instruction: string) => [instruction]),
   resolveClaudeWorkerModel: vi.fn(() => undefined),
@@ -267,7 +267,7 @@ describe('runtime v2 startup inbox dispatch', () => {
         ...config,
         envVars: {
           ...config.envVars,
-          OMC_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
+          OMQ_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
         },
       });
       return {
@@ -302,7 +302,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     modelContractMocks.getWorkerEnv.mockImplementation((...args: unknown[]) => {
       const teamName = typeof args[0] === 'string' ? args[0] : 'dispatch-team';
       const workerName = typeof args[1] === 'string' ? args[1] : 'worker-1';
-      return { OMC_TEAM_WORKER: `${teamName}/${workerName}` };
+      return { OMQ_TEAM_WORKER: `${teamName}/${workerName}` };
     });
     modelContractMocks.isPromptModeAgent.mockReturnValue(false);
     modelContractMocks.getPromptModeArgs.mockImplementation((_agentType: string, instruction: string) => [instruction]);
@@ -386,9 +386,9 @@ describe('runtime v2 startup inbox dispatch', () => {
       '%2',
       expect.objectContaining({
         envVars: expect.objectContaining({
-          OMC_TEAM_WORKER: 'dispatch-team/worker-1',
-          OMC_TEAM_STATE_ROOT: join(cwd, '.omq', 'state', 'team', 'dispatch-team'),
-          OMC_TEAM_LEADER_CWD: cwd,
+          OMQ_TEAM_WORKER: 'dispatch-team/worker-1',
+          OMQ_TEAM_STATE_ROOT: join(cwd, '.omq', 'state', 'team', 'dispatch-team'),
+          OMQ_TEAM_LEADER_CWD: cwd,
         }),
       }),
     );
@@ -545,7 +545,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     cwd = await mkdtemp(join(tmpdir(), 'omc-runtime-v2-redacted-startup-failure-'));
     const secret = 'SECRET_TOKEN_SHOULD_NOT_LEAK';
     modelContractMocks.getWorkerEnv.mockImplementation(() => ({
-      OMC_TEAM_WORKER: 'dispatch-team/worker-1',
+      OMQ_TEAM_WORKER: 'dispatch-team/worker-1',
       SECRET_ENV: secret,
     }));
     modelContractMocks.buildWorkerArgv.mockReturnValue(['/usr/bin/claude', '--api-key', secret]);
@@ -575,7 +575,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     cwd = await mkdtemp(join(tmpdir(), 'omc-runtime-v2-redacted-primary-failure-'));
     const secret = 'SECRET_TOKEN_SHOULD_NOT_LEAK';
     modelContractMocks.getWorkerEnv.mockImplementation(() => ({
-      OMC_TEAM_WORKER: 'dispatch-team/worker-1',
+      OMQ_TEAM_WORKER: 'dispatch-team/worker-1',
       SECRET_ENV: secret,
     }));
     modelContractMocks.buildWorkerArgv.mockReturnValue(['/usr/bin/claude', '--api-key', secret]);
@@ -694,16 +694,16 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(manifest.worktree_mode).toBe('named');
 
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
-    expect(requests[0]?.trigger_message).toContain('$OMC_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
-    expect(requests[0]?.trigger_message).not.toContain('$OMC_TEAM_STATE_ROOT/team/dispatch-team');
+    expect(requests[0]?.trigger_message).toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
+    expect(requests[0]?.trigger_message).not.toContain('$OMQ_TEAM_STATE_ROOT/team/dispatch-team');
     expect(runtime.config.team_state_root).toBeDefined();
     const teamStateRoot = runtime.config.team_state_root!;
-    expect(requests[0]?.trigger_message.replace('$OMC_TEAM_STATE_ROOT', teamStateRoot))
+    expect(requests[0]?.trigger_message.replace('$OMQ_TEAM_STATE_ROOT', teamStateRoot))
       .toContain(join(cwd, '.omq', 'state', 'team', 'dispatch-team', 'workers', 'worker-1', 'inbox.md'));
 
     const overlay = await readFile(join(cwd, '.omq', 'state', 'team', 'dispatch-team', 'workers', 'worker-1', 'AGENTS.md'), 'utf-8');
-    expect(overlay).toContain('$OMC_TEAM_STATE_ROOT/workers/worker-1/status.json');
-    expect(overlay).not.toContain('$OMC_TEAM_STATE_ROOT/team/dispatch-team');
+    expect(overlay).toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-1/status.json');
+    expect(overlay).not.toContain('$OMQ_TEAM_STATE_ROOT/team/dispatch-team');
   });
 
   it('fails loudly when explicit auto-merge worker registration fails', async () => {
@@ -913,7 +913,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(requests).toHaveLength(2);
     expect(requests.map((request) => request.to_worker)).toEqual(['worker-2', 'worker-1']);
 
-    const spawnedWorkers = mocks.spawnWorkerInPane.mock.calls.map((call) => call[2]?.envVars?.OMC_TEAM_WORKER);
+    const spawnedWorkers = mocks.spawnWorkerInPane.mock.calls.map((call) => call[2]?.envVars?.OMQ_TEAM_WORKER);
     expect(spawnedWorkers).toEqual(['dispatch-team/worker-2', 'dispatch-team/worker-1']);
   });
 
@@ -938,7 +938,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
     expect(requests.map((request) => request.to_worker)).toEqual(['worker-2']);
 
-    const spawnedWorkers = mocks.spawnWorkerInPane.mock.calls.map((call) => call[2]?.envVars?.OMC_TEAM_WORKER);
+    const spawnedWorkers = mocks.spawnWorkerInPane.mock.calls.map((call) => call[2]?.envVars?.OMQ_TEAM_WORKER);
     expect(spawnedWorkers).toEqual(['dispatch-team/worker-2']);
 
     const taskPath = join(cwd, '.omq', 'state', 'team', 'dispatch-team', 'tasks', 'task-1.json');
@@ -1512,10 +1512,10 @@ describe('runtime v2 startup inbox dispatch', () => {
 
   it('direct grok launch resolves model from grok env vars and never calls resolveClaudeWorkerModel', async () => {
     cwd = await mkdtemp(join(tmpdir(), 'omc-runtime-v2-grok-direct-'));
-    const originalGrokModel = process.env.OMC_GROK_DEFAULT_MODEL;
-    const originalGrokExternal = process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
-    delete process.env.OMC_GROK_DEFAULT_MODEL;
-    delete process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
+    const originalGrokModel = process.env.OMQ_GROK_DEFAULT_MODEL;
+    const originalGrokExternal = process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
+    delete process.env.OMQ_GROK_DEFAULT_MODEL;
+    delete process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
     try {
       const { startTeamV2 } = await import('../runtime-v2.js');
 
@@ -1535,19 +1535,19 @@ describe('runtime v2 startup inbox dispatch', () => {
       // crucially, a grok worker must never fall through to the Claude/Bedrock resolver.
       expect(modelContractMocks.resolveClaudeWorkerModel).not.toHaveBeenCalled();
     } finally {
-      if (originalGrokModel === undefined) delete process.env.OMC_GROK_DEFAULT_MODEL;
-      else process.env.OMC_GROK_DEFAULT_MODEL = originalGrokModel;
-      if (originalGrokExternal === undefined) delete process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
-      else process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL = originalGrokExternal;
+      if (originalGrokModel === undefined) delete process.env.OMQ_GROK_DEFAULT_MODEL;
+      else process.env.OMQ_GROK_DEFAULT_MODEL = originalGrokModel;
+      if (originalGrokExternal === undefined) delete process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
+      else process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL = originalGrokExternal;
     }
   });
 
-  it('direct grok launch passes OMC_GROK_DEFAULT_MODEL through to buildWorkerArgv', async () => {
+  it('direct grok launch passes OMQ_GROK_DEFAULT_MODEL through to buildWorkerArgv', async () => {
     cwd = await mkdtemp(join(tmpdir(), 'omc-runtime-v2-grok-model-'));
-    const originalGrokModel = process.env.OMC_GROK_DEFAULT_MODEL;
-    const originalGrokExternal = process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
-    delete process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
-    process.env.OMC_GROK_DEFAULT_MODEL = 'grok-4-fast';
+    const originalGrokModel = process.env.OMQ_GROK_DEFAULT_MODEL;
+    const originalGrokExternal = process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
+    delete process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
+    process.env.OMQ_GROK_DEFAULT_MODEL = 'grok-4-fast';
     try {
       const { startTeamV2 } = await import('../runtime-v2.js');
 
@@ -1565,10 +1565,10 @@ describe('runtime v2 startup inbox dispatch', () => {
       );
       expect(modelContractMocks.resolveClaudeWorkerModel).not.toHaveBeenCalled();
     } finally {
-      if (originalGrokModel === undefined) delete process.env.OMC_GROK_DEFAULT_MODEL;
-      else process.env.OMC_GROK_DEFAULT_MODEL = originalGrokModel;
-      if (originalGrokExternal === undefined) delete process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
-      else process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL = originalGrokExternal;
+      if (originalGrokModel === undefined) delete process.env.OMQ_GROK_DEFAULT_MODEL;
+      else process.env.OMQ_GROK_DEFAULT_MODEL = originalGrokModel;
+      if (originalGrokExternal === undefined) delete process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
+      else process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL = originalGrokExternal;
     }
   });
 
@@ -1595,7 +1595,7 @@ describe('runtime v2 startup inbox dispatch', () => {
           owner: 'worker-1',
           token: 'gemini-current-token',
           leased_until: '2099-01-01T00:00:00.000Z',
-          launch_attempt_id: config.envVars?.OMC_WORKER_LAUNCH_ATTEMPT_ID,
+          launch_attempt_id: config.envVars?.OMQ_WORKER_LAUNCH_ATTEMPT_ID,
         },
       }, null, 2), 'utf-8');
     });

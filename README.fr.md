@@ -32,7 +32,7 @@ _N'apprenez pas Claude Code. Utilisez simplement OMC._
 /oh-my-claudecode:omc-setup
 ```
 
-Si vous exécutez OMC via `omc --plugin-dir <path>` ou `claude --plugin-dir <path>`, ajoutez `--plugin-dir-mode` à `omc setup` (ou exportez `OMC_PLUGIN_ROOT` auparavant) pour éviter de dupliquer les compétences/agents que le plugin fournit déjà au moment de l'exécution. Consultez la [section Plugin directory flags dans REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) pour une matrice de décision complète et tous les indicateurs disponibles.
+Si vous exécutez OMC via `omc --plugin-dir <path>` ou `claude --plugin-dir <path>`, ajoutez `--plugin-dir-mode` à `omc setup` (ou exportez `OMQ_PLUGIN_ROOT` auparavant) pour éviter de dupliquer les compétences/agents que le plugin fournit déjà au moment de l'exécution. Consultez la [section Plugin directory flags dans REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) pour une matrice de décision complète et tous les indicateurs disponibles.
 
 <!-- TODO(i18n): verify translation -->
 
@@ -133,7 +133,7 @@ Plusieurs stratégies pour différents cas d'utilisation — de l'orchestration 
 
 - **Mots-clés magiques** — `ralph`, `ulw`, `eco`, `plan` pour un contrôle explicite
 - **HUD statusline** — Métriques d'orchestration en temps réel dans votre barre d'état
-  - Si vous lancez Claude Code directement avec `claude --plugin-dir <path>` (en contournant le shim `omc`), exportez `OMC_PLUGIN_ROOT=<path>` dans votre shell afin que le bundle HUD se résolve vers le même checkout que le chargeur de plugin. Voir [la section Plugin directory flags dans REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) pour les détails.
+  - Si vous lancez Claude Code directement avec `claude --plugin-dir <path>` (en contournant le shim `omc`), exportez `OMQ_PLUGIN_ROOT=<path>` dans votre shell afin que le bundle HUD se résolve vers le même checkout que le chargeur de plugin. Voir [la section Plugin directory flags dans REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) pour les détails.
 
   <!-- TODO(i18n): verify translation -->
 - **Apprentissage de compétences** — Extraction de patterns réutilisables depuis vos sessions
@@ -265,9 +265,9 @@ Transmettez les événements de session Claude Code vers une passerelle [OpenCla
 
 | Variable | Description |
 |----------|-------------|
-| `OMC_OPENCLAW=1` | Activer OpenClaw |
-| `OMC_OPENCLAW_DEBUG=1` | Activer la journalisation de débogage |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | Chemin alternatif du fichier de configuration |
+| `OMQ_OPENCLAW=1` | Activer OpenClaw |
+| `OMQ_OPENCLAW_DEBUG=1` | Activer la journalisation de débogage |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | Chemin alternatif du fichier de configuration |
 
 **Événements hook pris en charge (6 actifs dans bridge.ts) :**
 

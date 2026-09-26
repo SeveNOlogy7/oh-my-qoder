@@ -27,7 +27,7 @@ const modelContractMocks = vi.hoisted(() => ({
   }),
   clearResolvedPathCache: vi.fn(),
   getContract: vi.fn((agentType?: string) => ({ binary: agentType ?? 'claude' })),
-  getWorkerEnv: vi.fn(() => ({ OMC_TEAM_WORKER: 'issue2675-team/worker-1' })),
+  getWorkerEnv: vi.fn(() => ({ OMQ_TEAM_WORKER: 'issue2675-team/worker-1' })),
   isPromptModeAgent: vi.fn(() => false),
   getPromptModeArgs: vi.fn(() => []),
   resolveClaudeWorkerModel: vi.fn(() => undefined),

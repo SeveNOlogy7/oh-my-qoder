@@ -122,7 +122,7 @@ Use CLI commands instead:
 
 ### `omc ask` env alias sunset (Phase-1 compatibility)
 
-`OMC_ASK_*` is now canonical for advisor execution. Phase-1 accepts `OMX_ASK_ADVISOR_SCRIPT` and `OMX_ASK_ORIGINAL_TASK` with deprecation warnings. Planned hard sunset for alias removal: **2026-06-30**.
+`OMQ_ASK_*` is now canonical for advisor execution. Phase-1 accepts `OMX_ASK_ADVISOR_SCRIPT` and `OMX_ASK_ORIGINAL_TASK` with deprecation warnings. Planned hard sunset for alias removal: **2026-06-30**.
 
 ### How to Migrate
 
@@ -157,7 +157,7 @@ omc team api list-tasks --input '{"team_name":"review-auth-flow"}' --json
 ### Contract
 
 - Worktree paths use `<repo>/.omq/team/<team-name>/worktrees/<worker-name>`.
-- `OMC_TEAM_STATE_ROOT` points workers back to `<repo>/.omq/state/team/<team-name>`.
+- `OMQ_TEAM_STATE_ROOT` points workers back to `<repo>/.omq/state/team/<team-name>`.
 - Status/config/manifest/identity surfaces should expose `workspace_mode`, `worktree_mode`, `team_state_root`, and worker worktree metadata.
 - Dirty worker worktrees are preserved and reported; they are not force-cleaned by shutdown/cleanup.
 
@@ -333,7 +333,7 @@ Only update genuinely legacy or custom paths that predate the OMC layout:
 | ---- | --- | --- |
 | Config file | `~/.claude/omc/mnemosyne.json` | `~/.claude/omc/learner.json` |
 
-Environment variables that already use the `OMC_` prefix do not need renaming. Continue using the existing documented variables such as `OMC_LSP_TOOLS`, `OMC_PARALLEL_EXECUTION`, and `OMC_DEBUG`.
+Environment variables that already use the `OMC_` prefix do not need renaming. Continue using the existing documented variables such as `OMQ_LSP_TOOLS`, `OMQ_PARALLEL_EXECUTION`, and `OMQ_DEBUG`.
 
 ### Command Mapping
 

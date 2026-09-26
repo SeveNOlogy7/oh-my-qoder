@@ -131,7 +131,7 @@ describe('auto-update reconciliation', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
-    delete process.env.OMC_UPDATE_RECONCILE;
+    delete process.env.OMQ_UPDATE_RECONCILE;
     delete process.env.CLAUDE_PLUGIN_ROOT;
     if (originalGhToken === undefined) {
       delete process.env.GH_TOKEN;
@@ -905,7 +905,7 @@ describe('auto-update reconciliation', () => {
   it('allows standalone update when CLAUDE_PLUGIN_ROOT is inherited without an active Claude session', async () => {
     const pluginRoot = join(CLAUDE_CONFIG_DIR, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.1.5');
     const cacheRoot = join(CLAUDE_CONFIG_DIR, 'plugins', 'cache', 'omc', 'oh-my-claudecode');
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
     process.env.CLAUDE_PLUGIN_ROOT = pluginRoot;
     delete process.env.CLAUDE_CODE_ENTRYPOINT;
     delete process.env.CLAUDE_SESSION_ID;
@@ -959,7 +959,7 @@ describe('auto-update reconciliation', () => {
 
   it('restores global Claude Code when npm removes an existing global install during update', async () => {
     const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1041,7 +1041,7 @@ describe('auto-update reconciliation', () => {
   });
 
   it('does not install global Claude Code when it was absent before update', async () => {
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1091,7 +1091,7 @@ describe('auto-update reconciliation', () => {
   });
 
   it('does not install global Claude Code when pre-update detection is unknown', async () => {
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1142,7 +1142,7 @@ describe('auto-update reconciliation', () => {
   });
 
   it('restores global Claude Code when post-update detection is unknown after a known pre-update install', async () => {
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1222,7 +1222,7 @@ describe('auto-update reconciliation', () => {
 
   it('detects native Windows Claude Code via claude --version and does not attempt npm restore', async () => {
     mockPlatform('win32');
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1290,7 +1290,7 @@ describe('auto-update reconciliation', () => {
 
   it('treats unknown Claude Code detection as non-restorable during Windows updates', async () => {
     mockPlatform('win32');
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1352,7 +1352,7 @@ describe('auto-update reconciliation', () => {
 
   it('uses Windows-safe npm options when restoring global Claude Code', async () => {
     mockPlatform('win32');
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1429,7 +1429,7 @@ describe('auto-update reconciliation', () => {
   it('runs reconciliation as part of performUpdate without plugin hook reinjection', async () => {
     // Set env var so performUpdate takes the direct reconciliation path
     // (simulates being in the re-exec'd process after npm install)
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
     process.env.CLAUDE_PLUGIN_ROOT = join(
       CLAUDE_CONFIG_DIR,
       'plugins',
@@ -1466,12 +1466,12 @@ describe('auto-update reconciliation', () => {
       refreshHooksInPlugin: false,
     });
 
-    delete process.env.OMC_UPDATE_RECONCILE;
+    delete process.env.OMQ_UPDATE_RECONCILE;
   });
 
   it('does not persist metadata when reconciliation fails', async () => {
     // Set env var so performUpdate takes the direct reconciliation path
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1506,7 +1506,7 @@ describe('auto-update reconciliation', () => {
   });
 
   it('skips marketplace auto-sync when the marketplace clone has local modifications', async () => {
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1561,11 +1561,11 @@ describe('auto-update reconciliation', () => {
       expect.any(Object)
     );
 
-    delete process.env.OMC_UPDATE_RECONCILE;
+    delete process.env.OMQ_UPDATE_RECONCILE;
   });
 
   it('skips marketplace auto-sync when the marketplace clone has local commits', async () => {
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1619,11 +1619,11 @@ describe('auto-update reconciliation', () => {
       expect.any(Object)
     );
 
-    delete process.env.OMC_UPDATE_RECONCILE;
+    delete process.env.OMQ_UPDATE_RECONCILE;
   });
 
   it('fast-forwards a clean marketplace clone when origin/main is ahead', async () => {
-    process.env.OMC_UPDATE_RECONCILE = '1';
+    process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -1677,7 +1677,7 @@ describe('auto-update reconciliation', () => {
       expect.any(Object)
     );
 
-    delete process.env.OMC_UPDATE_RECONCILE;
+    delete process.env.OMQ_UPDATE_RECONCILE;
   });
 
   it('re-execs with omc.cmd on Windows and persists metadata after reconciliation', async () => {
@@ -1748,7 +1748,7 @@ describe('auto-update reconciliation', () => {
       timeout: 60000,
       shell: true,
       windowsHide: true,
-      env: expect.objectContaining({ OMC_UPDATE_RECONCILE: '1' }),
+      env: expect.objectContaining({ OMQ_UPDATE_RECONCILE: '1' }),
     }));
     expect(mockedWriteFileSync).toHaveBeenCalledWith(expect.stringContaining('.omq-version.json'), expect.stringContaining('"version": "4.1.6"'));
   });
@@ -1802,7 +1802,7 @@ describe('auto-update reconciliation', () => {
     expect(mockedExecFileSync).toHaveBeenCalledWith('C:\\Users\\bellman\\AppData\\Roaming\\npm\\omc.cmd', ['update-reconcile'], expect.objectContaining({
       shell: true,
       windowsHide: true,
-      env: expect.objectContaining({ OMC_UPDATE_RECONCILE: '1' }),
+      env: expect.objectContaining({ OMQ_UPDATE_RECONCILE: '1' }),
     }));
     expect(mockedWriteFileSync).not.toHaveBeenCalled();
   });

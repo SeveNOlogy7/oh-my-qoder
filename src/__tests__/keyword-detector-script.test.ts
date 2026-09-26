@@ -24,7 +24,7 @@ function runKeywordDetector(
     env: {
       ...process.env,
       NODE_ENV: 'test',
-      OMC_SKIP_HOOKS: '',
+      OMQ_SKIP_HOOKS: '',
       ...env,
     },
     timeout: 15000,
@@ -1190,17 +1190,17 @@ describe('keyword-detector.mjs keywordDetector.disabled opt-out', () => {
 });
 
 describe('keyword-detector.mjs global disable values', () => {
-  it.each(['1', 'true'])('short-circuits only for DISABLE_OMC=%s', (value) => {
+  it.each(['1', 'true'])('short-circuits only for DISABLE_OMQ=%s', (value) => {
     const output = runKeywordDetector('deepsearch this codebase', process.cwd(), 'keyword-disable', {
-      DISABLE_OMC: value,
+      DISABLE_OMQ: value,
     });
 
     expect(output).toEqual({ continue: true });
   });
 
-  it.each(['', '0', 'false', 'TRUE', 'yes'])('does not treat DISABLE_OMC=%s as a global disable', (value) => {
+  it.each(['', '0', 'false', 'TRUE', 'yes'])('does not treat DISABLE_OMQ=%s as a global disable', (value) => {
     const output = runKeywordDetector('deepsearch this codebase', process.cwd(), 'keyword-not-disabled', {
-      DISABLE_OMC: value,
+      DISABLE_OMQ: value,
     });
 
     expect(output.hookSpecificOutput?.additionalContext).toContain('<search-mode>');

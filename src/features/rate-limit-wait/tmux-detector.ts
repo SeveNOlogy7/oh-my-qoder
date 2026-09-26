@@ -60,11 +60,11 @@ const CLAUDE_CODE_PATTERNS = [
 ];
 
 /** Anchored OMC HUD status line, not copied output embedded in logs/tests. */
-const OMC_HUD_STATUS_LINE_PATTERN =
+const OMQ_HUD_STATUS_LINE_PATTERN =
   /^\s*\[OMC#[^\]\s]*\]\s*\|.*\b(?:Model:|ctx:|session:|5h:|wk:|thinking)\b/i;
 
 /** OMC HUD mode/help line rendered in the captured UI footer. */
-const OMC_HUD_MODE_LINE_PATTERN = /^\s*⏵⏵\s+.*\(shift\+tab to cycle\)/i;
+const OMQ_HUD_MODE_LINE_PATTERN = /^\s*⏵⏵\s+.*\(shift\+tab to cycle\)/i;
 
 /** Shell commands that print saved terminal transcripts rather than a live UI. */
 const SAVED_TRANSCRIPT_COMMAND_PATTERN =
@@ -75,7 +75,7 @@ const SAVED_TRANSCRIPT_LABEL_PATTERN =
   /\b(?:copied\s+from|saved\s+terminal\s+output|terminal\s+transcript|copied\s+hud)\b/i;
 
 /** Rate-limit text shown by the live Claude/OMC limit screen, not arbitrary API/log output. */
-const OMC_HUD_RATE_LIMIT_SCREEN_PATTERNS = [
+const OMQ_HUD_RATE_LIMIT_SCREEN_PATTERNS = [
   /you(?:'|’)ve\s+(?:hit|reached)\s+(?:your\s+)?(?:session\s+|usage\s+)?limit/i,
   /\b(?:session|usage|weekly|5[- ]?hour)\s+(?:usage\s+)?(?:limit|quota|cap|allowance|allocation)\b/i,
   /\blimit\s+resets?\b/i,
@@ -83,7 +83,7 @@ const OMC_HUD_RATE_LIMIT_SCREEN_PATTERNS = [
 ];
 
 function hasOmcRateLimitScreenText(content: string): boolean {
-  return OMC_HUD_RATE_LIMIT_SCREEN_PATTERNS.some(pattern => pattern.test(content));
+  return OMQ_HUD_RATE_LIMIT_SCREEN_PATTERNS.some(pattern => pattern.test(content));
 }
 
 function hasSavedTranscriptContext(content: string): boolean {
@@ -103,13 +103,13 @@ function hasLiveOmcHudEvidence(content: string): boolean {
     .split('\n')
     .map(line => line.trimEnd())
     .filter(line => line.trim().length > 0);
-  const hudStatusIndex = nonEmptyLines.findIndex(line => OMC_HUD_STATUS_LINE_PATTERN.test(line));
+  const hudStatusIndex = nonEmptyLines.findIndex(line => OMQ_HUD_STATUS_LINE_PATTERN.test(line));
   if (hudStatusIndex === -1) {
     return false;
   }
 
   const modeLineIndex = nonEmptyLines.findIndex((line, index) =>
-    index > hudStatusIndex && OMC_HUD_MODE_LINE_PATTERN.test(line)
+    index > hudStatusIndex && OMQ_HUD_MODE_LINE_PATTERN.test(line)
   );
   if (modeLineIndex === -1) {
     return false;

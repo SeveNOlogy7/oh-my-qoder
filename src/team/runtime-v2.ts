@@ -3,7 +3,7 @@
  *
  * Runtime selection:
  * - Default: v2 enabled
- * - Opt-out: set OMC_RUNTIME_V2=0|false|no|off to force legacy v1
+ * - Opt-out: set OMQ_RUNTIME_V2=0|false|no|off to force legacy v1
  * NO done.json polling. Completion is detected via:
  * - CLI API lifecycle transitions (claim-task, transition-task-status)
  * - Event-driven monitor snapshots
@@ -1055,7 +1055,7 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
   const instruction = buildV2TaskInstruction(
     opts.teamName, opts.workerName, opts.task, opts.taskId, cliOutputContract,
   );
-  const instructionStateRoot = opts.worktreePath ? '$OMC_TEAM_STATE_ROOT' : undefined;
+  const instructionStateRoot = opts.worktreePath ? '$OMQ_TEAM_STATE_ROOT' : undefined;
   const startupBaseline = await captureWorkerStartupBaseline(
     opts.teamName, opts.workerName, opts.taskId, opts.cwd,
   );
@@ -1068,10 +1068,10 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
 
   const envVars = {
     ...getModelWorkerEnv(opts.teamName, opts.workerName, opts.agentType),
-    OMC_TEAM_STATE_ROOT: teamStateRoot(opts.cwd, opts.teamName),
-    OMC_TEAM_LEADER_CWD: opts.cwd,
-    ...(opts.worktreePath ? { OMC_TEAM_WORKTREE_PATH: opts.worktreePath } : {}),
-    ...(opts.workerCwd ? { OMC_TEAM_WORKER_CWD: opts.workerCwd } : {}),
+    OMQ_TEAM_STATE_ROOT: teamStateRoot(opts.cwd, opts.teamName),
+    OMQ_TEAM_LEADER_CWD: opts.cwd,
+    ...(opts.worktreePath ? { OMQ_TEAM_WORKTREE_PATH: opts.worktreePath } : {}),
+    ...(opts.workerCwd ? { OMQ_TEAM_WORKER_CWD: opts.workerCwd } : {}),
   };
   const launchDescriptor = opts.launchDescriptor;
 
@@ -1369,9 +1369,9 @@ async function buildRecoveryPaneContext(
   const promptMode = isPromptModeAgent(agentType);
   const providerEnv = {
     ...getModelWorkerEnv(input.teamName, sagaInput.workerName, agentType),
-    OMC_TEAM_STATE_ROOT: teamStateRoot(input.cwd, input.teamName),
-    OMC_TEAM_LEADER_CWD: input.cwd,
-    ...(worker.worktree_path ? { OMC_TEAM_WORKTREE_PATH: worker.worktree_path } : {}),
+    OMQ_TEAM_STATE_ROOT: teamStateRoot(input.cwd, input.teamName),
+    OMQ_TEAM_LEADER_CWD: input.cwd,
+    ...(worker.worktree_path ? { OMQ_TEAM_WORKTREE_PATH: worker.worktree_path } : {}),
   };
   const gate: RecoveryActivationGate = {
     recoveryId: sagaInput.recoveryId, workerName: sagaInput.workerName,
@@ -2643,7 +2643,7 @@ export async function executeRecoverDeadWorkerV2Owner(
           pending.startupContext = await spawnOwnedWorkerInPane(config.tmux_session, pending.ownership, {
             teamName: input.teamName,
             workerName: sagaInput.workerName,
-            envVars: { OMC_RECOVERY_GATE_SPEC: JSON.stringify(pending.gate) },
+            envVars: { OMQ_RECOVERY_GATE_SPEC: JSON.stringify(pending.gate) },
             launchBinary: process.execPath,
             launchArgs: [runtimeCliPath, '--recovery-gate'],
             cwd: pending.gate.cwd,
@@ -2887,7 +2887,7 @@ export async function executeRecoverDeadWorkerV2Owner(
           const recoveryTriggerMessage = `${generateTriggerMessage(
             input.teamName,
             sagaInput.workerName,
-            pending.worker.worktree_path ? '$OMC_TEAM_STATE_ROOT' : undefined,
+            pending.worker.worktree_path ? '$OMQ_TEAM_STATE_ROOT' : undefined,
           )} [launch:${startupContext.attempt.attempt_id.slice(0, 12)}]`;
           const outcome = await queueInboxInstruction({
             teamName: input.teamName,
@@ -3130,7 +3130,7 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
   const pluginCfg: PluginConfig = config.pluginConfig ?? loadConfig();
   const resolvedRouting = buildResolvedRoutingSnapshot(pluginCfg);
   let worktreeMode: TeamWorktreeMode = normalizeTeamWorktreeMode(
-    process.env.OMC_TEAM_WORKTREE_MODE ?? pluginCfg.team?.ops?.worktreeMode,
+    process.env.OMQ_TEAM_WORKTREE_MODE ?? pluginCfg.team?.ops?.worktreeMode,
   );
 
   // Auto-merge gate (M5 + M3 hardening). Forces worktreeMode='named' so each
@@ -3138,7 +3138,7 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
   let autoMergeLeaderBranch: string | undefined;
   if (config.autoMerge) {
     if (!isRuntimeV2Enabled()) {
-      throw new Error('auto-merge requires OMC_RUNTIME_V2=1 (this feature is v2-only).');
+      throw new Error('auto-merge requires OMQ_RUNTIME_V2=1 (this feature is v2-only).');
     }
     autoMergeLeaderBranch = resolveLeaderBranch(leaderCwd);
     const stripped = autoMergeLeaderBranch.replace(/^refs\/heads\//i, '').toLowerCase();
@@ -3265,10 +3265,10 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
   const startupByWorker = new Map(startupAllocations.map(item => [item.workerName, item.taskIndex]));
   const preparedLaunches = new Map<string, { agentType: CliAgentType; role?: CanonicalTeamRole; descriptor: WorkerLaunchDescriptor }>();
   const resolveDefaultModel = (agentType: CliAgentType): string | undefined => {
-    if (agentType === 'codex') return process.env.OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL || process.env.OMC_CODEX_DEFAULT_MODEL || undefined;
-    if (agentType === 'gemini') return process.env.OMC_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL || process.env.OMC_GEMINI_DEFAULT_MODEL || undefined;
-    if (agentType === 'antigravity') return process.env.OMC_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL || process.env.OMC_ANTIGRAVITY_DEFAULT_MODEL || undefined;
-    if (agentType === 'grok') return process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL || process.env.OMC_GROK_DEFAULT_MODEL || undefined;
+    if (agentType === 'codex') return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL || process.env.OMQ_CODEX_DEFAULT_MODEL || undefined;
+    if (agentType === 'gemini') return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL || process.env.OMQ_GEMINI_DEFAULT_MODEL || undefined;
+    if (agentType === 'antigravity') return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL || process.env.OMQ_ANTIGRAVITY_DEFAULT_MODEL || undefined;
+    if (agentType === 'grok') return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL || process.env.OMQ_GROK_DEFAULT_MODEL || undefined;
     if (agentType === 'cursor') return undefined;
     return resolveClaudeWorkerModel();
   };
@@ -3290,7 +3290,7 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
     if (!binary) throw new Error(`No validated binary available for ${assignment.agentType}`);
     const startupPrompt = taskIndex !== undefined && isPromptModeAgent(assignment.agentType)
       ? generatePromptModeStartupPrompt(sanitized, workerName,
-        worktree ? '$OMC_TEAM_STATE_ROOT' : undefined, outputContract)
+        worktree ? '$OMQ_TEAM_STATE_ROOT' : undefined, outputContract)
       : undefined;
     const transportPrompt = startupPrompt && process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(binary)
       ? startupPrompt.replace(/\s*\r?\n\s*/g, ' ')
@@ -3317,7 +3317,7 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
         })),
         cwd: leaderCwd,
         ...(config.rolePrompt ? { bootstrapInstructions: config.rolePrompt } : {}),
-        ...(workerWorktrees.has(wName) ? { instructionStateRoot: '$OMC_TEAM_STATE_ROOT' } : {}),
+        ...(workerWorktrees.has(wName) ? { instructionStateRoot: '$OMQ_TEAM_STATE_ROOT' } : {}),
       });
       const worktree = workerWorktrees.get(wName);
       if (worktree) {
@@ -3414,9 +3414,9 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
     throw error;
   }
   const permissionsSnapshot = {
-    approval_mode: process.env.OMC_APPROVAL_MODE || 'default',
-    sandbox_mode: process.env.OMC_SANDBOX_MODE || 'default',
-    network_access: process.env.OMC_NETWORK_ACCESS === '1',
+    approval_mode: process.env.OMQ_APPROVAL_MODE || 'default',
+    sandbox_mode: process.env.OMQ_SANDBOX_MODE || 'default',
+    network_access: process.env.OMQ_NETWORK_ACCESS === '1',
   };
   const teamManifest: TeamManifestV2 = {
     schema_version: 2,
@@ -4377,7 +4377,7 @@ export async function shutdownTeamV2(
       shutdownRequestTimes.set(w.name, requestedAt);
       // Write shutdown inbox
       const shutdownAckPath = w.worktree_path
-        ? `$OMC_TEAM_STATE_ROOT/workers/${w.name}/shutdown-ack.json`
+        ? `$OMQ_TEAM_STATE_ROOT/workers/${w.name}/shutdown-ack.json`
         : TeamPaths.shutdownAck(sanitized, w.name);
       const shutdownInbox = `# Shutdown Request\n\nAll tasks are complete. Please wrap up and respond with a shutdown acknowledgement.\n\nWrite your ack to: ${shutdownAckPath}\nFormat: {"status":"accept","reason":"ok","updated_at":"<iso>"}\n\nThen exit your session.\n`;
       await writeWorkerInbox(sanitized, w.name, shutdownInbox, cwd);

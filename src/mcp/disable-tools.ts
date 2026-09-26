@@ -1,7 +1,7 @@
 import { TOOL_CATEGORIES, type ToolCategory } from '../constants/index.js';
 
 /**
- * Map from user-facing OMC_DISABLE_TOOLS group names to ToolCategory values.
+ * Map from user-facing OMQ_DISABLE_TOOLS group names to ToolCategory values.
  * Supports both canonical names and common aliases.
  */
 export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
@@ -26,21 +26,21 @@ export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
 };
 
 /**
- * Parse OMC_DISABLE_TOOLS env var value into a Set of disabled ToolCategory values.
+ * Parse OMQ_DISABLE_TOOLS env var value into a Set of disabled ToolCategory values.
  *
  * Accepts a comma-separated list of group names (case-insensitive).
  * Unknown names are silently ignored.
  *
- * @param envValue - The env var value to parse. Defaults to process.env.OMC_DISABLE_TOOLS.
+ * @param envValue - The env var value to parse. Defaults to process.env.OMQ_DISABLE_TOOLS.
  * @returns Set of ToolCategory values that should be disabled.
  *
  * @example
- * // OMC_DISABLE_TOOLS=lsp,python-repl,project-memory
+ * // OMQ_DISABLE_TOOLS=lsp,python-repl,project-memory
  * parseDisabledGroups(); // Set { 'lsp', 'python', 'memory' }
  */
 export function parseDisabledGroups(envValue?: string): Set<ToolCategory> {
   const disabled = new Set<ToolCategory>();
-  const value = envValue ?? process.env.OMC_DISABLE_TOOLS;
+  const value = envValue ?? process.env.OMQ_DISABLE_TOOLS;
   if (!value || !value.trim()) return disabled;
 
   for (const name of value.split(',')) {

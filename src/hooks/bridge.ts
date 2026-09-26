@@ -241,7 +241,7 @@ function buildSessionStartAdditionalContext(messages: string[]): string {
 }
 
 function readLinuxBootId(): string | undefined {
-  const testBootId = process.env.OMC_TEST_BOOT_ID?.trim();
+  const testBootId = process.env.OMQ_TEST_BOOT_ID?.trim();
   if (testBootId) return testBootId;
 
   try {
@@ -1048,7 +1048,7 @@ function teamWorkerIdentityFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   const omc =
-    typeof env.OMC_TEAM_WORKER === "string" ? env.OMC_TEAM_WORKER.trim() : "";
+    typeof env.OMQ_TEAM_WORKER === "string" ? env.OMQ_TEAM_WORKER.trim() : "";
   if (omc) return omc;
   const omx =
     typeof env.OMX_TEAM_WORKER === "string" ? env.OMX_TEAM_WORKER.trim() : "";
@@ -1454,7 +1454,7 @@ async function seedModeStateForExplicitWorkflowSlash(
 async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
   // Team worker guard: prevent keyword detection inside team workers to avoid
   // infinite spawning loops (worker detects "team" -> invokes team skill -> spawns more workers)
-  if (process.env.OMC_TEAM_WORKER) {
+  if (process.env.OMQ_TEAM_WORKER) {
     return { continue: true };
   }
 
@@ -1902,7 +1902,7 @@ async function processPersistentMode(input: HookInput): Promise<HookOutput> {
           dispatchNotificationInBackground("session-idle", {
             sessionId,
             projectPath: directory,
-            profileName: process.env.OMC_NOTIFY_PROFILE,
+            profileName: process.env.OMQ_NOTIFY_PROFILE,
           });
         }
       }
@@ -1996,7 +1996,7 @@ async function processSessionStart(input: HookInput): Promise<HookOutput> {
     dispatchNotificationInBackground("session-start", {
       sessionId,
       projectPath: directory,
-      profileName: process.env.OMC_NOTIFY_PROFILE,
+      profileName: process.env.OMQ_NOTIFY_PROFILE,
     });
     // Wake OpenClaw gateway for session-start (non-blocking)
     _openclaw.wake("session-start", { sessionId, projectPath: directory });
@@ -2218,7 +2218,7 @@ Please continue working on these tasks.
 This environment uses a non-standard model provider (AWS Bedrock, Google Vertex AI, or a proxy such as CC Switch / LiteLLM).
 
 How to pass \`model\` on Task/Agent calls:
-- Prefer a tier alias: \`model: "sonnet"\`, \`model: "opus"\`, \`model: "haiku"\`, or \`model: "fable"\` (Claude Fable 5, above Opus). OMC's pre-tool enforcer resolves these to provider-safe IDs when one of these env vars is set: \`ANTHROPIC_DEFAULT_SONNET_MODEL\` (and siblings \`ANTHROPIC_DEFAULT_OPUS_MODEL\` / \`ANTHROPIC_DEFAULT_HAIKU_MODEL\` / \`ANTHROPIC_DEFAULT_FABLE_MODEL\`), \`CLAUDE_CODE_BEDROCK_SONNET_MODEL\` (and siblings \`CLAUDE_CODE_BEDROCK_OPUS_MODEL\` / \`CLAUDE_CODE_BEDROCK_HAIKU_MODEL\` / \`CLAUDE_CODE_BEDROCK_FABLE_MODEL\`), or \`OMC_SUBAGENT_MODEL\`.
+- Prefer a tier alias: \`model: "sonnet"\`, \`model: "opus"\`, \`model: "haiku"\`, or \`model: "fable"\` (Claude Fable 5, above Opus). OMC's pre-tool enforcer resolves these to provider-safe IDs when one of these env vars is set: \`ANTHROPIC_DEFAULT_SONNET_MODEL\` (and siblings \`ANTHROPIC_DEFAULT_OPUS_MODEL\` / \`ANTHROPIC_DEFAULT_HAIKU_MODEL\` / \`ANTHROPIC_DEFAULT_FABLE_MODEL\`), \`CLAUDE_CODE_BEDROCK_SONNET_MODEL\` (and siblings \`CLAUDE_CODE_BEDROCK_OPUS_MODEL\` / \`CLAUDE_CODE_BEDROCK_HAIKU_MODEL\` / \`CLAUDE_CODE_BEDROCK_FABLE_MODEL\`), or \`OMQ_SUBAGENT_MODEL\`.
 - If none of those env vars are configured, the enforcer will deny the tier alias with an env-var configuration hint — set one of them in your \`settings.json\` env or shell profile.
 - The enforcer denies tier aliases it cannot resolve. It also denies provider-specific IDs that carry a \`[1m]\` context-window suffix or otherwise fail subagent-safe validation (sub-agents cannot inherit \`[1m]\`). Valid provider-specific IDs without extended-context suffixes are allowed.
 
@@ -2330,7 +2330,7 @@ export function dispatchAskUserQuestionNotification(
     projectPath: directory,
     question: questionText,
     askUserQuestionPrompts: prompts,
-    profileName: process.env.OMC_NOTIFY_PROFILE,
+    profileName: process.env.OMQ_NOTIFY_PROFILE,
   });
 }
 
@@ -2352,7 +2352,7 @@ export const _openclaw = {
     event: import("../openclaw/types.js").OpenClawHookEvent,
     context: import("../openclaw/types.js").OpenClawContext,
   ) => {
-    if (process.env.OMC_OPENCLAW !== "1") return;
+    if (process.env.OMQ_OPENCLAW !== "1") return;
     const logOpenClawWakeFailure = createSwallowedErrorLogger(
       `hooks.bridge openclaw wake failed for ${event}`,
     );
@@ -2655,7 +2655,7 @@ function processPreToolUse(input: HookInput): HookOutput {
       projectPath: directory,
       agentName,
       agentType,
-      profileName: process.env.OMC_NOTIFY_PROFILE,
+      profileName: process.env.OMQ_NOTIFY_PROFILE,
     });
   }
 
@@ -2707,7 +2707,7 @@ function processPreToolUse(input: HookInput): HookOutput {
           reason:
             `Background process limit reached (${runningCount}/${maxBgTasks}). ` +
             `Wait for running tasks to complete before starting new ones. ` +
-            `Limit is configurable via permissions.maxBackgroundTasks in config or OMC_MAX_BACKGROUND_TASKS env var.`,
+            `Limit is configurable via permissions.maxBackgroundTasks in config or OMQ_MAX_BACKGROUND_TASKS env var.`,
         };
       }
     }
@@ -3111,13 +3111,13 @@ async function processAutopilot(input: HookInput): Promise<HookOutput> {
 }
 
 /**
- * Cached parsed OMC_SKIP_HOOKS for performance (env vars don't change during process lifetime)
+ * Cached parsed OMQ_SKIP_HOOKS for performance (env vars don't change during process lifetime)
  */
 let _cachedSkipHooks: string[] | null = null;
 function getSkipHooks(): string[] {
   if (_cachedSkipHooks === null) {
     _cachedSkipHooks =
-      process.env.OMC_SKIP_HOOKS?.split(",")
+      process.env.OMQ_SKIP_HOOKS?.split(",")
         .map((s) => s.trim())
         .filter(Boolean) ?? [];
   }
@@ -3140,7 +3140,7 @@ async function processHookImpl(
   rawInput: HookInput,
 ): Promise<HookOutput> {
   // Environment kill-switches for plugin coexistence
-  if (process.env.DISABLE_OMC === "1" || process.env.DISABLE_OMC === "true") {
+  if (process.env.DISABLE_OMQ === "1" || process.env.DISABLE_OMQ === "true") {
     return { continue: true };
   }
   const skipHooks = getSkipHooks();
@@ -3378,10 +3378,10 @@ async function processHookImpl(
  *
  * Thin wrapper over the legacy dispatcher: runs the legacy path unchanged,
  * then records shadow and cutover observations. Shadow mode is gated behind
- * OMC_HOOK_SHADOW; cutover dispatch telemetry is recorded boundedly per
+ * OMQ_HOOK_SHADOW; cutover dispatch telemetry is recorded boundedly per
  * event family (with advisory fail-open by default, hard only for approved
- * risk classes) and per-family rollback via OMC_HOOK_ROLLBACK /
- * OMC_HOOK_DISPATCHER_ROLLBACK. Unknown failures remain advisory.
+ * risk classes) and per-family rollback via OMQ_HOOK_ROLLBACK /
+ * OMQ_HOOK_DISPATCHER_ROLLBACK. Unknown failures remain advisory.
  */
 export async function processHook(
   hookType: HookType,

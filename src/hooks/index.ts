@@ -198,7 +198,7 @@ export {
   checkBoulderContinuation,
   processOrchestratorPreTool,
   processOrchestratorPostTool,
-  HOOK_NAME as OMC_ORCHESTRATOR_HOOK_NAME,
+  HOOK_NAME as OMQ_ORCHESTRATOR_HOOK_NAME,
   ALLOWED_PATH_PREFIX,
   WRITE_EDIT_TOOLS,
   DIRECT_WORK_REMINDER,

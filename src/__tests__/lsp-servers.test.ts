@@ -27,10 +27,10 @@ function createTypeScriptProject(options: { version: string; tsserver?: boolean;
   return root;
 }
 
-const inheritedPythonLsp = process.env.OMC_PYTHON_LSP;
+const inheritedPythonLsp = process.env.OMQ_PYTHON_LSP;
 
 beforeEach(() => {
-  delete process.env.OMC_PYTHON_LSP;
+  delete process.env.OMQ_PYTHON_LSP;
 });
 
 afterEach(() => {
@@ -39,9 +39,9 @@ afterEach(() => {
 
 afterAll(() => {
   if (inheritedPythonLsp === undefined) {
-    delete process.env.OMC_PYTHON_LSP;
+    delete process.env.OMQ_PYTHON_LSP;
   } else {
-    process.env.OMC_PYTHON_LSP = inheritedPythonLsp;
+    process.env.OMQ_PYTHON_LSP = inheritedPythonLsp;
   }
 });
 
@@ -262,7 +262,7 @@ describe('OmniSharp command casing', () => {
 
 describe('Python server selection', () => {
   it('uses ty by default', () => {
-    expect(process.env.OMC_PYTHON_LSP).toBeUndefined();
+    expect(process.env.OMQ_PYTHON_LSP).toBeUndefined();
     expect(resolvePythonServer()).toBe(LSP_SERVERS.python);
     expect(getServerForFile('app.py')).toBe(LSP_SERVERS.python);
     expect(getServerForFile('app.pyw')).toBe(LSP_SERVERS.python);
@@ -274,7 +274,7 @@ describe('Python server selection', () => {
   it.each(['', '   ', 'ty', 'TY', 'BasedPyright', 'pyright', 'basedpyright ', 'jedi'])(
     'uses ty for unsupported selector value %j',
     value => {
-      vi.stubEnv('OMC_PYTHON_LSP', value);
+      vi.stubEnv('OMQ_PYTHON_LSP', value);
 
       expect(resolvePythonServer()).toBe(LSP_SERVERS.python);
       expect(getServerForFile('app.py')).toBe(getServerForLanguage('python'));
@@ -283,7 +283,7 @@ describe('Python server selection', () => {
   );
 
   it('uses basedpyright only for the exact selector value', () => {
-    vi.stubEnv('OMC_PYTHON_LSP', 'basedpyright');
+    vi.stubEnv('OMQ_PYTHON_LSP', 'basedpyright');
 
     const server = resolvePythonServer();
     expect(server).toMatchObject({
@@ -299,14 +299,14 @@ describe('Python server selection', () => {
   });
 
   it('does not affect non-Python server selection', () => {
-    vi.stubEnv('OMC_PYTHON_LSP', 'basedpyright');
+    vi.stubEnv('OMQ_PYTHON_LSP', 'basedpyright');
 
     expect(getServerForFile('main.rs')).toBe(LSP_SERVERS.rust);
     expect(getServerForLanguage('go')).toBe(LSP_SERVERS.go);
   });
 
   it('lists only the selected Python server', () => {
-    vi.stubEnv('OMC_PYTHON_LSP', 'basedpyright');
+    vi.stubEnv('OMQ_PYTHON_LSP', 'basedpyright');
 
     const pythonServers = getAllServers().filter(server => server.extensions.includes('.py'));
     expect(pythonServers).toHaveLength(1);

@@ -250,12 +250,12 @@ function parseTeamWorkerEnv(raw: string | undefined): { teamName: string; worker
 }
 
 function parseTeamWorkerContextFromEnv(env: NodeJS.ProcessEnv = process.env): { teamName: string; workerName: string } | null {
-  return parseTeamWorkerEnv(env.OMC_TEAM_WORKER) ?? parseTeamWorkerEnv(env.OMX_TEAM_WORKER);
+  return parseTeamWorkerEnv(env.OMQ_TEAM_WORKER) ?? parseTeamWorkerEnv(env.OMX_TEAM_WORKER);
 }
 
 function readTeamStateRootFromEnv(env: NodeJS.ProcessEnv = process.env): string | null {
-  const candidate = typeof env.OMC_TEAM_STATE_ROOT === 'string' && env.OMC_TEAM_STATE_ROOT.trim() !== ''
-    ? env.OMC_TEAM_STATE_ROOT.trim()
+  const candidate = typeof env.OMQ_TEAM_STATE_ROOT === 'string' && env.OMQ_TEAM_STATE_ROOT.trim() !== ''
+    ? env.OMQ_TEAM_STATE_ROOT.trim()
     : (typeof env.OMX_TEAM_STATE_ROOT === 'string' && env.OMX_TEAM_STATE_ROOT.trim() !== ''
       ? env.OMX_TEAM_STATE_ROOT.trim()
       : '');
@@ -264,8 +264,8 @@ function readTeamStateRootFromEnv(env: NodeJS.ProcessEnv = process.env): string 
 
 export function resolveTeamApiCliCommand(env: NodeJS.ProcessEnv = process.env): 'omc team api' | 'omx team api' {
   const hasOmcContext = (
-    (typeof env.OMC_TEAM_WORKER === 'string' && env.OMC_TEAM_WORKER.trim() !== '')
-    || (typeof env.OMC_TEAM_STATE_ROOT === 'string' && env.OMC_TEAM_STATE_ROOT.trim() !== '')
+    (typeof env.OMQ_TEAM_WORKER === 'string' && env.OMQ_TEAM_WORKER.trim() !== '')
+    || (typeof env.OMQ_TEAM_STATE_ROOT === 'string' && env.OMQ_TEAM_STATE_ROOT.trim() !== '')
   );
   if (hasOmcContext) return 'omc team api';
 
@@ -478,7 +478,7 @@ export function buildLegacyTeamDeprecationHint(
 }
 
 
-const WORKTREE_TRIGGER_STATE_ROOT = '$OMC_TEAM_STATE_ROOT';
+const WORKTREE_TRIGGER_STATE_ROOT = '$OMQ_TEAM_STATE_ROOT';
 
 function resolveInstructionStateRoot(worktreePath?: string | null): string | undefined {
   return worktreePath ? WORKTREE_TRIGGER_STATE_ROOT : undefined;
@@ -713,7 +713,7 @@ export async function executeTeamApiOperation(
         }
         const workerContext = parseTeamWorkerContextFromEnv();
         if (!workerContext) {
-          return { ok: false, operation, error: { code: 'worker_auth_required', message: 'write-task-checkpoint requires OMC_TEAM_WORKER or OMX_TEAM_WORKER authentication' } };
+          return { ok: false, operation, error: { code: 'worker_auth_required', message: 'write-task-checkpoint requires OMQ_TEAM_WORKER or OMX_TEAM_WORKER authentication' } };
         }
         if (workerContext.teamName !== teamName || workerContext.workerName !== workerName) {
           return { ok: false, operation, error: { code: 'worker_auth_mismatch', message: 'authenticated worker does not match team_name and worker' } };

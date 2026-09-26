@@ -11,10 +11,10 @@ vi.mock('../servers.js', async importOriginal => {
 import { LspClient } from '../client.js';
 import { getServerForFile } from '../servers.js';
 
-const inheritedPythonLsp = process.env.OMC_PYTHON_LSP;
+const inheritedPythonLsp = process.env.OMQ_PYTHON_LSP;
 
 beforeEach(() => {
-  delete process.env.OMC_PYTHON_LSP;
+  delete process.env.OMQ_PYTHON_LSP;
 });
 
 afterEach(() => {
@@ -23,15 +23,15 @@ afterEach(() => {
 
 afterAll(() => {
   if (inheritedPythonLsp === undefined) {
-    delete process.env.OMC_PYTHON_LSP;
+    delete process.env.OMQ_PYTHON_LSP;
   } else {
-    process.env.OMC_PYTHON_LSP = inheritedPythonLsp;
+    process.env.OMQ_PYTHON_LSP = inheritedPythonLsp;
   }
 });
 
 describe('selected Python LSP connection boundary', () => {
   it('reports a missing basedpyright server without falling back to ty', async () => {
-    vi.stubEnv('OMC_PYTHON_LSP', 'basedpyright');
+    vi.stubEnv('OMQ_PYTHON_LSP', 'basedpyright');
     const config = getServerForFile('app.py');
 
     expect(config).toMatchObject({

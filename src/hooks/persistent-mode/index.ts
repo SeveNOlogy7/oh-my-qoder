@@ -2260,17 +2260,17 @@ async function resolvePersistentModeBlock(
   const workingDir = resolveToWorktreeRoot(directory);
 
   // Hard bypass invariants: never enforce stop continuation under any of these
-  // environment-level kill switches. bridge.ts also guards DISABLE_OMC and
-  // OMC_SKIP_HOOKS at hook-entry, but we re-check here so direct callers and
+  // environment-level kill switches. bridge.ts also guards DISABLE_OMQ and
+  // OMQ_SKIP_HOOKS at hook-entry, but we re-check here so direct callers and
   // nested helpers (team workers, tests) observe the same contract.
   if (
-    process.env.DISABLE_OMC === '1' ||
-    process.env.DISABLE_OMC === 'true' ||
-    process.env.OMC_TEAM_WORKER
+    process.env.DISABLE_OMQ === '1' ||
+    process.env.DISABLE_OMQ === 'true' ||
+    process.env.OMQ_TEAM_WORKER
   ) {
     return { shouldBlock: false, message: '', mode: 'none' };
   }
-  const skipHooks = (process.env.OMC_SKIP_HOOKS ?? '')
+  const skipHooks = (process.env.OMQ_SKIP_HOOKS ?? '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);

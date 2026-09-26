@@ -627,16 +627,16 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
     expect(readStdinCache()).toBeNull();
   });
 
-  it('resolves the fallback directory through the same OMC_STATE_DIR helper as writers', () => {
+  it('resolves the fallback directory through the same OMQ_STATE_DIR helper as writers', () => {
     // Regression: the env-less fallback previously assembled the sessions
     // directory from `join(root, '.omq', 'state', 'sessions')` directly,
-    // which bypasses `OMC_STATE_DIR`-backed centralized state and made
+    // which bypasses `OMQ_STATE_DIR`-backed centralized state and made
     // `omc hud --watch` miss the active cache in that deployment shape.
     const centralRoot = mkdtempSync(join(tmpdir(), 'omc-hud-stdin-central-'));
-    const prevStateDir = process.env.OMC_STATE_DIR;
-    process.env.OMC_STATE_DIR = centralRoot;
+    const prevStateDir = process.env.OMQ_STATE_DIR;
+    process.env.OMQ_STATE_DIR = centralRoot;
     try {
-      // Writer pinned to a session id: must land under OMC_STATE_DIR/...,
+      // Writer pinned to a session id: must land under OMQ_STATE_DIR/...,
       // not under `tmpRoot/.omq/state/sessions/...`.
       process.env.CLAUDE_SESSION_ID = 'central-session';
       const payload = makeStdin({ transcript_path: '/tmp/central.jsonl' });
@@ -653,9 +653,9 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
       expect(got?.transcript_path).toBe('/tmp/central.jsonl');
     } finally {
       if (prevStateDir === undefined) {
-        delete process.env.OMC_STATE_DIR;
+        delete process.env.OMQ_STATE_DIR;
       } else {
-        process.env.OMC_STATE_DIR = prevStateDir;
+        process.env.OMQ_STATE_DIR = prevStateDir;
       }
       rmSync(centralRoot, { recursive: true, force: true });
     }

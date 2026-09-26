@@ -29,7 +29,7 @@ describe('HUD wrapper devPaths removal (binary-weaving-mountain)', () => {
   it('shared HUD wrapper template exists and uses OMQ_PLUGIN_ROOT', () => {
     expect(existsSync(HUD_WRAPPER_TEMPLATE)).toBe(true);
     const content = readFileSync(HUD_WRAPPER_TEMPLATE, 'utf-8');
-    expect(content).toContain('OMC_PLUGIN_ROOT');
+    expect(content).toContain('OMQ_PLUGIN_ROOT');
     expect(content).toContain('dist/hud/index.js');
     expect(content).not.toContain('OMQ_DEV');
     expect(content).not.toContain('Workspace/oh-my-qoder');

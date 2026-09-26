@@ -30,9 +30,9 @@ function parseResponseText(text: string): Record<string, unknown> {
 }
 
 async function importTeamServerWithJobsDir(jobsDir: string) {
-  process.env.OMC_TEAM_SERVER_DISABLE_AUTOSTART = '1';
+  process.env.OMQ_TEAM_SERVER_DISABLE_AUTOSTART = '1';
   process.env.NODE_ENV = 'test';
-  process.env.OMC_JOBS_DIR = jobsDir;
+  process.env.OMQ_JOBS_DIR = jobsDir;
   vi.resetModules();
   return import('../team-server.js');
 }

@@ -16,12 +16,12 @@
  *   semantics are preserved.
  *
  * Rollback:
- * - `OMC_HOOK_DISPATCHER=off|0|false|disabled` — global cutover off, legacy only.
- * - `OMC_HOOK_ROLLBACK=<Event,...>` or `OMC_HOOK_DISPATCHER_ROLLBACK=<Event,...>` — per-family rollback.
+ * - `OMQ_HOOK_DISPATCHER=off|0|false|disabled` — global cutover off, legacy only.
+ * - `OMQ_HOOK_ROLLBACK=<Event,...>` or `OMQ_HOOK_DISPATCHER_ROLLBACK=<Event,...>` — per-family rollback.
  *   Family names are HookEvent values (UserPromptSubmit, SessionStart, PreToolUse,
  *   PermissionRequest, PostToolUse, PostToolUseFailure, SubagentStart, SubagentStop,
  *   PreCompact, Stop, SessionEnd) or `*`. Comparison is case-insensitive.
- * - `OMC_HOOK_CUTOVER` is accepted as an alias for `OMC_HOOK_DISPATCHER`.
+ * - `OMQ_HOOK_CUTOVER` is accepted as an alias for `OMQ_HOOK_DISPATCHER`.
  */
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -88,7 +88,7 @@ export function hasHookProtocolDeny(output: unknown): boolean {
 }
 
 function cutoverFlagRaw(): string | undefined {
-  const v = process.env.OMC_HOOK_DISPATCHER ?? process.env.OMC_HOOK_CUTOVER;
+  const v = process.env.OMQ_HOOK_DISPATCHER ?? process.env.OMQ_HOOK_CUTOVER;
   return v;
 }
 
@@ -101,7 +101,7 @@ export function isDispatcherEnabled(): boolean {
 }
 
 function rollbackSet(): Set<string> {
-  const raw = process.env.OMC_HOOK_ROLLBACK ?? process.env.OMC_HOOK_DISPATCHER_ROLLBACK ?? '';
+  const raw = process.env.OMQ_HOOK_ROLLBACK ?? process.env.OMQ_HOOK_DISPATCHER_ROLLBACK ?? '';
   const out = new Set<string>();
   for (const tok of raw.split(',')) {
     const n = tok.trim().toLowerCase();

@@ -32,7 +32,7 @@
 /omc-setup
 ```
 
-`omc --plugin-dir <path>` 또는 `claude --plugin-dir <path>`를 통해 OMC를 실행하는 경우 `omc setup`에 `--plugin-dir-mode`를 추가합니다(또는 미리 `OMC_PLUGIN_ROOT` 내보내기). 이렇게 하면 플러그인이 이미 런타임에 제공하는 스킬/에이전트가 중복되지 않습니다. 완전한 결정 매트릭스 및 사용 가능한 모든 플래그는 [REFERENCE.md의 Plugin directory flags 섹션](./docs/REFERENCE.md#plugin-directory-flags)을 참조하세요.
+`omc --plugin-dir <path>` 또는 `claude --plugin-dir <path>`를 통해 OMC를 실행하는 경우 `omc setup`에 `--plugin-dir-mode`를 추가합니다(또는 미리 `OMQ_PLUGIN_ROOT` 내보내기). 이렇게 하면 플러그인이 이미 런타임에 제공하는 스킬/에이전트가 중복되지 않습니다. 완전한 결정 매트릭스 및 사용 가능한 모든 플래그는 [REFERENCE.md의 Plugin directory flags 섹션](./docs/REFERENCE.md#plugin-directory-flags)을 참조하세요.
 
 <!-- TODO(i18n): verify translation -->
 
@@ -173,7 +173,7 @@ omc team shutdown auth-review
 
 - **매직 키워드** - 명시적 제어를 위한 `ralph`, `ulw`, `team`
 - **HUD 상태바** - 상태바에서 실시간 오케스트레이션 메트릭 확인
-  - Claude Code를 `claude --plugin-dir <path>`로 직접 시작하는 경우 (OMC shim 우회), shell에서 `OMC_PLUGIN_ROOT=<path>`를 내보내 HUD 번들이 plugin 로더와 동일한 checkout으로 확인되도록 하세요. 자세한 내용은 [REFERENCE.md의 Plugin directory flags 섹션](./docs/REFERENCE.md#plugin-directory-flags)을 참조하세요.
+  - Claude Code를 `claude --plugin-dir <path>`로 직접 시작하는 경우 (OMC shim 우회), shell에서 `OMQ_PLUGIN_ROOT=<path>`를 내보내 HUD 번들이 plugin 로더와 동일한 checkout으로 확인되도록 하세요. 자세한 내용은 [REFERENCE.md의 Plugin directory flags 섹션](./docs/REFERENCE.md#plugin-directory-flags)을 참조하세요.
 
   <!-- TODO(i18n): verify translation -->
 - **스킬 학습** - 세션에서 재사용 가능한 패턴 추출
@@ -310,9 +310,9 @@ Claude Code 세션 이벤트를 [OpenClaw](https://openclaw.ai/) 게이트웨이
 
 | 변수 | 설명 |
 |------|------|
-| `OMC_OPENCLAW=1` | OpenClaw 활성화 |
-| `OMC_OPENCLAW_DEBUG=1` | 디버그 로그 활성화 |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | 설정 파일 경로 변경 |
+| `OMQ_OPENCLAW=1` | OpenClaw 활성화 |
+| `OMQ_OPENCLAW_DEBUG=1` | 디버그 로그 활성화 |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | 설정 파일 경로 변경 |
 
 **지원되는 훅 이벤트 (bridge.ts에서 6개 활성):**
 

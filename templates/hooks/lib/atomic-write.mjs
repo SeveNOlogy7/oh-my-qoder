@@ -106,7 +106,7 @@ export function atomicWriteFileSync(filePath, content) {
 }
 
 const LOCK_SCHEMA_VERSION = 1;
-function flockPath() { return process.env.NODE_ENV === 'test' && process.env.OMC_TEST_FLOCK_AVAILABLE === '0' ? null : existsSync('/usr/bin/flock') ? '/usr/bin/flock' : existsSync('/bin/flock') ? '/bin/flock' : null; }
+function flockPath() { return process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_FLOCK_AVAILABLE === '0' ? null : existsSync('/usr/bin/flock') ? '/usr/bin/flock' : existsSync('/bin/flock') ? '/bin/flock' : null; }
 const LOCK_REMOVAL_SCRIPT = String.raw`
 const fs = require('fs');
 const [operation, lockPath, expectedRaw] = process.argv.slice(1);
@@ -141,7 +141,7 @@ try { fs.unlinkSync(lockPath); process.exit(0); } catch { process.exit(3); }
 `;
 
 function processStartIdentity(pid) {
-  if (process.env.NODE_ENV === 'test' && process.env.OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID === String(pid)) return null;
+  if (process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID === String(pid)) return null;
   if (!Number.isSafeInteger(pid) || pid <= 0) return null;
   if (process.platform !== 'linux') return pid === process.pid ? String(Math.max(1, Math.floor(Date.now() - process.uptime() * 1000))) : null;
   try {
@@ -503,12 +503,12 @@ function sharedRecoveryArtifactsAuthorized(filePath, authorizeState, recoveryCla
 }
 
 function replacePrimaryDuringRecoveryForTest(filePath) {
-  if (process.env.NODE_ENV !== 'test' || process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH !== filePath || !process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64) return;
+  if (process.env.NODE_ENV !== 'test' || process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH !== filePath || !process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64) return;
   try {
-    atomicWriteFileSync(filePath, Buffer.from(process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64, 'base64').toString('utf8'));
+    atomicWriteFileSync(filePath, Buffer.from(process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64, 'base64').toString('utf8'));
   } finally {
-    delete process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64;
   }
 }
 

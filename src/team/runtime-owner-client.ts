@@ -417,7 +417,7 @@ function ownerAvailability(cwd: string, teamName: string): OwnerAvailability {
 }
 
 export function resolveRuntimeCliPath(): string {
-  if (process.env.OMC_RUNTIME_CLI_PATH) return process.env.OMC_RUNTIME_CLI_PATH;
+  if (process.env.OMQ_RUNTIME_CLI_PATH) return process.env.OMQ_RUNTIME_CLI_PATH;
   if (typeof __dirname !== 'undefined' && __dirname) {
     return basename(__dirname) === 'bridge'
       ? join(__dirname, 'runtime-cli.cjs')
@@ -462,14 +462,14 @@ async function bootstrapPersistentOwner(input: RecoverDeadWorkerOwnerInput, prio
       stdio: 'ignore',
       env: {
         ...process.env,
-        OMC_RECOVERY_OWNER_INPUT: JSON.stringify(input),
-        OMC_RECOVERY_OWNER_EXPECTED_EPOCH: String(expectedEpoch),
-        OMC_RECOVERY_OWNER_PREDECESSOR_EPOCH: String(predecessorEpoch),
-        OMC_RECOVERY_OWNER_PREDECESSOR_NONCE: predecessor?.nonce ?? '',
-        OMC_RECOVERY_OWNER_NONCE: bootstrapNonce,
-        OMC_RECOVERY_OWNER_PREDECESSOR_PID: String(predecessor?.pid ?? 0),
-        OMC_RECOVERY_OWNER_PREDECESSOR_STARTED_AT: predecessor?.process_started_at ?? '',
-        OMC_RECOVERY_OWNER_RECOVERY_ID: reservation.recovery_id,
+        OMQ_RECOVERY_OWNER_INPUT: JSON.stringify(input),
+        OMQ_RECOVERY_OWNER_EXPECTED_EPOCH: String(expectedEpoch),
+        OMQ_RECOVERY_OWNER_PREDECESSOR_EPOCH: String(predecessorEpoch),
+        OMQ_RECOVERY_OWNER_PREDECESSOR_NONCE: predecessor?.nonce ?? '',
+        OMQ_RECOVERY_OWNER_NONCE: bootstrapNonce,
+        OMQ_RECOVERY_OWNER_PREDECESSOR_PID: String(predecessor?.pid ?? 0),
+        OMQ_RECOVERY_OWNER_PREDECESSOR_STARTED_AT: predecessor?.process_started_at ?? '',
+        OMQ_RECOVERY_OWNER_RECOVERY_ID: reservation.recovery_id,
       },
     });
   } catch {

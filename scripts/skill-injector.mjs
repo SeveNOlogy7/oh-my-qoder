@@ -18,9 +18,9 @@ import { readStdin } from './lib/stdin.mjs';
 import { createRequire } from 'module';
 import { atomicWriteFileSync, ensureDirSync } from './lib/atomic-write.mjs';
 
-const skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map(token => token.trim());
-const isDisabled = process.env.DISABLE_OMC === '1' ||
-  process.env.DISABLE_OMC === 'true' ||
+const skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map(token => token.trim());
+const isDisabled = process.env.DISABLE_OMQ === '1' ||
+  process.env.DISABLE_OMQ === 'true' ||
   skipHooks.includes('skill-injector');
 
 let bridge = null;
@@ -40,7 +40,7 @@ let MAX_LEARNED_SKILLS_CONTEXT_CHARS;
 
 /**
  * Resolve the session id for hook context.
- * Payload session_id takes priority; falls back to OMC_SESSION_ID env var.
+ * Payload session_id takes priority; falls back to OMQ_SESSION_ID env var.
  *
  * @param {object|null} hookPayload - Parsed stdin payload (may be null)
  * @returns {string|undefined}
@@ -55,8 +55,8 @@ function resolveHookSessionId(hookPayload) {
       : undefined;
 
   const envId =
-    process.env.OMC_SESSION_ID && process.env.OMC_SESSION_ID.trim()
-      ? process.env.OMC_SESSION_ID.trim()
+    process.env.OMQ_SESSION_ID && process.env.OMQ_SESSION_ID.trim()
+      ? process.env.OMQ_SESSION_ID.trim()
       : undefined;
 
   return payloadId ?? envId;
@@ -92,9 +92,9 @@ function validateSessionId(sessionId) {
  * to startDir itself. Returns the .omq subdirectory of the found root.
  * Mirrors getOmcRoot from src/lib/worktree-paths.ts — inlined synchronously for .mjs.
  *
- * NOTE: OMC_STATE_DIR with content-hash is handled asynchronously in state-root.mjs.
- * This inline sync resolver skips OMC_STATE_DIR and always uses the walk-up result,
- * which is correct for the fallback path (bridge handles OMC_STATE_DIR when available).
+ * NOTE: OMQ_STATE_DIR with content-hash is handled asynchronously in state-root.mjs.
+ * This inline sync resolver skips OMQ_STATE_DIR and always uses the walk-up result,
+ * which is correct for the fallback path (bridge handles OMQ_STATE_DIR when available).
  *
  * @param {string} startDir - Directory to start from (data.cwd)
  * @returns {string} Absolute path to the .omq root directory

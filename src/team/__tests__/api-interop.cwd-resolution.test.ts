@@ -66,8 +66,8 @@ describe('team api working-directory resolution', () => {
   });
 
   afterEach(async () => {
-    delete process.env.OMC_TEAM_STATE_ROOT;
-    delete process.env.OMC_TEAM_WORKER;
+    delete process.env.OMQ_TEAM_STATE_ROOT;
+    delete process.env.OMQ_TEAM_WORKER;
     await rm(cwd, { recursive: true, force: true });
   });
 
@@ -92,9 +92,9 @@ describe('team api working-directory resolution', () => {
     expect(typeof (claimResult.data as { claimToken?: string }).claimToken).toBe('string');
   });
 
-  it('resolves workspace cwd from OMC_TEAM_STATE_ROOT when it points at a team-specific root', async () => {
+  it('resolves workspace cwd from OMQ_TEAM_STATE_ROOT when it points at a team-specific root', async () => {
     const teamStateRoot = await seedTeamState();
-    process.env.OMC_TEAM_STATE_ROOT = teamStateRoot;
+    process.env.OMQ_TEAM_STATE_ROOT = teamStateRoot;
 
     const nestedCwd = join(cwd, 'nested', 'worker');
     await mkdir(nestedCwd, { recursive: true });
@@ -121,8 +121,8 @@ describe('team api working-directory resolution', () => {
 
     seedRecoveryPhase(cwd, 'leader-recovery', 7);
     seedRecoveryPhase(foreignCwd, 'foreign-recovery', 99);
-    process.env.OMC_TEAM_STATE_ROOT = leaderStateRoot;
-    process.env.OMC_TEAM_WORKER = `${teamName}/worker-1`;
+    process.env.OMQ_TEAM_STATE_ROOT = leaderStateRoot;
+    process.env.OMQ_TEAM_WORKER = `${teamName}/worker-1`;
 
     await expect(executeTeamApiOperation('read-recovery-result', {
       team_name: teamName,

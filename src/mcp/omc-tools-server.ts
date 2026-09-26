@@ -34,7 +34,7 @@ interface ToolDef {
 
 
 // Aggregate all custom tools with category metadata (full list, unfiltered)
-const interopToolsEnabled = process.env.OMC_INTEROP_TOOLS_ENABLED === '1';
+const interopToolsEnabled = process.env.OMQ_INTEROP_TOOLS_ENABLED === '1';
 const interopTools: ToolDef[] = interopToolsEnabled
   ? tagCategory(getInteropTools() as unknown as ToolDef[], TOOL_CATEGORIES.INTEROP)
   : [];
@@ -54,7 +54,7 @@ const allTools: ToolDef[] = [
   ...interopTools,
 ];
 
-// Read OMC_DISABLE_TOOLS once at startup and filter tools accordingly
+// Read OMQ_DISABLE_TOOLS once at startup and filter tools accordingly
 const enabledTools: ToolDef[] = filterDisabledTools(allTools);
 
 // Convert to SDK tool format
@@ -72,7 +72,7 @@ const sdkTools = enabledTools.map(t =>
  * In-process MCP server exposing all OMC custom tools
  *
  * Tools will be available as mcp__t__<tool_name>.
- * Tools in disabled groups (via OMC_DISABLE_TOOLS) are excluded at startup.
+ * Tools in disabled groups (via OMQ_DISABLE_TOOLS) are excluded at startup.
  */
 export const omcToolsServer = createSdkMcpServer({
   name: "t",
@@ -82,7 +82,7 @@ export const omcToolsServer = createSdkMcpServer({
 
 /**
  * Tool names in MCP format for allowedTools configuration.
- * Only includes tools that are enabled (not disabled via OMC_DISABLE_TOOLS).
+ * Only includes tools that are enabled (not disabled via OMQ_DISABLE_TOOLS).
  */
 export const omcToolNames = enabledTools.map(t => `mcp__t__${t.name}`);
 

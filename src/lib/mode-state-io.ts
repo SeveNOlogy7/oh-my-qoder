@@ -23,7 +23,7 @@ import { atomicWriteJsonSync } from './atomic-write.js';
 
 type MutationLockOwner = { version: 1; pid: number; processStart: string; createdAt: string; nonce: string };
 type MutationLock = { fd: number; path: string; owner: MutationLockOwner } | { unlocked: true };
-function flockPath(): string | null { return process.env.NODE_ENV === 'test' && process.env.OMC_TEST_FLOCK_AVAILABLE === '0' ? null : existsSync('/usr/bin/flock') ? '/usr/bin/flock' : existsSync('/bin/flock') ? '/bin/flock' : null; }
+function flockPath(): string | null { return process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_FLOCK_AVAILABLE === '0' ? null : existsSync('/usr/bin/flock') ? '/usr/bin/flock' : existsSync('/bin/flock') ? '/bin/flock' : null; }
 const LOCK_REMOVAL_SCRIPT = String.raw`
 const fs = require('fs');
 const [operation, lockPath, expectedRaw] = process.argv.slice(1);
@@ -60,7 +60,7 @@ try { fs.unlinkSync(lockPath); process.exit(0); } catch { process.exit(3); }
 function processStartIdentity(pid: number): string | 'absent' | null {
   if (!Number.isSafeInteger(pid) || pid <= 0) return null;
   if (process.platform !== 'linux') return pid === process.pid ? String(Math.max(1, Math.floor(Date.now() - process.uptime() * 1000))) : null;
-  if (process.env.NODE_ENV === 'test' && process.env.OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID === String(pid)) return null;
+  if (process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID === String(pid)) return null;
   try {
     const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
     const end = stat.lastIndexOf(')');
@@ -199,13 +199,13 @@ export function clearStateFileLockedIf(
   recoveryOptions?: EmergencyRecoveryOptions,
 ): ConditionalClearResult {
   if (!recoverEmergencyStateFile(filePath, recoveryOptions)) return 'failed';
-  if (process.env.NODE_ENV === 'test' && process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH === filePath && process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64) {
+  if (process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH === filePath && process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64) {
     try {
-      const replacement = JSON.parse(Buffer.from(process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
+      const replacement = JSON.parse(Buffer.from(process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
       atomicWriteJsonSync(filePath, replacement);
     } finally {
-      delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
-      delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
+      delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
+      delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
     }
   }
   const lock = acquireMutationLock(filePath);
@@ -236,13 +236,13 @@ export function writeStateFileLockedIf(
   transform: (current: Record<string, unknown>) => Record<string, unknown>,
 ): ConditionalWriteResult {
   if (!recoverEmergencyStateFile(filePath)) return 'failed';
-  if (process.env.NODE_ENV === 'test' && process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH === filePath && process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64) {
+  if (process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH === filePath && process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64) {
     try {
-      const replacement = JSON.parse(Buffer.from(process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
+      const replacement = JSON.parse(Buffer.from(process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
       atomicWriteJsonSync(filePath, replacement);
     } finally {
-      delete process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH;
-      delete process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64;
+      delete process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH;
+      delete process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64;
     }
   }
   if (!existsSync(filePath)) return 'skipped';
@@ -275,13 +275,13 @@ export function writeStateFileLockedCreateIf(
   const lock = acquireMutationLock(filePath);
   if (!lock) return 'failed';
   try {
-    if (process.env.NODE_ENV === 'test' && process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH === filePath && process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64) {
+    if (process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH === filePath && process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64) {
       try {
-        const replacement = JSON.parse(Buffer.from(process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
+        const replacement = JSON.parse(Buffer.from(process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
         atomicWriteJsonSync(filePath, replacement);
       } finally {
-        delete process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH;
-        delete process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64;
+        delete process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH;
+        delete process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64;
       }
     }
     let current: Record<string, unknown> | null = null;
@@ -661,9 +661,9 @@ function sharedRecoveryArtifactsAuthorized(
 }
 
 function emergencyReplaceAtRecoveryBoundary(filePath: string): void {
-  if (process.env.NODE_ENV !== 'test' || process.env.OMC_TEST_EMERGENCY_RECOVERY_REPLACEMENT_PATH !== filePath || !process.env.OMC_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64) return;
+  if (process.env.NODE_ENV !== 'test' || process.env.OMQ_TEST_EMERGENCY_RECOVERY_REPLACEMENT_PATH !== filePath || !process.env.OMQ_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64) return;
   try {
-    const replacements = JSON.parse(Buffer.from(process.env.OMC_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Array<{ path: string; content: string }>;
+    const replacements = JSON.parse(Buffer.from(process.env.OMQ_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Array<{ path: string; content: string }>;
     const directory = dirname(filePath);
     for (const name of readdirSync(directory)) {
       if (name === basename(filePath) || name.startsWith(`${basename(filePath)}.emergency-`)) unlinkSync(join(directory, name));
@@ -673,8 +673,8 @@ function emergencyReplaceAtRecoveryBoundary(filePath: string): void {
       writeFileSync(replacement.path, replacement.content);
     }
   } finally {
-    delete process.env.OMC_TEST_EMERGENCY_RECOVERY_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_RECOVERY_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_RECOVERY_REPLACEMENT_BASE64;
   }
 }
 
@@ -806,7 +806,7 @@ function recoverDeadEmergencyStateFile(filePath: string, authorizeState?: Emerge
 }
 
 function emergencyCrashAt(phase: string): boolean {
-  return process.env.NODE_ENV === 'test' && process.env.OMC_TEST_EMERGENCY_CRASH_PHASE === phase;
+  return process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE === phase;
 }
 
 /** A writer that cannot capture its authenticated source relinquishes its claim. */
@@ -823,24 +823,24 @@ function abandonEmergencyJournalForTest(journalPath: string, journal: EmergencyM
 }
 
 function emergencyReplaceAfterPredicate(filePath: string): void {
-  if (process.env.NODE_ENV !== 'test' || process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH !== filePath || !process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64) return;
+  if (process.env.NODE_ENV !== 'test' || process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH !== filePath || !process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64) return;
   try {
-    const replacement = JSON.parse(Buffer.from(process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
+    const replacement = JSON.parse(Buffer.from(process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
     atomicWriteJsonSync(filePath, replacement);
   } finally {
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64;
   }
 }
 
 function emergencyReplaceAtCaptureBoundary(filePath: string): void {
-  if (process.env.NODE_ENV !== 'test' || process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH !== filePath || !process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64) return;
+  if (process.env.NODE_ENV !== 'test' || process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH !== filePath || !process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64) return;
   try {
-    const replacement = JSON.parse(Buffer.from(process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
+    const replacement = JSON.parse(Buffer.from(process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64, 'base64').toString('utf8')) as Record<string, unknown>;
     atomicWriteJsonSync(filePath, replacement);
   } finally {
-    delete process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_CAPTURE_REPLACEMENT_BASE64;
   }
 }
 

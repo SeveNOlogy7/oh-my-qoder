@@ -95,7 +95,7 @@ export function namedWorkflowRuntimeSupported(): boolean {
         return false;
       }
     })() &&
-    process.env.OMC_TEST_FLOCK_AVAILABLE !== "0" &&
+    process.env.OMQ_TEST_FLOCK_AVAILABLE !== "0" &&
     (existsSync("/usr/bin/flock") || existsSync("/bin/flock"))
   );
 }

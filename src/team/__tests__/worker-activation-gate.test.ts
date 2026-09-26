@@ -142,7 +142,7 @@ describe('worker recovery activation gate', () => {
       launchAttempt,
       [process.execPath, '--import', tsxLoader, '--input-type=module', '-e', gateRunner],
       cwd,
-      { providerEnv: { OMC_RECOVERY_GATE_SPEC: JSON.stringify(gate) }, releaseAfterSpawn: true },
+      { providerEnv: { OMQ_RECOVERY_GATE_SPEC: JSON.stringify(gate) }, releaseAfterSpawn: true },
     );
     const bootstrap = runWorkerLaunchBootstrap(spec);
     let rollbackComplete = false;

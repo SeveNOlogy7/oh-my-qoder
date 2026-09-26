@@ -108,7 +108,7 @@ describe('context-guard-stop safe recovery messaging (issue #1373)', () => {
       },
       {
         CLAUDE_PLUGIN_ROOT: process.cwd(),
-        OMC_CONTEXT_GUARD_THRESHOLD: '75',
+        OMQ_CONTEXT_GUARD_THRESHOLD: '75',
       },
     );
 
@@ -164,7 +164,7 @@ describe('context-guard-stop safe recovery messaging (issue #1373)', () => {
     writeFileSync(
       join(fakeBinDir, 'git'),
       '#!/usr/bin/env node\n' +
-      'require("fs").appendFileSync(process.env.OMC_FAKE_GIT_LOG, process.argv.slice(2).join(" ") + "\\n");\n' +
+      'require("fs").appendFileSync(process.env.OMQ_FAKE_GIT_LOG, process.argv.slice(2).join(" ") + "\\n");\n' +
       'process.exit(1);\n',
       { mode: 0o755 },
     );
@@ -182,7 +182,7 @@ describe('context-guard-stop safe recovery messaging (issue #1373)', () => {
       },
       {
         PATH: `${fakeBinDir}${delimiter}${process.env.PATH ?? ''}`,
-        OMC_FAKE_GIT_LOG: gitLogPath,
+        OMQ_FAKE_GIT_LOG: gitLogPath,
       },
     );
 

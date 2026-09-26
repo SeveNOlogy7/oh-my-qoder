@@ -185,12 +185,12 @@ if [ "$ACTIVE_PLUGIN_ROOT_NORMALIZED" = "$SCRIPT_PLUGIN_ROOT_NORMALIZED" ]; then
 else
   # Bounded re-exec (issue #3743): a defect that makes the guard compare
   # unequal roots forever must terminate loudly, not hang the user's shell.
-  REEXEC_DEPTH=$(( ${OMC_SETUP_REEXEC_DEPTH:-0} + 1 ))
+  REEXEC_DEPTH=$(( ${OMQ_SETUP_REEXEC_DEPTH:-0} + 1 ))
   if [ "$REEXEC_DEPTH" -gt 2 ]; then
     echo "ERROR: setup re-exec loop detected (depth $REEXEC_DEPTH); refusing to continue." >&2
     exit 1
   fi
-  exec env OMC_SETUP_REEXEC_DEPTH="$REEXEC_DEPTH" bash "${ACTIVE_PLUGIN_ROOT}/scripts/setup-claude-md.sh" "$MODE" "$INSTALL_STYLE"
+  exec env OMQ_SETUP_REEXEC_DEPTH="$REEXEC_DEPTH" bash "${ACTIVE_PLUGIN_ROOT}/scripts/setup-claude-md.sh" "$MODE" "$INSTALL_STYLE"
 fi
 COORDINATOR="${ACTIVE_PLUGIN_ROOT}/bridge/claude-md-coordinator.cjs"
 CANONICAL_CLAUDE_MD="${ACTIVE_PLUGIN_ROOT}/docs/CLAUDE.md"

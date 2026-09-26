@@ -36,7 +36,7 @@ function runKeywordDetector(prompt: string, cwd: string, sessionId: string) {
     env: {
       ...process.env,
       NODE_ENV: 'test',
-      OMC_SKIP_HOOKS: '',
+      OMQ_SKIP_HOOKS: '',
     },
     timeout: 15000,
   }).trim();

@@ -49,15 +49,15 @@ describe('AutopilotCancel', () => {
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
-    delete process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_FLOCK_AVAILABLE;
-    delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+    delete process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
+    delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
     delete process.env.CLAUDE_CONFIG_DIR;
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64;
   });
 
   describe('cancelAutopilot', () => {
@@ -198,8 +198,8 @@ describe('AutopilotCancel', () => {
       writeAutopilotState(testDir, observed, sessionId);
       const statePath = join(testDir, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
       const replacement = { ...observed, originalIdea: 'replacement run' };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       expect(clearAutopilot(testDir, sessionId).success).toBe(false);
       expect(readAutopilotState(testDir, sessionId)).toMatchObject({ active: true, originalIdea: 'replacement run' });
@@ -244,7 +244,7 @@ describe('AutopilotCancel', () => {
       const ralplanStatePath = join(testDir, '.omq', 'state', 'sessions', sessionId, 'ralplan-state.json');
       writeFileSync(ralplanStatePath, JSON.stringify({ active: true, session_id: sessionId, current_phase: 'ralplan' }));
       expect(validateNamedWorkflowStateStructure(readAutopilotState(testDir, sessionId)!, sessionId)).not.toBeNull();
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
       expect(cancelAutopilot(testDir, sessionId)).toMatchObject({ success: true, preservedState: { active: false, workflowRunId: state.workflowRunId } });
       expect(readAutopilotState(testDir, sessionId)).toMatchObject({ active: false, workflowRunId: state.workflowRunId });
@@ -272,9 +272,9 @@ describe('AutopilotCancel', () => {
       writeAutopilotState(testDir, state, sessionId);
       const statePath = resolveSessionStatePath('autopilot', sessionId, testDir);
       const replacement = { ...state, originalIdea: 'replacement run' };
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
-      process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       expect(cancelAutopilot(testDir, sessionId)).toMatchObject({ success: false, message: 'Autopilot run changed before cancellation; retry /cancel.' });
       expect(readAutopilotState(testDir, sessionId)).toMatchObject({ active: true, originalIdea: 'replacement run' });
@@ -555,8 +555,8 @@ describe('AutopilotCancel', () => {
       const pastTime = new Date(Date.now() - STALE_STATE_MAX_AGE_MS - 60_000);
       utimesSync(stateFile, pastTime, pastTime);
       const replacement = { ...observed, active: true, originalIdea: 'replacement run' };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = stateFile;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = stateFile;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       expect(canResumeAutopilot(testDir).canResume).toBe(false);
       expect(readAutopilotState(testDir)).toMatchObject({ active: true, originalIdea: 'replacement run' });
@@ -721,7 +721,7 @@ describe('AutopilotCancel', () => {
       writeAutopilotState(testDir, state);
       const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
       const before = require('fs').readFileSync(stateFile);
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
       expect(resumeAutopilot(testDir)).toMatchObject({ success: false, message: 'workflow_descriptor_integrity_failed' });
       expect(require('fs').readFileSync(stateFile)).toEqual(before);
@@ -767,8 +767,8 @@ describe('AutopilotCancel', () => {
       writeAutopilotState(testDir, state, sessionId);
       const replacement = structuredClone(state);
       replacement.pipelineTracking!.activationBoundary!.transcriptPath = `${encodedProject}${sep}nested${sep}..${sep}${sessionId}.jsonl`;
-      process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH = stateFile;
-      process.env.OMC_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH = stateFile;
+      process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
       expect(resumeAutopilot(testDir, sessionId)).toMatchObject({ success: false, message: 'workflow_descriptor_integrity_failed' });
       expect(readAutopilotState(testDir, sessionId)).toEqual(replacement);
 

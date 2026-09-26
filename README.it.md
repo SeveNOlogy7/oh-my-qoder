@@ -32,7 +32,7 @@ _Non imparare Claude Code. Usa semplicemente OMC._
 /oh-my-claudecode:omc-setup
 ```
 
-Se esegui OMC tramite `omc --plugin-dir <path>` o `claude --plugin-dir <path>`, aggiungi `--plugin-dir-mode` a `omc setup` (o esporta `OMC_PLUGIN_ROOT` prima) per evitare di duplicare abilità/agenti che il plugin fornisce già in fase di esecuzione. Consulta la [sezione Plugin directory flags in REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) per una matrice decisionale completa e tutti i flag disponibili.
+Se esegui OMC tramite `omc --plugin-dir <path>` o `claude --plugin-dir <path>`, aggiungi `--plugin-dir-mode` a `omc setup` (o esporta `OMQ_PLUGIN_ROOT` prima) per evitare di duplicare abilità/agenti che il plugin fornisce già in fase di esecuzione. Consulta la [sezione Plugin directory flags in REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) per una matrice decisionale completa e tutti i flag disponibili.
 
 <!-- TODO(i18n): verify translation -->
 
@@ -256,9 +256,9 @@ Inoltra gli eventi di sessione di Claude Code a un gateway [OpenClaw](https://op
 
 | Variabile | Descrizione |
 |-----------|-------------|
-| `OMC_OPENCLAW=1` | Abilita OpenClaw |
-| `OMC_OPENCLAW_DEBUG=1` | Abilita il logging di debug |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | Percorso alternativo del file di configurazione |
+| `OMQ_OPENCLAW=1` | Abilita OpenClaw |
+| `OMQ_OPENCLAW_DEBUG=1` | Abilita il logging di debug |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | Percorso alternativo del file di configurazione |
 
 **Eventi hook supportati (6 attivi in bridge.ts):**
 

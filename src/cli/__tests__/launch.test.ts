@@ -783,7 +783,7 @@ describe('launchCommand — env var propagation', () => {
   let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   // Save original env values to restore after each test
-  const envKeys = ['OMC_NOTIFY', 'OMC_OPENCLAW', 'OMC_TELEGRAM', 'OMC_DISCORD', 'OMC_SLACK', 'OMC_WEBHOOK', 'CLAUDECODE'] as const;
+  const envKeys = ['OMQ_NOTIFY', 'OMQ_OPENCLAW', 'OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'CLAUDECODE'] as const;
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
@@ -811,79 +811,79 @@ describe('launchCommand — env var propagation', () => {
     }
   });
 
-  it('bare --telegram sets OMC_TELEGRAM to 1', async () => {
+  it('bare --telegram sets OMQ_TELEGRAM to 1', async () => {
     await launchCommand(['--telegram']);
-    expect(process.env.OMC_TELEGRAM).toBe('1');
+    expect(process.env.OMQ_TELEGRAM).toBe('1');
   });
 
-  it('bare --discord sets OMC_DISCORD to 1', async () => {
+  it('bare --discord sets OMQ_DISCORD to 1', async () => {
     await launchCommand(['--discord']);
-    expect(process.env.OMC_DISCORD).toBe('1');
+    expect(process.env.OMQ_DISCORD).toBe('1');
   });
 
-  it('bare --slack sets OMC_SLACK to 1', async () => {
+  it('bare --slack sets OMQ_SLACK to 1', async () => {
     await launchCommand(['--slack']);
-    expect(process.env.OMC_SLACK).toBe('1');
+    expect(process.env.OMQ_SLACK).toBe('1');
   });
 
-  it('bare --webhook sets OMC_WEBHOOK to 1', async () => {
+  it('bare --webhook sets OMQ_WEBHOOK to 1', async () => {
     await launchCommand(['--webhook']);
-    expect(process.env.OMC_WEBHOOK).toBe('1');
+    expect(process.env.OMQ_WEBHOOK).toBe('1');
   });
 
-  it('bare --openclaw sets OMC_OPENCLAW to 1', async () => {
+  it('bare --openclaw sets OMQ_OPENCLAW to 1', async () => {
     await launchCommand(['--openclaw']);
-    expect(process.env.OMC_OPENCLAW).toBe('1');
+    expect(process.env.OMQ_OPENCLAW).toBe('1');
   });
 
-  it('--telegram=false overrides inherited OMC_TELEGRAM=1', async () => {
-    process.env.OMC_TELEGRAM = '1';
+  it('--telegram=false overrides inherited OMQ_TELEGRAM=1', async () => {
+    process.env.OMQ_TELEGRAM = '1';
     await launchCommand(['--telegram=false']);
-    expect(process.env.OMC_TELEGRAM).toBe('0');
+    expect(process.env.OMQ_TELEGRAM).toBe('0');
   });
 
-  it('--discord=false overrides inherited OMC_DISCORD=1', async () => {
-    process.env.OMC_DISCORD = '1';
+  it('--discord=false overrides inherited OMQ_DISCORD=1', async () => {
+    process.env.OMQ_DISCORD = '1';
     await launchCommand(['--discord=false']);
-    expect(process.env.OMC_DISCORD).toBe('0');
+    expect(process.env.OMQ_DISCORD).toBe('0');
   });
 
-  it('--slack=false overrides inherited OMC_SLACK=1', async () => {
-    process.env.OMC_SLACK = '1';
+  it('--slack=false overrides inherited OMQ_SLACK=1', async () => {
+    process.env.OMQ_SLACK = '1';
     await launchCommand(['--slack=false']);
-    expect(process.env.OMC_SLACK).toBe('0');
+    expect(process.env.OMQ_SLACK).toBe('0');
   });
 
-  it('--webhook=false overrides inherited OMC_WEBHOOK=1', async () => {
-    process.env.OMC_WEBHOOK = '1';
+  it('--webhook=false overrides inherited OMQ_WEBHOOK=1', async () => {
+    process.env.OMQ_WEBHOOK = '1';
     await launchCommand(['--webhook=false']);
-    expect(process.env.OMC_WEBHOOK).toBe('0');
+    expect(process.env.OMQ_WEBHOOK).toBe('0');
   });
 
-  it('--openclaw=false overrides inherited OMC_OPENCLAW=1', async () => {
-    process.env.OMC_OPENCLAW = '1';
+  it('--openclaw=false overrides inherited OMQ_OPENCLAW=1', async () => {
+    process.env.OMQ_OPENCLAW = '1';
     await launchCommand(['--openclaw=false']);
-    expect(process.env.OMC_OPENCLAW).toBe('0');
+    expect(process.env.OMQ_OPENCLAW).toBe('0');
   });
 
-  it('--telegram=0 overrides inherited OMC_TELEGRAM=1', async () => {
-    process.env.OMC_TELEGRAM = '1';
+  it('--telegram=0 overrides inherited OMQ_TELEGRAM=1', async () => {
+    process.env.OMQ_TELEGRAM = '1';
     await launchCommand(['--telegram=0']);
-    expect(process.env.OMC_TELEGRAM).toBe('0');
+    expect(process.env.OMQ_TELEGRAM).toBe('0');
   });
 
   it('preserves inherited platform env vars when no platform flags are passed', async () => {
-    process.env.OMC_TELEGRAM = '1';
-    process.env.OMC_DISCORD = '1';
-    process.env.OMC_SLACK = '1';
-    process.env.OMC_WEBHOOK = '1';
+    process.env.OMQ_TELEGRAM = '1';
+    process.env.OMQ_DISCORD = '1';
+    process.env.OMQ_SLACK = '1';
+    process.env.OMQ_WEBHOOK = '1';
 
     await launchCommand(['--print']);
 
-    expect(process.env.OMC_TELEGRAM).toBe('1');
-    expect(process.env.OMC_DISCORD).toBe('1');
-    expect(process.env.OMC_SLACK).toBe('1');
-    expect(process.env.OMC_WEBHOOK).toBe('1');
+    expect(process.env.OMQ_TELEGRAM).toBe('1');
+    expect(process.env.OMQ_DISCORD).toBe('1');
+    expect(process.env.OMQ_SLACK).toBe('1');
+    expect(process.env.OMQ_WEBHOOK).toBe('1');
   });
 
   it('OMC flags are stripped from args passed to Claude', async () => {
@@ -1893,7 +1893,7 @@ describe('TMUX_ENV_FORWARD allowlist', () => {
   });
 
   it('includes all OMC launch flags', () => {
-    for (const name of ['OMC_NOTIFY', 'OMC_OPENCLAW', 'OMC_TELEGRAM', 'OMC_DISCORD', 'OMC_SLACK', 'OMC_WEBHOOK']) {
+    for (const name of ['OMQ_NOTIFY', 'OMQ_OPENCLAW', 'OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK']) {
       expect(TMUX_ENV_FORWARD).toContain(name);
     }
   });
@@ -1945,13 +1945,13 @@ describe('runClaude outside-tmux — env forwarding', () => {
 
   it('does not inject exports when no forwarded vars are set', () => {
     delete process.env.CLAUDE_CONFIG_DIR;
-    delete process.env.OMC_NOTIFY;
-    delete process.env.OMC_OPENCLAW;
-    delete process.env.OMC_TELEGRAM;
-    delete process.env.OMC_DISCORD;
-    delete process.env.OMC_SLACK;
-    delete process.env.OMC_WEBHOOK;
-    delete process.env.OMC_PLUGIN_ROOT;
+    delete process.env.OMQ_NOTIFY;
+    delete process.env.OMQ_OPENCLAW;
+    delete process.env.OMQ_TELEGRAM;
+    delete process.env.OMQ_DISCORD;
+    delete process.env.OMQ_SLACK;
+    delete process.env.OMQ_WEBHOOK;
+    delete process.env.OMQ_PLUGIN_ROOT;
     vi.mocked(isNativeWindowsShell).mockReturnValue(false);
 
     runClaude('/tmp', [], 'sid');

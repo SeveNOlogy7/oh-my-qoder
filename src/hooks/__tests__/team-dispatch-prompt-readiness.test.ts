@@ -98,9 +98,9 @@ describe('team dispatch provider-aware prompt readiness', () => {
     await mkdir(join(teamDir, 'dispatch'), { recursive: true });
 
     savedEnv = { ...process.env };
-    delete process.env.OMC_TEAM_WORKER;
-    process.env.OMC_TEAM_DISPATCH_ISSUE_COOLDOWN_MS = '0';
-    process.env.OMC_TEAM_DISPATCH_TRIGGER_COOLDOWN_MS = '0';
+    delete process.env.OMQ_TEAM_WORKER;
+    process.env.OMQ_TEAM_DISPATCH_ISSUE_COOLDOWN_MS = '0';
+    process.env.OMQ_TEAM_DISPATCH_TRIGGER_COOLDOWN_MS = '0';
   });
 
   afterEach(async () => {

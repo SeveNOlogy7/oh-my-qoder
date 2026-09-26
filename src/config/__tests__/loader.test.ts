@@ -16,10 +16,10 @@ const ALL_KEYS = [
   "CLAUDE_MODEL",
   "ANTHROPIC_MODEL",
   "ANTHROPIC_BASE_URL",
-  "OMC_ROUTING_FORCE_INHERIT",
-  "OMC_MODEL_HIGH",
-  "OMC_MODEL_MEDIUM",
-  "OMC_MODEL_LOW",
+  "OMQ_ROUTING_FORCE_INHERIT",
+  "OMQ_MODEL_HIGH",
+  "OMQ_MODEL_MEDIUM",
+  "OMQ_MODEL_LOW",
   "CLAUDE_CODE_BEDROCK_OPUS_MODEL",
   "CLAUDE_CODE_BEDROCK_SONNET_MODEL",
   "CLAUDE_CODE_BEDROCK_HAIKU_MODEL",
@@ -28,12 +28,12 @@ const ALL_KEYS = [
   "ANTHROPIC_DEFAULT_SONNET_MODEL",
   "ANTHROPIC_DEFAULT_HAIKU_MODEL",
   "ANTHROPIC_DEFAULT_FABLE_MODEL",
-  "OMC_MODEL_ALIAS_HAIKU",
-  "OMC_MODEL_ALIAS_SONNET",
-  "OMC_MODEL_ALIAS_OPUS",
-  "OMC_MODEL_ALIAS_FABLE",
-  "OMC_DELEGATION_ROUTING_ENABLED",
-  "OMC_DELEGATION_ROUTING_DEFAULT_PROVIDER",
+  "OMQ_MODEL_ALIAS_HAIKU",
+  "OMQ_MODEL_ALIAS_SONNET",
+  "OMQ_MODEL_ALIAS_OPUS",
+  "OMQ_MODEL_ALIAS_FABLE",
+  "OMQ_DELEGATION_ROUTING_ENABLED",
+  "OMQ_DELEGATION_ROUTING_DEFAULT_PROVIDER",
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -88,7 +88,7 @@ describe("loadConfig() — auto-forceInherit for non-standard providers", () => 
   });
 
   it("does NOT auto-enable forceInherit for non-Claude OMC tier env vars", () => {
-    process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
+    process.env.OMQ_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
     expect(config.agents?.executor?.model).toBe("glm-5.1:cloud");
@@ -103,14 +103,14 @@ describe("loadConfig() — auto-forceInherit for non-standard providers", () => 
 
   it("does NOT auto-enable forceInherit when direct Claude CLAUDE_MODEL beats stale OMC tier env vars", () => {
     process.env.CLAUDE_MODEL = "claude-sonnet-5";
-    process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
+    process.env.OMQ_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
   });
 
   it("does NOT auto-enable forceInherit when direct Claude ANTHROPIC_MODEL beats stale OMC tier env vars", () => {
     process.env.ANTHROPIC_MODEL = "claude-sonnet-5";
-    process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
+    process.env.OMQ_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
     expect(config.routing?.forceInherit).toBe(false);
   });
@@ -126,11 +126,11 @@ describe("loadConfig() — auto-forceInherit for non-standard providers", () => 
     expect(config.routing?.forceInherit).toBe(false);
   });
 
-  it("respects explicit OMC_ROUTING_FORCE_INHERIT=false even on Bedrock", () => {
+  it("respects explicit OMQ_ROUTING_FORCE_INHERIT=false even on Bedrock", () => {
     // When user explicitly sets the var (even to false), auto-detection is skipped.
-    // This matches the guard: process.env.OMC_ROUTING_FORCE_INHERIT === undefined
+    // This matches the guard: process.env.OMQ_ROUTING_FORCE_INHERIT === undefined
     process.env.ANTHROPIC_MODEL = "global.anthropic.claude-sonnet-4-6[1m]";
-    process.env.OMC_ROUTING_FORCE_INHERIT = "false";
+    process.env.OMQ_ROUTING_FORCE_INHERIT = "false";
     const config = loadConfig();
     // env var is defined → auto-detection skipped → remains at default (false)
     expect(config.routing?.forceInherit).toBe(false);
@@ -192,26 +192,26 @@ describe("loadConfig() — model alias env overrides", () => {
     restore(saved);
   });
 
-  it("reads OMC_MODEL_ALIAS_OPUS=fable into routing.modelAliases (issue #3726)", () => {
-    process.env.OMC_MODEL_ALIAS_OPUS = "fable";
+  it("reads OMQ_MODEL_ALIAS_OPUS=fable into routing.modelAliases (issue #3726)", () => {
+    process.env.OMQ_MODEL_ALIAS_OPUS = "fable";
     const config = loadConfig();
     expect(config.routing?.modelAliases?.opus).toBe("fable");
   });
 
-  it("reads OMC_MODEL_ALIAS_FABLE into routing.modelAliases (issue #3726)", () => {
-    process.env.OMC_MODEL_ALIAS_FABLE = "opus";
+  it("reads OMQ_MODEL_ALIAS_FABLE into routing.modelAliases (issue #3726)", () => {
+    process.env.OMQ_MODEL_ALIAS_FABLE = "opus";
     const config = loadConfig();
     expect(config.routing?.modelAliases?.fable).toBe("opus");
   });
 
   it("lowercases alias env values", () => {
-    process.env.OMC_MODEL_ALIAS_HAIKU = "SONNET";
+    process.env.OMQ_MODEL_ALIAS_HAIKU = "SONNET";
     const config = loadConfig();
     expect(config.routing?.modelAliases?.haiku).toBe("sonnet");
   });
 
   it("preserves inherit as an alias target", () => {
-    process.env.OMC_MODEL_ALIAS_OPUS = "inherit";
+    process.env.OMQ_MODEL_ALIAS_OPUS = "inherit";
     const config = loadConfig();
     expect(config.routing?.modelAliases?.opus).toBe("inherit");
   });
@@ -460,7 +460,7 @@ describe("team.roleRouting (Option E)", () => {
   let originalCwd: string;
 
   beforeEach(() => {
-    saved = saveAndClear([...ALL_KEYS, "OMC_TEAM_ROLE_OVERRIDES"] as const);
+    saved = saveAndClear([...ALL_KEYS, "OMQ_TEAM_ROLE_OVERRIDES"] as const);
     originalCwd = process.cwd();
   });
 
@@ -555,7 +555,7 @@ describe("team.roleRouting (Option E)", () => {
     }
   });
 
-  it("OMC_TEAM_ROLE_OVERRIDES env wins over file config", () => {
+  it("OMQ_TEAM_ROLE_OVERRIDES env wins over file config", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-env-"));
     try {
       const claudeDir = join(tempDir, ".claude");
@@ -566,7 +566,7 @@ describe("team.roleRouting (Option E)", () => {
           team: { roleRouting: { critic: { provider: "claude", model: "HIGH" } } },
         }),
       );
-      process.env.OMC_TEAM_ROLE_OVERRIDES = JSON.stringify({
+      process.env.OMQ_TEAM_ROLE_OVERRIDES = JSON.stringify({
         critic: { provider: "codex" },
       });
       process.chdir(tempDir);
@@ -577,14 +577,14 @@ describe("team.roleRouting (Option E)", () => {
     }
   });
 
-  it("OMC_TEAM_ROLE_OVERRIDES with invalid JSON is ignored with warning", () => {
+  it("OMQ_TEAM_ROLE_OVERRIDES with invalid JSON is ignored with warning", () => {
     const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      process.env.OMC_TEAM_ROLE_OVERRIDES = "{not valid json";
+      process.env.OMQ_TEAM_ROLE_OVERRIDES = "{not valid json";
       const config = loadConfig();
       expect(config.team?.roleRouting).toEqual({});
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("OMC_TEAM_ROLE_OVERRIDES"),
+        expect.stringContaining("OMQ_TEAM_ROLE_OVERRIDES"),
       );
     } finally {
       consoleWarnSpy.mockRestore();
@@ -726,7 +726,7 @@ describe("delegation routing deprecation warnings", () => {
   });
 
   it("warns when env delegation default provider is deprecated", () => {
-    process.env.OMC_DELEGATION_ROUTING_DEFAULT_PROVIDER = "gemini";
+    process.env.OMQ_DELEGATION_ROUTING_DEFAULT_PROVIDER = "gemini";
 
     loadConfig();
 

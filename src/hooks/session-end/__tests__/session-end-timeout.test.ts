@@ -90,8 +90,8 @@ describe('SessionEnd foreground manifest handoff (issue #1700)', () => {
 
   it('resolves the legacy cleanup budget environment setting compatibly', () => {
     expect(resolveSessionEndCleanupBudgetMs({})).toBe(2000);
-    expect(resolveSessionEndCleanupBudgetMs({ OMC_SESSIONEND_CLEANUP_BUDGET_MS: '250' })).toBe(250);
-    expect(resolveSessionEndCleanupBudgetMs({ OMC_SESSIONEND_CLEANUP_BUDGET_MS: '25000' })).toBe(10000);
-    expect(resolveSessionEndCleanupBudgetMs({ OMC_SESSIONEND_CLEANUP_BUDGET_MS: 'not-a-number' })).toBe(2000);
+    expect(resolveSessionEndCleanupBudgetMs({ OMQ_SESSIONEND_CLEANUP_BUDGET_MS: '250' })).toBe(250);
+    expect(resolveSessionEndCleanupBudgetMs({ OMQ_SESSIONEND_CLEANUP_BUDGET_MS: '25000' })).toBe(10000);
+    expect(resolveSessionEndCleanupBudgetMs({ OMQ_SESSIONEND_CLEANUP_BUDGET_MS: 'not-a-number' })).toBe(2000);
   });
 });

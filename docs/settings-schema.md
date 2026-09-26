@@ -66,7 +66,7 @@ user `~/.config/claude-omc/config.jsonc` (project takes precedence).
 - Omitted or empty array: no change, every keyword routes as before.
 - A listed skill is dropped before conflict resolution, so neither its magic-keyword invocation nor its mode-injection context is emitted.
 - `cancel` is never disableable, even if listed: it is the emergency stop for active modes.
-- To disable all keyword routing at once instead, set `OMC_SKIP_HOOKS=keyword-detector`.
+- To disable all keyword routing at once instead, set `OMQ_SKIP_HOOKS=keyword-detector`.
 
 ## `autopilot.workflows`
 

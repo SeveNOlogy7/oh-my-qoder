@@ -18,9 +18,9 @@ import type { DevContainerContext } from './devcontainer.js';
 import type { LspServerConfig } from './servers.js';
 import { getServerForFile, commandExists } from './servers.js';
 
-/** Default timeout (ms) for LSP requests. Override with OMC_LSP_TIMEOUT_MS env var. */
+/** Default timeout (ms) for LSP requests. Override with OMQ_LSP_TIMEOUT_MS env var. */
 export const DEFAULT_LSP_REQUEST_TIMEOUT_MS: number = (() => {
-  return readPositiveIntEnv('OMC_LSP_TIMEOUT_MS', 15_000);
+  return readPositiveIntEnv('OMQ_LSP_TIMEOUT_MS', 15_000);
 })();
 
 export function getLspRequestTimeout(
@@ -849,9 +849,9 @@ export class LspClient {
 }
 
 /** Idle timeout: disconnect LSP clients unused for 5 minutes */
-export const IDLE_TIMEOUT_MS = readPositiveIntEnv('OMC_LSP_IDLE_TIMEOUT_MS', 5 * 60 * 1000);
+export const IDLE_TIMEOUT_MS = readPositiveIntEnv('OMQ_LSP_IDLE_TIMEOUT_MS', 5 * 60 * 1000);
 /** Check for idle clients every 60 seconds */
-export const IDLE_CHECK_INTERVAL_MS = readPositiveIntEnv('OMC_LSP_IDLE_CHECK_INTERVAL_MS', 60 * 1000);
+export const IDLE_CHECK_INTERVAL_MS = readPositiveIntEnv('OMQ_LSP_IDLE_CHECK_INTERVAL_MS', 60 * 1000);
 
 /**
  * Client manager - maintains a pool of LSP clients per workspace/server

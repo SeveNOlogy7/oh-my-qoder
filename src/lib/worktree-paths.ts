@@ -4,8 +4,8 @@
  * Provides strict path validation and resolution for .omq/ paths,
  * ensuring all operations stay within the worktree boundary.
  *
- * Supports OMC_STATE_DIR environment variable for centralized state storage.
- * When set, state is stored at $OMC_STATE_DIR/{project-identifier}/ instead
+ * Supports OMQ_STATE_DIR environment variable for centralized state storage.
+ * When set, state is stored at $OMQ_STATE_DIR/{project-identifier}/ instead
  * of {worktree}/.omq/. This preserves state across worktree deletions.
  */
 
@@ -25,7 +25,7 @@ import { encodeProjectPath } from '../utils/encode-project-path.js';
  * The marker can be empty or a JSON file with optional fields:
  *   { "id": "stable-workspace-identifier" }
  *
- * Resolution order in getOmcRoot(): OMC_STATE_DIR > workspace marker > git > cwd.
+ * Resolution order in getOmcRoot(): OMQ_STATE_DIR > workspace marker > git > cwd.
  */
 export const WORKSPACE_MARKER = '.omq-workspace';
 
@@ -78,7 +78,7 @@ interface WorkspaceMarkerConfig {
  * stray marker in $HOME or above as a workspace anchor.
  */
 export function findWorkspaceRoot(startDir?: string): string | null {
-  if (process.env.OMC_DISABLE_MULTIREPO === '1') return null;
+  if (process.env.OMQ_DISABLE_MULTIREPO === '1') return null;
   const effectiveStart = startDir || process.cwd();
   let current: string;
   try {
@@ -332,7 +332,7 @@ export function validatePath(inputPath: string): void {
 }
 
 // ============================================================================
-// OMC_STATE_DIR SUPPORT (Issue #1014)
+// OMQ_STATE_DIR SUPPORT (Issue #1014)
 // ============================================================================
 
 /** Track which dual-dir warnings have been logged to avoid repeated warnings */
@@ -389,7 +389,7 @@ export function warnSiblingRetrofit(workspaceAnchor: string, sessionId?: string)
     `[omc] workspace-retrofit warning: .omq-workspace anchor found at ${workspaceAnchor}\n` +
     `  but sibling repos have pre-existing local .omq/state/ content:\n${dirList}\n` +
     `  Shared state will go to: ${sharedOmc}\n` +
-    `  To migrate legacy state: OMC_MIGRATE_LEGACY_STATE=1 omc setup\n` +
+    `  To migrate legacy state: OMQ_MIGRATE_LEGACY_STATE=1 omc setup\n` +
     `  Or manually copy state files to ${sharedOmc}/state/\n`
   );
 
@@ -453,7 +453,7 @@ export function clearDualDirWarnings(): void {
  */
 export function getProjectIdentifier(worktreeRoot?: string): string {
   // NOTE: intentionally does NOT apply the submodule→superproject climb. The
-  // project identifier is a state *identity* (used for OMC_STATE_DIR centralized
+  // project identifier is a state *identity* (used for OMQ_STATE_DIR centralized
   // dirs, which never live inside the working tree), and a submodule must keep
   // its OWN identity — see the "should not change identifier for submodules"
   // test. The #3349 climb applies only to the on-disk `.omq/` *location*
@@ -533,7 +533,7 @@ export function getProjectIdentifier(worktreeRoot?: string): string {
 /**
  * Get the .omq root directory path.
  *
- * When OMC_STATE_DIR is set, returns $OMC_STATE_DIR/{project-identifier}/
+ * When OMQ_STATE_DIR is set, returns $OMQ_STATE_DIR/{project-identifier}/
  * instead of {worktree}/.omq/. This allows centralized state storage that
  * survives worktree deletion.
  *
@@ -541,9 +541,9 @@ export function getProjectIdentifier(worktreeRoot?: string): string {
  * @returns Absolute path to the omc root directory
  */
 export function getOmcRoot(worktreeRoot?: string): string {
-  const customDir = process.env.OMC_STATE_DIR;
+  const customDir = process.env.OMQ_STATE_DIR;
   if (customDir) {
-    // Centralized state lives at $OMC_STATE_DIR/{projectId} — outside the
+    // Centralized state lives at $OMQ_STATE_DIR/{projectId} — outside the
     // working tree — so the #3349 stray-`.omq`-in-submodule problem does not
     // apply here. Identity must NOT climb: use the literal git toplevel
     // (getGitTopLevel) for the no-arg fallback so a submodule launched without
@@ -910,7 +910,7 @@ export interface SessionStatePaths {
  * Options for resolveSessionStatePaths.
  *
  * `migrate`: opt-in one-shot legacy→session copy. Default: false (read-legacy-as-
- * fallback, write session-only). When migrate=true OR `OMC_MIGRATE_LEGACY_STATE=1`
+ * fallback, write session-only). When migrate=true OR `OMQ_MIGRATE_LEGACY_STATE=1`
  * is set, callers that wrap their write through a migration helper will copy the
  * legacy file using a `.migrating` sentinel + atomic rename for crash recovery.
  */
@@ -966,7 +966,7 @@ export function resolveSessionStatePaths(
  * Checked by writers that wrap migration around their write step.
  */
 export function isLegacyStateMigrationEnabled(): boolean {
-  return process.env.OMC_MIGRATE_LEGACY_STATE === '1';
+  return process.env.OMQ_MIGRATE_LEGACY_STATE === '1';
 }
 
 /**
@@ -1042,17 +1042,17 @@ export function ensureSessionStateDir(sessionId: string, worktreeRoot?: string):
  */
 export function resolveToWorktreeRoot(directory?: string): string {
   // The resolved root feeds BOTH on-disk `.omq/` placement AND, under
-  // OMC_STATE_DIR, the centralized-state *identity* (getProjectIdentifier).
+  // OMQ_STATE_DIR, the centralized-state *identity* (getProjectIdentifier).
   // The #3349 submodule→superproject climb exists ONLY to place `.omq/` at the
   // superproject working tree; it must NOT change a submodule's centralized
   // identity (that contract is documented on getProjectIdentifier/getOmcRoot).
-  // So when OMC_STATE_DIR is set — where on-disk placement is moot and identity
+  // So when OMQ_STATE_DIR is set — where on-disk placement is moot and identity
   // is all that matters — resolve to the literal git toplevel (no climb) so a
   // hook/session launched inside a submodule keeps its own id instead of
   // merging into the parent superproject's. Non-submodule repos and linked
   // worktrees are unaffected: with no superproject the two resolvers are equal.
   // See PR #3350 Codex review (hook normalization / submodule identity).
-  const resolveRoot = process.env.OMC_STATE_DIR ? getGitTopLevel : getWorktreeRoot;
+  const resolveRoot = process.env.OMQ_STATE_DIR ? getGitTopLevel : getWorktreeRoot;
   if (directory) {
     const resolved = resolve(directory);
     const root = resolveRoot(resolved);

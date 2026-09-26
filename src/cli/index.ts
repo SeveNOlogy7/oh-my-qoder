@@ -16,7 +16,7 @@ import chalk from 'chalk';
 import { join } from 'path';
 import { writeFileSync, existsSync } from 'fs';
 import { getClaudeConfigDir } from '../utils/config-dir.js';
-import { OMC_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
+import { OMQ_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
 import {
   loadConfig,
   getConfigPaths,
@@ -71,7 +71,7 @@ const version = getRuntimePackageVersion();
 
 /**
  * Apply a --plugin-dir option value: resolve to absolute path, warn if it
- * disagrees with a pre-existing OMC_PLUGIN_ROOT env var, then set the env var
+ * disagrees with a pre-existing OMQ_PLUGIN_ROOT env var, then set the env var
  * so all subsequent code in this process sees the correct plugin root.
  *
  * No-op when `rawPath` is undefined/empty (option was not passed).
@@ -85,15 +85,15 @@ export function applyPluginDirOption(rawPath: string | undefined): void {
     console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
     process.exit(1);
   }
-  const existing = process.env[OMC_PLUGIN_ROOT_ENV];
+  const existing = process.env[OMQ_PLUGIN_ROOT_ENV];
   if (existing && existing !== resolved) {
     console.warn(
       chalk.yellow(
-        `Warning: --plugin-dir "${resolved}" overrides ${OMC_PLUGIN_ROOT_ENV}="${existing}"`
+        `Warning: --plugin-dir "${resolved}" overrides ${OMQ_PLUGIN_ROOT_ENV}="${existing}"`
       )
     );
   }
-  process.env[OMC_PLUGIN_ROOT_ENV] = resolved;
+  process.env[OMQ_PLUGIN_ROOT_ENV] = resolved;
 }
 
 const program = new Command();
@@ -142,12 +142,12 @@ Examples:
   $ omc launch --madmax                Explicit launch with flags
 
 Options:
-  --notify <bool>   Enable/disable CCNotifier events. false sets OMC_NOTIFY=0
+  --notify <bool>   Enable/disable CCNotifier events. false sets OMQ_NOTIFY=0
                     and suppresses all stop/session-start/session-idle notifications.
                     Default: true
 
 Environment:
-  OMC_NOTIFY=0              Suppress all notifications (set by --notify false)
+  OMQ_NOTIFY=0              Suppress all notifications (set by --notify false)
 `)
   .action(async (args: string[]) => {
     await launchCommand(args);
@@ -292,7 +292,7 @@ Examples:
   $ omc config-stop-callback discord-bot --profile ops --enable --token <tk> --channel-id <id>
 
   # Select profile at launch:
-  $ OMC_NOTIFY_PROFILE=work claude`)
+  $ OMQ_NOTIFY_PROFILE=work claude`)
   .action(async (type: string, options) => {
     // When --profile is used, route to profile-based config
     if (options.profile) {
@@ -585,7 +585,7 @@ Examples:
   $ omc config-stop-callback discord --profile work --enable --webhook <url>
 
   # Select profile at launch:
-  $ OMC_NOTIFY_PROFILE=work claude`)
+  $ OMQ_NOTIFY_PROFILE=work claude`)
   .action(async (name: string | undefined, options) => {
     const config = getOMCConfig() as OMCConfig & { notificationProfiles?: Record<string, any> };
     const profiles = config.notificationProfiles || {};
@@ -606,9 +606,9 @@ Examples:
           console.log(`  ${chalk.bold(pName)} [${status}] — ${platforms || 'no platforms'}`);
         }
       }
-      const activeProfile = process.env.OMC_NOTIFY_PROFILE;
+      const activeProfile = process.env.OMQ_NOTIFY_PROFILE;
       if (activeProfile) {
-        console.log(chalk.gray(`\nActive profile (OMC_NOTIFY_PROFILE): ${activeProfile}`));
+        console.log(chalk.gray(`\nActive profile (OMQ_NOTIFY_PROFILE): ${activeProfile}`));
       }
       return;
     }
@@ -1231,7 +1231,7 @@ capabilitiesCmd
 const doctorCmd = program
   .command('doctor')
   .description('Diagnostic tools for troubleshooting OMC installation')
-  .option('--plugin-dir <path>', 'Override OMC plugin root directory (sets OMC_PLUGIN_ROOT)')
+  .option('--plugin-dir <path>', 'Override OMC plugin root directory (sets OMQ_PLUGIN_ROOT)')
   .option('--team-routing', 'Probe CLI presence for every provider referenced by team.roleRouting')
   .option('--json', 'Output as JSON (used with --team-routing)')
   .addHelpText('after', `
@@ -1269,7 +1269,7 @@ doctorCmd
   .command('conflicts')
   .description('Check for plugin coexistence issues and configuration conflicts')
   .option('--json', 'Output as JSON')
-  .option('--plugin-dir <path>', 'Override OMC plugin root directory (sets OMC_PLUGIN_ROOT)')
+  .option('--plugin-dir <path>', 'Override OMC plugin root directory (sets OMQ_PLUGIN_ROOT)')
   .addHelpText('after', `
 Examples:
   $ omc doctor conflicts                        Check for configuration issues
@@ -1323,12 +1323,12 @@ Examples:
 
     // Dev plugin-dir mode: skip agent/skill copy because the plugin already
     // provides them at runtime via `claude --plugin-dir <path>` (or `omc --plugin-dir`).
-    // Auto-detected from OMC_PLUGIN_ROOT (set by `omc --plugin-dir` in src/cli/launch.ts).
+    // Auto-detected from OMQ_PLUGIN_ROOT (set by `omc --plugin-dir` in src/cli/launch.ts).
     let pluginDirMode = !!options.pluginDirMode;
-    if (!pluginDirMode && process.env[OMC_PLUGIN_ROOT_ENV]) {
+    if (!pluginDirMode && process.env[OMQ_PLUGIN_ROOT_ENV]) {
       pluginDirMode = true;
       if (!options.quiet) {
-        console.log(chalk.gray(`Detected ${OMC_PLUGIN_ROOT_ENV} — entering dev plugin-dir mode`));
+        console.log(chalk.gray(`Detected ${OMQ_PLUGIN_ROOT_ENV} — entering dev plugin-dir mode`));
       }
     }
     if (pluginDirMode && useLocalBundledSkills) {
@@ -1563,10 +1563,10 @@ export function buildProgram(): Command {
 }
 
 // Parse arguments — skipped only when an importing test explicitly opts out
-// via OMC_CLI_SKIP_PARSE. We do NOT key off process.env.VITEST because the
+// via OMQ_CLI_SKIP_PARSE. We do NOT key off process.env.VITEST because the
 // CLI is also spawned as a child process from tests (e.g. cli-boot.test.ts),
 // and child processes inherit VITEST from the parent vitest worker, which
 // would cause the CLI to silently exit with no output.
-if (!process.env.OMC_CLI_SKIP_PARSE) {
+if (!process.env.OMQ_CLI_SKIP_PARSE) {
   program.parse();
 }

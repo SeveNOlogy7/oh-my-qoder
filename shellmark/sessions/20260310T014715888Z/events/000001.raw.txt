@@ -1079,7 +1079,7 @@ $ npm run test
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/omc-session-end-dedupe-KEXZkH'[39m }
 
 [90mstderr[2m | src/team/__tests__/runtime-prompt-mode.test.ts[2m > [22m[2mspawnWorkerForTask – prompt mode (Gemini & Codex)[2m > [22m[2mnon-prompt worker throws when pane never becomes ready and resets task to pending
-[22m[39m[tmux-session] waitForPaneReady: pane %42 timed out after 40ms (set OMC_SHELL_READY_TIMEOUT_MS to tune)
+[22m[39m[tmux-session] waitForPaneReady: pane %42 timed out after 40ms (set OMQ_SHELL_READY_TIMEOUT_MS to tune)
 
 [90mstderr[2m | src/__tests__/delegation-enforcement-levels.test.ts[2m > [22m[2mdelegation-enforcement-levels[2m > [22m[2mprocessPreToolUse integration via processHook[2m > [22m[2mcalls enforcement before HUD tracking
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test-project'[39m }
@@ -1159,13 +1159,13 @@ $ npm run test
 [90mstderr[2m | src/hooks/__tests__/bridge-openclaw.test.ts[2m > [22m[2mbridge-level regression tests[2m > [22m[2mpre-tool-use calls _openclaw.wake for AskUserQuestion
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test'[39m }
 
-[90mstderr[2m | src/hooks/session-end/__tests__/openclaw-session-end.test.ts[2m > [22m[2msession-end OpenClaw behavior (issue #1456)[2m > [22m[2mwakes OpenClaw from the bridge during session-end when OMC_OPENCLAW=1
+[90mstderr[2m | src/hooks/session-end/__tests__/openclaw-session-end.test.ts[2m > [22m[2msession-end OpenClaw behavior (issue #1456)[2m > [22m[2mwakes OpenClaw from the bridge during session-end when OMQ_OPENCLAW=1
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/omc-session-end-claw-nMH8jp'[39m }
 
-[90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mDISABLE_OMC flag[2m > [22m[2mshould process normally when DISABLE_OMC is not set
+[90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mDISABLE_OMC flag[2m > [22m[2mshould process normally when DISABLE_OMQ is not set
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test'[39m }
 
-[90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mDISABLE_OMC flag[2m > [22m[2mshould process normally when DISABLE_OMC=false
+[90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mDISABLE_OMC flag[2m > [22m[2mshould process normally when DISABLE_OMQ=false
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test'[39m }
 
 [90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mOMC_SKIP_HOOKS flag[2m > [22m[2mshould process normally when hook type is not in skip list
@@ -1174,10 +1174,10 @@ $ npm run test
 [90mstderr[2m | src/hooks/session-end/__tests__/openclaw-session-end.test.ts[2m > [22m[2msession-end OpenClaw behavior (issue #1456)[2m > [22m[2mdoes not call wakeOpenClaw directly when processSessionEnd is invoked without the bridge
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/omc-session-end-claw-bxVKy6'[39m }
 
-[90mstderr[2m | src/hooks/session-end/__tests__/openclaw-session-end.test.ts[2m > [22m[2msession-end OpenClaw behavior (issue #1456)[2m > [22m[2mdoes not call wakeOpenClaw when OMC_OPENCLAW is not set
+[90mstderr[2m | src/hooks/session-end/__tests__/openclaw-session-end.test.ts[2m > [22m[2msession-end OpenClaw behavior (issue #1456)[2m > [22m[2mdoes not call wakeOpenClaw when OMQ_OPENCLAW is not set
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/omc-session-end-claw-M2QPnI'[39m }
 
-[90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mOMC_SKIP_HOOKS flag[2m > [22m[2mshould process normally when OMC_SKIP_HOOKS is empty
+[90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mOMC_SKIP_HOOKS flag[2m > [22m[2mshould process normally when OMQ_SKIP_HOOKS is empty
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test'[39m }
 
 [90mstderr[2m | src/hooks/__tests__/bridge.test.ts[2m > [22m[2mprocessHook - Environment Kill-Switches[2m > [22m[2mPerformance[2m > [22m[2mshould have no performance impact when flags are not set
@@ -1482,7 +1482,7 @@ hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
 hint: 'development'. The just-created branch can be renamed via this command:
 hint: 
 hint: 	git branch -m <name>
-[90mstderr[2m | src/__tests__/delegation-enforcer.test.ts[2m > [22m[2mdelegation-enforcer[2m > [22m[2mprocessPreToolUse[2m > [22m[2mlogs warning only when OMC_DEBUG=true and model injected
+[90mstderr[2m | src/__tests__/delegation-enforcer.test.ts[2m > [22m[2mdelegation-enforcer[2m > [22m[2mprocessPreToolUse[2m > [22m[2mlogs warning only when OMQ_DEBUG=true and model injected
 [22m[39m[OMC] Auto-injecting model: sonnet for executor (normalized from claude-sonnet-4-6)
 
 hint: Using 'master' as the name for the initial branch. This default branch name
@@ -1951,10 +1951,10 @@ Use '--' to separate paths from revisions, like this:
 [90mstderr[2m | src/hooks/__tests__/bridge-routing.test.ts[2m > [22m[2mprocessHook - Routing Matrix[2m > [22m[2minput normalization[2m > [22m[2mshould handle already-camelCase input without breaking
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test-routing'[39m }
 
-[90mstderr[2m | src/hooks/__tests__/bridge-routing.test.ts[2m > [22m[2mprocessHook - Routing Matrix[2m > [22m[2mOMC_SKIP_HOOKS kill-switch[2m > [22m[2mshould process normally with empty OMC_SKIP_HOOKS
+[90mstderr[2m | src/hooks/__tests__/bridge-routing.test.ts[2m > [22m[2mprocessHook - Routing Matrix[2m > [22m[2mOMC_SKIP_HOOKS kill-switch[2m > [22m[2mshould process normally with empty OMQ_SKIP_HOOKS
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test-routing'[39m }
 
-[90mstderr[2m | src/hooks/__tests__/bridge-routing.test.ts[2m > [22m[2mprocessHook - Routing Matrix[2m > [22m[2mDISABLE_OMC kill-switch[2m > [22m[2mshould process normally when DISABLE_OMC=false
+[90mstderr[2m | src/hooks/__tests__/bridge-routing.test.ts[2m > [22m[2mprocessHook - Routing Matrix[2m > [22m[2mDISABLE_OMC kill-switch[2m > [22m[2mshould process normally when DISABLE_OMQ=false
 [22m[39m[worktree] non-git directory provided, falling back to process root { directory: [32m'/tmp/test-routing'[39m }
 
 [90mstderr[2m | src/hooks/__tests__/bridge-routing.test.ts[2m > [22m[2mprocessHook - Routing Matrix[2m > [22m[2mRegression #858 — snake_case fields reach handlers after normalization[2m > [22m[2msession-end: snake_case input reaches handler without crashing

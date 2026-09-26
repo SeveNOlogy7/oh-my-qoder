@@ -32,7 +32,7 @@
 /omc-setup
 ```
 
-Si ejecuta OMC mediante `omc --plugin-dir <path>` o `claude --plugin-dir <path>`, agregue `--plugin-dir-mode` a `omc setup` (o exporte `OMC_PLUGIN_ROOT` antes) para evitar duplicar habilidades/agentes que el complemento ya proporciona en tiempo de ejecución. Consulte la [sección Plugin directory flags en REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) para una matriz de decisión completa y todos los indicadores disponibles.
+Si ejecuta OMC mediante `omc --plugin-dir <path>` o `claude --plugin-dir <path>`, agregue `--plugin-dir-mode` a `omc setup` (o exporte `OMQ_PLUGIN_ROOT` antes) para evitar duplicar habilidades/agentes que el complemento ya proporciona en tiempo de ejecución. Consulte la [sección Plugin directory flags en REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) para una matriz de decisión completa y todos los indicadores disponibles.
 
 <!-- TODO(i18n): verify translation -->
 
@@ -296,9 +296,9 @@ Reenvía eventos de sesión de Claude Code a un gateway de [OpenClaw](https://op
 
 | Variable | Descripción |
 |----------|-------------|
-| `OMC_OPENCLAW=1` | Habilitar OpenClaw |
-| `OMC_OPENCLAW_DEBUG=1` | Habilitar registro de depuración |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | Ruta alternativa del archivo de configuración |
+| `OMQ_OPENCLAW=1` | Habilitar OpenClaw |
+| `OMQ_OPENCLAW_DEBUG=1` | Habilitar registro de depuración |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | Ruta alternativa del archivo de configuración |
 
 **Eventos de hook soportados (6 activos en bridge.ts):**
 

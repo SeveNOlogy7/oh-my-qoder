@@ -67,29 +67,29 @@ describe('worker-bootstrap', () => {
     });
 
     it('supports team-root placeholders for worktree-backed trigger paths', () => {
-      expect(generateTriggerMessage('test-team', 'worker-1', '$OMC_TEAM_STATE_ROOT'))
-        .toContain('$OMC_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
-      expect(generateTriggerMessage('test-team', 'worker-1', '$OMC_TEAM_STATE_ROOT'))
-        .not.toContain('$OMC_TEAM_STATE_ROOT/team/test-team');
-      expect(generateTriggerMessage('test-team', 'worker-1', '$OMC_TEAM_STATE_ROOT'))
+      expect(generateTriggerMessage('test-team', 'worker-1', '$OMQ_TEAM_STATE_ROOT'))
+        .toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
+      expect(generateTriggerMessage('test-team', 'worker-1', '$OMQ_TEAM_STATE_ROOT'))
+        .not.toContain('$OMQ_TEAM_STATE_ROOT/team/test-team');
+      expect(generateTriggerMessage('test-team', 'worker-1', '$OMQ_TEAM_STATE_ROOT'))
         .toContain('work now');
-      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMC_TEAM_STATE_ROOT'))
-        .toContain('$OMC_TEAM_STATE_ROOT/mailbox/worker-1.json');
-      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMC_TEAM_STATE_ROOT'))
-        .not.toContain('$OMC_TEAM_STATE_ROOT/team/test-team');
-      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMC_TEAM_STATE_ROOT'))
+      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMQ_TEAM_STATE_ROOT'))
+        .toContain('$OMQ_TEAM_STATE_ROOT/mailbox/worker-1.json');
+      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMQ_TEAM_STATE_ROOT'))
+        .not.toContain('$OMQ_TEAM_STATE_ROOT/team/test-team');
+      expect(generateMailboxTriggerMessage('test-team', 'worker-1', 2, '$OMQ_TEAM_STATE_ROOT'))
         .toContain('report progress');
     });
 
     it('renders canonical team-root paths in worktree overlays', () => {
-      const overlay = generateWorkerOverlay({ ...baseParams, instructionStateRoot: '$OMC_TEAM_STATE_ROOT' });
-      expect(overlay).toContain('touch $OMC_TEAM_STATE_ROOT/workers/worker-1/.ready');
-      expect(overlay).toContain('Read $OMC_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
-      expect(overlay).toContain('Write to $OMC_TEAM_STATE_ROOT/workers/worker-1/status.json');
-      expect(overlay).toContain('$OMC_TEAM_STATE_ROOT/workers/worker-1/shutdown-ack.json');
-      expect(overlay).toContain('OMC_WORKER_LAUNCH_ATTEMPT_ID');
-      expect(overlay).toContain('"launch_attempt_id": "<exact OMC_WORKER_LAUNCH_ATTEMPT_ID>"');
-      expect(overlay).not.toContain('$OMC_TEAM_STATE_ROOT/team/test-team');
+      const overlay = generateWorkerOverlay({ ...baseParams, instructionStateRoot: '$OMQ_TEAM_STATE_ROOT' });
+      expect(overlay).toContain('touch $OMQ_TEAM_STATE_ROOT/workers/worker-1/.ready');
+      expect(overlay).toContain('Read $OMQ_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
+      expect(overlay).toContain('Write to $OMQ_TEAM_STATE_ROOT/workers/worker-1/status.json');
+      expect(overlay).toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-1/shutdown-ack.json');
+      expect(overlay).toContain('OMQ_WORKER_LAUNCH_ATTEMPT_ID');
+      expect(overlay).toContain('"launch_attempt_id": "<exact OMQ_WORKER_LAUNCH_ATTEMPT_ID>"');
+      expect(overlay).not.toContain('$OMQ_TEAM_STATE_ROOT/team/test-team');
     });
 
     it('uses a short prompt-mode startup pointer instead of lifecycle/task text', () => {
@@ -200,9 +200,9 @@ describe('worker-bootstrap', () => {
   describe('getWorkerEnv', () => {
     it('returns correct env vars', () => {
       const env = getWorkerEnv('my-team', 'worker-2', 'gemini');
-      expect(env.OMC_TEAM_WORKER).toBe('my-team/worker-2');
-      expect(env.OMC_TEAM_NAME).toBe('my-team');
-      expect(env.OMC_WORKER_AGENT_TYPE).toBe('gemini');
+      expect(env.OMQ_TEAM_WORKER).toBe('my-team/worker-2');
+      expect(env.OMQ_TEAM_NAME).toBe('my-team');
+      expect(env.OMQ_WORKER_AGENT_TYPE).toBe('gemini');
     });
   });
   describe('overlay control character safety', () => {
@@ -221,7 +221,7 @@ describe('worker-bootstrap', () => {
 
     it('overlay uses backtick-delimited metadata references instead of NUL bytes', () => {
       const overlay = generateWorkerOverlay(baseParams);
-      expect(overlay).toContain('`OMC_WORKER_LAUNCH_ATTEMPT_ID`');
+      expect(overlay).toContain('`OMQ_WORKER_LAUNCH_ATTEMPT_ID`');
       expect(overlay).toContain('`launch_attempt_id`');
     });
   });

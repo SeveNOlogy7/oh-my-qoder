@@ -6,8 +6,8 @@ vi.mock('../commands/doctor-team-routing.js', () => ({
   doctorTeamRoutingCommand: doctorTeamRoutingCommandMock,
 }));
 
-const originalSkipParse = process.env.OMC_CLI_SKIP_PARSE;
-process.env.OMC_CLI_SKIP_PARSE = '1';
+const originalSkipParse = process.env.OMQ_CLI_SKIP_PARSE;
+process.env.OMQ_CLI_SKIP_PARSE = '1';
 
 async function parseDoctor(args: string[]): Promise<void> {
   vi.resetModules();
@@ -29,8 +29,8 @@ describe('doctor team-routing Commander integration', () => {
   });
 
   afterAll(() => {
-    if (originalSkipParse === undefined) delete process.env.OMC_CLI_SKIP_PARSE;
-    else process.env.OMC_CLI_SKIP_PARSE = originalSkipParse;
+    if (originalSkipParse === undefined) delete process.env.OMQ_CLI_SKIP_PARSE;
+    else process.env.OMQ_CLI_SKIP_PARSE = originalSkipParse;
   });
 
   it('dispatches doctor team-routing --json without probing real providers', async () => {

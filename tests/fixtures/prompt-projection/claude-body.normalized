@@ -53,7 +53,7 @@ Before concluding: zero pending tasks, tests passing, verifier evidence collecte
 <hooks_and_context>
 Hooks inject `<system-reminder>` tags. Key patterns: `hook success: Success` (proceed), `[MAGIC KEYWORD: ...]` (invoke skill), `The boulder never stops` (continuation mode active).
 Persistence: `<remember>` (7 days), `<remember priority>` (permanent).
-Kill switches: `DISABLE_OMC`, `OMC_SKIP_HOOKS` (comma-separated).
+Kill switches: `DISABLE_OMQ`, `OMQ_SKIP_HOOKS` (comma-separated).
 </hooks_and_context>
 
 <cancellation>
@@ -61,7 +61,7 @@ Kill switches: `DISABLE_OMC`, `OMC_SKIP_HOOKS` (comma-separated).
 </cancellation>
 
 <worktree_paths>
-State root: `.omq/` by default, or `$OMC_STATE_DIR/{project-id}/` when `OMC_STATE_DIR` is set, or the parent `.omq/` when a `.omq-workspace` marker anchors a multi-repo workspace. Runtime state includes `.omq/state/`, `.omq/state/sessions/{sessionId}/`, `.omq/notepad.md`, `.omq/project-memory.json`, `.omq/plans/`, `.omq/research/`, `.omq/logs/`, `.omq/artifacts/`, `.omq/handoffs/`, and `.omq/ultragoal/`. These are ignored operational artifacts by default; `.omq/skills/**` is the intentional committable exception for project-scoped skills. In linked git worktrees, local `.omq/` state is removed with the worktree unless centralized via `OMC_STATE_DIR`.
+State root: `.omq/` by default, or `$OMQ_STATE_DIR/{project-id}/` when `OMQ_STATE_DIR` is set, or the parent `.omq/` when a `.omq-workspace` marker anchors a multi-repo workspace. Runtime state includes `.omq/state/`, `.omq/state/sessions/{sessionId}/`, `.omq/notepad.md`, `.omq/project-memory.json`, `.omq/plans/`, `.omq/research/`, `.omq/logs/`, `.omq/artifacts/`, `.omq/handoffs/`, and `.omq/ultragoal/`. These are ignored operational artifacts by default; `.omq/skills/**` is the intentional committable exception for project-scoped skills. In linked git worktrees, local `.omq/` state is removed with the worktree unless centralized via `OMQ_STATE_DIR`.
 </worktree_paths>
 
 ## Setup

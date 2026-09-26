@@ -235,7 +235,7 @@ describe('shutdownTeamV2 detached worktree cleanup', () => {
     await shutdownTeamV2(teamName, repoDir, { timeoutMs: 0 });
 
     const inbox = readFileSync(join(teamRoot, 'workers', 'worker-wt', 'inbox.md'), 'utf-8');
-    expect(inbox).toContain('$OMC_TEAM_STATE_ROOT/workers/worker-wt/shutdown-ack.json');
+    expect(inbox).toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-wt/shutdown-ack.json');
     expect(inbox).not.toContain(`Write your ack to: .omq/state/team/${teamName}`);
   });
 

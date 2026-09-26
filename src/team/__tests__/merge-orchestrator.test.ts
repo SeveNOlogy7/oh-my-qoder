@@ -174,7 +174,7 @@ function defaultHappyPath(_repoRoot: string, leaderBranch: string): void {
 
 beforeEach(() => {
   mocks.reset();
-  process.env.OMC_RUNTIME_V2 = '1';
+  process.env.OMQ_RUNTIME_V2 = '1';
 });
 
 describe('Git process construction', () => {
@@ -206,7 +206,7 @@ describe('Git process construction', () => {
 });
 
 afterEach(() => {
-  delete process.env.OMC_RUNTIME_V2;
+  delete process.env.OMQ_RUNTIME_V2;
 });
 
 // ---------------------------------------------------------------------------
@@ -299,8 +299,8 @@ describe('validateBranchName guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('M5 v2 gate', () => {
-  it('allows unset OMC_RUNTIME_V2 because runtime v2 is default-on', async () => {
-    delete process.env.OMC_RUNTIME_V2;
+  it('allows unset OMQ_RUNTIME_V2 because runtime v2 is default-on', async () => {
+    delete process.env.OMQ_RUNTIME_V2;
     const repoRoot = makeRepoRoot();
     try {
       const cfg = defaultConfig(repoRoot);
@@ -312,8 +312,8 @@ describe('M5 v2 gate', () => {
     }
   });
 
-  it('throws when OMC_RUNTIME_V2=0', async () => {
-    process.env.OMC_RUNTIME_V2 = '0';
+  it('throws when OMQ_RUNTIME_V2=0', async () => {
+    process.env.OMQ_RUNTIME_V2 = '0';
     const repoRoot = makeRepoRoot();
     try {
       const cfg = defaultConfig(repoRoot);

@@ -17,16 +17,16 @@ describe('self-improve path scoping helpers', () => {
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'omq-self-improve-paths-'));
-    savedSessionId = process.env.OMC_SESSION_ID;
-    delete process.env.OMC_SESSION_ID;
+    savedSessionId = process.env.OMQ_SESSION_ID;
+    delete process.env.OMQ_SESSION_ID;
   });
 
   afterEach(() => {
     rmSync(root, { recursive: true, force: true });
     if (savedSessionId !== undefined) {
-      process.env.OMC_SESSION_ID = savedSessionId;
+      process.env.OMQ_SESSION_ID = savedSessionId;
     } else {
-      delete process.env.OMC_SESSION_ID;
+      delete process.env.OMQ_SESSION_ID;
     }
   });
 

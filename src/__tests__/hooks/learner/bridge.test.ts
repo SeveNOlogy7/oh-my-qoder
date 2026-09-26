@@ -516,11 +516,11 @@ Mixed trigger instructions`,
       );
     });
 
-    it("does not write project-local .omq when OMC_STATE_DIR is set", () => {
+    it("does not write project-local .omq when OMQ_STATE_DIR is set", () => {
       const centralizedDir = join(tmpdir(), `omc-state-dir-${Date.now()}`);
       mkdirSync(centralizedDir, { recursive: true });
-      const previousOmcStateDir = process.env.OMC_STATE_DIR;
-      process.env.OMC_STATE_DIR = centralizedDir;
+      const previousOmcStateDir = process.env.OMQ_STATE_DIR;
+      process.env.OMQ_STATE_DIR = centralizedDir;
       try {
         markSkillsInjected(
           "omc-state-dir-test",
@@ -538,9 +538,9 @@ Mixed trigger instructions`,
         expect(found).toHaveLength(1);
       } finally {
         if (previousOmcStateDir === undefined) {
-          delete process.env.OMC_STATE_DIR;
+          delete process.env.OMQ_STATE_DIR;
         } else {
-          process.env.OMC_STATE_DIR = previousOmcStateDir;
+          process.env.OMQ_STATE_DIR = previousOmcStateDir;
         }
         rmSync(centralizedDir, { recursive: true, force: true });
       }

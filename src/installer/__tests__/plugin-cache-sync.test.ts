@@ -42,7 +42,7 @@ describe('syncInstalledPluginPayload', () => {
     tempRoot = mkdtempSync(join(tmpdir(), 'omc-plugin-cache-sync-'));
     process.env.CLAUDE_CONFIG_DIR = join(tempRoot, '.claude');
     delete process.env.CLAUDE_PLUGIN_ROOT;
-    delete process.env.OMC_PLUGIN_ROOT;
+    delete process.env.OMQ_PLUGIN_ROOT;
   });
 
   afterEach(() => {

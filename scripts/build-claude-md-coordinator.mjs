@@ -19,8 +19,8 @@ await esbuild.build({
   outfile,
   external: ['node:crypto', 'node:fs', 'node:path'],
   define: {
-    __OMC_COORDINATOR_ENGINE_VERSION__: JSON.stringify(packageJson.version),
-    __OMC_COORDINATOR_SOURCE_SHA256__: JSON.stringify(sourceSha256),
+    __OMQ_COORDINATOR_ENGINE_VERSION__: JSON.stringify(packageJson.version),
+    __OMQ_COORDINATOR_SOURCE_SHA256__: JSON.stringify(sourceSha256),
   },
 });
 console.error(`Built ${outfile}`);

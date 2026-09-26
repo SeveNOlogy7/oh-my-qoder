@@ -151,9 +151,9 @@ function createMinimalDaemonEnv(): NodeJS.ProcessEnv {
       env[key] = process.env[key];
     }
   }
-  // Forward OMC_* env vars so the daemon can call getNotificationConfig()
+  // Forward OMQ_* env vars so the daemon can call getNotificationConfig()
   for (const key of Object.keys(process.env)) {
-    if (key.startsWith('OMC_')) {
+    if (key.startsWith('OMQ_')) {
       env[key] = process.env[key];
     }
   }

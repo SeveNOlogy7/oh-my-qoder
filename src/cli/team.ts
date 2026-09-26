@@ -98,7 +98,7 @@ export interface TeamStartInput {
   /**
    * When true, the v2 runtime starts the merge orchestrator: per-commit
    * auto-merge to the leader branch and auto-rebase fanout to other workers.
-   * Equivalent to setting OMC_TEAMS_AUTO_MERGE=1. Requires OMC_RUNTIME_V2=1.
+   * Equivalent to setting OMQ_TEAMS_AUTO_MERGE=1. Requires OMQ_RUNTIME_V2=1.
    */
   autoMerge?: boolean;
 }
@@ -152,7 +152,7 @@ interface TeamPanesFile {
 }
 
 function getTeamWorkerIdentityFromEnv(env: NodeJS.ProcessEnv = process.env): string | null {
-  const omc = typeof env.OMC_TEAM_WORKER === 'string' ? env.OMC_TEAM_WORKER.trim() : '';
+  const omc = typeof env.OMQ_TEAM_WORKER === 'string' ? env.OMQ_TEAM_WORKER.trim() : '';
   if (omc) return omc;
   const omx = typeof env.OMX_TEAM_WORKER === 'string' ? env.OMX_TEAM_WORKER.trim() : '';
   return omx || null;
@@ -194,12 +194,12 @@ async function assertTeamSpawnAllowed(cwd: string, env: NodeJS.ProcessEnv = proc
 }
 
 function resolveJobsDir(env: NodeJS.ProcessEnv = process.env): string {
-  return env.OMC_JOBS_DIR || getGlobalOmcStatePath('team-jobs');
+  return env.OMQ_JOBS_DIR || getGlobalOmcStatePath('team-jobs');
 }
 
 function resolveRuntimeCliPath(env: NodeJS.ProcessEnv = process.env): string {
-  if (env.OMC_RUNTIME_CLI_PATH) {
-    return env.OMC_RUNTIME_CLI_PATH;
+  if (env.OMQ_RUNTIME_CLI_PATH) {
+    return env.OMQ_RUNTIME_CLI_PATH;
   }
 
   const moduleDir = dirname(fileURLToPath(import.meta.url));
@@ -406,8 +406,8 @@ export async function startTeamJob(input: TeamStartInput): Promise<TeamStartResu
   const child = spawn(process.execPath, [runtimeCliPath], {
     env: {
       ...process.env,
-      OMC_JOB_ID: jobId,
-      OMC_JOBS_DIR: jobsDir,
+      OMQ_JOB_ID: jobId,
+      OMQ_JOBS_DIR: jobsDir,
     },
     detached: true,
     stdio: ['pipe', 'ignore', 'ignore'],
@@ -831,15 +831,15 @@ Usage:
   omc team [ralph] <N:agent-type[:role]> "task" [--json] [--cwd DIR] [--new-window]
 
 Worktrees:
-  Native per-worker git worktree mode is opt-in/config-gated with team.ops.worktreeMode or OMC_TEAM_WORKTREE_MODE=detached|named.
+  Native per-worker git worktree mode is opt-in/config-gated with team.ops.worktreeMode or OMQ_TEAM_WORKTREE_MODE=detached|named.
   Status JSON includes workspace_mode, worktree_mode, team_state_root, and per-worker worktree metadata.
 
 Auto-merge (v2-only):
   --auto-merge          Enable per-commit auto-merge to leader and auto-rebase fanout.
                         Each worker runs in a dedicated git worktree on omc-team/{team}/{worker}.
                         Bursts of rapid worker commits coalesce to a single merge of HEAD.
-                        Requires OMC_RUNTIME_V2=1. Leader branch must not be 'main' or 'master'.
-                        Equivalent to OMC_TEAMS_AUTO_MERGE=1.
+                        Requires OMQ_RUNTIME_V2=1. Leader branch must not be 'main' or 'master'.
+                        Equivalent to OMQ_TEAMS_AUTO_MERGE=1.
 
 Examples:
   omc team start --agent codex --count 2 --task "review auth flow" --new-window
@@ -872,8 +872,8 @@ function parseStartArgs(args: string[]): StartArgsParsed {
   let pollIntervalMs: number | undefined;
   let sentinelGateTimeoutMs: number | undefined;
   let sentinelGatePollIntervalMs: number | undefined;
-  // --auto-merge / OMC_TEAMS_AUTO_MERGE=1 enables the merge orchestrator (v2-only).
-  let autoMerge: boolean = process.env.OMC_TEAMS_AUTO_MERGE === '1';
+  // --auto-merge / OMQ_TEAMS_AUTO_MERGE=1 enables the merge orchestrator (v2-only).
+  let autoMerge: boolean = process.env.OMQ_TEAMS_AUTO_MERGE === '1';
 
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
@@ -1262,7 +1262,7 @@ function parseLegacyStartAlias(args: string[]): TeamLegacyStartArgs | null {
   let json = false;
   let cwd = process.cwd();
   let newWindow = false;
-  let autoMerge: boolean = process.env.OMC_TEAMS_AUTO_MERGE === '1';
+  let autoMerge: boolean = process.env.OMQ_TEAMS_AUTO_MERGE === '1';
   const taskParts: string[] = [];
   for (let i = index; i < args.length; i += 1) {
     const token = args[i];

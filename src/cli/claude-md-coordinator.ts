@@ -6,10 +6,10 @@ import { executeClaudeMdTransaction, type ClaudeMdTransactionResult } from '../i
 
 export const CLAUDE_MD_COORDINATOR_SCHEMA_VERSION = 1;
 /** These literals are replaced in the packed coordinator. Defaults keep the ordinary TS module importable. */
-declare const __OMC_COORDINATOR_ENGINE_VERSION__: string | undefined;
-declare const __OMC_COORDINATOR_SOURCE_SHA256__: string | undefined;
-const COMPILED_ENGINE_VERSION = typeof __OMC_COORDINATOR_ENGINE_VERSION__ === 'string' ? __OMC_COORDINATOR_ENGINE_VERSION__ : '';
-const COMPILED_SOURCE_SHA256 = typeof __OMC_COORDINATOR_SOURCE_SHA256__ === 'string' ? __OMC_COORDINATOR_SOURCE_SHA256__ : '';
+declare const __OMQ_COORDINATOR_ENGINE_VERSION__: string | undefined;
+declare const __OMQ_COORDINATOR_SOURCE_SHA256__: string | undefined;
+const COMPILED_ENGINE_VERSION = typeof __OMQ_COORDINATOR_ENGINE_VERSION__ === 'string' ? __OMQ_COORDINATOR_ENGINE_VERSION__ : '';
+const COMPILED_SOURCE_SHA256 = typeof __OMQ_COORDINATOR_SOURCE_SHA256__ === 'string' ? __OMQ_COORDINATOR_SOURCE_SHA256__ : '';
 
 export interface ClaudeMdCoordinatorHandshake {
   schemaVersion: typeof CLAUDE_MD_COORDINATOR_SCHEMA_VERSION;

@@ -89,7 +89,7 @@ function invokeStop(f: Fixture, extraEnv: Record<string, string> = {}) {
       HOME: f.home,
       USERPROFILE: f.home,
       CLAUDE_CONFIG_DIR: f.claudeConfigDir,
-      OMC_PERSISTENT_MODE_TIMEOUT_MS: '3000',
+      OMQ_PERSISTENT_MODE_TIMEOUT_MS: '3000',
       ...extraEnv,
     },
     timeout: 20_000,

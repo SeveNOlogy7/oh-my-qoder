@@ -85,7 +85,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
     mkdirSync(TEST_PROJECT_CLAUDE_DIR, { recursive: true });
     process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
     process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
-    process.env.OMC_HOME = join(TEST_PROJECT_DIR, '.omq-home');
+    process.env.OMQ_HOME = join(TEST_PROJECT_DIR, '.omq-home');
     process.env.CODEX_HOME = join(TEST_PROJECT_DIR, '.codex');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
   });
@@ -94,7 +94,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
     cwdSpy?.mockRestore();
     delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
-    delete process.env.OMC_HOME;
+    delete process.env.OMQ_HOME;
     delete process.env.CODEX_HOME;
     for (const dir of [TEST_CLAUDE_DIR, TEST_PROJECT_DIR]) {
       if (dir && existsSync(dir)) {
@@ -352,7 +352,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
     }));
     writeFileSync(join(codexDir, 'config.toml'), 'model = "gpt-5"\n');
 
-    process.env.OMC_HOME = registryDir;
+    process.env.OMQ_HOME = registryDir;
     process.env.CODEX_HOME = codexDir;
 
     const report = runConflictCheck();
@@ -362,7 +362,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
     expect(report.mcpRegistrySync.codexMissing).toEqual(['gitnexus']);
     expect(report.hasConflicts).toBe(true);
 
-    delete process.env.OMC_HOME;
+    delete process.env.OMQ_HOME;
     delete process.env.CODEX_HOME;
   });
 
@@ -391,7 +391,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
       '',
     ].join('\n'));
 
-    process.env.OMC_HOME = registryDir;
+    process.env.OMQ_HOME = registryDir;
     process.env.CODEX_HOME = codexDir;
 
     const report = runConflictCheck();
@@ -400,7 +400,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
     expect(report.mcpRegistrySync.codexMismatched).toEqual(['gitnexus']);
     expect(report.hasConflicts).toBe(true);
 
-    delete process.env.OMC_HOME;
+    delete process.env.OMQ_HOME;
     delete process.env.CODEX_HOME;
   });
 
@@ -517,7 +517,7 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
     mkdirSync(TEST_PROJECT_CLAUDE_DIR, { recursive: true });
     process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
     process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
-    process.env.OMC_MCP_REGISTRY_PATH = join(TEST_PROJECT_DIR, '.omq-home', 'mcp-registry.json');
+    process.env.OMQ_MCP_REGISTRY_PATH = join(TEST_PROJECT_DIR, '.omq-home', 'mcp-registry.json');
     process.env.CODEX_HOME = join(TEST_PROJECT_DIR, '.codex');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
   });
@@ -526,7 +526,7 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
     cwdSpy?.mockRestore();
     delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
-    delete process.env.OMC_MCP_REGISTRY_PATH;
+    delete process.env.OMQ_MCP_REGISTRY_PATH;
     delete process.env.CODEX_HOME;
     for (const dir of [TEST_CLAUDE_DIR, TEST_PROJECT_DIR]) {
       if (dir && existsSync(dir)) {
@@ -789,7 +789,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
 
   it('does NOT flag setup-installed omc-reference fallback when it matches the bundled skill (issue #2992)', () => {
     const canonicalContent = writeCanonicalOmcReferenceSkill();
-    process.env.OMC_MCP_REGISTRY_PATH = join(TEST_PROJECT_DIR, 'no-mcp-registry.json');
+    process.env.OMQ_MCP_REGISTRY_PATH = join(TEST_PROJECT_DIR, 'no-mcp-registry.json');
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omc-reference'), { recursive: true });
     writeFileSync(join(skillsDir, 'omc-reference', 'SKILL.md'), canonicalContent);
@@ -896,7 +896,7 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
     mkdirSync(join(TEST_PROJECT_DIR, '.codex'), { recursive: true });
     process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
     process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
-    process.env.OMC_HOME = join(TEST_PROJECT_DIR, '.omq');
+    process.env.OMQ_HOME = join(TEST_PROJECT_DIR, '.omq');
     process.env.CODEX_HOME = join(TEST_PROJECT_DIR, '.codex');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
   });
@@ -905,7 +905,7 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
     cwdSpy?.mockRestore();
     delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
-    delete process.env.OMC_HOME;
+    delete process.env.OMQ_HOME;
     delete process.env.CODEX_HOME;
     for (const dir of [TEST_CLAUDE_DIR, TEST_PROJECT_DIR]) {
       if (dir && existsSync(dir)) {
@@ -977,8 +977,8 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
     process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
     process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
-    savedOmcStateDir = process.env.OMC_STATE_DIR;
-    delete process.env.OMC_STATE_DIR;
+    savedOmcStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     tempDir = mkdtempSync(join(tmpdir(), 'omc-ws-marker-test-'));
   });
 
@@ -987,9 +987,9 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
     delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
     if (savedOmcStateDir === undefined) {
-      delete process.env.OMC_STATE_DIR;
+      delete process.env.OMQ_STATE_DIR;
     } else {
-      process.env.OMC_STATE_DIR = savedOmcStateDir;
+      process.env.OMQ_STATE_DIR = savedOmcStateDir;
     }
     for (const dir of [TEST_CLAUDE_DIR, TEST_PROJECT_DIR]) {
       if (dir && existsSync(dir)) {
@@ -1018,8 +1018,8 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
     expect(status.precedenceConflict).toBe(false);
   });
 
-  it('reports stateDirEnvSet when OMC_STATE_DIR is set', () => {
-    process.env.OMC_STATE_DIR = '/some/centralized/state';
+  it('reports stateDirEnvSet when OMQ_STATE_DIR is set', () => {
+    process.env.OMQ_STATE_DIR = '/some/centralized/state';
     cwdSpy.mockReturnValue(tempDir);
     const status = checkWorkspaceMarker();
     expect(status.stateDirEnvSet).toBe(true);
@@ -1028,9 +1028,9 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
     expect(status.precedenceConflict).toBe(false);
   });
 
-  it('emits precedenceConflict when both OMC_STATE_DIR and .omq-workspace are active', () => {
+  it('emits precedenceConflict when both OMQ_STATE_DIR and .omq-workspace are active', () => {
     writeFileSync(join(tempDir, '.omq-workspace'), '{}');
-    process.env.OMC_STATE_DIR = '/centralized/override';
+    process.env.OMQ_STATE_DIR = '/centralized/override';
     cwdSpy.mockReturnValue(tempDir);
     const status = checkWorkspaceMarker();
     expect(status.markerRoot).toBe(tempDir);
@@ -1041,7 +1041,7 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
   it('precedenceConflict does NOT count as a hard hasConflicts flag in runConflictCheck', () => {
     // precedenceConflict is a WARN, not a hard conflict — hasConflicts should stay false
     writeFileSync(join(tempDir, '.omq-workspace'), '{}');
-    process.env.OMC_STATE_DIR = '/centralized/override';
+    process.env.OMQ_STATE_DIR = '/centralized/override';
     cwdSpy.mockReturnValue(tempDir);
     const report = runConflictCheck();
     // workspaceMarker.precedenceConflict is true

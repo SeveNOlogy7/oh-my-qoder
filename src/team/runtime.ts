@@ -172,8 +172,8 @@ function taskPath(root: string, taskId: string): string {
 }
 
 async function writePanesTrackingFileIfPresent(runtime: TeamRuntime): Promise<void> {
-  const jobId = process.env.OMC_JOB_ID;
-  const omcJobsDir = process.env.OMC_JOBS_DIR;
+  const jobId = process.env.OMQ_JOB_ID;
+  const omcJobsDir = process.env.OMQ_JOBS_DIR;
   if (!jobId || !omcJobsDir) return;
 
   const panesPath = join(omcJobsDir, `${jobId}-panes.json`);
@@ -804,23 +804,23 @@ export async function spawnWorkerForTask(
     // so workers don't fall back to invalid Anthropic API model names. (#1695)
     const modelForAgent = (() => {
       if (agentType === 'codex') {
-        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL
-          || process.env.OMC_CODEX_DEFAULT_MODEL
+        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL
+          || process.env.OMQ_CODEX_DEFAULT_MODEL
           || undefined;
       }
       if (agentType === 'gemini') {
-        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL
-          || process.env.OMC_GEMINI_DEFAULT_MODEL
+        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL
+          || process.env.OMQ_GEMINI_DEFAULT_MODEL
           || undefined;
       }
       if (agentType === 'antigravity') {
-        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL
-          || process.env.OMC_ANTIGRAVITY_DEFAULT_MODEL
+        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL
+          || process.env.OMQ_ANTIGRAVITY_DEFAULT_MODEL
           || undefined;
       }
       if (agentType === 'grok') {
-        return process.env.OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL
-          || process.env.OMC_GROK_DEFAULT_MODEL
+        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL
+          || process.env.OMQ_GROK_DEFAULT_MODEL
           || undefined;
       }
       if (agentType === 'cursor') {

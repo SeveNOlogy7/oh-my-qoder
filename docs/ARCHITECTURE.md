@@ -415,12 +415,12 @@ OMC hooks are declared in `hooks.json`. Each hook is a Node.js script with a tim
 
 Disable all hooks:
 ```bash
-export DISABLE_OMC=1
+export DISABLE_OMQ=1
 ```
 
 Skip specific hooks (comma-separated):
 ```bash
-export OMC_SKIP_HOOKS="keyword-detector,persistent-mode"
+export OMQ_SKIP_HOOKS="keyword-detector,persistent-mode"
 ```
 
 ---
@@ -565,11 +565,11 @@ All entries are timestamped automatically.
 
 By default, state is stored in the project's `.omq/` directory and is deleted when the worktree is removed.
 
-To preserve state across worktree deletions, set the `OMC_STATE_DIR` environment variable:
+To preserve state across worktree deletions, set the `OMQ_STATE_DIR` environment variable:
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-export OMC_STATE_DIR="$HOME/.claude/omc"
+export OMQ_STATE_DIR="$HOME/.claude/omc"
 ```
 
 State is then stored at `~/.claude/omc/{project-identifier}/`. The project identifier is a hash of the Git remote URL, so the same repository shares state across different worktrees.

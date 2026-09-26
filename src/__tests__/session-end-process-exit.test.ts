@@ -160,7 +160,7 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
       cwd,
       validSessionEndInput(cwd, sessionId),
       COMMAND_CEILING_MS,
-      { NODE_ENV: 'test', OMC_SESSION_END_TEST_PRODUCER_GRACE_MS: TEST_PRODUCER_GRACE_MS },
+      { NODE_ENV: 'test', OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS: TEST_PRODUCER_GRACE_MS },
     ));
 
     await waitForTerminalCallback(cwd, sessionId);

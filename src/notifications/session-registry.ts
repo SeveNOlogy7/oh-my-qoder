@@ -44,11 +44,11 @@ const LOCK_MAX_WAIT_MS = 10000;
 
 /**
  * Return the registry state directory.
- * OMC_TEST_REGISTRY_DIR overrides the default global state dir so that tests
+ * OMQ_TEST_REGISTRY_DIR overrides the default global state dir so that tests
  * can redirect all I/O to a temporary directory without touching global state.
  */
 function getRegistryStateDir(): string {
-  return process.env['OMC_TEST_REGISTRY_DIR'] ?? getGlobalOmcStateRoot();
+  return process.env['OMQ_TEST_REGISTRY_DIR'] ?? getGlobalOmcStateRoot();
 }
 
 /** Global registry JSONL path */
@@ -57,7 +57,7 @@ function getRegistryPath(): string {
 }
 
 function getRegistryReadPaths(): string[] {
-  if (process.env['OMC_TEST_REGISTRY_DIR']) {
+  if (process.env['OMQ_TEST_REGISTRY_DIR']) {
     return [getRegistryPath()];
   }
 

@@ -32,7 +32,7 @@
 /omc-setup
 ```
 
-`omc --plugin-dir <path>` または `claude --plugin-dir <path>` 経由で OMC を実行する場合、`omc setup` に `--plugin-dir-mode` を追加します (または事前に `OMC_PLUGIN_ROOT` をエクスポート) ので、プラグインが既に実行時に提供するスキル/エージェントが重複しません。完全な決定マトリックスと利用可能なすべてのフラグについては、[REFERENCE.md の Plugin directory flags セクション](./docs/REFERENCE.md#plugin-directory-flags) を参照してください。
+`omc --plugin-dir <path>` または `claude --plugin-dir <path>` 経由で OMC を実行する場合、`omc setup` に `--plugin-dir-mode` を追加します (または事前に `OMQ_PLUGIN_ROOT` をエクスポート) ので、プラグインが既に実行時に提供するスキル/エージェントが重複しません。完全な決定マトリックスと利用可能なすべてのフラグについては、[REFERENCE.md の Plugin directory flags セクション](./docs/REFERENCE.md#plugin-directory-flags) を参照してください。
 
 <!-- TODO(i18n): verify translation -->
 
@@ -169,7 +169,7 @@ Codex + Gemini を一つのコマンドで使うには **`/ccg`** スキルを�
 
 - **マジックキーワード** - `ralph`、`ulw`、`plan` で明示的制御
 - **HUD ステータスライン** - ステータスバーでリアルタイムのオーケストレーション指標を表示
-  - `claude --plugin-dir <path>` で Claude Code を直接起動する場合 (`omc` shim をバイパス)、シェルで `OMC_PLUGIN_ROOT=<path>` をエクスポートして、HUD バンドルがプラグイン ローダーと同じ checkout に解決されるようにします。詳細については、[REFERENCE.md の Plugin directory flags セクション](./docs/REFERENCE.md#plugin-directory-flags) を参照してください。
+  - `claude --plugin-dir <path>` で Claude Code を直接起動する場合 (`omc` shim をバイパス)、シェルで `OMQ_PLUGIN_ROOT=<path>` をエクスポートして、HUD バンドルがプラグイン ローダーと同じ checkout に解決されるようにします。詳細については、[REFERENCE.md の Plugin directory flags セクション](./docs/REFERENCE.md#plugin-directory-flags) を参照してください。
 
   <!-- TODO(i18n): verify translation -->
 - **スキル学習** - セッションから再利用可能なパターンを抽出
@@ -305,9 +305,9 @@ Claude Code セッションイベントを [OpenClaw](https://openclaw.ai/) ゲ�
 
 | 変数 | 説明 |
 |------|------|
-| `OMC_OPENCLAW=1` | OpenClaw を有効化 |
-| `OMC_OPENCLAW_DEBUG=1` | デバッグログを有効化 |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | 設定ファイルパスを変更 |
+| `OMQ_OPENCLAW=1` | OpenClaw を有効化 |
+| `OMQ_OPENCLAW_DEBUG=1` | デバッグログを有効化 |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | 設定ファイルパスを変更 |
 
 **サポートされるフックイベント（bridge.ts で 6 つがアクティブ）:**
 

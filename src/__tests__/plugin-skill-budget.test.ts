@@ -89,7 +89,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
         expect(shim, `${skillDir} shim should point to archived body`).toContain(`../../skill-bodies/${skillDir}/SKILL.md`);
         expect(shim, `${skillDir} shim should expose runtime body override`).toContain('omc-full-body:');
         expect(shim, `${skillDir} shim should prefer plugin root env vars`).toContain(
-          `\${CLAUDE_PLUGIN_ROOT:-\${OMC_PLUGIN_ROOT}}/skill-bodies/${skillDir}/SKILL.md`,
+          `\${CLAUDE_PLUGIN_ROOT:-\${OMQ_PLUGIN_ROOT}}/skill-bodies/${skillDir}/SKILL.md`,
         );
         expect(shim, `${skillDir} shim should define plugin root by containing directories`).toContain(
           'The plugin root is the directory containing both `skills/` and `skill-bodies/`.',

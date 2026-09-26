@@ -25,12 +25,12 @@ import { resolveNodeBinary } from '../utils/resolve-node.js';
 import { parseFrontmatter } from '../utils/frontmatter.js';
 import { isSkininthegamebrosUser } from '../utils/skininthegamebros-user.js';
 import { syncUnifiedMcpRegistryTargets } from './mcp-registry.js';
-import { OMC_CONFIG_FILE_REL } from '../lib/paths.js';
+import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
 import { buildHudWrapper } from '../lib/hud-wrapper-template.js';
 import { getOmcRoot } from '../lib/worktree-paths.js';
 import { syncOmcLearnedUserSkillsForClaudeCode } from '../utils/user-skill-compat.js';
-import { OMC_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
-import { analyzeLegacyClaudeMd, OMC_END_MARKER, OMC_START_MARKER, parseClaudeMdMarkers, removeClaudeMdRanges } from './claude-md-analysis.js';
+import { OMQ_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
+import { analyzeLegacyClaudeMd, OMQ_END_MARKER, OMQ_START_MARKER, parseClaudeMdMarkers, removeClaudeMdRanges } from './claude-md-analysis.js';
 import { executeClaudeMdTransaction } from './claude-md-transaction.js';
 import { HISTORICAL_AGENT_OWNERSHIP, type HistoricalAgentOwnership } from './historical-agent-ownership.js';
 import entitlementManifest from '../config/builtin-skill-entitlements.json' with { type: 'json' };
@@ -44,7 +44,7 @@ export const HOOKS_DIR = join(CLAUDE_CONFIG_DIR, 'hooks');
 export const HUD_DIR = join(CLAUDE_CONFIG_DIR, 'hud');
 export const SETTINGS_FILE = join(CLAUDE_CONFIG_DIR, 'settings.json');
 export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omq-version.json');
-const OMC_MANAGED_SKILL_MARKER = '.omq-managed';
+const OMQ_MANAGED_SKILL_MARKER = '.omq-managed';
 const PLUGIN_FULL_SKILL_BODIES_DIR = 'skill-bodies';
 const PLUGIN_COMPACT_SKILL_SHIM_MARKER = '<!-- OMC:COMPACT-PLUGIN-SKILL -->';
 
@@ -58,7 +58,7 @@ export const CORE_COMMANDS: string[] = [];
 /** Current version */
 export const VERSION = getRuntimePackageVersion();
 
-const OMC_VERSION_MARKER_PATTERN = /<!-- OMC:VERSION:([^\s]+) -->/;
+const OMQ_VERSION_MARKER_PATTERN = /<!-- OMC:VERSION:([^\s]+) -->/;
 
 const CC_NATIVE_COMMANDS = new Set([
   'review',
@@ -164,7 +164,7 @@ function compareVersions(a: string, b: string): number {
 }
 
 function extractOmcVersionMarker(content: string): string | null {
-  const match = content.match(OMC_VERSION_MARKER_PATTERN);
+  const match = content.match(OMQ_VERSION_MARKER_PATTERN);
   return match?.[1] ?? null;
 }
 
@@ -317,7 +317,7 @@ export interface InstallOptions {
  * (avoids circular dependency since auto-update imports from installer)
  */
 export function isHudEnabledInConfig(): boolean {
-  const configPath = join(CLAUDE_CONFIG_DIR, OMC_CONFIG_FILE_REL);
+  const configPath = join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
   if (!existsSync(configPath)) {
     return true; // default: enabled
   }
@@ -402,7 +402,7 @@ function listStandaloneHookLibPayloadFilenames(): Set<string> {
   return filenames;
 }
 
-const OMC_HOOK_EXTRA_FILENAMES = new Set([
+const OMQ_HOOK_EXTRA_FILENAMES = new Set([
   'find-node.sh',
 ]);
 function hashFileContents(path: string): string | null {
@@ -677,7 +677,7 @@ function pruneLegacyStandaloneHookScripts(log: (msg: string) => void, activeStan
   let removed = 0;
 
   for (const filename of readdirSync(HOOKS_DIR)) {
-    if (!OMQ_HOOK_FILENAMES.has(filename) && !OMC_HOOK_EXTRA_FILENAMES.has(filename)) {
+    if (!OMQ_HOOK_FILENAMES.has(filename) && !OMQ_HOOK_EXTRA_FILENAMES.has(filename)) {
       continue;
     }
 
@@ -1336,22 +1336,22 @@ type PluginRootResolution =
 
 type PluginRegistry = Record<string, unknown>;
 
-const OMC_PLUGIN_IDS = new Set(['oh-my-claudecode', 'oh-my-claudecode@omc', 'oh-my-claudecode@oh-my-claudecode']);
-const OMC_PLUGIN_MANIFEST_NAME = 'oh-my-claudecode';
+const OMQ_PLUGIN_IDS = new Set(['oh-my-claudecode', 'oh-my-claudecode@omc', 'oh-my-claudecode@oh-my-claudecode']);
+const OMQ_PLUGIN_MANIFEST_NAME = 'oh-my-claudecode';
 
 function isOfficialOmcPluginId(pluginId: string): boolean {
-  return OMC_PLUGIN_IDS.has(pluginId.toLowerCase());
+  return OMQ_PLUGIN_IDS.has(pluginId.toLowerCase());
 }
 
 function isOmcPluginLookalike(pluginId: string): boolean {
-  return pluginId.toLowerCase().includes(OMC_PLUGIN_MANIFEST_NAME);
+  return pluginId.toLowerCase().includes(OMQ_PLUGIN_MANIFEST_NAME);
 }
 
 function resolveInstalledOmcPluginRoots(): PluginRootResolution {
   // --plugin-dir is the lifecycle source of truth. Claude's hook context is
   // equivalent when it is the only explicit root. An explicit root is never
   // supplemented by registry candidates: validation failure must preserve.
-  const omcPluginRoot = process.env[OMC_PLUGIN_ROOT_ENV]?.trim();
+  const omcPluginRoot = process.env[OMQ_PLUGIN_ROOT_ENV]?.trim();
   const claudePluginRoot = process.env.CLAUDE_PLUGIN_ROOT?.trim();
   if (omcPluginRoot && claudePluginRoot && resolve(omcPluginRoot) !== resolve(claudePluginRoot)) {
     return { mode: 'unknown', roots: [], cleanupAllowed: false };
@@ -1487,8 +1487,8 @@ function validatePluginManifestSchema(root: string, manifest: Record<string, unk
     return errors;
   }
 
-  if (manifest.name !== OMC_PLUGIN_MANIFEST_NAME) {
-    errors.push(`Invalid plugin manifest: .claude-plugin/plugin.json name must be ${OMC_PLUGIN_MANIFEST_NAME}`);
+  if (manifest.name !== OMQ_PLUGIN_MANIFEST_NAME) {
+    errors.push(`Invalid plugin manifest: .claude-plugin/plugin.json name must be ${OMQ_PLUGIN_MANIFEST_NAME}`);
   }
 
   if (typeof manifest.commands !== 'string' || manifest.commands.trim().length === 0) {
@@ -1850,7 +1850,7 @@ function renderCompactPluginSkillShim(skillDirName: string, content: string): st
   frontmatter = upsertYamlStringField(frontmatter, 'description', description);
   frontmatter = upsertYamlStringField(frontmatter, 'omc-full-body', fullBodyRelPath);
 
-  return `---\n${frontmatter.trim()}\n---\n\n${PLUGIN_COMPACT_SKILL_SHIM_MARKER}\n\n# ${skillDirName}\n\nThis is a compact Claude Code plugin registry shim. It keeps startup skill descriptions small while preserving the full OMC skill body for on-demand invocation.\n\nWhen this skill is invoked, read and follow the full bundled instructions from the active plugin root:\n\n\`${'${CLAUDE_PLUGIN_ROOT:-${OMC_PLUGIN_ROOT}}'}/${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\`\n\nThe plugin root is the directory containing both \`skills/\` and \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\`. Do not resolve \`${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\` under this shim's \`skills/${skillDirName}/\` directory; \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\` is a direct child of the plugin root. The same archived body path is recorded in frontmatter as \`omc-full-body: ${fullBodyRelPath}\` for hosts that understand plugin-root-relative metadata.\n`;
+  return `---\n${frontmatter.trim()}\n---\n\n${PLUGIN_COMPACT_SKILL_SHIM_MARKER}\n\n# ${skillDirName}\n\nThis is a compact Claude Code plugin registry shim. It keeps startup skill descriptions small while preserving the full OMC skill body for on-demand invocation.\n\nWhen this skill is invoked, read and follow the full bundled instructions from the active plugin root:\n\n\`${'${CLAUDE_PLUGIN_ROOT:-${OMQ_PLUGIN_ROOT}}'}/${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\`\n\nThe plugin root is the directory containing both \`skills/\` and \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\`. Do not resolve \`${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\` under this shim's \`skills/${skillDirName}/\` directory; \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\` is a direct child of the plugin root. The same archived body path is recorded in frontmatter as \`omc-full-body: ${fullBodyRelPath}\` for hosts that understand plugin-root-relative metadata.\n`;
 }
 
 export function compactPluginSkillPayload(targetRoot: string): { compacted: number; totalBytes: number; errors: string[] } {
@@ -2184,7 +2184,7 @@ function toSafeStandaloneSkillName(name: string): string {
 }
 
 function getManagedSkillMarkerPath(skillDir: string): string {
-  return join(skillDir, OMC_MANAGED_SKILL_MARKER);
+  return join(skillDir, OMQ_MANAGED_SKILL_MARKER);
 }
 
 function markSkillAsOmcManaged(skillDir: string): void {
@@ -2286,7 +2286,7 @@ export function syncPersistedSetupVersion(options?: {
   version?: string;
   onlyIfConfigured?: boolean;
 }): boolean {
-  const configPath = options?.configPath ?? join(CLAUDE_CONFIG_DIR, OMC_CONFIG_FILE_REL);
+  const configPath = options?.configPath ?? join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
   let config: Record<string, unknown> = {};
 
   if (existsSync(configPath)) {
@@ -2331,8 +2331,8 @@ export function syncPersistedSetupVersion(options?: {
  * @returns Merged content with markers
  */
 export function mergeClaudeMd(existingContent: string | null, omcContent: string, version?: string): string {
-  const START_MARKER = OMC_START_MARKER;
-  const END_MARKER = OMC_END_MARKER;
+  const START_MARKER = OMQ_START_MARKER;
+  const END_MARKER = OMQ_END_MARKER;
   const USER_CUSTOMIZATIONS = '<!-- User customizations -->';
 
   // Idempotency guard: accept the current managed representation as input.
@@ -2443,7 +2443,7 @@ export function install(options: InstallOptions = {}): InstallResult {
   const enabledOmcPlugin = hasEnabledOmcPlugin();
   // Dev plugin-dir mode: user launched OMC via `claude --plugin-dir <path>` or
   // `omc --plugin-dir <path>`. The plugin already exposes agents/skills at runtime,
-  // so skip copying them into <configDir>. Auto-detected via OMC_PLUGIN_ROOT in CLI.
+  // so skip copying them into <configDir>. Auto-detected via OMQ_PLUGIN_ROOT in CLI.
   // `noPlugin` still wins (CLI enforces precedence and warns), so we ignore
   // `pluginDirMode` whenever `noPlugin` is set.
   const pluginDirMode = options.pluginDirMode === true && options.noPlugin !== true;
@@ -2712,7 +2712,7 @@ export function install(options: InstallOptions = {}): InstallResult {
       //    find-node.sh (used in hooks/hooks.json) can locate it at hook runtime
       //    even when node is not on PATH (nvm/fnm users, issue #892).
       try {
-        const configPath = join(CLAUDE_CONFIG_DIR, OMC_CONFIG_FILE_REL);
+        const configPath = join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
         let omcConfig: Record<string, unknown> = {};
         if (existsSync(configPath)) {
           omcConfig = JSON.parse(readFileSync(configPath, 'utf-8'));

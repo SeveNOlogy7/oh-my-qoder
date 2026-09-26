@@ -689,8 +689,8 @@ describe('worker launch acknowledgement', () => {
       '--long', longValue,
     ];
     const providerEnv = {
-      OMC_TEAM_WORKER: 'launch-team/worker-1',
-      OMC_WORKER_LAUNCH_ATTEMPT_ID: launchAttempt.attempt_id,
+      OMQ_TEAM_WORKER: 'launch-team/worker-1',
+      OMQ_WORKER_LAUNCH_ATTEMPT_ID: launchAttempt.attempt_id,
       PROVIDER_TOKEN: secret,
       PROVIDER_URL: 'https://provider.example.test/path?x=1&y=2',
       PATH: 'C:\\Program Files\\Node;C:\\Tools',
@@ -710,7 +710,7 @@ describe('worker launch acknowledgement', () => {
     expect(Buffer.byteLength(materialized.wrapperRelativePath, 'utf8')).toBeLessThan(256);
     const wrapper = await readFile(materialized.wrapperPath, 'utf8');
     expect(wrapper).toContain('setlocal DisableDelayedExpansion');
-    expect(wrapper).toContain('OMC_WORKER_LAUNCH_SPEC_FILE=%~dp0bootstrap.json');
+    expect(wrapper).toContain('OMQ_WORKER_LAUNCH_SPEC_FILE=%~dp0bootstrap.json');
     expect(wrapper).toContain('--worker-launch');
     for (const value of [secret, providerEnv.PROVIDER_URL, providerEnv.SYNTHETIC_METACHARS,
       providerEnv.SYNTHETIC_UNICODE, providerEnv.SYNTHETIC_CRLF, longValue]) {
@@ -754,7 +754,7 @@ describe('worker launch acknowledgement', () => {
     const materialized = await materializeWorkerLaunchTransport({
       attempt: launchAttempt,
       providerArgv: ['codex'],
-      providerEnv: { OMC_TEAM_WORKER: 'launch-team/worker-1' },
+      providerEnv: { OMQ_TEAM_WORKER: 'launch-team/worker-1' },
       cwd: workerCwd,
     });
 
@@ -770,7 +770,7 @@ describe('worker launch acknowledgement', () => {
     await expect(materializeWorkerLaunchTransport({
       attempt: launchAttempt,
       providerArgv: ['codex'],
-      providerEnv: { OMC_TEAM_WORKER: 'launch-team/worker-1' },
+      providerEnv: { OMQ_TEAM_WORKER: 'launch-team/worker-1' },
       cwd,
     })).rejects.toThrow('worker_launch_transport_path_conflict');
     await expect(readFile(launchAttempt.transportOwnerPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
@@ -872,16 +872,16 @@ describe('worker launch acknowledgement', () => {
     })).toThrow('worker_launch_provider_env_value_invalid');
 
     const marker = join(cwd, 'provider-env.json');
-    const providerScript = `require('node:fs').writeFileSync(${JSON.stringify(marker)},JSON.stringify({value:process.env.OMC_TEST_PROVIDER_VALUE,attempt:process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID,internal:process.env.OMC_WORKER_LAUNCH_SPEC_FILE}));setTimeout(()=>process.exit(0),200)`;
+    const providerScript = `require('node:fs').writeFileSync(${JSON.stringify(marker)},JSON.stringify({value:process.env.OMQ_TEST_PROVIDER_VALUE,attempt:process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID,internal:process.env.OMQ_WORKER_LAUNCH_SPEC_FILE}));setTimeout(()=>process.exit(0),200)`;
     const bootstrap = runWorkerLaunchBootstrap(buildWorkerLaunchBootstrapSpec(
       launchAttempt,
       [process.execPath, '-e', providerScript],
       cwd,
       {
         providerEnv: {
-          OMC_TEST_PROVIDER_VALUE: 'provider-value',
-          OMC_WORKER_LAUNCH_ATTEMPT_ID: launchAttempt.attempt_id,
-          OMC_WORKER_LAUNCH_SPEC_FILE: 'must-be-filtered',
+          OMQ_TEST_PROVIDER_VALUE: 'provider-value',
+          OMQ_WORKER_LAUNCH_ATTEMPT_ID: launchAttempt.attempt_id,
+          OMQ_WORKER_LAUNCH_SPEC_FILE: 'must-be-filtered',
         },
         releaseAfterSpawn: true,
       },
@@ -1056,7 +1056,7 @@ describe('worker launch acknowledgement', () => {
     const originalPlatform = process.platform;
     Object.defineProperty(process, 'platform', { value: 'win32' });
     try {
-      expect(() => buildWorkerLaunchBootstrapSpec(launchAttempt, ['codex'], cwd, { providerEnv: { OMC_WORKER_LAUNCH_SPEC_FILE: 'x' } })).toThrow('worker_launch_provider_env_reserved');
+      expect(() => buildWorkerLaunchBootstrapSpec(launchAttempt, ['codex'], cwd, { providerEnv: { OMQ_WORKER_LAUNCH_SPEC_FILE: 'x' } })).toThrow('worker_launch_provider_env_reserved');
       expect(() => buildWorkerLaunchBootstrapSpec(launchAttempt, ['codex'], cwd, { providerEnv: { PATH: 'one', Path: 'two' } })).toThrow('worker_launch_provider_env_key_alias_conflict');
       expect(() => buildWorkerLaunchBootstrapSpec(launchAttempt, ['codex'], cwd, { providerEnv: { SystemRoot: 'D:\\attacker' } })).toThrow('worker_launch_provider_env_reserved');
       expect(() => buildWorkerLaunchBootstrapSpec(launchAttempt, ['codex'], cwd, { providerEnv: { SYSTEMROOT: 'D:\\attacker' } })).toThrow('worker_launch_provider_env_reserved');

@@ -100,12 +100,12 @@ Includes the active mode name and whether dependent modes exist.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OMC_STATE_DIR` | (unset) | Centralized state directory. When set, state persists even if the worktree is deleted. |
+| `OMQ_STATE_DIR` | (unset) | Centralized state directory. When set, state persists even if the worktree is deleted. |
 
-When `OMC_STATE_DIR` is set, state is stored at `$OMC_STATE_DIR/{project-id}/`.
+When `OMQ_STATE_DIR` is set, state is stored at `$OMQ_STATE_DIR/{project-id}/`.
 
 ```bash
-export OMC_STATE_DIR="$HOME/.claude/omc"
+export OMQ_STATE_DIR="$HOME/.claude/omc"
 ```
 
 ### Usage Patterns
@@ -441,14 +441,14 @@ lsp_servers()
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OMC_LSP_TIMEOUT_MS` | `15000` | LSP request timeout in ms. Increase for large repos or slow servers. |
+| `OMQ_LSP_TIMEOUT_MS` | `15000` | LSP request timeout in ms. Increase for large repos or slow servers. |
 
 ### Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
 | LSP tools not working | Install the language server: `npm install -g typescript-language-server` |
-| Timeout errors | Increase `OMC_LSP_TIMEOUT_MS` |
+| Timeout errors | Increase `OMQ_LSP_TIMEOUT_MS` |
 | Check server status | Run `lsp_servers()` to verify installation |
 
 ---

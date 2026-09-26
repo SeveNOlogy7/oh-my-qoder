@@ -70,7 +70,7 @@ function getTrustedPrefixes(): string[] {
     trusted.push(`${home}/.grok/bin`);
   }
 
-  const custom = (process.env.OMC_TRUSTED_CLI_DIRS ?? '')
+  const custom = (process.env.OMQ_TRUSTED_CLI_DIRS ?? '')
     .split(':')
     .map(part => part.trim())
     .filter(Boolean)
@@ -458,17 +458,17 @@ const WORKER_MODEL_ENV_ALLOWLIST = [
   'ANTHROPIC_DEFAULT_OPUS_MODEL',
   'ANTHROPIC_DEFAULT_SONNET_MODEL',
   'ANTHROPIC_DEFAULT_HAIKU_MODEL',
-  'OMC_MODEL_HIGH',
-  'OMC_MODEL_MEDIUM',
-  'OMC_MODEL_LOW',
-  'OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL',
-  'OMC_CODEX_DEFAULT_MODEL',
-  'OMC_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL',
-  'OMC_GEMINI_DEFAULT_MODEL',
-  'OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL',
-  'OMC_GROK_DEFAULT_MODEL',
-  'OMC_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL',
-  'OMC_ANTIGRAVITY_DEFAULT_MODEL',
+  'OMQ_MODEL_HIGH',
+  'OMQ_MODEL_MEDIUM',
+  'OMQ_MODEL_LOW',
+  'OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL',
+  'OMQ_CODEX_DEFAULT_MODEL',
+  'OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL',
+  'OMQ_GEMINI_DEFAULT_MODEL',
+  'OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL',
+  'OMQ_GROK_DEFAULT_MODEL',
+  'OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL',
+  'OMQ_ANTIGRAVITY_DEFAULT_MODEL',
 ] as const;
 
 export function getWorkerEnv(
@@ -479,9 +479,9 @@ export function getWorkerEnv(
 ): Record<string, string> {
   validateTeamName(teamName);
   const workerEnv: Record<string, string> = {
-    OMC_TEAM_WORKER: `${teamName}/${workerName}`,
-    OMC_TEAM_NAME: teamName,
-    OMC_WORKER_AGENT_TYPE: agentType,
+    OMQ_TEAM_WORKER: `${teamName}/${workerName}`,
+    OMQ_TEAM_NAME: teamName,
+    OMQ_WORKER_AGENT_TYPE: agentType,
   };
 
   for (const key of WORKER_MODEL_ENV_ALLOWLIST) {
@@ -527,7 +527,7 @@ export function resolveClaudeWorkerModel(
 ): string | undefined {
   // When force-inherit routing is enabled, do not resolve/override worker model.
   // This preserves parent model inheritance and avoids alias normalization drift.
-  if (env.OMC_ROUTING_FORCE_INHERIT === 'true') {
+  if (env.OMQ_ROUTING_FORCE_INHERIT === 'true') {
     return undefined;
   }
 
@@ -552,7 +552,7 @@ export function resolveClaudeWorkerModel(
   }
 
   // OMC tier env vars
-  const omcModel = env.OMC_MODEL_MEDIUM || '';
+  const omcModel = env.OMQ_MODEL_MEDIUM || '';
   if (omcModel) {
     return omcModel;
   }

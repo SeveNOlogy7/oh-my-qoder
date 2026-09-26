@@ -100,7 +100,7 @@ describe('Windows-safe prompt hook runner paths', () => {
     const timeoutRoot = join(cacheBase, '4.5.0');
     const timeoutTarget = join(timeoutRoot, 'scripts', 'keyword-detector.mjs');
     makePlugin(timeoutRoot, "setInterval(() => {}, 1000); setTimeout(() => process.stdout.write('late'), 20);", 1);
-    const result = run(timeoutTarget, timeoutRoot, { OMC_DEBUG_HOOKS: '1' });
+    const result = run(timeoutTarget, timeoutRoot, { OMQ_DEBUG_HOOKS: '1' });
 
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
@@ -138,7 +138,7 @@ describe('Windows-safe prompt hook runner paths', () => {
     writeFileSync(join(root, 'scripts', 'run.cjs'), '// plugin-root marker');
     writeFileSync(target, `
       import { spawn } from 'node:child_process';
-      const childSource = "require('node:fs').writeFileSync(process.env.OMC_TEST_PIDFILE, String(process.pid)); setInterval(() => {}, 1e9);";
+      const childSource = "require('node:fs').writeFileSync(process.env.OMQ_TEST_PIDFILE, String(process.pid)); setInterval(() => {}, 1e9);";
       spawn(process.execPath, ['-e', childSource], { stdio: 'ignore', env: process.env });
       setInterval(() => {}, 1e9);
     `);
@@ -154,7 +154,7 @@ describe('Windows-safe prompt hook runner paths', () => {
 
     try {
       const startedAt = Date.now();
-      const result = run(target, root, { OMC_TEST_PIDFILE: pidfile });
+      const result = run(target, root, { OMQ_TEST_PIDFILE: pidfile });
       const elapsed = Date.now() - startedAt;
       expect(result.status).toBe(0);
       expect(elapsed).toBeGreaterThanOrEqual(400);

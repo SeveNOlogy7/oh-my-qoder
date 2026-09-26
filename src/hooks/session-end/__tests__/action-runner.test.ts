@@ -120,20 +120,20 @@ describe('SessionEnd action runner', () => {
       return child;
     });
 
-    vi.stubEnv('OMC_DISCORD_WEBHOOK_URL', 'https://discord.com/api/webhooks/secret');
-    vi.stubEnv('OMC_DISCORD', '1');
+    vi.stubEnv('OMQ_DISCORD_WEBHOOK_URL', 'https://discord.com/api/webhooks/secret');
+    vi.stubEnv('OMQ_DISCORD', '1');
 
     await runSessionEndAction(context(directory, 'notification'), async () => undefined);
     const notificationEnvironment = childProcess.spawn.mock.calls[0][2].env as NodeJS.ProcessEnv;
     expect(notificationEnvironment).toMatchObject({
-      OMC_DISCORD: '1',
-      OMC_DISCORD_WEBHOOK_URL: 'https://discord.com/api/webhooks/secret',
+      OMQ_DISCORD: '1',
+      OMQ_DISCORD_WEBHOOK_URL: 'https://discord.com/api/webhooks/secret',
     });
 
     await runSessionEndAction(context(directory, 'foreground-cleanup'), async () => undefined);
     const cleanupEnvironment = childProcess.spawn.mock.calls[1][2].env as NodeJS.ProcessEnv;
-    expect(cleanupEnvironment).not.toHaveProperty('OMC_DISCORD');
-    expect(cleanupEnvironment).not.toHaveProperty('OMC_DISCORD_WEBHOOK_URL');
+    expect(cleanupEnvironment).not.toHaveProperty('OMQ_DISCORD');
+    expect(cleanupEnvironment).not.toHaveProperty('OMQ_DISCORD_WEBHOOK_URL');
   });
 
   it('uses original bounded OpenClaw routing instead of a recovering session ambient environment', async () => {
@@ -144,15 +144,15 @@ describe('SessionEnd action runner', () => {
       queueMicrotask(() => child.emit('exit', 0));
       return child;
     });
-    vi.stubEnv('OMC_OPENCLAW', '1');
-    vi.stubEnv('OMC_OPENCLAW_CONFIG', '/tmp/recovering-session.json');
+    vi.stubEnv('OMQ_OPENCLAW', '1');
+    vi.stubEnv('OMQ_OPENCLAW_CONFIG', '/tmp/recovering-session.json');
     vi.stubEnv('OPENCLAW_REPLY_CHANNEL', '#new-session');
     vi.stubEnv('OPENCLAW_REPLY_TARGET', '@new-session');
     vi.stubEnv('OPENCLAW_REPLY_THREAD', 'new-thread');
     vi.stubEnv('OPENCLAW_REPLY_TOKEN', 'new-session-secret');
     vi.stubEnv('TMUX', '/tmp/tmux-new');
     vi.stubEnv('TMUX_PANE', '%99');
-    vi.stubEnv('OMC_DISCORD_WEBHOOK_URL', 'not-for-openclaw');
+    vi.stubEnv('OMQ_DISCORD_WEBHOOK_URL', 'not-for-openclaw');
 
     const runContext = context(directory, 'openclaw');
     runContext.action.payload = {
@@ -169,8 +169,8 @@ describe('SessionEnd action runner', () => {
     await runSessionEndAction(runContext, async () => undefined);
     const environment = childProcess.spawn.mock.calls[0][2].env as NodeJS.ProcessEnv;
     expect(environment).toMatchObject({
-      OMC_OPENCLAW: '1',
-      OMC_OPENCLAW_CONFIG: '/tmp/original-session.json',
+      OMQ_OPENCLAW: '1',
+      OMQ_OPENCLAW_CONFIG: '/tmp/original-session.json',
       OPENCLAW_REPLY_CHANNEL: '#original-session',
       OPENCLAW_REPLY_TARGET: '@original-session',
       OPENCLAW_REPLY_THREAD: 'original-thread',
@@ -178,7 +178,7 @@ describe('SessionEnd action runner', () => {
       TMUX_PANE: '%7',
     });
     expect(environment).not.toHaveProperty('OPENCLAW_REPLY_TOKEN');
-    expect(environment).not.toHaveProperty('OMC_DISCORD_WEBHOOK_URL');
+    expect(environment).not.toHaveProperty('OMQ_DISCORD_WEBHOOK_URL');
   });
   it('fails closed without signalling any PID when synchronous identity capture returns null', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-identity-null-'));

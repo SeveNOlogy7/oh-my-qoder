@@ -40,7 +40,7 @@ function fixture() {
 afterEach(() => {
   vi.restoreAllMocks();
   while (created.length) rmSync(created.pop()!, { recursive: true, force: true });
-  delete process.env.OMC_TEST_FLOCK_AVAILABLE;
+  delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
 });
 
 describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) => {
@@ -130,7 +130,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
     const { statePath, lockPath } = fixture();
     const lockApi = await api();
     process.env.NODE_ENV = 'test';
-    process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
     const first = lockApi.acquireStateFileLockSync(statePath, 2);
     expect(first).not.toBeNull();
     lockApi.releaseStateFileLockSync(first);
@@ -193,7 +193,7 @@ describe.each(modules)('guarded emergency recovery claim (%s)', (modulePath) => 
     writeDeadJournal(statePath, raw);
     writeFileSync(claimPath, JSON.stringify(stale));
     process.env.NODE_ENV = 'test';
-    process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
     expect(recovery.recoverEmergencyStateFile(statePath)).toBe(false);
     expect(JSON.parse(readFileSync(claimPath, 'utf8'))).toEqual(stale);

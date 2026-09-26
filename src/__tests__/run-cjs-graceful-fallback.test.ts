@@ -40,7 +40,7 @@ describe('run.cjs — graceful fallback for stale plugin paths', () => {
   it('passes the session-lifetime host PID instead of the transient runner PID', () => {
     const output = join(tmpDir, 'owner.json');
     const target = join(tmpDir, 'owner-probe.cjs');
-    writeFileSync(target, `require('node:fs').writeFileSync(process.env.OWNER_OUT, JSON.stringify({ owner: process.env.OMC_SESSION_OWNER_PID, parent: process.ppid }));`);
+    writeFileSync(target, `require('node:fs').writeFileSync(process.env.OWNER_OUT, JSON.stringify({ owner: process.env.OMQ_SESSION_OWNER_PID, parent: process.ppid }));`);
     const result = spawnSync(NODE, [RUN_CJS_PATH, target], {
       env: { ...process.env, OWNER_OUT: output },
       encoding: 'utf8',
@@ -54,9 +54,9 @@ describe('run.cjs — graceful fallback for stale plugin paths', () => {
   it('preserves an inherited session owner across runner supervisor layers', () => {
     const output = join(tmpDir, 'inherited-owner.json');
     const target = join(tmpDir, 'inherited-owner-probe.cjs');
-    writeFileSync(target, `require('node:fs').writeFileSync(process.env.OWNER_OUT, process.env.OMC_SESSION_OWNER_PID);`);
+    writeFileSync(target, `require('node:fs').writeFileSync(process.env.OWNER_OUT, process.env.OMQ_SESSION_OWNER_PID);`);
     const result = spawnSync(NODE, [RUN_CJS_PATH, target], {
-      env: { ...process.env, OWNER_OUT: output, OMC_SESSION_OWNER_PID: '424242' },
+      env: { ...process.env, OWNER_OUT: output, OMQ_SESSION_OWNER_PID: '424242' },
       encoding: 'utf8',
     });
     expect(result.status, result.stderr).toBe(0);
@@ -462,7 +462,7 @@ describe('run.cjs — graceful fallback for stale plugin paths', () => {
     });
     const debugResult = runCjs(slowTarget, {
       CLAUDE_PLUGIN_ROOT: pluginRoot,
-      OMC_DEBUG_HOOKS: '1',
+      OMQ_DEBUG_HOOKS: '1',
     });
 
     expect(quietResult.status).toBe(0);
@@ -666,7 +666,7 @@ describe('run.cjs trusted UserPromptSubmit Worker selection', () => {
     expect(quiet).toMatchObject({ status: 0, stdout: '', stderr: '' });
     expect(readFileSync(startedMarker, 'utf-8')).toBe('sync');
 
-    const debug = run(target, { CLAUDE_PLUGIN_ROOT: root, HANG_KIND: 'async', OMC_DEBUG_HOOKS: '1' });
+    const debug = run(target, { CLAUDE_PLUGIN_ROOT: root, HANG_KIND: 'async', OMQ_DEBUG_HOOKS: '1' });
     expect(debug.status).toBe(0);
     expect(debug.stdout).toBe('');
     expect(debug.stderr).toContain('Hook keyword-detector.mjs timed out after 1000ms; exiting fail-open.');

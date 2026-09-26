@@ -12,17 +12,17 @@ const QODER_TIER_ALIASES = new Set(['high', 'medium', 'low']);
 
 const TIER_ENV_KEYS: Record<ModelTier, readonly string[]> = {
   LOW: [
-    'OMC_MODEL_LOW',
+    'OMQ_MODEL_LOW',
     'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
     'ANTHROPIC_DEFAULT_HAIKU_MODEL',
   ],
   MEDIUM: [
-    'OMC_MODEL_MEDIUM',
+    'OMQ_MODEL_MEDIUM',
     'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
     'ANTHROPIC_DEFAULT_SONNET_MODEL',
   ],
   HIGH: [
-    'OMC_MODEL_HIGH',
+    'OMQ_MODEL_HIGH',
     'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
     'ANTHROPIC_DEFAULT_OPUS_MODEL',
   ],
@@ -75,9 +75,9 @@ export const QWEN_FAMILY_DEFAULTS: Record<QwenModelFamily, string> = {
  * via environment variables without editing source code.
  *
  * Environment variables (highest precedence):
- *   OMC_MODEL_HIGH    - Model ID for HIGH tier (opus-class)
- *   OMC_MODEL_MEDIUM  - Model ID for MEDIUM tier (sonnet-class)
- *   OMC_MODEL_LOW     - Model ID for LOW tier (haiku-class)
+ *   OMQ_MODEL_HIGH    - Model ID for HIGH tier (opus-class)
+ *   OMQ_MODEL_MEDIUM  - Model ID for MEDIUM tier (sonnet-class)
+ *   OMQ_MODEL_LOW     - Model ID for LOW tier (haiku-class)
  *
  * User config (~/.config/claude-omc/config.jsonc) can also override
  * via `routing.tierModels` or per-agent `agents.<name>.model`.
@@ -87,7 +87,7 @@ export const QWEN_FAMILY_DEFAULTS: Record<QwenModelFamily, string> = {
  * Resolve the default model ID for a tier.
  *
  * Resolution order:
- * 1. OMC tier env vars (OMC_MODEL_HIGH / OMC_MODEL_MEDIUM / OMC_MODEL_LOW)
+ * 1. OMC tier env vars (OMQ_MODEL_HIGH / OMQ_MODEL_MEDIUM / OMQ_MODEL_LOW)
  * 2. Claude Code provider env vars (for example Bedrock app-profile model IDs)
  * 3. Anthropic family-default env vars
  * 4. Built-in fallback
@@ -379,7 +379,7 @@ function hasNonClaudeModelId(modelIds: readonly string[]): boolean {
  * names (sonnet/opus/haiku) to the Agent tool.
  *
  * Returns true when:
- * - User explicitly set OMC_ROUTING_FORCE_INHERIT=true
+ * - User explicitly set OMQ_ROUTING_FORCE_INHERIT=true
  * - Running on AWS Bedrock — needs full Bedrock model IDs, not bare tier names
  * - Running on Google Vertex AI — needs full Vertex model paths
  * - A non-Claude model ID is detected (CC Switch, LiteLLM, etc.)
@@ -387,7 +387,7 @@ function hasNonClaudeModelId(modelIds: readonly string[]): boolean {
  */
 export function isNonClaudeProvider(): boolean {
   // Explicit opt-in: user has already set forceInherit via env var
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'true') {
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'true') {
     return true;
   }
 
@@ -435,7 +435,7 @@ export function isNonClaudeProvider(): boolean {
  * OMC routing, not proof that every delegated agent should drop its model.
  */
 export function shouldAutoForceInherit(): boolean {
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'true') {
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'true') {
     return true;
   }
 

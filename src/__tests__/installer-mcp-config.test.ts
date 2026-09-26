@@ -34,9 +34,9 @@ async function loadInstallerWithEnv(claudeConfigDir: string, homeDir: string, co
   process.env.CLAUDE_CONFIG_DIR = claudeConfigDir;
   process.env.HOME = homeDir;
   process.env.CODEX_HOME = codexHome;
-  process.env.OMC_HOME = omcHome;
+  process.env.OMQ_HOME = omcHome;
   delete process.env.CLAUDE_MCP_CONFIG_PATH;
-  delete process.env.OMC_MCP_REGISTRY_PATH;
+  delete process.env.OMQ_MCP_REGISTRY_PATH;
   return import('../installer/index.js');
 }
 

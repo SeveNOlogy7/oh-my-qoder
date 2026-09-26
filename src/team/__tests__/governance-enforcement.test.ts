@@ -108,16 +108,16 @@ describe('team governance enforcement', () => {
       decided_at: new Date().toISOString(),
     });
 
-    const previousAttemptId = process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID;
-    process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID = 'attempt-current';
+    const previousAttemptId = process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID;
+    process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID = 'attempt-current';
     try {
       const claimed = await teamClaimTask(teamName, '1', 'worker-1', null, cwd);
       expect(claimed.ok).toBe(true);
       const task = JSON.parse(await readFile(join(cwd, `.omq/state/team/${teamName}/tasks/task-1.json`), 'utf-8'));
       expect(task.claim?.launch_attempt_id).toBe('attempt-current');
     } finally {
-      if (previousAttemptId === undefined) delete process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID;
-      else process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID = previousAttemptId;
+      if (previousAttemptId === undefined) delete process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID;
+      else process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID = previousAttemptId;
     }
   });
 

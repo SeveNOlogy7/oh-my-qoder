@@ -21,11 +21,11 @@ const WORKER_LAUNCH_TRANSPORT_OWNER_KIND = 'worker_launch_transport_owner' as co
 const WORKER_LAUNCH_TRANSPORT_CLEANUP_KIND = 'worker_launch_transport_cleanup_complete' as const;
 const WORKER_LAUNCH_BOOTSTRAP_DESCRIPTOR_FILE = 'bootstrap.json' as const;
 /** Internal handoff marker for a recovery gate nested inside this bootstrap. */
-export const WORKER_LAUNCH_RECOVERY_GATE_CONTAINED_ENV = 'OMC_WORKER_LAUNCH_RECOVERY_GATE_CONTAINED' as const;
+export const WORKER_LAUNCH_RECOVERY_GATE_CONTAINED_ENV = 'OMQ_WORKER_LAUNCH_RECOVERY_GATE_CONTAINED' as const;
 const WORKER_LAUNCH_INTERNAL_ENV_KEYS = new Set([
-  'OMC_WORKER_LAUNCH_SPEC',
-  'OMC_WORKER_LAUNCH_SPEC_B64',
-  'OMC_WORKER_LAUNCH_SPEC_FILE',
+  'OMQ_WORKER_LAUNCH_SPEC',
+  'OMQ_WORKER_LAUNCH_SPEC_B64',
+  'OMQ_WORKER_LAUNCH_SPEC_FILE',
   WORKER_LAUNCH_RECOVERY_GATE_CONTAINED_ENV,
 ]);
 const WORKER_LAUNCH_AUTHORITY_PROTOCOL = 'worker-launch-authority-v1';
@@ -514,7 +514,7 @@ export function buildWorkerLaunchBootstrapSpec(
     provider_argv: [...providerArgv],
     provider_env: providerEnv,
     cwd: absoluteCwd,
-    decision_timeout_ms: resolvePositiveInteger(process.env.OMC_TEAM_START_ACK_DECISION_TIMEOUT_MS, DEFAULT_DECISION_TIMEOUT_MS),
+    decision_timeout_ms: resolvePositiveInteger(process.env.OMQ_TEAM_START_ACK_DECISION_TIMEOUT_MS, DEFAULT_DECISION_TIMEOUT_MS),
     release_after_spawn: options.releaseAfterSpawn === true,
     containment_nonce: containmentNonce,
     authority_digest: canonicalAuthorityDigest({ identity: attempt, providerArgv, providerEnv, cwd: absoluteCwd, containmentNonce, supervisorSourceSha256 }),
@@ -562,7 +562,7 @@ function buildWorkerLaunchWrapper(attempt: WorkerLaunchAttempt): string {
   return [
     '@echo off',
     'setlocal DisableDelayedExpansion',
-    'set "OMC_WORKER_LAUNCH_SPEC_FILE=%~dp0bootstrap.json"',
+    'set "OMQ_WORKER_LAUNCH_SPEC_FILE=%~dp0bootstrap.json"',
     `${nodeExecutable} ${runtimeCli} --worker-launch`,
     'set "_OMC_WORKER_LAUNCH_EXIT=%ERRORLEVEL%"',
     'del /f /q "%~f0" >nul 2>&1',
@@ -578,7 +578,7 @@ export async function materializeWorkerLaunchTransport(input: {
   providerEnv?: NodeJS.ProcessEnv | Record<string, string>;
   releaseAfterSpawn?: boolean;
   /** Native-Windows delivery resolves a cwd-relative wrapper command. POSIX
-   *  delivery launches the runtime CLI with OMC_WORKER_LAUNCH_SPEC_FILE, so
+   *  delivery launches the runtime CLI with OMQ_WORKER_LAUNCH_SPEC_FILE, so
    *  the wrapper relative path is neither computed nor returned. */
   windowsDelivery?: boolean;
 }): Promise<MaterializedWorkerLaunchTransport> {
@@ -811,7 +811,7 @@ export async function awaitWorkerLaunchAcknowledgement(
   if (expected.kind !== 'value' || !identityMatches(expected.value, attempt)) {
     return rejectWorkerLaunchAttempt(attempt, 'expected_record_invalid');
   }
-  const timeoutMs = options.timeoutMs ?? resolvePositiveInteger(process.env.OMC_TEAM_START_ACK_TIMEOUT_MS, DEFAULT_ACK_TIMEOUT_MS);
+  const timeoutMs = options.timeoutMs ?? resolvePositiveInteger(process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS, DEFAULT_ACK_TIMEOUT_MS);
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -1143,7 +1143,7 @@ export async function awaitWorkerLaunchProviderStarted(
   attempt: WorkerLaunchAttempt,
   options: { timeoutMs?: number; pollIntervalMs?: number } = {},
 ): Promise<boolean> {
-  const timeoutMs = options.timeoutMs ?? resolvePositiveInteger(process.env.OMC_TEAM_START_ACK_TIMEOUT_MS, DEFAULT_ACK_TIMEOUT_MS);
+  const timeoutMs = options.timeoutMs ?? resolvePositiveInteger(process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS, DEFAULT_ACK_TIMEOUT_MS);
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -1436,8 +1436,8 @@ export async function runWorkerLaunchBootstrap(value: unknown): Promise<WorkerLa
   // the actual provider receives its environment.
   const providerEnv: NodeJS.ProcessEnv = {
     ...spec.provider_env,
-    ...(typeof spec.provider_env.OMC_RECOVERY_GATE_SPEC === 'string'
-      || typeof spec.provider_env.OMC_RECOVERY_GATE_SPEC_B64 === 'string'
+    ...(typeof spec.provider_env.OMQ_RECOVERY_GATE_SPEC === 'string'
+      || typeof spec.provider_env.OMQ_RECOVERY_GATE_SPEC_B64 === 'string'
       ? { [WORKER_LAUNCH_RECOVERY_GATE_CONTAINED_ENV]: '1' }
       : {}),
   };
@@ -1598,9 +1598,9 @@ export async function runWorkerLaunchBootstrap(value: unknown): Promise<WorkerLa
       const cleanupSignals: NodeJS.Signals[] = ['SIGHUP', 'SIGINT', 'SIGTERM'];
       const onBootstrapSignal = () => { void terminateProvider(); };
       const ownsSignalLifecycle = Boolean(
-        process.env.OMC_WORKER_LAUNCH_SPEC
-        || process.env.OMC_WORKER_LAUNCH_SPEC_B64
-        || process.env.OMC_WORKER_LAUNCH_SPEC_FILE,
+        process.env.OMQ_WORKER_LAUNCH_SPEC
+        || process.env.OMQ_WORKER_LAUNCH_SPEC_B64
+        || process.env.OMQ_WORKER_LAUNCH_SPEC_FILE,
       );
       if (ownsSignalLifecycle) {
         for (const signal of cleanupSignals) process.once(signal, onBootstrapSignal);

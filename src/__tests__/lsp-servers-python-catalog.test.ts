@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const inheritedPythonLsp = process.env.OMC_PYTHON_LSP;
+const inheritedPythonLsp = process.env.OMQ_PYTHON_LSP;
 
 async function renderServerStatus(installedCommand?: string): Promise<string> {
   vi.resetModules();
@@ -16,7 +16,7 @@ async function renderServerStatus(installedCommand?: string): Promise<string> {
 }
 
 beforeEach(() => {
-  delete process.env.OMC_PYTHON_LSP;
+  delete process.env.OMQ_PYTHON_LSP;
 });
 
 afterEach(() => {
@@ -27,15 +27,15 @@ afterEach(() => {
 
 afterAll(() => {
   if (inheritedPythonLsp === undefined) {
-    delete process.env.OMC_PYTHON_LSP;
+    delete process.env.OMQ_PYTHON_LSP;
   } else {
-    process.env.OMC_PYTHON_LSP = inheritedPythonLsp;
+    process.env.OMQ_PYTHON_LSP = inheritedPythonLsp;
   }
 });
 
 describe('Python LSP catalog selection', () => {
   it('renders only the selected missing basedpyright server and install hint', async () => {
-    vi.stubEnv('OMC_PYTHON_LSP', 'basedpyright');
+    vi.stubEnv('OMQ_PYTHON_LSP', 'basedpyright');
 
     const text = await renderServerStatus();
 
@@ -47,7 +47,7 @@ describe('Python LSP catalog selection', () => {
   });
 
   it('renders only the default installed ty server', async () => {
-    delete process.env.OMC_PYTHON_LSP;
+    delete process.env.OMQ_PYTHON_LSP;
 
     const text = await renderServerStatus('ty');
 

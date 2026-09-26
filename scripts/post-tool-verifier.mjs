@@ -19,17 +19,17 @@ import { readStdin } from './lib/stdin.mjs';
 import { resolveContextPercent } from './lib/context-usage.mjs';
 import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
 
-const AGENT_OUTPUT_ANALYSIS_LIMIT = parseInt(process.env.OMC_AGENT_OUTPUT_ANALYSIS_LIMIT || '12000', 10);
-const AGENT_OUTPUT_SUMMARY_LIMIT = parseInt(process.env.OMC_AGENT_OUTPUT_SUMMARY_LIMIT || '360', 10);
-const PREEMPTIVE_WARNING_THRESHOLD_PERCENT = parseInt(process.env.OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT || '70', 10);
-const PREEMPTIVE_CRITICAL_THRESHOLD_PERCENT = parseInt(process.env.OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT || '90', 10);
-const PREEMPTIVE_COOLDOWN_MS = parseInt(process.env.OMC_PREEMPTIVE_COMPACTION_COOLDOWN_MS || '60000', 10);
+const AGENT_OUTPUT_ANALYSIS_LIMIT = parseInt(process.env.OMQ_AGENT_OUTPUT_ANALYSIS_LIMIT || '12000', 10);
+const AGENT_OUTPUT_SUMMARY_LIMIT = parseInt(process.env.OMQ_AGENT_OUTPUT_SUMMARY_LIMIT || '360', 10);
+const PREEMPTIVE_WARNING_THRESHOLD_PERCENT = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT || '70', 10);
+const PREEMPTIVE_CRITICAL_THRESHOLD_PERCENT = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT || '90', 10);
+const PREEMPTIVE_COOLDOWN_MS = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS || '60000', 10);
 const PREEMPTIVE_LARGE_OUTPUT_TOOLS = new Set(['read', 'grep', 'glob', 'bash', 'webfetch', 'task', 'taskcreate', 'taskupdate', 'taskoutput']);
 const QUIET_LEVEL = getQuietLevel();
 const SESSION_ID_ALLOWLIST = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;
 
 function getQuietLevel() {
-  const parsed = Number.parseInt(process.env.OMC_QUIET || '0', 10);
+  const parsed = Number.parseInt(process.env.OMQ_QUIET || '0', 10);
   if (Number.isNaN(parsed)) return 0;
   return Math.max(0, parsed);
 }
@@ -38,9 +38,9 @@ function getQuietLevel() {
  * Resolve the .omq root directory for a given starting directory.
  *
  * Resolution order (mirrors src/lib/worktree-paths.ts getOmcRoot):
- *   1) OMC_STATE_DIR env — log a warning and fall through (full project-id
+ *   1) OMQ_STATE_DIR env — log a warning and fall through (full project-id
  *      derivation lives in the TS layer; .mjs scripts use resolveOmcStateRoot
- *      for the async TS-backed path when they need OMC_STATE_DIR honoring).
+ *      for the async TS-backed path when they need OMQ_STATE_DIR honoring).
  *   2) Walk up from startDir looking for a .omq-workspace marker file.
  *      The first directory containing that file is the workspace anchor.
  *   3) git rev-parse --show-toplevel from startDir.
@@ -52,11 +52,11 @@ function getQuietLevel() {
 function resolveOmcRoot(startDir) {
   const dir = startDir || process.cwd();
 
-  // 1) OMC_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
-  if (process.env.OMC_STATE_DIR) {
+  // 1) OMQ_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
+  if (process.env.OMQ_STATE_DIR) {
     process.stderr.write(
-      '[omc] OMC_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
-      'resolution. Use resolveOmcStateRoot() for full OMC_STATE_DIR support.\n'
+      '[omc] OMQ_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
+      'resolution. Use resolveOmcStateRoot() for full OMQ_STATE_DIR support.\n'
     );
   }
 
@@ -124,9 +124,9 @@ try {
   // Notepad module not available - remember tags will be silently ignored
 }
 
-// Debug logging helper - gated behind OMC_DEBUG env var
+// Debug logging helper - gated behind OMQ_DEBUG env var
 const debugLog = (...args) => {
-  if (process.env.OMC_DEBUG) console.error('[omc:debug:post-tool-verifier]', ...args);
+  if (process.env.OMQ_DEBUG) console.error('[omc:debug:post-tool-verifier]', ...args);
 };
 
 // State file for session tracking
@@ -1012,9 +1012,9 @@ function combineMessages(...messages) {
 }
 
 async function main() {
-  // Skip guard: check OMC_SKIP_HOOKS env var (see issue #838)
-  const _skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map(s => s.trim());
-  if (process.env.DISABLE_OMC === '1' || _skipHooks.includes('post-tool-use')) {
+  // Skip guard: check OMQ_SKIP_HOOKS env var (see issue #838)
+  const _skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map(s => s.trim());
+  if (process.env.DISABLE_OMQ === '1' || _skipHooks.includes('post-tool-use')) {
     console.log(JSON.stringify({ continue: true }));
     return;
   }

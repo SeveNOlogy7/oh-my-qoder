@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import * as nodeFs from 'node:fs';
 import * as nativePath from 'node:path';
 import { basename, dirname, resolve } from 'node:path';
-import { analyzeLegacyClaudeMd, decodeClaudeMdUtf8 as decodeClaudeMdUtf8PreservingBom, OMC_END_MARKER, OMC_START_MARKER, parseClaudeMdMarkers, removeClaudeMdRanges } from './claude-md-analysis.js';
+import { analyzeLegacyClaudeMd, decodeClaudeMdUtf8 as decodeClaudeMdUtf8PreservingBom, OMQ_END_MARKER, OMQ_START_MARKER, parseClaudeMdMarkers, removeClaudeMdRanges } from './claude-md-analysis.js';
 
 export const CLAUDE_MD_IMPORT_START = '<!-- OMC:IMPORT:START -->';
 export const CLAUDE_MD_IMPORT_END = '<!-- OMC:IMPORT:END -->';
@@ -111,7 +111,7 @@ function cleanCanonical(source: string): string {
 }
 function renderManaged(canonical: string, version?: string): string {
   const body = cleanCanonical(canonical).replace(/<!-- OMC:VERSION:[^\s]*? -->\r?\n?/g, '');
-  return `${OMC_START_MARKER}\n${version ? `<!-- OMC:VERSION:${version} -->\n` : ''}${body}\n${OMC_END_MARKER}\n`;
+  return `${OMQ_START_MARKER}\n${version ? `<!-- OMC:VERSION:${version} -->\n` : ''}${body}\n${OMQ_END_MARKER}\n`;
 }
 function importRanges(content: string): Array<{ start: number; end: number }> {
   const lines = parseClaudeMdMarkers(content).lines;

@@ -45,22 +45,22 @@ function withEnv(overrides: Record<string, string | undefined>, fn: () => void) 
 }
 
 describe('alias-resolver — Tier-0 routing', () => {
-  const origQuiet = process.env.OMC_QUIET;
-  const origResolver = process.env.OMC_ALIAS_RESOLVER_ENABLED;
-  const origDisable = process.env.OMC_DISABLE_ALIAS_RESOLVER;
+  const origQuiet = process.env.OMQ_QUIET;
+  const origResolver = process.env.OMQ_ALIAS_RESOLVER_ENABLED;
+  const origDisable = process.env.OMQ_DISABLE_ALIAS_RESOLVER;
   beforeEach(() => {
-    delete process.env.OMC_QUIET;
-    delete process.env.OMC_ALIAS_WARNINGS;
-    delete process.env.OMC_ALIAS_WARNING_OPT_OUT;
-    delete process.env.OMC_ALIAS_NO_WARNING;
-    delete process.env.OMC_ALIAS_WARNINGS_DISABLED;
-    delete process.env.OMC_ALIAS_RESOLVER_ENABLED;
-    delete process.env.OMC_DISABLE_ALIAS_RESOLVER;
+    delete process.env.OMQ_QUIET;
+    delete process.env.OMQ_ALIAS_WARNINGS;
+    delete process.env.OMQ_ALIAS_WARNING_OPT_OUT;
+    delete process.env.OMQ_ALIAS_NO_WARNING;
+    delete process.env.OMQ_ALIAS_WARNINGS_DISABLED;
+    delete process.env.OMQ_ALIAS_RESOLVER_ENABLED;
+    delete process.env.OMQ_DISABLE_ALIAS_RESOLVER;
   });
   afterEach(() => {
-    if (origQuiet === undefined) delete process.env.OMC_QUIET; else process.env.OMC_QUIET = origQuiet;
-    if (origResolver === undefined) delete process.env.OMC_ALIAS_RESOLVER_ENABLED; else process.env.OMC_ALIAS_RESOLVER_ENABLED = origResolver;
-    if (origDisable === undefined) delete process.env.OMC_DISABLE_ALIAS_RESOLVER; else process.env.OMC_DISABLE_ALIAS_RESOLVER = origDisable;
+    if (origQuiet === undefined) delete process.env.OMQ_QUIET; else process.env.OMQ_QUIET = origQuiet;
+    if (origResolver === undefined) delete process.env.OMQ_ALIAS_RESOLVER_ENABLED; else process.env.OMQ_ALIAS_RESOLVER_ENABLED = origResolver;
+    if (origDisable === undefined) delete process.env.OMQ_DISABLE_ALIAS_RESOLVER; else process.env.OMQ_DISABLE_ALIAS_RESOLVER = origDisable;
   });
 
   // 5.0.0 retired these aliases outright (major-version carve-out). They no
@@ -132,7 +132,7 @@ describe('alias-resolver — Tier-0 routing', () => {
   });
 
   it('resolver flag disables alias routing', () => {
-    withEnv({ OMC_ALIAS_RESOLVER_ENABLED: '0' }, () => {
+    withEnv({ OMQ_ALIAS_RESOLVER_ENABLED: '0' }, () => {
       expect(isResolverEnabled()).toBe(false);
       const r = resolveWorkflowAlias('release');
       expect(r.isAlias).toBe(false);
@@ -142,8 +142,8 @@ describe('alias-resolver — Tier-0 routing', () => {
     expect(isResolverEnabled()).toBe(true);
   });
 
-  it('resolver flag via OMC_DISABLE_ALIAS_RESOLVER', () => {
-    withEnv({ OMC_DISABLE_ALIAS_RESOLVER: '1' }, () => {
+  it('resolver flag via OMQ_DISABLE_ALIAS_RESOLVER', () => {
+    withEnv({ OMQ_DISABLE_ALIAS_RESOLVER: '1' }, () => {
       expect(isResolverEnabled()).toBe(false);
     });
   });
@@ -187,7 +187,7 @@ describe('alias-resolver — warnings once/session + diagnostics', () => {
 });
 
 describe('alias-resolver — automation opt-out', () => {
-  const keys = ['OMC_ALIAS_WARNINGS', 'OMC_ALIAS_WARNING_OPT_OUT', 'OMC_ALIAS_NO_WARNING', 'OMC_ALIAS_WARNINGS_DISABLED', 'OMC_QUIET'];
+  const keys = ['OMQ_ALIAS_WARNINGS', 'OMQ_ALIAS_WARNING_OPT_OUT', 'OMQ_ALIAS_NO_WARNING', 'OMQ_ALIAS_WARNINGS_DISABLED', 'OMQ_QUIET'];
 
   function cleanup() {
     for (const k of keys) delete process.env[k];
@@ -196,28 +196,28 @@ describe('alias-resolver — automation opt-out', () => {
   beforeEach(cleanup);
   afterEach(cleanup);
 
-  it('OMC_ALIAS_WARNINGS=0 opts out', () => {
-    process.env.OMC_ALIAS_WARNINGS = '0';
+  it('OMQ_ALIAS_WARNINGS=0 opts out', () => {
+    process.env.OMQ_ALIAS_WARNINGS = '0';
     expect(isWarningOptedOut()).toBe(true);
   });
 
-  it('OMC_ALIAS_WARNINGS=1 does not opt out', () => {
-    process.env.OMC_ALIAS_WARNINGS = '1';
+  it('OMQ_ALIAS_WARNINGS=1 does not opt out', () => {
+    process.env.OMQ_ALIAS_WARNINGS = '1';
     expect(isWarningOptedOut()).toBe(false);
   });
 
-  it('OMC_ALIAS_WARNING_OPT_OUT=1 opts out', () => {
-    process.env.OMC_ALIAS_WARNING_OPT_OUT = '1';
+  it('OMQ_ALIAS_WARNING_OPT_OUT=1 opts out', () => {
+    process.env.OMQ_ALIAS_WARNING_OPT_OUT = '1';
     expect(isWarningOptedOut()).toBe(true);
   });
 
-  it('OMC_QUIET=1 opts out warnings (bounded)', () => {
-    process.env.OMC_QUIET = '1';
+  it('OMQ_QUIET=1 opts out warnings (bounded)', () => {
+    process.env.OMQ_QUIET = '1';
     expect(isWarningOptedOut()).toBe(true);
   });
 
-  it('OMC_QUIET=0 does not opt out', () => {
-    process.env.OMC_QUIET = '0';
+  it('OMQ_QUIET=0 does not opt out', () => {
+    process.env.OMQ_QUIET = '0';
     expect(isWarningOptedOut()).toBe(false);
   });
 
@@ -233,7 +233,7 @@ describe('alias-resolver — automation opt-out', () => {
     // We just exercise the file path directly via worktreeRoot override
     try {
       // without opt-out, first call emits
-      delete process.env.OMC_QUIET;
+      delete process.env.OMQ_QUIET;
       const res = resolveWorkflowAlias('psm');
       const w1 = maybeGetAliasWarning(res, sidSafe, worktreeRoot);
       expect(w1).not.toBe(null);
@@ -245,13 +245,13 @@ describe('alias-resolver — automation opt-out', () => {
       const w3 = maybeGetAliasWarning(res2, sidSafe, worktreeRoot);
       expect(w3).not.toBe(null);
       // opt-out suppresses even first warning for a fresh alias
-      process.env.OMC_QUIET = '1';
+      process.env.OMQ_QUIET = '1';
       const res3 = resolveWorkflowAlias('verify');
       const w4 = maybeGetAliasWarning(res3, sidSafe, worktreeRoot);
       expect(w4).toBe(null);
     } finally {
       rmSync(worktreeRoot, { recursive: true, force: true });
-      delete process.env.OMC_QUIET;
+      delete process.env.OMQ_QUIET;
     }
   });
 });

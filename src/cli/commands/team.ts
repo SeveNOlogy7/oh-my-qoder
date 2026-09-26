@@ -49,15 +49,15 @@ Examples:
   omc team shutdown fix-failing-tests
   omc team api send-message --input '{"team_name":"my-team","from_worker":"worker-1","to_worker":"leader-fixed","body":"ACK"}' --json
 
-Worktrees (opt-in): set team.ops.worktreeMode or OMC_TEAM_WORKTREE_MODE=detached|branch to launch workers from .omq/team/<team>/worktrees/<worker>. Status includes workspace/worktree metadata.
+Worktrees (opt-in): set team.ops.worktreeMode or OMQ_TEAM_WORKTREE_MODE=detached|branch to launch workers from .omq/team/<team>/worktrees/<worker>. Status includes workspace/worktree metadata.
 
 Auto-merge (v2-only):
   --no-decompose       Treat the launch text as pre-authored/fixed worker scope; do not split by commas/lists.
   --auto-merge          Enable per-commit auto-merge to leader and auto-rebase fanout.
                         Each worker runs in a dedicated git worktree on omc-team/{team}/{worker}.
                         Bursts of rapid worker commits coalesce to a single merge of HEAD.
-                        Requires OMC_RUNTIME_V2=1. Leader branch must not be 'main' or 'master'.
-                        Equivalent to OMC_TEAMS_AUTO_MERGE=1.
+                        Requires OMQ_RUNTIME_V2=1. Leader branch must not be 'main' or 'master'.
+                        Equivalent to OMQ_TEAMS_AUTO_MERGE=1.
 
 Roles (optional): architect, executor, planner, analyst, critic, debugger, verifier,
   code-reviewer, security-reviewer, test-engineer, designer, writer, scientist
@@ -313,7 +313,7 @@ function isTeamStateLive(config: { tmux_session?: string } | null): boolean {
 }
 
 function getTeamWorkerIdentityFromEnv(env: NodeJS.ProcessEnv = process.env): string | null {
-  const omc = typeof env.OMC_TEAM_WORKER === 'string' ? env.OMC_TEAM_WORKER.trim() : '';
+  const omc = typeof env.OMQ_TEAM_WORKER === 'string' ? env.OMQ_TEAM_WORKER.trim() : '';
   if (omc) return omc;
   const omx = typeof env.OMX_TEAM_WORKER === 'string' ? env.OMX_TEAM_WORKER.trim() : '';
   return omx || null;
@@ -403,7 +403,7 @@ export function parseTeamArgs(tokens: string[], defaultAgentType: string = 'clau
   let workerSpecs: ParsedWorkerSpec[] = [];
   let json = false;
   let newWindow = false;
-  let autoMerge: boolean = process.env.OMC_TEAMS_AUTO_MERGE === '1';
+  let autoMerge: boolean = process.env.OMQ_TEAMS_AUTO_MERGE === '1';
   let noDecompose = false;
   const normalizedDefaultAgentType = VALID_TEAM_CLI_AGENT_TYPES.has(defaultAgentType as CliAgentType)
     ? defaultAgentType
@@ -741,7 +741,7 @@ async function handleTeamStart(parsed: ParsedTeamArgs, cwd: string): Promise<voi
     rolePrompt = loadAgentPrompt(parsed.role);
   }
 
-  // Use v2 runtime by default (OMC_RUNTIME_V2 opt-out), otherwise fall back to v1
+  // Use v2 runtime by default (OMQ_RUNTIME_V2 opt-out), otherwise fall back to v1
   const { isRuntimeV2Enabled } = await import('../../team/runtime-v2.js');
   if (isRuntimeV2Enabled()) {
     const { startTeamV2, monitorTeamV2 } = await import('../../team/runtime-v2.js');

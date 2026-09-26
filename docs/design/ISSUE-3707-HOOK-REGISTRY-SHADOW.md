@@ -3,7 +3,7 @@
 Parent epic: #3698. Planning contract: `docs/design/ISSUE-3698-LIGHTWEIGHT-WORKFLOW-PLAN.md` §6.3, §8 step 5, §9.
 
 **Status:** implemented (shadow mode only, no behavior change)
-**Rollback:** `OMC_HOOK_SHADOW` defaults off; removing the shadow observation call in `src/hooks/bridge.ts` (`processHook` wrapper) fully restores prior behavior.
+**Rollback:** `OMQ_HOOK_SHADOW` defaults off; removing the shadow observation call in `src/hooks/bridge.ts` (`processHook` wrapper) fully restores prior behavior.
 
 ## Scope
 
@@ -36,7 +36,7 @@ Shadow mode only: dry-run handlers execute and produce records, but no output is
 
 ### Shadow comparison
 
-`runShadowObservation(hookType, legacyOutput, legacyDurationMs)` is called from the `processHook` wrapper in `src/hooks/bridge.ts` after the legacy path completes, gated by `OMC_HOOK_SHADOW` (default off). It:
+`runShadowObservation(hookType, legacyOutput, legacyDurationMs)` is called from the `processHook` wrapper in `src/hooks/bridge.ts` after the legacy path completes, gated by `OMQ_HOOK_SHADOW` (default off). It:
 
 - derives the registry from the installed `hooks/hooks.json` (cached per process),
 - runs the dispatcher in shadow mode for the same event,
@@ -64,10 +64,10 @@ Shadow observation is fully fail-open: any internal error produces an `unmapped`
 - **Timeout/error fail-open vs fail-closed:** advisory errors fail open with diagnostics and do not stop later hooks; hard-risk errors fail closed and halt the chain; per-hook timeouts enforced within budget.
 - **In-process telemetry:** buffer bounded at 500 records; clear/summarize work correctly.
 - **Shadow-vs-legacy decision equivalence:** verdict taxonomy, decision-shape digest privacy (content-independent), mapped/unmapped/divergent paths.
-- **No behavior change:** `processHook` output identical with `OMC_HOOK_SHADOW` on/off; observation failures never block the legacy path.
+- **No behavior change:** `processHook` output identical with `OMQ_HOOK_SHADOW` on/off; observation failures never block the legacy path.
 - **Latency budget:** no-op p95 ≤ 50 ms; advisory p95 ≤ 200 ms.
 
 ## Rollback
 
-1. `OMC_HOOK_SHADOW` is unset/off by default — shadow code is inert.
+1. `OMQ_HOOK_SHADOW` is unset/off by default — shadow code is inert.
 2. Remove the shadow observation call in `src/hooks/bridge.ts` (`processHook` wrapper) and optionally delete `src/hooks/registry/`. No other runtime surface references the registry.

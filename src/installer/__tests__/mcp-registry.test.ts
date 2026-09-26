@@ -35,7 +35,7 @@ describe('unified MCP registry sync', () => {
     process.env.CLAUDE_CONFIG_DIR = claudeDir;
     process.env.CLAUDE_MCP_CONFIG_PATH = join(testRoot, '.claude.json');
     process.env.CODEX_HOME = codexDir;
-    process.env.OMC_HOME = omcDir;
+    process.env.OMQ_HOME = omcDir;
   });
 
   afterEach(() => {
@@ -669,9 +669,9 @@ describe('unified MCP registry sync', () => {
     expect(status.codexMismatched).toEqual(['remoteOmc']);
   });
 
-  it('uses XDG config/state defaults when OMC_HOME is unset on Linux', () => {
+  it('uses XDG config/state defaults when OMQ_HOME is unset on Linux', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
-    delete process.env.OMC_HOME;
+    delete process.env.OMQ_HOME;
     process.env.HOME = testRoot;
     process.env.XDG_CONFIG_HOME = join(testRoot, '.config');
     process.env.XDG_STATE_HOME = join(testRoot, '.state');
@@ -692,7 +692,7 @@ describe('unified MCP registry sync', () => {
 
   it('falls back to legacy ~/.omq registry when the XDG registry does not exist', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
-    delete process.env.OMC_HOME;
+    delete process.env.OMQ_HOME;
     process.env.HOME = testRoot;
     process.env.XDG_CONFIG_HOME = join(testRoot, '.config');
     process.env.XDG_STATE_HOME = join(testRoot, '.state');

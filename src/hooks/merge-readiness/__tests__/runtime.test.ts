@@ -60,12 +60,12 @@ function makeQuestion(
 describe("merge-readiness runtime", () => {
   let tempDir: string;
   const sessionId = "merge-readiness-session";
-  const originalPrincipal = process.env.OMC_MERGE_READINESS_AUTHENTICATED_PRINCIPAL;
-  const originalMaintainers = process.env.OMC_MERGE_READINESS_MAINTAINERS;
+  const originalPrincipal = process.env.OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL;
+  const originalMaintainers = process.env.OMQ_MERGE_READINESS_MAINTAINERS;
 
   beforeEach(() => {
-    process.env.OMC_MERGE_READINESS_AUTHENTICATED_PRINCIPAL = "github:trusted-maintainer";
-    process.env.OMC_MERGE_READINESS_MAINTAINERS = "github:trusted-maintainer";
+    process.env.OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL = "github:trusted-maintainer";
+    process.env.OMQ_MERGE_READINESS_MAINTAINERS = "github:trusted-maintainer";
     tempDir = mkdtempSync(join(tmpdir(), "omc-merge-readiness-"));
     execFileSync("git", ["init"], { cwd: tempDir, stdio: "ignore", windowsHide: true });
     execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: tempDir, stdio: "ignore", windowsHide: true });
@@ -77,10 +77,10 @@ describe("merge-readiness runtime", () => {
   });
 
   afterEach(() => {
-    if (originalPrincipal === undefined) delete process.env.OMC_MERGE_READINESS_AUTHENTICATED_PRINCIPAL;
-    else process.env.OMC_MERGE_READINESS_AUTHENTICATED_PRINCIPAL = originalPrincipal;
-    if (originalMaintainers === undefined) delete process.env.OMC_MERGE_READINESS_MAINTAINERS;
-    else process.env.OMC_MERGE_READINESS_MAINTAINERS = originalMaintainers;
+    if (originalPrincipal === undefined) delete process.env.OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL;
+    else process.env.OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL = originalPrincipal;
+    if (originalMaintainers === undefined) delete process.env.OMQ_MERGE_READINESS_MAINTAINERS;
+    else process.env.OMQ_MERGE_READINESS_MAINTAINERS = originalMaintainers;
     rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -877,7 +877,7 @@ describe("merge-readiness runtime", () => {
 
   it("rejects an override when the server has no allowlisted authenticated maintainer principal", () => {
     createInitialMergeReadinessState(tempDir, "/merge-readiness --quick change", sessionId);
-    delete process.env.OMC_MERGE_READINESS_AUTHENTICATED_PRINCIPAL;
+    delete process.env.OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL;
     const state = overrideMergeReadiness(tempDir, "Attempt untrusted override.", sessionId);
     expect(state?.result).toBe("pending");
     expect(state?.active).toBe(true);

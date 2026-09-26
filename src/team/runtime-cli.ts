@@ -491,7 +491,7 @@ interface CliInput {
 
 export function assertAutoMergeRuntimeSupported(useV2: boolean, autoMerge: boolean): void {
   if (autoMerge && !useV2) {
-    throw new Error('--auto-merge requires runtime v2; unset OMC_RUNTIME_V2=0 or disable --auto-merge');
+    throw new Error('--auto-merge requires runtime v2; unset OMQ_RUNTIME_V2=0 or disable --auto-merge');
   }
 }
 
@@ -588,8 +588,8 @@ export async function checkWatchdogFailedMarker(
 export async function writeResultArtifact(
   output: CliOutput,
   finishedAt: string,
-  jobId: string | undefined = process.env.OMC_JOB_ID,
-  omcJobsDir: string | undefined = process.env.OMC_JOBS_DIR,
+  jobId: string | undefined = process.env.OMQ_JOB_ID,
+  omcJobsDir: string | undefined = process.env.OMQ_JOBS_DIR,
 ): Promise<void> {
   if (!jobId || !omcJobsDir) return;
   const resultPath = join(omcJobsDir, `${jobId}-result.json`);
@@ -642,7 +642,7 @@ async function writePanesFile(
   sessionName: string,
   ownsWindow: boolean,
 ): Promise<void> {
-  const omcJobsDir = process.env.OMC_JOBS_DIR;
+  const omcJobsDir = process.env.OMQ_JOBS_DIR;
   if (!jobId || !omcJobsDir) return;
 
   const panesPath = join(omcJobsDir, `${jobId}-panes.json`);
@@ -995,7 +995,7 @@ async function main(): Promise<void> {
   if (startupShutdown.isShutdownRequested()) return;
 
   // Persist pane IDs so MCP server can clean up explicitly via omc_run_team_cleanup.
-  const jobId = process.env.OMC_JOB_ID;
+  const jobId = process.env.OMQ_JOB_ID;
   const expectedTaskCount = tasks.length;
   let mismatchStreak = 0;
   try {
@@ -1253,11 +1253,11 @@ async function main(): Promise<void> {
 }
 
 async function runRecoveryGateFromEnvironment(): Promise<void> {
-  const raw = process.env.OMC_RECOVERY_GATE_SPEC
-    ?? (process.env.OMC_RECOVERY_GATE_SPEC_B64
-      ? Buffer.from(process.env.OMC_RECOVERY_GATE_SPEC_B64, 'base64').toString('utf8')
+  const raw = process.env.OMQ_RECOVERY_GATE_SPEC
+    ?? (process.env.OMQ_RECOVERY_GATE_SPEC_B64
+      ? Buffer.from(process.env.OMQ_RECOVERY_GATE_SPEC_B64, 'base64').toString('utf8')
       : undefined);
-  if (!raw) throw new Error('OMC_RECOVERY_GATE_SPEC is required');
+  if (!raw) throw new Error('OMQ_RECOVERY_GATE_SPEC is required');
   const gate = JSON.parse(raw) as RecoveryActivationGate;
   const result = await runWorkerActivationGate(gate);
   if (result.outcome !== 'ran') throw new Error(`recovery_gate_${result.outcome}`);
@@ -1266,14 +1266,14 @@ async function runRecoveryGateFromEnvironment(): Promise<void> {
 }
 
 export async function runWorkerLaunchFromEnvironment(): Promise<void> {
-  const descriptorPath = process.env.OMC_WORKER_LAUNCH_SPEC_FILE;
-  const raw = process.env.OMC_WORKER_LAUNCH_SPEC
-    ?? (process.env.OMC_WORKER_LAUNCH_SPEC_B64
-      ? Buffer.from(process.env.OMC_WORKER_LAUNCH_SPEC_B64, 'base64').toString('utf8')
+  const descriptorPath = process.env.OMQ_WORKER_LAUNCH_SPEC_FILE;
+  const raw = process.env.OMQ_WORKER_LAUNCH_SPEC
+    ?? (process.env.OMQ_WORKER_LAUNCH_SPEC_B64
+      ? Buffer.from(process.env.OMQ_WORKER_LAUNCH_SPEC_B64, 'base64').toString('utf8')
       : undefined);
   if (descriptorPath && raw) throw new Error('worker_launch_spec_source_conflict');
   if (!descriptorPath) {
-    if (!raw) throw new Error('OMC_WORKER_LAUNCH_SPEC is required');
+    if (!raw) throw new Error('OMQ_WORKER_LAUNCH_SPEC is required');
     try { JSON.parse(raw); } catch { throw new Error('worker_launch_invalid_spec_json'); }
     throw new Error('worker_launch_descriptor_required');
   }
@@ -1286,18 +1286,18 @@ export async function runWorkerLaunchFromEnvironment(): Promise<void> {
 
 /** Detached durable recovery-owner entry point. It remains the persistent v2 owner until its fence or team lifecycle is lost. */
 export async function runRecoveryOwnerFromEnvironment(): Promise<void> {
-  const raw = process.env.OMC_RECOVERY_OWNER_INPUT;
-  if (!raw) throw new Error('OMC_RECOVERY_OWNER_INPUT is required');
+  const raw = process.env.OMQ_RECOVERY_OWNER_INPUT;
+  if (!raw) throw new Error('OMQ_RECOVERY_OWNER_INPUT is required');
   const input = JSON.parse(raw) as Partial<RecoverDeadWorkerOwnerInput>;
   if (typeof input.teamName !== 'string' || typeof input.cwd !== 'string' || typeof input.workerName !== 'string'
     || typeof input.requestId !== 'string') throw new Error('invalid_recovery_owner_input');
-  const expectedEpoch = Number(process.env.OMC_RECOVERY_OWNER_EXPECTED_EPOCH);
-  const predecessorEpoch = Number(process.env.OMC_RECOVERY_OWNER_PREDECESSOR_EPOCH);
-  const predecessorNonce = process.env.OMC_RECOVERY_OWNER_PREDECESSOR_NONCE;
-  const bootstrapNonce = process.env.OMC_RECOVERY_OWNER_NONCE;
-  const predecessorPid = Number(process.env.OMC_RECOVERY_OWNER_PREDECESSOR_PID);
-  const predecessorStartedAt = process.env.OMC_RECOVERY_OWNER_PREDECESSOR_STARTED_AT;
-  const recoveryId = process.env.OMC_RECOVERY_OWNER_RECOVERY_ID;
+  const expectedEpoch = Number(process.env.OMQ_RECOVERY_OWNER_EXPECTED_EPOCH);
+  const predecessorEpoch = Number(process.env.OMQ_RECOVERY_OWNER_PREDECESSOR_EPOCH);
+  const predecessorNonce = process.env.OMQ_RECOVERY_OWNER_PREDECESSOR_NONCE;
+  const bootstrapNonce = process.env.OMQ_RECOVERY_OWNER_NONCE;
+  const predecessorPid = Number(process.env.OMQ_RECOVERY_OWNER_PREDECESSOR_PID);
+  const predecessorStartedAt = process.env.OMQ_RECOVERY_OWNER_PREDECESSOR_STARTED_AT;
+  const recoveryId = process.env.OMQ_RECOVERY_OWNER_RECOVERY_ID;
   const processStartedAt = currentProcessStartIdentity();
   if (!Number.isSafeInteger(expectedEpoch) || expectedEpoch < 1 || !Number.isSafeInteger(predecessorEpoch)
     || predecessorEpoch < 0 || expectedEpoch !== predecessorEpoch + 1 || typeof bootstrapNonce !== 'string' || bootstrapNonce.length === 0
@@ -1334,7 +1334,7 @@ export function selectRuntimeCliMode(
 ): RuntimeCliMode {
   if (argv.includes('--worker-launch')) return 'worker-launch';
   if (argv.includes('--recovery-gate')) return 'recovery-gate';
-  if (env.OMC_RECOVERY_OWNER_INPUT) return 'recovery-owner';
+  if (env.OMQ_RECOVERY_OWNER_INPUT) return 'recovery-owner';
   return 'main';
 }
 

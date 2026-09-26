@@ -35,7 +35,7 @@ export interface OpenClawRoutingSnapshot {
 
 function openClawRoutingSnapshot(): OpenClawRoutingSnapshot {
   const values: Array<[keyof OpenClawRoutingSnapshot, string]> = [
-    ['openClawConfig', 'OMC_OPENCLAW_CONFIG'],
+    ['openClawConfig', 'OMQ_OPENCLAW_CONFIG'],
     ['replyChannel', 'OPENCLAW_REPLY_CHANNEL'],
     ['replyTarget', 'OPENCLAW_REPLY_TARGET'],
     ['replyThread', 'OPENCLAW_REPLY_THREAD'],
@@ -53,7 +53,7 @@ const ACTIONS: Array<[SessionEndActionName, 'required' | 'best-effort']> = [
   ['foreground-cleanup', 'required'], ['wiki-capture', 'required'], ['team-cleanup', 'required'], ['python-cleanup', 'required'], ['reply-cleanup', 'required'],
   ['callback', 'best-effort'], ['notification', 'best-effort'], ['openclaw', 'best-effort'],
 ];
-const TEST_PRODUCER_GRACE_ENV = 'OMC_SESSION_END_TEST_PRODUCER_GRACE_MS';
+const TEST_PRODUCER_GRACE_ENV = 'OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS';
 const PRODUCER_GRACE_MS = process.env.NODE_ENV === 'test' && /^\d+$/.test(process.env[TEST_PRODUCER_GRACE_ENV] ?? '')
   ? Math.max(1, Number(process.env[TEST_PRODUCER_GRACE_ENV]))
   : 30_000;

@@ -93,8 +93,8 @@ export async function runWorkerActivationGate(gate: RecoveryActivationGate): Pro
   if (!await waitForRecoveryGateRecord(gate.runPath, expected, timeoutMs, pollIntervalMs)) return { outcome: 'run_timeout' };
   const fenced = await withWorkerLaunchAttemptFence(gate.launchAttempt, async () => {
     const {
-      OMC_RECOVERY_GATE_SPEC: _recoveryGateSpec,
-      OMC_RECOVERY_GATE_SPEC_B64: _encodedRecoveryGateSpec,
+      OMQ_RECOVERY_GATE_SPEC: _recoveryGateSpec,
+      OMQ_RECOVERY_GATE_SPEC_B64: _encodedRecoveryGateSpec,
       [WORKER_LAUNCH_RECOVERY_GATE_CONTAINED_ENV]: containedByBootstrap,
       ...providerProcessEnv
     } = process.env;
@@ -192,7 +192,7 @@ export async function runWorkerActivationGate(gate: RecoveryActivationGate): Pro
     };
     const cleanupSignals: NodeJS.Signals[] = ['SIGHUP', 'SIGINT', 'SIGTERM'];
     const onGateSignal = () => { void terminateProvider(); };
-    const ownsSignalLifecycle = Boolean(process.env.OMC_RECOVERY_GATE_SPEC || process.env.OMC_RECOVERY_GATE_SPEC_B64);
+    const ownsSignalLifecycle = Boolean(process.env.OMQ_RECOVERY_GATE_SPEC || process.env.OMQ_RECOVERY_GATE_SPEC_B64);
     if (ownsSignalLifecycle) {
       for (const signal of cleanupSignals) process.once(signal, onGateSignal);
       void completion.finally(() => {

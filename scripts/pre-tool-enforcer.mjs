@@ -88,18 +88,18 @@ function isTierAlias(modelId) {
   return TIER_ALIASES.has((modelId || '').toLowerCase());
 }
 // Resolution chain for tier alias → subagent-safe model ID.
-// Order mirrors src/config/models.ts:TIER_ENV_KEYS with OMC_SUBAGENT_MODEL as top-priority override.
-// OMC_SUBAGENT_MODEL at position 0 wins for ALL tiers — tier-specific vars are only
+// Order mirrors src/config/models.ts:TIER_ENV_KEYS with OMQ_SUBAGENT_MODEL as top-priority override.
+// OMQ_SUBAGENT_MODEL at position 0 wins for ALL tiers — tier-specific vars are only
 // reached when it is unset or fails isSubagentSafeModelId validation.
-// OMC_MODEL_* is intentionally excluded: those are OMC-internal vars that the OMC bridge
+// OMQ_MODEL_* is intentionally excluded: those are OMC-internal vars that the OMC bridge
 // reads for its own routing, but CC itself does not read them when resolving tier aliases
-// (sonnet/haiku/opus). Allowing OMC_MODEL_* as proof would let the hook pass while CC
+// (sonnet/haiku/opus). Allowing OMQ_MODEL_* as proof would let the hook pass while CC
 // still fails to route the alias, reintroducing the downstream deadlock this gate prevents.
 const TIER_TO_DEFAULT_ENV_KEYS = {
-  haiku:  ['OMC_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',  'ANTHROPIC_DEFAULT_HAIKU_MODEL'],
-  sonnet: ['OMC_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL'],
-  opus:   ['OMC_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL',   'ANTHROPIC_DEFAULT_OPUS_MODEL'],
-  fable:  ['OMC_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_FABLE_MODEL',  'ANTHROPIC_DEFAULT_FABLE_MODEL'],
+  haiku:  ['OMQ_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',  'ANTHROPIC_DEFAULT_HAIKU_MODEL'],
+  sonnet: ['OMQ_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL'],
+  opus:   ['OMQ_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL',   'ANTHROPIC_DEFAULT_OPUS_MODEL'],
+  fable:  ['OMQ_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_FABLE_MODEL',  'ANTHROPIC_DEFAULT_FABLE_MODEL'],
 };
 function resolveTierAliasToSafeModel(tierAlias) {
   const keys = TIER_TO_DEFAULT_ENV_KEYS[(tierAlias || '').toLowerCase()];
@@ -108,7 +108,7 @@ function resolveTierAliasToSafeModel(tierAlias) {
     const value = (process.env[key] || '').trim();
     // CC-native vars (ANTHROPIC_DEFAULT_* and CLAUDE_CODE_BEDROCK_*) are read by CC's own
     // model resolution, which handles [1m] suffixes correctly for explicit model= calls.
-    // OMC-internal vars (OMC_SUBAGENT_MODEL, OMC_MODEL_*) are not read by CC, so a [1m]
+    // OMC-internal vars (OMQ_SUBAGENT_MODEL, OMQ_MODEL_*) are not read by CC, so a [1m]
     // value there is not a valid routing proof — keep the stricter isSubagentSafeModelId check.
     const isAnthropicDefaultTierVar = key.startsWith('ANTHROPIC_DEFAULT_');
     const isNativeCcVar = isAnthropicDefaultTierVar || key.startsWith('CLAUDE_CODE_BEDROCK_');
@@ -582,7 +582,7 @@ const ADVISORY_THROTTLE_DEFAULT_COOLDOWN_MS = 5 * 60 * 1000;
 const ADVISORY_THROTTLE_MIN_PRUNE_WINDOW_MS = 60 * 60 * 1000;
 
 function getAdvisoryThrottleCooldownMs() {
-  const raw = process.env.OMC_PRE_TOOL_ADVISORY_COOLDOWN_MS;
+  const raw = process.env.OMQ_PRE_TOOL_ADVISORY_COOLDOWN_MS;
   if (raw == null || raw === '') return ADVISORY_THROTTLE_DEFAULT_COOLDOWN_MS;
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed)) return ADVISORY_THROTTLE_DEFAULT_COOLDOWN_MS;
@@ -590,7 +590,7 @@ function getAdvisoryThrottleCooldownMs() {
 }
 
 function getAdvisoryThrottleNowMs() {
-  const raw = process.env.OMC_PRE_TOOL_ADVISORY_NOW_MS;
+  const raw = process.env.OMQ_PRE_TOOL_ADVISORY_NOW_MS;
   if (raw != null && raw !== '') {
     const parsed = Number.parseInt(raw, 10);
     if (Number.isFinite(parsed)) return parsed;
@@ -687,7 +687,7 @@ const BUILT_IN_TASK_LIST_TOOL_NAMES = new Set([
 ]);
 
 function getQuietLevel() {
-  const parsed = Number.parseInt(process.env.OMC_QUIET || '0', 10);
+  const parsed = Number.parseInt(process.env.OMQ_QUIET || '0', 10);
   if (Number.isNaN(parsed)) return 0;
   return Math.max(0, parsed);
 }
@@ -696,9 +696,9 @@ function getQuietLevel() {
  * Resolve the .omq root directory for a given starting directory.
  *
  * Resolution order (mirrors src/lib/worktree-paths.ts getOmcRoot):
- *   1) OMC_STATE_DIR env — log a warning and fall through (full project-id
+ *   1) OMQ_STATE_DIR env — log a warning and fall through (full project-id
  *      derivation lives in the TS layer; use resolveOmcStateRoot() for async
- *      TS-backed OMC_STATE_DIR support in main()).
+ *      TS-backed OMQ_STATE_DIR support in main()).
  *   2) Walk up from startDir looking for a .omq-workspace marker file.
  *      The first directory containing that file is the workspace anchor.
  *   3) git rev-parse --show-toplevel from startDir.
@@ -710,11 +710,11 @@ function getQuietLevel() {
 function resolveOmcRoot(startDir) {
   const dir = startDir || process.cwd();
 
-  // 1) OMC_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
-  if (process.env.OMC_STATE_DIR) {
+  // 1) OMQ_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
+  if (process.env.OMQ_STATE_DIR) {
     process.stderr.write(
-      '[omc] OMC_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
-      'resolution. Use resolveOmcStateRoot() for full OMC_STATE_DIR support.\n'
+      '[omc] OMQ_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
+      'resolution. Use resolveOmcStateRoot() for full OMQ_STATE_DIR support.\n'
     );
   }
 
@@ -1531,7 +1531,7 @@ function loadOmcConfig() {
 
 // Check if forceInherit is enabled via config or env var
 function isForceInheritEnabled() {
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'true') return true;
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'true') return true;
   const config = loadOmcConfig();
   return config.routing?.forceInherit === true;
 }
@@ -1669,9 +1669,9 @@ async function recordToolInvocation(data, directory) {
 }
 
 async function main() {
-  // Skip guard: check OMC_SKIP_HOOKS env var (see issue #838)
-  const _skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map(s => s.trim());
-  if (process.env.DISABLE_OMC === '1' || _skipHooks.includes('pre-tool-use')) {
+  // Skip guard: check OMQ_SKIP_HOOKS env var (see issue #838)
+  const _skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map(s => s.trim());
+  if (process.env.DISABLE_OMQ === '1' || _skipHooks.includes('pre-tool-use')) {
     console.log(JSON.stringify({ continue: true }));
     return;
   }
@@ -1682,7 +1682,7 @@ async function main() {
     const toolName = extractJsonField(input, 'tool_name') || extractJsonField(input, 'toolName', 'unknown');
     const directory = extractJsonField(input, 'cwd') || extractJsonField(input, 'directory', process.cwd());
 
-    // Resolve the .omq state root once, honoring OMC_STATE_DIR.
+    // Resolve the .omq state root once, honoring OMQ_STATE_DIR.
     // All helpers receive stateDir so they stay in sync with the centralized
     // resolver used by session-start.mjs and persistent-mode (issue #2518, PR #2532).
     const omcRoot = await resolveOmcStateRoot(directory);
@@ -1742,7 +1742,7 @@ async function main() {
     // New behaviour (issue #1868 — [1m] suffix deadlock):
     //   ALLOW explicit valid provider-specific model IDs (full Bedrock/Vertex format, no [1m])
     //   DENY  tier names (sonnet/opus/haiku) and [1m]-suffixed IDs
-    //   DENY  no-model calls when the session model itself has [1m] — guide to OMC_SUBAGENT_MODEL
+    //   DENY  no-model calls when the session model itself has [1m] — guide to OMQ_SUBAGENT_MODEL
     if (toolName === 'Task' || toolName === 'Agent') {
       const toolInput = data.toolInput || data.tool_input || {};
       // Skill vs agent namespace guard (issue #3667): deny BEFORE the native
@@ -1771,7 +1771,7 @@ async function main() {
 
         if (toolModel) {
           // Allow tier aliases (sonnet/opus/haiku) when a subagent-safe model can be
-          // resolved for that tier. Resolution chain: OMC_SUBAGENT_MODEL (global override)
+          // resolved for that tier. Resolution chain: OMQ_SUBAGENT_MODEL (global override)
           // → CLAUDE_CODE_BEDROCK_*_MODEL → ANTHROPIC_DEFAULT_*_MODEL.
           if (isTierAlias(toolModel) && resolveTierAliasToSafeModel(toolModel)) {
             // fall through to continue — tier alias resolves to a safe provider-specific ID
@@ -1779,7 +1779,7 @@ async function main() {
             const tierUpper = isTierAlias(toolModel) ? toolModel.toUpperCase() : '';
             const derivedTier = tierUpper || (normalizeToCcAlias(toolModel) || '').toUpperCase();
             const guidance = derivedTier
-              ? `Set ANTHROPIC_DEFAULT_${derivedTier}_MODEL=<valid-bedrock-id> in settings.json env, or set OMC_SUBAGENT_MODEL as a global override.`
+              ? `Set ANTHROPIC_DEFAULT_${derivedTier}_MODEL=<valid-bedrock-id> in settings.json env, or set OMQ_SUBAGENT_MODEL as a global override.`
               : `Remove the \`model\` parameter, or set ANTHROPIC_DEFAULT_SONNET_MODEL=<valid-bedrock-id> in settings.json env.`;
             console.log(JSON.stringify({
               continue: true,

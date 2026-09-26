@@ -73,8 +73,8 @@ describe('team cli', () => {
 
   beforeEach(() => {
     jobsDir = mkdtempSync(join(tmpdir(), 'omc-team-cli-jobs-'));
-    process.env.OMC_JOBS_DIR = jobsDir;
-    process.env.OMC_RUNTIME_CLI_PATH = '/tmp/runtime-cli.cjs';
+    process.env.OMQ_JOBS_DIR = jobsDir;
+    process.env.OMQ_RUNTIME_CLI_PATH = '/tmp/runtime-cli.cjs';
     mocks.spawn.mockReset();
     mocks.killWorkerPanes.mockReset();
     mocks.killTeamSession.mockReset();
@@ -95,8 +95,8 @@ describe('team cli', () => {
   });
 
   afterEach(() => {
-    delete process.env.OMC_JOBS_DIR;
-    delete process.env.OMC_RUNTIME_CLI_PATH;
+    delete process.env.OMQ_JOBS_DIR;
+    delete process.env.OMQ_RUNTIME_CLI_PATH;
     rmSync(jobsDir, { recursive: true, force: true });
   });
 

@@ -43,19 +43,19 @@ const CONFIG_ENV_KEYS = [
   'CLAUDE_CODE_USE_BEDROCK',
   'CLAUDE_CODE_USE_VERTEX',
   // explicit routing overrides
-  'OMC_ROUTING_FORCE_INHERIT',
-  'OMC_ROUTING_ENABLED',
-  'OMC_ROUTING_DEFAULT_TIER',
-  'OMC_ESCALATION_ENABLED',
+  'OMQ_ROUTING_FORCE_INHERIT',
+  'OMQ_ROUTING_ENABLED',
+  'OMQ_ROUTING_DEFAULT_TIER',
+  'OMQ_ESCALATION_ENABLED',
   // model alias overrides (issue #1211, issue #3726)
-  'OMC_MODEL_ALIAS_HAIKU',
-  'OMC_MODEL_ALIAS_SONNET',
-  'OMC_MODEL_ALIAS_OPUS',
-  'OMC_MODEL_ALIAS_FABLE',
+  'OMQ_MODEL_ALIAS_HAIKU',
+  'OMQ_MODEL_ALIAS_SONNET',
+  'OMQ_MODEL_ALIAS_OPUS',
+  'OMQ_MODEL_ALIAS_FABLE',
   // tier model resolution (feeds buildDefaultConfig)
-  'OMC_MODEL_HIGH',
-  'OMC_MODEL_MEDIUM',
-  'OMC_MODEL_LOW',
+  'OMQ_MODEL_HIGH',
+  'OMQ_MODEL_MEDIUM',
+  'OMQ_MODEL_LOW',
   'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
   'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
   'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
@@ -130,7 +130,7 @@ export interface EnforcementResult {
   injected: boolean;
   /** The model that was used */
   model: string;
-  /** Warning message (only if OMC_DEBUG=true) */
+  /** Warning message (only if OMQ_DEBUG=true) */
   warning?: string;
 }
 
@@ -338,7 +338,7 @@ export function enforceModel(agentInput: AgentInput): EnforcementResult {
   };
 
   let warning: string | undefined;
-  if (process.env.OMC_DEBUG === 'true') {
+  if (process.env.OMQ_DEBUG === 'true') {
     const aliasNote = resolvedModel !== agentDef.model && aliasSourceModel
       ? ` (aliased from ${aliasSourceModel})`
       : '';

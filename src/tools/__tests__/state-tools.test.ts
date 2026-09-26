@@ -101,14 +101,14 @@ describe('state-tools', () => {
 
   afterEach(() => {
     rmSync(TEST_DIR, { recursive: true, force: true });
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_FLOCK_AVAILABLE;
-    delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
-    delete process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
+    delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
+    delete process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64;
   });
 
   describe('state_read', () => {
@@ -189,7 +189,7 @@ describe('state-tools', () => {
       const statePath = join(TEST_DIR, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
       mkdirSync(dirname(statePath), { recursive: true });
       writeFileSync(statePath, JSON.stringify(portableWorkflowState(sessionId)));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
       const readResult = await stateReadTool.handler({ mode: 'autopilot', session_id: sessionId, workingDirectory: TEST_DIR });
       const publicState = JSON.parse(readResult.content[0].text.match(/```json\n([\s\S]*?)\n```/)![1]);
@@ -355,8 +355,8 @@ describe('state-tools', () => {
       const statePath = join(TEST_DIR, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
       await stateWriteTool.handler({ mode: 'autopilot', active: true, session_id: sessionId, workingDirectory: TEST_DIR });
       const replacement = { active: true, session_id: sessionId };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       await stateClearTool.handler({ mode: 'autopilot', session_id: sessionId, workingDirectory: TEST_DIR });
       expect(JSON.parse(readFileSync(statePath, 'utf8'))).toEqual(replacement);
@@ -364,8 +364,8 @@ describe('state-tools', () => {
       const legacyPath = join(TEST_DIR, '.omq', 'state', 'autopilot-state.json');
       writeFileSync(legacyPath, JSON.stringify({ active: true, session_id: sessionId }));
       const legacyReplacement = { active: true, session_id: sessionId, workflowRunId: 'replacement-run' };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = legacyPath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(legacyReplacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = legacyPath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(legacyReplacement)).toString('base64');
 
       await stateClearTool.handler({ mode: 'autopilot', session_id: sessionId, workingDirectory: TEST_DIR });
       expect(JSON.parse(readFileSync(legacyPath, 'utf8'))).toEqual(legacyReplacement);
@@ -395,8 +395,8 @@ describe('state-tools', () => {
       const sessionId = 'named-first-write-race';
       const statePath = join(TEST_DIR, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
       const namedWinner = { active: true, prompt: 'named task', session_id: sessionId, workflowRunId: '99999999-9999-4999-8999-999999999999', workflow: { profileHash: 'f'.repeat(64), stages: ['ralplan'] }, pipelineTracking: { currentStageIndex: 0, trackingRevision: 0, stages: [{ id: 'ralplan', status: 'active' }] } };
-      process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(namedWinner)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(namedWinner)).toString('base64');
 
       const rejected = await stateWriteTool.handler({ mode: 'autopilot', active: true, state: { prompt: 'legacy task' }, session_id: sessionId, workingDirectory: TEST_DIR });
       expect(rejected.isError).toBe(true);
@@ -417,8 +417,8 @@ describe('state-tools', () => {
         workflow: { profileHash: 'f'.repeat(64), stages: ['ralplan'] },
         pipelineTracking: { currentStageIndex: 0, trackingRevision: 0, stages: [{ id: 'ralplan', status: 'active' }] },
       };
-      process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(namedWinner)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(namedWinner)).toString('base64');
 
       const result = await stateWriteTool.handler({
         mode: 'autopilot',
@@ -564,7 +564,7 @@ describe('state-tools', () => {
       const previousConfigDir = process.env.CLAUDE_CONFIG_DIR;
       try {
         process.env.CLAUDE_CONFIG_DIR = configDir;
-        process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+        process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
         const result = await stateWriteTool.handler({
           mode: 'autopilot',
           active: false,
@@ -611,7 +611,7 @@ describe('state-tools', () => {
       const state = { active: true, session_id: sessionId, workflowRunId: '11111111-1111-4111-8111-111111111111', workflow: { profileHash: 'a'.repeat(64) } };
       writeFileSync(statePath, JSON.stringify(state));
       const before = readFileSync(statePath);
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
       const result = await stateWriteTool.handler({ mode: 'autopilot', active: false, session_id: sessionId, state: { workflowRunId: state.workflowRunId }, workingDirectory: TEST_DIR });
       expect(result.isError).toBe(true);
@@ -625,7 +625,7 @@ describe('state-tools', () => {
       const signalPath = join(dirname(statePath), 'cancel-signal-state.json');
       mkdirSync(dirname(statePath), { recursive: true });
       writeFileSync(statePath, JSON.stringify({ active: true, session_id: sessionId, workflow: false, private: 'do-not-project' }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = flock;
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = flock;
 
       const result = await stateClearTool.handler({ mode: 'autopilot', session_id: sessionId, workingDirectory: TEST_DIR });
       expect(result.isError, JSON.stringify(result)).toBeUndefined();
@@ -639,13 +639,13 @@ describe('state-tools', () => {
       const replacement = { active: true, session_id: sessionId, replacement: true };
       mkdirSync(dirname(statePath), { recursive: true });
       writeFileSync(statePath, JSON.stringify({ active: true, session_id: sessionId, workflow: false }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = flock;
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = flock;
       if (flock === '0') {
-        process.env.OMC_TEST_EMERGENCY_REPLACEMENT_PATH = statePath;
-        process.env.OMC_TEST_EMERGENCY_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+        process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH = statePath;
+        process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
       } else {
-        process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
-        process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+        process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
+        process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
       }
 
       const result = await stateClearTool.handler({ mode: 'autopilot', session_id: sessionId, workingDirectory: TEST_DIR });
@@ -660,7 +660,7 @@ describe('state-tools', () => {
       mkdirSync(dirname(legacyPath), { recursive: true });
       writeFileSync(namedPath, JSON.stringify({ active: true, session_id: 'mixed-named', workflowRunId: '77777777-7777-4777-8777-777777777777', workflow: { profileHash: 'e'.repeat(64) } }));
       writeFileSync(legacyPath, JSON.stringify({ active: true, session_id: 'mixed-legacy' }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
       const result = await stateClearTool.handler({ mode: 'autopilot', workingDirectory: TEST_DIR });
       expect(result.isError, JSON.stringify(result)).toBeUndefined();
@@ -696,7 +696,7 @@ describe('state-tools', () => {
       mkdirSync(dirname(stranded), { recursive: true });
       writeFileSync(canonical, JSON.stringify(state));
       writeFileSync(stranded, JSON.stringify({ ...state, workflowRunId: '22222222-2222-4222-8222-222222222222' }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
       const result = await stateClearTool.handler({ mode: 'autopilot', session_id: sessionId, workingDirectory: TEST_DIR });
       expect(result.isError, JSON.stringify(result)).toBeUndefined();
@@ -710,10 +710,10 @@ describe('state-tools', () => {
       mkdirSync(dirname(statePath), { recursive: true });
       const state = { active: true, session_id: sessionId, workflowRunId: '11111111-1111-4111-8111-111111111111', workflow: { profileHash: 'a'.repeat(64) } };
       writeFileSync(statePath, JSON.stringify(state));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
       expect((await stateWriteTool.handler({ mode: 'autopilot', active: false, session_id: sessionId, state: { workflowRunId: state.workflowRunId }, workingDirectory: TEST_DIR })).isError).toBe(true);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       expect(existsSync(`${statePath}.emergency-journal.json`)).toBe(false);
 
       const result = await stateClearTool.handler({ mode: 'autopilot', session_id: sessionId, workingDirectory: TEST_DIR });
@@ -728,10 +728,10 @@ describe('state-tools', () => {
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, JSON.stringify({ active: true, session_id: owner, workflowRunId: run, workflow: { profileHash: 'c'.repeat(64) } }));
       }
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
-      process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
       expect(emergencyMutateStateFileIf(otherPath, (state) => state.session_id === 'recovery-owner-b', (state) => ({ ...state, active: false }))).toBe(false);
-      delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+      delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
       expect(existsSync(`${otherPath}.emergency-journal.json`)).toBe(true);
 
       const result = await stateClearTool.handler({ mode: 'autopilot', session_id: 'recovery-owner-a', workingDirectory: TEST_DIR });
@@ -769,9 +769,9 @@ describe('state-tools', () => {
         const statePath = join(home, '.omq', 'state', 'sessions', 'project-a-clear', 'autopilot-state.json');
         mkdirSync(dirname(statePath), { recursive: true });
         writeFileSync(statePath, JSON.stringify({ active: true, project_path: TEST_DIR, workflowRunId: 'acacacac-acac-4cac-8cac-acacacacacac', workflow: { profileHash: 'a'.repeat(64) } }));
-        process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+        process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
         expect(emergencyMutateStateFileIf(statePath, (state) => state.project_path === TEST_DIR, null)).toBe(false);
-        delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+        delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
         expect(existsSync(statePath)).toBe(false);
         expect(existsSync(`${statePath}.emergency-journal.json`)).toBe(true);
 
@@ -867,20 +867,20 @@ describe('state-tools', () => {
         writeFileSync(projectBPath, JSON.stringify({ active: true, project_path: otherProject, workflowRunId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', workflow: { profileHash: 'b'.repeat(64) } }));
         writeFileSync(projectBRecoveryPath, JSON.stringify({ active: true, project_path: otherProject, workflowRunId: 'bdbdbdbd-bdbd-4dbd-8dbd-bdbdbdbdbdbd', workflow: { profileHash: 'd'.repeat(64) } }));
         writeFileSync(projectBLegacyPath, JSON.stringify({ active: true, project_path: otherProject, workflowRunId: 'bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc' }));
-        process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+        process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
-        process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
+        process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
         expect(emergencyMutateStateFileIf(projectBPath, (state) => state.project_path === otherProject, (state) => ({ ...state, active: false }))).toBe(false);
-        delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+        delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
         const projectBBefore = readFileSync(projectBPath);
         const projectBArtifacts = new Map(readdirSync(dirname(projectBPath))
           .filter((name) => name.startsWith(`${basename(projectBPath)}.emergency-`))
           .map((name) => [name, readFileSync(join(dirname(projectBPath), name))]));
         expect(projectBArtifacts.size).toBeGreaterThan(0);
 
-        process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+        process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
         expect(emergencyMutateStateFileIf(projectBRecoveryPath, (state) => state.project_path === otherProject, null)).toBe(false);
-        delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+        delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
         expect(existsSync(projectBRecoveryPath)).toBe(false);
         const projectBRecoveryArtifacts = new Map(readdirSync(dirname(projectBRecoveryPath))
           .filter((name) => name.startsWith(`${basename(projectBRecoveryPath)}.emergency-`))
@@ -917,10 +917,10 @@ describe('state-tools', () => {
       for (const [path, run] of [[canonical, '22222222-2222-4222-8222-222222222222'], [legacy, '33333333-3333-4333-8333-333333333333']] as const) {
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, JSON.stringify({ active: true, session_id: 'broad-journal-owner', workflowRunId: run, workflow: { profileHash: 'b'.repeat(64) } }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
-        process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
+        process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
         expect(emergencyMutateStateFileIf(path, (state) => state.workflowRunId === run, (state) => ({ ...state, active: false }))).toBe(false);
-        delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+        delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
         expect(existsSync(`${path}.emergency-journal.json`)).toBe(true);
       }
 
@@ -930,24 +930,24 @@ describe('state-tools', () => {
       expect(existsSync(legacy)).toBe(false);
     });
     it('recovers an interrupted named transaction from the centralized root before broad clear', async () => {
-      const previous = process.env.OMC_STATE_DIR;
-      process.env.OMC_STATE_DIR = join(TEST_DIR, 'central-emergency-root');
+      const previous = process.env.OMQ_STATE_DIR;
+      process.env.OMQ_STATE_DIR = join(TEST_DIR, 'central-emergency-root');
       try {
         const { getOmcRoot } = await import('../../lib/worktree-paths.js');
         const statePath = join(getOmcRoot(TEST_DIR), 'state', 'sessions', 'central-journal-owner', 'autopilot-state.json');
         mkdirSync(dirname(statePath), { recursive: true });
         writeFileSync(statePath, JSON.stringify({ active: true, session_id: 'central-journal-owner', workflowRunId: '66666666-6666-4666-8666-666666666666', workflow: { profileHash: 'd'.repeat(64) } }));
-        process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
-        process.env.OMC_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
+        process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
+        process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
         expect(emergencyMutateStateFileIf(statePath, (state) => state.session_id === 'central-journal-owner', (state) => ({ ...state, active: false }))).toBe(false);
-        delete process.env.OMC_TEST_EMERGENCY_CRASH_PHASE;
+        delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
 
         const result = await stateClearTool.handler({ mode: 'autopilot', workingDirectory: TEST_DIR });
         expect(result.isError, JSON.stringify(result)).toBeUndefined();
         expect(existsSync(statePath)).toBe(false);
       } finally {
-        if (previous === undefined) delete process.env.OMC_STATE_DIR;
-        else process.env.OMC_STATE_DIR = previous;
+        if (previous === undefined) delete process.env.OMQ_STATE_DIR;
+        else process.env.OMQ_STATE_DIR = previous;
       }
     });
 
@@ -1140,7 +1140,7 @@ describe('state-tools', () => {
 
     it('lists and clears worktree-local session ralph state with session cwd context only', async () => {
       const centralizedRoot = mkdtempSync(join(tmpdir(), 'state-tools-central-'));
-      vi.stubEnv('OMC_STATE_DIR', centralizedRoot);
+      vi.stubEnv('OMQ_STATE_DIR', centralizedRoot);
       try {
         const sessionId = 'local-ralph-session';
         const unrelatedSessionId = 'unrelated-session';
@@ -1230,8 +1230,8 @@ describe('state-tools', () => {
       await stateWriteTool.handler({ mode: 'autopilot', active: true, workingDirectory: TEST_DIR });
       const statePath = join(TEST_DIR, '.omq', 'state', 'autopilot-state.json');
       const replacement = { active: true };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       const result = await stateClearTool.handler({ mode: 'autopilot', workingDirectory: TEST_DIR });
       expect(JSON.parse(readFileSync(statePath, 'utf8'))).toEqual(replacement);
@@ -1258,8 +1258,8 @@ describe('state-tools', () => {
       await stateWriteTool.handler({ mode: 'ralph', active: true, session_id: sessionId, workingDirectory: TEST_DIR });
       const statePath = join(TEST_DIR, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
       const replacement = { active: true, session_id: sessionId, workflowRunId: 'replacement-run' };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       const result = await stateClearTool.handler({ mode: 'ralph', workingDirectory: TEST_DIR });
       expect(JSON.parse(readFileSync(statePath, 'utf8'))).toEqual(replacement);
@@ -1359,8 +1359,8 @@ describe('state-tools', () => {
       writeFileSync(join(TEST_DIR, '.omq', 'sessions', `${endedSession}.json`), JSON.stringify({ session_id: endedSession, ended_at: '2026-05-04T00:00:00.000Z' }));
       writeFileSync(statePath, JSON.stringify({ active: true, session_id: endedSession, workflowRunId: 'old-run' }));
       const replacement = { active: true, session_id: endedSession, workflowRunId: 'replacement-run' };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       await stateClearTool.handler({ mode: 'ultrawork', session_id: requester, workingDirectory: TEST_DIR });
       expect(JSON.parse(readFileSync(statePath, 'utf8'))).toEqual(replacement);
@@ -1988,11 +1988,11 @@ describe('state-tools', () => {
       expect(result.content[0].text).toContain(join(TEST_DIR, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'));
     });
 
-    it('clears autopilot state from the centralized OMC_STATE_DIR root used by stop hooks', async () => {
-      const previous = process.env.OMC_STATE_DIR;
+    it('clears autopilot state from the centralized OMQ_STATE_DIR root used by stop hooks', async () => {
+      const previous = process.env.OMQ_STATE_DIR;
       const sessionId = 'centralized-autopilot-clear-session';
       const centralRoot = join(TEST_DIR, 'central-state-root');
-      process.env.OMC_STATE_DIR = centralRoot;
+      process.env.OMQ_STATE_DIR = centralRoot;
       try {
         const { getOmcRoot } = await import('../../lib/worktree-paths.js');
         const autopilotPath = join(getOmcRoot(TEST_DIR), 'state', 'sessions', sessionId, 'autopilot-state.json');
@@ -2016,19 +2016,19 @@ describe('state-tools', () => {
         expect(existsSync(autopilotPath)).toBe(false);
       } finally {
         if (previous === undefined) {
-          delete process.env.OMC_STATE_DIR;
+          delete process.env.OMQ_STATE_DIR;
         } else {
-          process.env.OMC_STATE_DIR = previous;
+          process.env.OMQ_STATE_DIR = previous;
         }
       }
     });
 
-    it('clears workingDirectory-local ralph state when centralized OMC_STATE_DIR lookup misses', async () => {
-      const previous = process.env.OMC_STATE_DIR;
+    it('clears workingDirectory-local ralph state when centralized OMQ_STATE_DIR lookup misses', async () => {
+      const previous = process.env.OMQ_STATE_DIR;
       const sessionId = 'worktree-local-ralph-clear-session';
       const centralRoot = join(TEST_DIR, 'central-state-root');
       const localStatePath = join(TEST_DIR, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
-      process.env.OMC_STATE_DIR = centralRoot;
+      process.env.OMQ_STATE_DIR = centralRoot;
       try {
         mkdirSync(dirname(localStatePath), { recursive: true });
         writeFileSync(
@@ -2051,9 +2051,9 @@ describe('state-tools', () => {
         expect(existsSync(localStatePath)).toBe(false);
       } finally {
         if (previous === undefined) {
-          delete process.env.OMC_STATE_DIR;
+          delete process.env.OMQ_STATE_DIR;
         } else {
-          process.env.OMC_STATE_DIR = previous;
+          process.env.OMQ_STATE_DIR = previous;
         }
       }
     });

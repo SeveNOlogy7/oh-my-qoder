@@ -20,8 +20,8 @@ function clearWorkflowTranscriptFailure(sessionId) { if (sessionId) workflowTran
 
 
 
-function workflowPlatform() { return process.env.NODE_ENV === 'test' && process.env.OMC_WORKFLOW_TEST_PLATFORM ? process.env.OMC_WORKFLOW_TEST_PLATFORM : process.platform; }
-export function isWorkflowRuntimeSupported() { return workflowPlatform() === 'linux' && process.env.OMC_WORKFLOW_TEST_FLOCK_AVAILABLE !== '0' && (existsSync('/usr/bin/flock') || existsSync('/bin/flock')); }
+function workflowPlatform() { return process.env.NODE_ENV === 'test' && process.env.OMQ_WORKFLOW_TEST_PLATFORM ? process.env.OMQ_WORKFLOW_TEST_PLATFORM : process.platform; }
+export function isWorkflowRuntimeSupported() { return workflowPlatform() === 'linux' && process.env.OMQ_WORKFLOW_TEST_FLOCK_AVAILABLE !== '0' && (existsSync('/usr/bin/flock') || existsSync('/bin/flock')); }
 function assertWorkflowRuntimeSupported() { if (!isWorkflowRuntimeSupported()) throw new Error('named autopilot workflow profiles require Linux with flock'); }
 function isApprovedSequence(stages) { return Array.isArray(stages) && SEQUENCES.some(sequence => stages.length === sequence.length && stages.every((stage, index) => typeof stage === 'string' && stage === sequence[index])); }
 
@@ -64,7 +64,7 @@ function readStableTranscript(path, sessionId) {
     for (let index = 0; index < components.length; index += 1) { const isFinal = index === components.length - 1; const nextFd = openSync(`/proc/self/fd/${fd}/${components[index]}`, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | (isFinal ? 0 : fsConstants.O_DIRECTORY)); const nextStat = fstatSync(nextFd); pathIdentity.push({ device: Number(nextStat.dev), inode: Number(nextStat.ino) }); if ((isFinal && !nextStat.isFile()) || (!isFinal && !nextStat.isDirectory())) { closeSync(nextFd); return null; } closeSync(fd); fd = nextFd; }
     const before = fstatSync(fd, { bigint: true }); const size = Number(before.size); const canonicalPath = realpathSync(`/proc/self/fd/${fd}`); const root = transcriptRoot(); if (!canonicalPath.startsWith(root + sep) || basename(canonicalPath) !== `${sessionId}.jsonl`) return null;
     const hash = createHash('sha256'); if (!scanJsonl(fd, 0, size, sessionId, undefined, hash)) return null; const contentSha256 = hash.digest('hex');
-    if (process.env.NODE_ENV === 'test' && process.env.OMC_WORKFLOW_TEST_MUTATE_AFTER_READ_BASE64) writeFileSync(canonicalPath, Buffer.from(process.env.OMC_WORKFLOW_TEST_MUTATE_AFTER_READ_BASE64, 'base64'));
+    if (process.env.NODE_ENV === 'test' && process.env.OMQ_WORKFLOW_TEST_MUTATE_AFTER_READ_BASE64) writeFileSync(canonicalPath, Buffer.from(process.env.OMQ_WORKFLOW_TEST_MUTATE_AFTER_READ_BASE64, 'base64'));
     const after = fstatSync(fd, { bigint: true }); if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeNs !== after.mtimeNs || before.ctimeNs !== after.ctimeNs) return null;
     const stableFd = fd; const identity = fileIdentity(after, contentSha256); const stable = { fd: stableFd, identity, canonicalPath, pathIdentity, root, hashRange: (start, end) => start >= 0 && end >= start && end <= size ? hashRange(stableFd, start, end) : null, scanJsonl: (start, end, callback) => start >= 0 && end >= start && end <= size ? scanJsonl(stableFd, start, end, sessionId, callback) : false };
     fd = undefined; return stable;

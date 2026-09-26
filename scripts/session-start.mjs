@@ -259,7 +259,7 @@ async function loadProjectMemoryModules() {
 
 
 function dispatchSessionStartNotificationInBackground(pluginRoot, payload) {
-  if (!pluginRoot || process.env.OMC_NOTIFY === '0') return;
+  if (!pluginRoot || process.env.OMQ_NOTIFY === '0') return;
 
   let serializedPayload;
   try {
@@ -280,7 +280,7 @@ function dispatchSessionStartNotificationInBackground(pluginRoot, payload) {
       windowsHide: true,
       env: {
         ...process.env,
-        OMC_HOOK_BACKGROUND_CHILD: '1',
+        OMQ_HOOK_BACKGROUND_CHILD: '1',
       },
     });
     child.unref();
@@ -300,7 +300,7 @@ function reconcileSessionEndJobsInBackground(pluginRoot, directory) {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
-      env: { ...process.env, OMC_HOOK_BACKGROUND_CHILD: '1' },
+      env: { ...process.env, OMQ_HOOK_BACKGROUND_CHILD: '1' },
     });
     child.unref();
   } catch {
@@ -497,8 +497,8 @@ function readRoutingForceInheritFromConfig(directory) {
 }
 
 function shouldEmitModelRoutingOverride(directory) {
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'true') return true;
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'false') return false;
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'true') return true;
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'false') return false;
   if (readRoutingForceInheritFromConfig(directory)) return true;
 
   if (isBedrockSession() || isVertexSession()) return true;
@@ -941,7 +941,7 @@ async function main() {
 
     writeSessionStartedMarker(omcRoot, directory, sessionId);
     if (process.env.CLAUDE_PLUGIN_ROOT) {
-      const configuredOwnerPid = Number(process.env.OMC_SESSION_OWNER_PID);
+      const configuredOwnerPid = Number(process.env.OMQ_SESSION_OWNER_PID);
       publishCacheOccupancy(
         process.env.CLAUDE_PLUGIN_ROOT,
         configDir,

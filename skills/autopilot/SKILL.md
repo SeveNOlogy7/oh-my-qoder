@@ -163,8 +163,8 @@ Why bad: This is an exploration/brainstorming request. Respond conversationally 
 
 ## Parallel session caveats
 
-- **Multi-repo workspace anchor:** drop a `.omq-workspace` marker at the parent directory so multiple sessions across sub-repos share one `.omq/`. Resolution order: `OMC_STATE_DIR > .omq-workspace > git > cwd`. See `docs/REFERENCE.md`.
-- **Session id source:** OMC_SESSION_ID env var wins in CLI contexts; hook payload data.session_id wins in hook contexts.
+- **Multi-repo workspace anchor:** drop a `.omq-workspace` marker at the parent directory so multiple sessions across sub-repos share one `.omq/`. Resolution order: `OMQ_STATE_DIR > .omq-workspace > git > cwd`. See `docs/REFERENCE.md`.
+- **Session id source:** OMQ_SESSION_ID env var wins in CLI contexts; hook payload data.session_id wins in hook contexts.
 - **Plan id (when applicable):** Autopilot state is session-scoped. Two autopilots in the same workspace require distinct session IDs.
 - **Parallel verdict:** supported (session-scoped state)
 

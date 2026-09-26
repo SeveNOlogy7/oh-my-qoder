@@ -2,7 +2,7 @@
  * Dynamic worker scaling for team mode — Phase 1: Manual Scaling.
  *
  * Provides scale_up (add workers mid-session) and scale_down (drain + remove idle workers).
- * Gated behind the OMC_TEAM_SCALING_ENABLED environment variable.
+ * Gated behind the OMQ_TEAM_SCALING_ENABLED environment variable.
  *
  * Key design decisions:
  * - Monotonic worker index counter (next_worker_index in config) ensures unique names
@@ -68,11 +68,11 @@ import { loadWorkerLaunchAttempt, retireAndCleanupCurrentWorkerLaunchAttempt } f
 
 // ── Environment gate ──────────────────────────────────────────────────────────
 
-const OMC_TEAM_SCALING_ENABLED_ENV = 'OMC_TEAM_SCALING_ENABLED';
+const OMQ_TEAM_SCALING_ENABLED_ENV = 'OMQ_TEAM_SCALING_ENABLED';
 const CLI_AGENT_TYPES = new Set<CliAgentType>(['claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity']);
 
 export function isScalingEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  const raw = env[OMC_TEAM_SCALING_ENABLED_ENV];
+  const raw = env[OMQ_TEAM_SCALING_ENABLED_ENV];
   if (!raw) return false;
   const normalized = raw.trim().toLowerCase();
   return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalized);
@@ -81,7 +81,7 @@ export function isScalingEnabled(env: NodeJS.ProcessEnv = process.env): boolean 
 function assertScalingEnabled(env: NodeJS.ProcessEnv = process.env): void {
   if (!isScalingEnabled(env)) {
     throw new Error(
-      `Dynamic scaling is disabled. Set ${OMC_TEAM_SCALING_ENABLED_ENV}=1 to enable.`,
+      `Dynamic scaling is disabled. Set ${OMQ_TEAM_SCALING_ENABLED_ENV}=1 to enable.`,
     );
   }
 }
@@ -619,9 +619,9 @@ export async function scaleUpOwned(
       // Rebuild env using the final agentType (fallback may have swapped it).
       const extraEnv: Record<string, string> = {
         ...getModelWorkerEnv(sanitized, workerName, workerAgentType, env),
-        OMC_TEAM_STATE_ROOT: teamStateRoot,
-        OMC_TEAM_LEADER_CWD: leaderCwd,
-        ...(worktree ? { OMC_TEAM_WORKTREE_PATH: worktree.path, OMC_TEAM_WORKER_CWD: workerCwd } : {}),
+        OMQ_TEAM_STATE_ROOT: teamStateRoot,
+        OMQ_TEAM_LEADER_CWD: leaderCwd,
+        ...(worktree ? { OMQ_TEAM_WORKTREE_PATH: worktree.path, OMQ_TEAM_WORKER_CWD: workerCwd } : {}),
       };
 
       if (worktree) {
@@ -636,7 +636,7 @@ export async function scaleUpOwned(
               description: t.description,
             })),
             cwd: leaderCwd,
-            instructionStateRoot: '$OMC_TEAM_STATE_ROOT',
+            instructionStateRoot: '$OMQ_TEAM_STATE_ROOT',
           };
           const overlayPath = await writeWorkerOverlay(workerOverlayParams);
           const overlayContent = await readFile(overlayPath, 'utf-8');
@@ -728,7 +728,7 @@ export async function scaleUpOwned(
 
       // Wait for worker readiness
       const readyTimeoutMs = resolveWorkerReadyTimeoutMs(env);
-      const skipReadyWait = env.OMC_TEAM_SKIP_READY_WAIT === '1';
+      const skipReadyWait = env.OMQ_TEAM_SKIP_READY_WAIT === '1';
       if (!skipReadyWait) {
         try {
           await waitForPaneReady(paneId, { timeoutMs: readyTimeoutMs, provider: workerAgentType });
@@ -1277,7 +1277,7 @@ export async function scaleDown(
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function resolveWorkerReadyTimeoutMs(env: NodeJS.ProcessEnv): number {
-  const raw = env.OMC_TEAM_READY_TIMEOUT_MS;
+  const raw = env.OMQ_TEAM_READY_TIMEOUT_MS;
   const parsed = Number.parseInt(String(raw ?? ''), 10);
   if (Number.isFinite(parsed) && parsed >= 5_000) return parsed;
   return 45_000;

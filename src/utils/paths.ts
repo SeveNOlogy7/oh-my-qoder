@@ -89,12 +89,12 @@ export function getLegacyOmcDir(): string {
  * Global OMC config directory.
  *
  * Precedence:
- * 1. OMC_HOME (existing explicit override)
+ * 1. OMQ_HOME (existing explicit override)
  * 2. XDG-aware config root on Linux/Unix
  * 3. Legacy ~/.omq elsewhere
  */
 export function getGlobalOmcConfigRoot(): string {
-  const explicitRoot = process.env.OMC_HOME?.trim();
+  const explicitRoot = process.env.OMQ_HOME?.trim();
   if (explicitRoot) {
     return explicitRoot;
   }
@@ -109,11 +109,11 @@ export function getGlobalOmcConfigRoot(): string {
 /**
  * Global OMC state directory.
  *
- * When OMC_HOME is set, preserve that existing override semantics by treating
+ * When OMQ_HOME is set, preserve that existing override semantics by treating
  * it as the shared root and resolving state beneath it.
  */
 export function getGlobalOmcStateRoot(): string {
-  const explicitRoot = process.env.OMC_HOME?.trim();
+  const explicitRoot = process.env.OMQ_HOME?.trim();
   if (explicitRoot) {
     return join(explicitRoot, 'state');
   }
@@ -142,7 +142,7 @@ function dedupePaths(paths: string[]): string[] {
 }
 
 export function getGlobalOmcConfigCandidates(...segments: string[]): string[] {
-  if (process.env.OMC_HOME?.trim()) {
+  if (process.env.OMQ_HOME?.trim()) {
     return [getGlobalOmcConfigPath(...segments)];
   }
 
@@ -153,7 +153,7 @@ export function getGlobalOmcConfigCandidates(...segments: string[]): string[] {
 }
 
 export function getGlobalOmcStateCandidates(...segments: string[]): string[] {
-  const explicitRoot = process.env.OMC_HOME?.trim();
+  const explicitRoot = process.env.OMQ_HOME?.trim();
   if (explicitRoot) {
     return dedupePaths([
       getGlobalOmcStatePath(...segments),

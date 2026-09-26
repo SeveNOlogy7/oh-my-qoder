@@ -274,7 +274,7 @@ For Claude worker model selection, apply this precedence (highest to lowest):
 1. Explicit `--model` already present in worker launch args
 2. Direct provider model env (`ANTHROPIC_MODEL` / `CLAUDE_MODEL`)
 3. Provider tier envs (`CLAUDE_CODE_BEDROCK_SONNET_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`)
-4. OMC tier env (`OMC_MODEL_MEDIUM`)
+4. OMC tier env (`OMQ_MODEL_MEDIUM`)
 5. Otherwise let Claude Code use its default model
 
 Model flag normalization contract:

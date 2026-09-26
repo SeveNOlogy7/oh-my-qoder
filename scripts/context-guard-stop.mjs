@@ -7,7 +7,7 @@
  * This complements persistent-mode.cjs — it fires BEFORE modes like Ralph
  * or Ultrawork process the stop, providing an early warning.
  *
- * Configurable via OMC_CONTEXT_GUARD_THRESHOLD env var (default: 75%).
+ * Configurable via OMQ_CONTEXT_GUARD_THRESHOLD env var (default: 75%).
  *
  * Safety rules:
  *   - Never block context_limit stops (would cause compaction deadlock)
@@ -27,7 +27,7 @@ import { encodeProjectPath } from './lib/encode-project-path.mjs';
 import { readStdin } from './lib/stdin.mjs';
 import { resolveContextPercent } from './lib/context-usage.mjs';
 
-const THRESHOLD = parseInt(process.env.OMC_CONTEXT_GUARD_THRESHOLD || '75', 10);
+const THRESHOLD = parseInt(process.env.OMQ_CONTEXT_GUARD_THRESHOLD || '75', 10);
 const CRITICAL_THRESHOLD = 95;
 const MAX_BLOCKS = 2;
 const SESSION_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;

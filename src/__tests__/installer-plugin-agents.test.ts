@@ -129,9 +129,9 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
 
     originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
     originalHome = process.env.HOME;
-    originalOmcPluginRoot = process.env.OMC_PLUGIN_ROOT;
+    originalOmcPluginRoot = process.env.OMQ_PLUGIN_ROOT;
     originalClaudePluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
-    delete process.env.OMC_PLUGIN_ROOT;
+    delete process.env.OMQ_PLUGIN_ROOT;
     delete process.env.CLAUDE_PLUGIN_ROOT;
 
   });
@@ -150,9 +150,9 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
     }
 
     if (originalOmcPluginRoot === undefined) {
-      delete process.env.OMC_PLUGIN_ROOT;
+      delete process.env.OMQ_PLUGIN_ROOT;
     } else {
-      process.env.OMC_PLUGIN_ROOT = originalOmcPluginRoot;
+      process.env.OMQ_PLUGIN_ROOT = originalOmcPluginRoot;
     }
 
     if (originalClaudePluginRoot === undefined) {

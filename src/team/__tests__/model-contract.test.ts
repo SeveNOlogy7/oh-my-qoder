@@ -133,15 +133,15 @@ describe('model-contract', () => {
         expect(isTrustedPrefix('/home/tester/.local/bin-evil/cli')).toBe(false);
         expect(isTrustedPrefix('/opt/homebrew-evil/x')).toBe(false);
         expect(isTrustedPrefix('/home/tester/Downloads/cli')).toBe(false);
-        // custom trusted dirs (OMC_TRUSTED_CLI_DIRS) get the same boundary check
-        const origCustom = process.env.OMC_TRUSTED_CLI_DIRS;
-        process.env.OMC_TRUSTED_CLI_DIRS = '/opt/mybins';
+        // custom trusted dirs (OMQ_TRUSTED_CLI_DIRS) get the same boundary check
+        const origCustom = process.env.OMQ_TRUSTED_CLI_DIRS;
+        process.env.OMQ_TRUSTED_CLI_DIRS = '/opt/mybins';
         try {
           expect(isTrustedPrefix('/opt/mybins/grok')).toBe(true);
           expect(isTrustedPrefix('/opt/mybins-evil/grok')).toBe(false);
         } finally {
-          if (origCustom === undefined) delete process.env.OMC_TRUSTED_CLI_DIRS;
-          else process.env.OMC_TRUSTED_CLI_DIRS = origCustom;
+          if (origCustom === undefined) delete process.env.OMQ_TRUSTED_CLI_DIRS;
+          else process.env.OMQ_TRUSTED_CLI_DIRS = origCustom;
         }
       } finally {
         if (origHome === undefined) delete process.env.HOME;
@@ -226,17 +226,17 @@ describe('model-contract', () => {
     });
 
     it('blocks codex when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMC_SECURITY;
-      process.env.OMC_SECURITY = 'strict';
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
         expect(() => getContract('codex')).toThrow('blocked by security policy');
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMC_SECURITY;
+          delete process.env.OMQ_SECURITY;
         } else {
-          process.env.OMC_SECURITY = origSecurity;
+          process.env.OMQ_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -244,17 +244,17 @@ describe('model-contract', () => {
     });
 
     it('blocks gemini when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMC_SECURITY;
-      process.env.OMC_SECURITY = 'strict';
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
         expect(() => getContract('gemini')).toThrow('blocked by security policy');
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMC_SECURITY;
+          delete process.env.OMQ_SECURITY;
         } else {
-          process.env.OMC_SECURITY = origSecurity;
+          process.env.OMQ_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -262,17 +262,17 @@ describe('model-contract', () => {
     });
 
     it('blocks grok when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMC_SECURITY;
-      process.env.OMC_SECURITY = 'strict';
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
         expect(() => getContract('grok')).toThrow('blocked by security policy');
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMC_SECURITY;
+          delete process.env.OMQ_SECURITY;
         } else {
-          process.env.OMC_SECURITY = origSecurity;
+          process.env.OMQ_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -280,17 +280,17 @@ describe('model-contract', () => {
     });
 
     it('allows claude even when external LLM is disabled', async () => {
-      const origSecurity = process.env.OMC_SECURITY;
-      process.env.OMC_SECURITY = 'strict';
+      const origSecurity = process.env.OMQ_SECURITY;
+      process.env.OMQ_SECURITY = 'strict';
       try {
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
         expect(() => getContract('claude')).not.toThrow();
       } finally {
         if (origSecurity === undefined) {
-          delete process.env.OMC_SECURITY;
+          delete process.env.OMQ_SECURITY;
         } else {
-          process.env.OMC_SECURITY = origSecurity;
+          process.env.OMQ_SECURITY = origSecurity;
         }
         const { clearSecurityConfigCache } = await import('../../lib/security-config.js');
         clearSecurityConfigCache();
@@ -414,9 +414,9 @@ describe('model-contract', () => {
   describe('getWorkerEnv', () => {
     it('returns correct env vars', () => {
       const env = getWorkerEnv('my-team', 'worker-1', 'codex');
-      expect(env.OMC_TEAM_WORKER).toBe('my-team/worker-1');
-      expect(env.OMC_TEAM_NAME).toBe('my-team');
-      expect(env.OMC_WORKER_AGENT_TYPE).toBe('codex');
+      expect(env.OMQ_TEAM_WORKER).toBe('my-team/worker-1');
+      expect(env.OMQ_TEAM_NAME).toBe('my-team');
+      expect(env.OMQ_WORKER_AGENT_TYPE).toBe('codex');
     });
 
     it('propagates allowlisted model selection env vars into worker startup env', () => {
@@ -431,11 +431,11 @@ describe('model-contract', () => {
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-6-custom',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-6-custom',
         ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-4-5-custom',
-        OMC_MODEL_HIGH: 'claude-opus-4-6-override',
-        OMC_MODEL_MEDIUM: 'claude-sonnet-4-6-override',
-        OMC_MODEL_LOW: 'claude-haiku-4-5-override',
-        OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL: 'gpt-5',
-        OMC_GEMINI_DEFAULT_MODEL: 'gemini-2.5-pro',
+        OMQ_MODEL_HIGH: 'claude-opus-4-6-override',
+        OMQ_MODEL_MEDIUM: 'claude-sonnet-4-6-override',
+        OMQ_MODEL_LOW: 'claude-haiku-4-5-override',
+        OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL: 'gpt-5',
+        OMQ_GEMINI_DEFAULT_MODEL: 'gemini-2.5-pro',
         ANTHROPIC_API_KEY: 'should-not-be-forwarded',
       });
 
@@ -449,11 +449,11 @@ describe('model-contract', () => {
       expect(env.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('claude-opus-4-6-custom');
       expect(env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe('claude-sonnet-4-6-custom');
       expect(env.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('claude-haiku-4-5-custom');
-      expect(env.OMC_MODEL_HIGH).toBe('claude-opus-4-6-override');
-      expect(env.OMC_MODEL_MEDIUM).toBe('claude-sonnet-4-6-override');
-      expect(env.OMC_MODEL_LOW).toBe('claude-haiku-4-5-override');
-      expect(env.OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL).toBe('gpt-5');
-      expect(env.OMC_GEMINI_DEFAULT_MODEL).toBe('gemini-2.5-pro');
+      expect(env.OMQ_MODEL_HIGH).toBe('claude-opus-4-6-override');
+      expect(env.OMQ_MODEL_MEDIUM).toBe('claude-sonnet-4-6-override');
+      expect(env.OMQ_MODEL_LOW).toBe('claude-haiku-4-5-override');
+      expect(env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL).toBe('gpt-5');
+      expect(env.OMQ_GEMINI_DEFAULT_MODEL).toBe('gemini-2.5-pro');
       expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     });
 
@@ -632,19 +632,19 @@ describe('model-contract', () => {
   });
 
   describe('resolveClaudeWorkerModel (issue #1695)', () => {
-    it('returns undefined when OMC_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set', () => {
-      vi.stubEnv('OMC_ROUTING_FORCE_INHERIT', 'true');
+    it('returns undefined when OMQ_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', 'true');
       vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
       vi.stubEnv('ANTHROPIC_MODEL', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       vi.stubEnv('CLAUDE_MODEL', 'us.anthropic.claude-opus-4-6-v1:0');
       vi.stubEnv('CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'us.anthropic.claude-sonnet-4-6-v1:0');
-      vi.stubEnv('OMC_MODEL_MEDIUM', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+      vi.stubEnv('OMQ_MODEL_MEDIUM', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       expect(resolveClaudeWorkerModel()).toBeUndefined();
       vi.unstubAllEnvs();
     });
 
-    it('returns undefined when OMC_ROUTING_FORCE_INHERIT=true on Vertex', () => {
-      vi.stubEnv('OMC_ROUTING_FORCE_INHERIT', 'true');
+    it('returns undefined when OMQ_ROUTING_FORCE_INHERIT=true on Vertex', () => {
+      vi.stubEnv('OMQ_ROUTING_FORCE_INHERIT', 'true');
       vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '');
       vi.stubEnv('CLAUDE_CODE_USE_VERTEX', '1');
       vi.stubEnv('ANTHROPIC_MODEL', 'vertex_ai/claude-sonnet-4-6@20250514');
@@ -686,13 +686,13 @@ describe('model-contract', () => {
       vi.unstubAllEnvs();
     });
 
-    it('falls back to OMC_MODEL_MEDIUM tier env var', () => {
+    it('falls back to OMQ_MODEL_MEDIUM tier env var', () => {
       vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
       vi.stubEnv('ANTHROPIC_MODEL', '');
       vi.stubEnv('CLAUDE_MODEL', '');
       vi.stubEnv('CLAUDE_CODE_BEDROCK_SONNET_MODEL', '');
       vi.stubEnv('ANTHROPIC_DEFAULT_SONNET_MODEL', '');
-      vi.stubEnv('OMC_MODEL_MEDIUM', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+      vi.stubEnv('OMQ_MODEL_MEDIUM', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       expect(resolveClaudeWorkerModel()).toBe('us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       vi.unstubAllEnvs();
     });
@@ -711,7 +711,7 @@ describe('model-contract', () => {
       vi.stubEnv('CLAUDE_MODEL', '');
       vi.stubEnv('CLAUDE_CODE_BEDROCK_SONNET_MODEL', '');
       vi.stubEnv('ANTHROPIC_DEFAULT_SONNET_MODEL', '');
-      vi.stubEnv('OMC_MODEL_MEDIUM', '');
+      vi.stubEnv('OMQ_MODEL_MEDIUM', '');
       expect(resolveClaudeWorkerModel()).toBeUndefined();
       vi.unstubAllEnvs();
     });

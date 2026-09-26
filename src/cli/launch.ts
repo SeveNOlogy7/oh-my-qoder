@@ -38,8 +38,8 @@ import {
   tmuxExec,
 } from './tmux-utils.js';
 import { configureTmuxClipboardForCurrentSession, configureTmuxClipboardForSession } from './tmux-clipboard.js';
-import { OMC_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
-import { OMC_CONFIG_FILE_REL } from '../lib/paths.js';
+import { OMQ_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
+import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
 
 // Flag mapping
 const MADMAX_FLAG = '--madmax';
@@ -51,7 +51,7 @@ const TELEGRAM_FLAG = '--telegram';
 const DISCORD_FLAG = '--discord';
 const SLACK_FLAG = '--slack';
 const WEBHOOK_FLAG = '--webhook';
-const OMC_RUNTIME_DIRNAME = '.omq-launch';
+const OMQ_RUNTIME_DIRNAME = '.omq-launch';
 
 function hasOmcMarkers(path: string): boolean {
   if (!existsSync(path)) return false;
@@ -508,7 +508,7 @@ export function prepareOmcLaunchConfigDir(baseConfigDir = getClaudeConfigDir()):
     return baseConfigDir;
   }
 
-  const runtimeConfigDir = join(baseConfigDir, OMC_RUNTIME_DIRNAME);
+  const runtimeConfigDir = join(baseConfigDir, OMQ_RUNTIME_DIRNAME);
   const nextConfigDir = `${runtimeConfigDir}.next`;
   const runtimeClaudeJsonPath = join(runtimeConfigDir, '.claude.json');
   const runtimeCredentialsPath = join(runtimeConfigDir, '.credentials.json');
@@ -549,7 +549,7 @@ export function prepareOmcLaunchConfigDir(baseConfigDir = getClaudeConfigDir()):
         'rules',
         'skills',
         'themes',
-        OMC_CONFIG_FILE_REL,
+        OMQ_CONFIG_FILE_REL,
         '.omq-version.json',
         '.omq-silent-update.json',
         'keybindings.json',
@@ -604,7 +604,7 @@ function isDefaultClaudeConfigDirPath(configDir: string): boolean {
 
 /**
  * Extract the OMC-specific --notify flag from launch args.
- * --notify false  → disable notifications (OMC_NOTIFY=0)
+ * --notify false  → disable notifications (OMQ_NOTIFY=0)
  * --notify true   → enable notifications (default)
  * This flag must be stripped before passing args to Claude CLI.
  */
@@ -637,7 +637,7 @@ export function extractNotifyFlag(args: string[]): { notifyEnabled: boolean; rem
 /**
  * Extract the OMC-specific --openclaw flag from launch args.
  * Purely presence-based (like --madmax/--yolo):
- *   --openclaw        -> enable OpenClaw (OMC_OPENCLAW=1)
+ *   --openclaw        -> enable OpenClaw (OMQ_OPENCLAW=1)
  *   --openclaw=true   -> enable OpenClaw
  *   --openclaw=false  -> disable OpenClaw
  *   --openclaw=1      -> enable OpenClaw
@@ -672,7 +672,7 @@ export function extractOpenClawFlag(args: string[]): { openclawEnabled: boolean 
 /**
  * Extract the OMC-specific --telegram flag from launch args.
  * Purely presence-based:
- *   --telegram        -> enable Telegram notifications (OMC_TELEGRAM=1)
+ *   --telegram        -> enable Telegram notifications (OMQ_TELEGRAM=1)
  *   --telegram=true   -> enable
  *   --telegram=false  -> disable
  *   --telegram=1      -> enable
@@ -699,7 +699,7 @@ export function extractTelegramFlag(args: string[]): { telegramEnabled: boolean 
 /**
  * Extract the OMC-specific --discord flag from launch args.
  * Purely presence-based:
- *   --discord        -> enable Discord notifications (OMC_DISCORD=1)
+ *   --discord        -> enable Discord notifications (OMQ_DISCORD=1)
  *   --discord=true   -> enable
  *   --discord=false  -> disable
  *   --discord=1      -> enable
@@ -726,7 +726,7 @@ export function extractDiscordFlag(args: string[]): { discordEnabled: boolean | 
 /**
  * Extract the OMC-specific --slack flag from launch args.
  * Purely presence-based:
- *   --slack        -> enable Slack notifications (OMC_SLACK=1)
+ *   --slack        -> enable Slack notifications (OMQ_SLACK=1)
  *   --slack=true   -> enable
  *   --slack=false  -> disable
  *   --slack=1      -> enable
@@ -753,7 +753,7 @@ export function extractSlackFlag(args: string[]): { slackEnabled: boolean | unde
 /**
  * Extract the OMC-specific --webhook flag from launch args.
  * Purely presence-based:
- *   --webhook        -> enable Webhook notifications (OMC_WEBHOOK=1)
+ *   --webhook        -> enable Webhook notifications (OMQ_WEBHOOK=1)
  *   --webhook=true   -> enable
  *   --webhook=false  -> disable
  *   --webhook=1      -> enable
@@ -959,13 +959,13 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
  */
 export const TMUX_ENV_FORWARD = [
   'CLAUDE_CONFIG_DIR',
-  'OMC_NOTIFY',
-  'OMC_OPENCLAW',
-  'OMC_TELEGRAM',
-  'OMC_DISCORD',
-  'OMC_SLACK',
-  'OMC_WEBHOOK',
-  OMC_PLUGIN_ROOT_ENV,
+  'OMQ_NOTIFY',
+  'OMQ_OPENCLAW',
+  'OMQ_TELEGRAM',
+  'OMQ_DISCORD',
+  'OMQ_SLACK',
+  'OMQ_WEBHOOK',
+  OMQ_PLUGIN_ROOT_ENV,
 ];
 
 export function buildEnvExportPrefix(vars: string[]): string {
@@ -1118,57 +1118,57 @@ export function parsePluginDirArg(args: string[]): string | null {
 
 export async function launchCommand(args: string[]): Promise<void> {
   // Capture --plugin-dir <path> so the HUD wrapper (and any other env-aware
-  // child of Claude Code) can resolve the active plugin root via OMC_PLUGIN_ROOT.
+  // child of Claude Code) can resolve the active plugin root via OMQ_PLUGIN_ROOT.
   // Non-consuming: the flag still flows through to Claude Code untouched.
   const pluginDir = parsePluginDirArg(args);
   if (pluginDir) {
-    process.env[OMC_PLUGIN_ROOT_ENV] = pluginDir;
+    process.env[OMQ_PLUGIN_ROOT_ENV] = pluginDir;
   }
 
   // Extract OMC-specific --notify flag before passing remaining args to Claude CLI
   const { notifyEnabled, remainingArgs } = extractNotifyFlag(args);
   if (!notifyEnabled) {
-    process.env.OMC_NOTIFY = '0';
+    process.env.OMQ_NOTIFY = '0';
   }
 
   // Extract OMC-specific --openclaw flag (presence-based, no value consumption)
   const { openclawEnabled, remainingArgs: argsAfterOpenclaw } = extractOpenClawFlag(remainingArgs);
   if (openclawEnabled === true) {
-    process.env.OMC_OPENCLAW = '1';
+    process.env.OMQ_OPENCLAW = '1';
   } else if (openclawEnabled === false) {
-    process.env.OMC_OPENCLAW = '0';
+    process.env.OMQ_OPENCLAW = '0';
   }
 
   // Extract OMC-specific --telegram flag (presence-based)
   const { telegramEnabled, remainingArgs: argsAfterTelegram } = extractTelegramFlag(argsAfterOpenclaw);
   if (telegramEnabled === true) {
-    process.env.OMC_TELEGRAM = '1';
+    process.env.OMQ_TELEGRAM = '1';
   } else if (telegramEnabled === false) {
-    process.env.OMC_TELEGRAM = '0';
+    process.env.OMQ_TELEGRAM = '0';
   }
 
   // Extract OMC-specific --discord flag (presence-based)
   const { discordEnabled, remainingArgs: argsAfterDiscord } = extractDiscordFlag(argsAfterTelegram);
   if (discordEnabled === true) {
-    process.env.OMC_DISCORD = '1';
+    process.env.OMQ_DISCORD = '1';
   } else if (discordEnabled === false) {
-    process.env.OMC_DISCORD = '0';
+    process.env.OMQ_DISCORD = '0';
   }
 
   // Extract OMC-specific --slack flag (presence-based)
   const { slackEnabled, remainingArgs: argsAfterSlack } = extractSlackFlag(argsAfterDiscord);
   if (slackEnabled === true) {
-    process.env.OMC_SLACK = '1';
+    process.env.OMQ_SLACK = '1';
   } else if (slackEnabled === false) {
-    process.env.OMC_SLACK = '0';
+    process.env.OMQ_SLACK = '0';
   }
 
   // Extract OMC-specific --webhook flag (presence-based)
   const { webhookEnabled, remainingArgs: argsAfterWebhook } = extractWebhookFlag(argsAfterSlack);
   if (webhookEnabled === true) {
-    process.env.OMC_WEBHOOK = '1';
+    process.env.OMQ_WEBHOOK = '1';
   } else if (webhookEnabled === false) {
-    process.env.OMC_WEBHOOK = '0';
+    process.env.OMQ_WEBHOOK = '0';
   }
 
   const cwd = process.cwd();

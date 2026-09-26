@@ -32,7 +32,7 @@ _Не изучайте Claude Code. Просто используйте OMC._
 /oh-my-claudecode:omc-setup
 ```
 
-Если вы запускаете OMC через `omc --plugin-dir <path>` или `claude --plugin-dir <path>`, добавьте `--plugin-dir-mode` к `omc setup` (или экспортируйте `OMC_PLUGIN_ROOT` заранее) чтобы избежать дублирования умений/агентов, которые плагин уже предоставляет во время выполнения. Полную матрицу решений и все доступные флаги см. в [разделе Plugin directory flags в REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags).
+Если вы запускаете OMC через `omc --plugin-dir <path>` или `claude --plugin-dir <path>`, добавьте `--plugin-dir-mode` к `omc setup` (или экспортируйте `OMQ_PLUGIN_ROOT` заранее) чтобы избежать дублирования умений/агентов, которые плагин уже предоставляет во время выполнения. Полную матрицу решений и все доступные флаги см. в [разделе Plugin directory flags в REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags).
 
 <!-- TODO(i18n): verify translation -->
 
@@ -133,7 +133,7 @@ Team работает как поэтапный pipeline:
 
 - **Магические ключевые слова** — `ralph`, `ulw`, `eco`, `plan` для явного управления
 - **HUD statusline** — Метрики оркестрации в реальном времени в строке состояния
-  - Если вы запускаете Claude Code напрямую с `claude --plugin-dir <path>` (минуя shim `omc`), экспортируйте `OMC_PLUGIN_ROOT=<path>` в своей оболочке, чтобы пакет HUD разрешался в то же место, что и загрузчик плагина. Подробнее см. [раздел Plugin directory flags в REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags).
+  - Если вы запускаете Claude Code напрямую с `claude --plugin-dir <path>` (минуя shim `omc`), экспортируйте `OMQ_PLUGIN_ROOT=<path>` в своей оболочке, чтобы пакет HUD разрешался в то же место, что и загрузчик плагина. Подробнее см. [раздел Plugin directory flags в REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags).
 
   <!-- TODO(i18n): verify translation -->
 - **Обучение навыкам** — Извлечение переиспользуемых паттернов из сессий
@@ -265,9 +265,9 @@ omc config-stop-callback discord --clear-tags
 
 | Переменная | Описание |
 |-----------|----------|
-| `OMC_OPENCLAW=1` | Включить OpenClaw |
-| `OMC_OPENCLAW_DEBUG=1` | Включить отладочное логирование |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | Переопределить путь к файлу конфигурации |
+| `OMQ_OPENCLAW=1` | Включить OpenClaw |
+| `OMQ_OPENCLAW_DEBUG=1` | Включить отладочное логирование |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | Переопределить путь к файлу конфигурации |
 
 **Поддерживаемые события хуков (6 активных в bridge.ts):**
 

@@ -3,7 +3,7 @@
  *
  * Tests that processHook routes each HookType correctly, handles
  * invalid/unknown types gracefully, validates input normalization,
- * and respects the OMC_SKIP_HOOKS env kill-switch.
+ * and respects the OMQ_SKIP_HOOKS env kill-switch.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -57,8 +57,8 @@ describe('processHook - Routing Matrix', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
-    delete process.env.DISABLE_OMC;
-    delete process.env.OMC_SKIP_HOOKS;
+    delete process.env.DISABLE_OMQ;
+    delete process.env.OMQ_SKIP_HOOKS;
     resetSkipHooksCache();
   });
 
@@ -328,8 +328,8 @@ Read src/hooks/bridge.ts first.`,
         mkdtempSync(join(tmpdir(), 'bridge-routing-telemetry-a-')),
         mkdtempSync(join(tmpdir(), 'bridge-routing-telemetry-b-')),
       ];
-      const previousStateDir = process.env.OMC_STATE_DIR;
-      delete process.env.OMC_STATE_DIR;
+      const previousStateDir = process.env.OMQ_STATE_DIR;
+      delete process.env.OMQ_STATE_DIR;
 
       try {
         for (const projectDir of projectDirs) {
@@ -353,8 +353,8 @@ Read src/hooks/bridge.ts first.`,
           expect(records[0]?.event).toBe('PostToolUse');
         }
       } finally {
-        if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-        else process.env.OMC_STATE_DIR = previousStateDir;
+        if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+        else process.env.OMQ_STATE_DIR = previousStateDir;
         for (const projectDir of projectDirs) {
           rmSync(projectDir, { recursive: true, force: true });
         }
@@ -363,20 +363,20 @@ Read src/hooks/bridge.ts first.`,
 
     it('classifies protocol-level PreToolUse denies as hard with continue true', async () => {
       const projectDir = mkdtempSync(join(tmpdir(), 'bridge-routing-telemetry-deny-'));
-      const previousStateDir = process.env.OMC_STATE_DIR;
+      const previousStateDir = process.env.OMQ_STATE_DIR;
       const previousBedrock = process.env.CLAUDE_CODE_USE_BEDROCK;
-      const previousRouting = process.env.OMC_ROUTING_FORCE_INHERIT;
-      const previousDispatcher = process.env.OMC_HOOK_DISPATCHER;
-      const previousCutover = process.env.OMC_HOOK_CUTOVER;
-      const previousRollback = process.env.OMC_HOOK_ROLLBACK;
-      const previousDispatcherRollback = process.env.OMC_HOOK_DISPATCHER_ROLLBACK;
-      delete process.env.OMC_STATE_DIR;
-      delete process.env.OMC_HOOK_DISPATCHER;
-      delete process.env.OMC_HOOK_CUTOVER;
-      delete process.env.OMC_HOOK_ROLLBACK;
-      delete process.env.OMC_HOOK_DISPATCHER_ROLLBACK;
+      const previousRouting = process.env.OMQ_ROUTING_FORCE_INHERIT;
+      const previousDispatcher = process.env.OMQ_HOOK_DISPATCHER;
+      const previousCutover = process.env.OMQ_HOOK_CUTOVER;
+      const previousRollback = process.env.OMQ_HOOK_ROLLBACK;
+      const previousDispatcherRollback = process.env.OMQ_HOOK_DISPATCHER_ROLLBACK;
+      delete process.env.OMQ_STATE_DIR;
+      delete process.env.OMQ_HOOK_DISPATCHER;
+      delete process.env.OMQ_HOOK_CUTOVER;
+      delete process.env.OMQ_HOOK_ROLLBACK;
+      delete process.env.OMQ_HOOK_DISPATCHER_ROLLBACK;
       process.env.CLAUDE_CODE_USE_BEDROCK = '1';
-      process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
 
       try {
         execFileSync('git', ['init'], { cwd: projectDir, stdio: 'ignore' });
@@ -400,20 +400,20 @@ Read src/hooks/bridge.ts first.`,
         const records = readDispatchTelemetryTail(10, projectDir);
         expect(records.at(-1)?.appliedDecision).toBe('hard');
       } finally {
-        if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-        else process.env.OMC_STATE_DIR = previousStateDir;
+        if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+        else process.env.OMQ_STATE_DIR = previousStateDir;
         if (previousBedrock === undefined) delete process.env.CLAUDE_CODE_USE_BEDROCK;
         else process.env.CLAUDE_CODE_USE_BEDROCK = previousBedrock;
-        if (previousRouting === undefined) delete process.env.OMC_ROUTING_FORCE_INHERIT;
-        else process.env.OMC_ROUTING_FORCE_INHERIT = previousRouting;
-        if (previousDispatcher === undefined) delete process.env.OMC_HOOK_DISPATCHER;
-        else process.env.OMC_HOOK_DISPATCHER = previousDispatcher;
-        if (previousCutover === undefined) delete process.env.OMC_HOOK_CUTOVER;
-        else process.env.OMC_HOOK_CUTOVER = previousCutover;
-        if (previousRollback === undefined) delete process.env.OMC_HOOK_ROLLBACK;
-        else process.env.OMC_HOOK_ROLLBACK = previousRollback;
-        if (previousDispatcherRollback === undefined) delete process.env.OMC_HOOK_DISPATCHER_ROLLBACK;
-        else process.env.OMC_HOOK_DISPATCHER_ROLLBACK = previousDispatcherRollback;
+        if (previousRouting === undefined) delete process.env.OMQ_ROUTING_FORCE_INHERIT;
+        else process.env.OMQ_ROUTING_FORCE_INHERIT = previousRouting;
+        if (previousDispatcher === undefined) delete process.env.OMQ_HOOK_DISPATCHER;
+        else process.env.OMQ_HOOK_DISPATCHER = previousDispatcher;
+        if (previousCutover === undefined) delete process.env.OMQ_HOOK_CUTOVER;
+        else process.env.OMQ_HOOK_CUTOVER = previousCutover;
+        if (previousRollback === undefined) delete process.env.OMQ_HOOK_ROLLBACK;
+        else process.env.OMQ_HOOK_ROLLBACK = previousRollback;
+        if (previousDispatcherRollback === undefined) delete process.env.OMQ_HOOK_DISPATCHER_ROLLBACK;
+        else process.env.OMQ_HOOK_DISPATCHER_ROLLBACK = previousDispatcherRollback;
         rmSync(projectDir, { recursive: true, force: true });
       }
     });
@@ -586,7 +586,7 @@ $ ultrawork search the codebase`,
         mkdirSync(join(statePath, '..'), { recursive: true });
         const existingState = JSON.stringify({ active: true, session_id: sessionId, originalIdea: 'legacy state' });
         writeFileSync(statePath, existingState);
-        process.env.OMC_WORKFLOW_TEST_PLATFORM = 'darwin';
+        process.env.OMQ_WORKFLOW_TEST_PLATFORM = 'darwin';
 
         const result = await processHook('keyword-detector', {
           sessionId,
@@ -1348,16 +1348,16 @@ $ ultrawork search the codebase`,
           }),
         );
 
-        const previousTestBootId = process.env.OMC_TEST_BOOT_ID;
-        process.env.OMC_TEST_BOOT_ID = 'current-test-boot-id';
+        const previousTestBootId = process.env.OMQ_TEST_BOOT_ID;
+        process.env.OMQ_TEST_BOOT_ID = 'current-test-boot-id';
         const result = await processHook('session-start', {
           sessionId: currentSessionId,
           directory: tempDir,
         } as HookInput);
         if (previousTestBootId === undefined) {
-          delete process.env.OMC_TEST_BOOT_ID;
+          delete process.env.OMQ_TEST_BOOT_ID;
         } else {
-          process.env.OMC_TEST_BOOT_ID = previousTestBootId;
+          process.env.OMQ_TEST_BOOT_ID = previousTestBootId;
         }
 
         expect(result.continue).toBe(true);
@@ -1696,12 +1696,12 @@ $ ultrawork search the codebase`,
   });
 
   // --------------------------------------------------------------------------
-  // OMC_SKIP_HOOKS environment variable
+  // OMQ_SKIP_HOOKS environment variable
   // --------------------------------------------------------------------------
 
-  describe('OMC_SKIP_HOOKS kill-switch', () => {
+  describe('OMQ_SKIP_HOOKS kill-switch', () => {
     it('should skip a specific hook type when listed', async () => {
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector';
+      process.env.OMQ_SKIP_HOOKS = 'keyword-detector';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1715,7 +1715,7 @@ $ ultrawork search the codebase`,
     });
 
     it('should not skip hooks not in the list', async () => {
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector';
+      process.env.OMQ_SKIP_HOOKS = 'keyword-detector';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1728,7 +1728,7 @@ $ ultrawork search the codebase`,
     });
 
     it('should skip multiple comma-separated hooks', async () => {
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector,pre-tool-use,post-tool-use';
+      process.env.OMQ_SKIP_HOOKS = 'keyword-detector,pre-tool-use,post-tool-use';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1747,7 +1747,7 @@ $ ultrawork search the codebase`,
     });
 
     it('should handle whitespace around hook names', async () => {
-      process.env.OMC_SKIP_HOOKS = ' keyword-detector , pre-tool-use ';
+      process.env.OMQ_SKIP_HOOKS = ' keyword-detector , pre-tool-use ';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1759,8 +1759,8 @@ $ ultrawork search the codebase`,
       expect(result).toEqual({ continue: true });
     });
 
-    it('should process normally with empty OMC_SKIP_HOOKS', async () => {
-      process.env.OMC_SKIP_HOOKS = '';
+    it('should process normally with empty OMQ_SKIP_HOOKS', async () => {
+      process.env.OMQ_SKIP_HOOKS = '';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1774,12 +1774,12 @@ $ ultrawork search the codebase`,
   });
 
   // --------------------------------------------------------------------------
-  // DISABLE_OMC env kill-switch
+  // DISABLE_OMQ env kill-switch
   // --------------------------------------------------------------------------
 
-  describe('DISABLE_OMC kill-switch', () => {
-    it('should return continue:true for all hooks when DISABLE_OMC=1', async () => {
-      process.env.DISABLE_OMC = '1';
+  describe('DISABLE_OMQ kill-switch', () => {
+    it('should return continue:true for all hooks when DISABLE_OMQ=1', async () => {
+      process.env.DISABLE_OMQ = '1';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1791,8 +1791,8 @@ $ ultrawork search the codebase`,
       expect(result).toEqual({ continue: true });
     });
 
-    it('should return continue:true when DISABLE_OMC=true', async () => {
-      process.env.DISABLE_OMC = 'true';
+    it('should return continue:true when DISABLE_OMQ=true', async () => {
+      process.env.DISABLE_OMQ = 'true';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1804,8 +1804,8 @@ $ ultrawork search the codebase`,
       expect(result).toEqual({ continue: true });
     });
 
-    it('should process normally when DISABLE_OMC=false', async () => {
-      process.env.DISABLE_OMC = 'false';
+    it('should process normally when DISABLE_OMQ=false', async () => {
+      process.env.DISABLE_OMQ = 'false';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1818,9 +1818,9 @@ $ ultrawork search the codebase`,
       expect(result.continue).toBe(true);
     });
 
-    it('DISABLE_OMC takes precedence over OMC_SKIP_HOOKS', async () => {
-      process.env.DISABLE_OMC = '1';
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector';
+    it('DISABLE_OMQ takes precedence over OMQ_SKIP_HOOKS', async () => {
+      process.env.DISABLE_OMQ = '1';
+      process.env.OMQ_SKIP_HOOKS = 'keyword-detector';
 
       const input: HookInput = {
         sessionId: 'test-session',

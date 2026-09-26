@@ -18,8 +18,8 @@
  * dedupe, or telemetry.
  *
  * Planning contract: docs/design/ISSUE-3698-LIGHTWEIGHT-WORKFLOW-PLAN.md
- * Rollback boundary: set OMC_WORKFLOW_REGISTRY=0 (or the legacy
- * OMC_ALIAS_RESOLVER_ENABLED=0); legacy keyword/skill resolution paths are
+ * Rollback boundary: set OMQ_WORKFLOW_REGISTRY=0 (or the legacy
+ * OMQ_ALIAS_RESOLVER_ENABLED=0); legacy keyword/skill resolution paths are
  * untouched by this module.
  */
 
@@ -310,7 +310,7 @@ export function resolveCanonical(name: string, kind: SurfaceKind): WorkflowEntry
 // ---------------------------------------------------------------------------
 
 export function isRegistryEnabled(): boolean {
-  const env = process.env.OMC_WORKFLOW_REGISTRY;
+  const env = process.env.OMQ_WORKFLOW_REGISTRY;
   if (env !== undefined) {
     const v = env.trim().toLowerCase();
     if (v === '0' || v === 'false' || v === 'off' || v === 'disabled') return false;

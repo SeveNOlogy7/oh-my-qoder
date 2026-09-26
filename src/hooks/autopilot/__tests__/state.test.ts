@@ -27,7 +27,7 @@ describe("AutopilotState", () => {
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
-    delete process.env.OMC_TEST_FLOCK_AVAILABLE;
+    delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
   });
 
   describe("readAutopilotState", () => {
@@ -129,7 +129,7 @@ describe('workflow profile state contract (#3487)', () => {
     writeAutopilotState(testDir, partialNamedState, sessionId);
     const statePath = join(testDir, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
     const before = readFileSync(statePath);
-    process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
     expect(updateAutopilotStateIfCurrent(testDir, partialNamedState, { active: false }, sessionId)).toBeNull();
     expect(readFileSync(statePath)).toEqual(before);
@@ -155,7 +155,7 @@ describe('workflow profile state contract (#3487)', () => {
     writeAutopilotState(testDir, state, sessionId);
     const persisted = readAutopilotState(testDir, sessionId)!;
     expect(validateNamedWorkflowStateStructure(persisted, sessionId)).not.toBeNull();
-    process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+    process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
     expect(clearAutopilotState(testDir, sessionId, persisted)).toBe(true);
     expect(readAutopilotState(testDir, sessionId)).toBeNull();

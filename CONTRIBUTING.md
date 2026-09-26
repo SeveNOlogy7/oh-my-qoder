@@ -186,19 +186,19 @@ Add these to your `.bashrc` / `.zshrc` for a smoother dev workflow:
 
 ```bash
 # Your OMC dev root (change path as needed)
-export OMC_DEV_ROOT="$HOME/_Git/_Claude/oh-my-claudecode"
+export OMQ_DEV_ROOT="$HOME/_Git/_Claude/oh-my-claudecode"
 
 # Run OMC from your local checkout
-alias omcdev='omc --plugin-dir "$OMC_DEV_ROOT"'
+alias omcdev='omc --plugin-dir "$OMQ_DEV_ROOT"'
 
 # Build quickly
-alias omcbuild='(cd "$OMC_DEV_ROOT" && npm run build)'
+alias omcbuild='(cd "$OMQ_DEV_ROOT" && npm run build)'
 
 # Run tests
-alias omctest='(cd "$OMC_DEV_ROOT" && npm run test:run)'
+alias omctest='(cd "$OMQ_DEV_ROOT" && npm run test:run)'
 
 # Full watch mode (tsc + esbuild)
-alias omcwatch='(cd "$OMC_DEV_ROOT" && npm run dev:full)'
+alias omcwatch='(cd "$OMQ_DEV_ROOT" && npm run dev:full)'
 ```
 
 Then you can use:
@@ -369,12 +369,12 @@ npm run test:run
 
 ## 10. Troubleshooting
 
-### "OMC_PLUGIN_ROOT is not set"
+### "OMQ_PLUGIN_ROOT is not set"
 
 You're using `claude --plugin-dir` directly without the `omc` shim. Export it:
 
 ```bash
-export OMC_PLUGIN_ROOT=/path/to/oh-my-claudecode
+export OMQ_PLUGIN_ROOT=/path/to/oh-my-claudecode
 claude --plugin-dir /path/to/oh-my-claudecode
 ```
 

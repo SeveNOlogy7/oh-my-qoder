@@ -29,7 +29,7 @@ const CONCURRENT_RESTORE_HELPERS: Array<[string, string, boolean]> = [
   ['installed', join(__dirname, '..', '..', 'scripts', 'lib', 'precompact-restore.mjs'), true],
   ['template', join(__dirname, '..', '..', 'templates', 'hooks', 'lib', 'precompact-restore.mjs'), true],
   ['dist', join(__dirname, '..', '..', 'dist', 'hooks', 'pre-compact', 'restore.js'), false],
-].filter(([label]) => label !== 'dist' || process.env.OMC_PRECOMPACT_DIST_INTERLEAVINGS === '1') as Array<[string, string, boolean]>;
+].filter(([label]) => label !== 'dist' || process.env.OMQ_PRECOMPACT_DIST_INTERLEAVINGS === '1') as Array<[string, string, boolean]>;
 
 function makeProject(root: string): string {
   const project = join(root, 'project');
@@ -93,11 +93,11 @@ function writeAncestorRedirectPreload(tempDir: string): string {
     `import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 
-const checkpointPath = process.env.OMC_REDIRECT_CHECKPOINT;
-const statePath = process.env.OMC_REDIRECT_STATE;
-const stateBackupPath = process.env.OMC_REDIRECT_STATE_BACKUP;
-const externalState = process.env.OMC_REDIRECT_EXTERNAL_STATE;
-const signalPath = process.env.OMC_REDIRECT_SIGNAL;
+const checkpointPath = process.env.OMQ_REDIRECT_CHECKPOINT;
+const statePath = process.env.OMQ_REDIRECT_STATE;
+const stateBackupPath = process.env.OMQ_REDIRECT_STATE_BACKUP;
+const externalState = process.env.OMQ_REDIRECT_EXTERNAL_STATE;
+const signalPath = process.env.OMQ_REDIRECT_SIGNAL;
 const originalOpenSync = fs.openSync;
 let redirected = false;
 
@@ -538,16 +538,16 @@ fs.openSync = function(path, flags, mode) {
 syncBuiltinESMExports();
 `);
     const code = `import { restorePreCompactCheckpoint } from ${JSON.stringify(pathToFileURL(helperPath).href)};
-const result = restorePreCompactCheckpoint(process.env.OMC_ROOT, process.env.MARKER_SESSION);
+const result = restorePreCompactCheckpoint(process.env.OMQ_ROOT, process.env.MARKER_SESSION);
 process.stdout.write(JSON.stringify(result));`;
     const delayed = spawn(NODE, ['--import', pathToFileURL(preload).href, '--input-type=module', '-e', code], {
       env: {
         ...process.env,
-        OMC_ROOT: usesOmcRoot ? join(project, '.omq') : project,
+        OMQ_ROOT: usesOmcRoot ? join(project, '.omq') : project,
         MARKER_SESSION: `marker-process-${_label}`,
         MARKER_SIGNAL: signal,
         MARKER_RELEASE: release,
-        OMC_PRECOMPACT_PUBLISHER_IMPORT: pathToFileURL(preload).href,
+        OMQ_PRECOMPACT_PUBLISHER_IMPORT: pathToFileURL(preload).href,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -569,7 +569,7 @@ process.stdout.write(JSON.stringify(result));`;
       encoding: 'utf8',
       env: {
         ...process.env,
-        OMC_ROOT: usesOmcRoot ? join(project, '.omq') : project,
+        OMQ_ROOT: usesOmcRoot ? join(project, '.omq') : project,
         MARKER_SESSION: `marker-process-${_label}`,
       },
     });
@@ -607,16 +607,16 @@ fs.openSync = function(path, flags, mode) {
 syncBuiltinESMExports();
 `);
     const code = `import { restorePreCompactCheckpoint } from ${JSON.stringify(pathToFileURL(helperPath).href)};
-process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_ROOT, process.env.MARKER_SESSION)));`;
+process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMQ_ROOT, process.env.MARKER_SESSION)));`;
     const inputRoot = usesOmcRoot ? join(project, '.omq') : project;
     const delayed = spawn(NODE, ['--import', pathToFileURL(preload).href, '--input-type=module', '-e', code], {
       env: {
         ...process.env,
-        OMC_ROOT: inputRoot,
+        OMQ_ROOT: inputRoot,
         MARKER_SESSION: `duplicate-${_label}`,
         MARKER_SIGNAL: signal,
         MARKER_RELEASE: release,
-        OMC_PRECOMPACT_PUBLISHER_IMPORT: pathToFileURL(preload).href,
+        OMQ_PRECOMPACT_PUBLISHER_IMPORT: pathToFileURL(preload).href,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -629,7 +629,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
     expect(existsSync(signal)).toBe(true);
     const winner = JSON.parse(execFileSync(NODE, ['--input-type=module', '-e', code], {
       encoding: 'utf8',
-      env: { ...process.env, OMC_ROOT: inputRoot, MARKER_SESSION: `duplicate-${_label}` },
+      env: { ...process.env, OMQ_ROOT: inputRoot, MARKER_SESSION: `duplicate-${_label}` },
     }));
     expect(winner?.marker_status).toBe('written');
     expect(winner?.text).toContain(basename(checkpoint));
@@ -663,11 +663,11 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
     const older = new Date(Date.now() - 2_000);
     utimesSync(checkpointA, older, older);
     const code = `import { restorePreCompactCheckpoint } from ${JSON.stringify(pathToFileURL(helperPath).href)};
-process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_ROOT, process.env.MARKER_SESSION)));`;
+process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMQ_ROOT, process.env.MARKER_SESSION)));`;
     const inputRoot = usesOmcRoot ? join(project, '.omq') : project;
     const run = () => JSON.parse(execFileSync(NODE, ['--input-type=module', '-e', code], {
       encoding: 'utf8',
-      env: { ...process.env, OMC_ROOT: inputRoot, MARKER_SESSION: `equal-time-${_label}` },
+      env: { ...process.env, OMQ_ROOT: inputRoot, MARKER_SESSION: `equal-time-${_label}` },
     }));
     expect(run()?.text).toContain('checkpoint-equal-a.json');
     writeFileSync(checkpointB, payload);
@@ -942,11 +942,11 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
       home,
       {
         NODE_OPTIONS: `--import=${pathToFileURL(preloadPath).href}`,
-        OMC_REDIRECT_CHECKPOINT: checkpointPath,
-        OMC_REDIRECT_STATE: statePath,
-        OMC_REDIRECT_STATE_BACKUP: stateBackupPath,
-        OMC_REDIRECT_EXTERNAL_STATE: externalState,
-        OMC_REDIRECT_SIGNAL: signalPath,
+        OMQ_REDIRECT_CHECKPOINT: checkpointPath,
+        OMQ_REDIRECT_STATE: statePath,
+        OMQ_REDIRECT_STATE_BACKUP: stateBackupPath,
+        OMQ_REDIRECT_EXTERNAL_STATE: externalState,
+        OMQ_REDIRECT_SIGNAL: signalPath,
       },
     );
 
@@ -1168,8 +1168,8 @@ fs.openSync = function(path, flags, mode) {
 };
 syncBuiltinESMExports();
 `);
-      const previousPublisherPreload = process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT;
-      process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT = pathToFileURL(preloadPath).href;
+      const previousPublisherPreload = process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT;
+      process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT = pathToFileURL(preloadPath).href;
       process.env.MARKER_PARENT = markerParent;
       process.env.MARKER_PARENT_BACKUP = markerParentBackup;
       process.env.EXTERNAL_MARKER_PARENT = externalMarkerParent;
@@ -1182,8 +1182,8 @@ syncBuiltinESMExports();
         if (process.platform !== 'win32') expect(existsSync(signalPath)).toBe(true);
         expect(existsSync(join(externalMarkerParent, 'restored.json'))).toBe(false);
       } finally {
-        if (previousPublisherPreload === undefined) delete process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT;
-        else process.env.OMC_PRECOMPACT_PUBLISHER_IMPORT = previousPublisherPreload;
+        if (previousPublisherPreload === undefined) delete process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT;
+        else process.env.OMQ_PRECOMPACT_PUBLISHER_IMPORT = previousPublisherPreload;
         delete process.env.MARKER_PARENT;
         delete process.env.MARKER_PARENT_BACKUP;
         delete process.env.EXTERNAL_MARKER_PARENT;

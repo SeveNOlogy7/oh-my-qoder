@@ -33,8 +33,8 @@ describe('Session-Scoped State Isolation', () => {
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
-    delete process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
+    delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
   });
 
   function liveLockOwner() {
@@ -263,8 +263,8 @@ describe('Session-Scoped State Isolation', () => {
       const markerPath = join(markerDir, 'ralph-verification.json');
       writeFileSync(markerPath, JSON.stringify({ pending: true, session_id: sessionA }));
       const replacement = { pending: true, session_id: sessionA, workflowRunId: 'new-run' };
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = markerPath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = markerPath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       clearModeState('ralph', tempDir, sessionA);
       expect(JSON.parse(readFileSync(markerPath, 'utf8'))).toEqual(replacement);

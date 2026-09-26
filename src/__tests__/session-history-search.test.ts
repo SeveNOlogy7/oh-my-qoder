@@ -32,7 +32,7 @@ describe('session history search', () => {
     otherProject = join(tempRoot, 'other-project');
     tildeClaudeDir = join(homedir(), `.omq-session-search-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     process.env.CLAUDE_CONFIG_DIR = claudeDir;
-    process.env.OMC_STATE_DIR = join(tempRoot, 'omc-state');
+    process.env.OMQ_STATE_DIR = join(tempRoot, 'omc-state');
 
     const currentProjectDir = join(claudeDir, 'projects', encodeProjectPath(repoRoot));
     const otherProjectDir = join(claudeDir, 'projects', encodeProjectPath(otherProject));
@@ -81,7 +81,7 @@ describe('session history search', () => {
     } else {
       process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
     }
-    delete process.env.OMC_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     rmSync(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     rmSync(tildeClaudeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });

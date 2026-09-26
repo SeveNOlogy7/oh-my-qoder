@@ -187,9 +187,9 @@ describe('scaleUp launch config', () => {
     config = makeConfig();
     teamOpsMocks.teamReadConfig.mockImplementation(async () => config);
     modelContractMocks.getWorkerEnv.mockImplementation((teamName: string, workerName: string, agentType: string) => ({
-      OMC_TEAM_WORKER: `${teamName}/${workerName}`,
-      OMC_TEAM_NAME: teamName,
-      OMC_WORKER_AGENT_TYPE: agentType,
+      OMQ_TEAM_WORKER: `${teamName}/${workerName}`,
+      OMQ_TEAM_NAME: teamName,
+      OMQ_WORKER_AGENT_TYPE: agentType,
     }));
     tmuxUtilsMocks.tmuxSpawn.mockImplementation((args: string[]) => {
       if (args[0] === 'split-window') {
@@ -235,7 +235,7 @@ describe('scaleUp launch config', () => {
       agentType,
       [{ subject: 'demo', description: 'demo task' }],
       cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: true, newWorkerCount: 1, nextWorkerIndex: 2 });
@@ -255,11 +255,11 @@ describe('scaleUp launch config', () => {
         launchArgs: workerArgv.slice(1),
         provider: agentType,
         envVars: expect.objectContaining({
-          OMC_TEAM_WORKER: 'demo-team/worker-1',
-          OMC_TEAM_NAME: 'demo-team',
-          OMC_WORKER_AGENT_TYPE: agentType,
-          OMC_TEAM_STATE_ROOT: `${resolve(cwd)}/.omq/state/team/demo-team`,
-          OMC_TEAM_LEADER_CWD: resolve(cwd),
+          OMQ_TEAM_WORKER: 'demo-team/worker-1',
+          OMQ_TEAM_NAME: 'demo-team',
+          OMQ_WORKER_AGENT_TYPE: agentType,
+          OMQ_TEAM_STATE_ROOT: `${resolve(cwd)}/.omq/state/team/demo-team`,
+          OMQ_TEAM_LEADER_CWD: resolve(cwd),
         }),
       }),
     );
@@ -286,7 +286,7 @@ describe('scaleUp launch config', () => {
   ])('fails %s scale-up provider preflight before worker side effects', async (_case, reason) => {
     modelContractMocks.resolveValidatedBinaryPath.mockImplementationOnce(() => { throw new Error(reason); });
     const result = await scaleUp('demo-team', 1, 'codex', [{ subject: 'demo', description: 'demo task' }], cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
     expect(result).toEqual({ ok: false, error: `Failed strict provider preflight for worker-1 (codex): ${reason}` });
     expect(tmuxUtilsMocks.tmuxSpawn.mock.calls.some(([args]) => args[0] === 'split-window')).toBe(false);
     expect(gitWorktreeMocks.ensureWorkerWorktree).not.toHaveBeenCalled();
@@ -299,7 +299,7 @@ describe('scaleUp launch config', () => {
       active_recovery: { request_id: 'request-1', recovery_id: 'recovery-1', worker_name: 'worker-1', owner_epoch: 1,
         owner_nonce: 'owner-1', phase: 'reserved', state_revision: 4, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } });
     const result = await scaleUp('demo-team', 1, 'claude', [{ subject: 'demo', description: 'demo task' }], cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
     expect(result).toEqual({ ok: false, error: 'team_mutation_busy' });
     expect(tmuxUtilsMocks.tmuxSpawn.mock.calls.some(([args]) => args[0] === 'split-window')).toBe(false);
   });
@@ -314,7 +314,7 @@ describe('scaleUp launch config', () => {
         process_started_at: 'malformed', state_revision: 4, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
     });
     const result = await scaleDown('demo-team', cwd, { workerNames: ['worker-2'] },
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
     expect(result).toEqual({ ok: false, error: 'team_mutation_busy' });
     expect(tmuxSessionMocks.killWorkerPanes).not.toHaveBeenCalled();
   });
@@ -346,7 +346,7 @@ describe('scaleUp launch config', () => {
       'codex',
       [{ subject: 'demo', description: 'demo task' }],
       cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: false });
@@ -382,7 +382,7 @@ describe('scaleUp launch config', () => {
       'codex',
       [{ subject: 'demo', description: 'demo task' }],
       cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('Failed to install worker overlay') });
@@ -420,7 +420,7 @@ describe('scaleUp launch config', () => {
       'demo-team',
       cwd,
       { workerNames: ['worker-1'], drainTimeoutMs: 0 },
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: true, removedWorkers: ['worker-1'], newWorkerCount: 1 });
@@ -451,7 +451,7 @@ describe('scaleUp launch config', () => {
     workerLaunchMocks.retireAndCleanupCurrentWorkerLaunchAttempt.mockResolvedValueOnce(false);
 
     const result = await scaleDown('demo-team', cwd, { workerNames: ['worker-1'], drainTimeoutMs: 0 },
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
 
     expect(result).toMatchObject({ ok: false, error: 'provider_cleanup_unverified:worker-1' });
     expect(workerLaunchMocks.retireAndCleanupCurrentWorkerLaunchAttempt).toHaveBeenCalled();
@@ -492,7 +492,7 @@ describe('scaleUp launch config', () => {
       'demo-team',
       cwd,
       { workerNames: ['worker-1'], drainTimeoutMs: 0 },
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('worktree_dirty') });
@@ -530,7 +530,7 @@ describe('scaleUp launch config', () => {
       'demo-team',
       cwd,
       { workerNames: ['worker-1'], drainTimeoutMs: 0 },
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('pane_still_alive') });

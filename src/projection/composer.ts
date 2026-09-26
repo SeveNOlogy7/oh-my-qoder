@@ -14,7 +14,7 @@
 
 import { createHash } from 'node:crypto';
 import { normalizeForDigest, computeDigest } from './manifest.js';
-import { OMC_START_MARKER, OMC_END_MARKER } from '../installer/claude-md-analysis.js';
+import { OMQ_START_MARKER, OMQ_END_MARKER } from '../installer/claude-md-analysis.js';
 
 export const COMPOSER_SCHEMA_VERSION = 1 as const;
 
@@ -33,8 +33,8 @@ export interface ComposedClaudeProjection {
 }
 
 function extractCanonicalBody(canonicalDocsRaw: string): string {
-  const start = canonicalDocsRaw.indexOf(OMC_START_MARKER);
-  const end = canonicalDocsRaw.indexOf(OMC_END_MARKER);
+  const start = canonicalDocsRaw.indexOf(OMQ_START_MARKER);
+  const end = canonicalDocsRaw.indexOf(OMQ_END_MARKER);
   if (start === -1 || end === -1 || end < start) throw new Error('canonical docs missing OMC markers');
   // content between markers exclusive: after START's eol through before END's start
   const startEol = canonicalDocsRaw.indexOf('\n', start);
@@ -54,7 +54,7 @@ function extractCanonicalBody(canonicalDocsRaw: string): string {
  */
 export function composeManagedBlock(input: ComposerInput): string {
   const body = extractCanonicalBody(input.canonicalDocsRaw);
-  return `${OMC_START_MARKER}\n<!-- OMC:VERSION:${input.version} -->\n${body}${OMC_END_MARKER}\n`;
+  return `${OMQ_START_MARKER}\n<!-- OMC:VERSION:${input.version} -->\n${body}${OMQ_END_MARKER}\n`;
 }
 
 /**

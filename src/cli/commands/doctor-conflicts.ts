@@ -16,11 +16,11 @@ import { findWorkspaceRoot, WORKSPACE_MARKER } from '../../lib/worktree-paths.js
 export interface WorkspaceMarkerStatus {
   /** Absolute path to the directory containing .omq-workspace, or null if absent. */
   markerRoot: string | null;
-  /** True when OMC_STATE_DIR env var is set. */
+  /** True when OMQ_STATE_DIR env var is set. */
   stateDirEnvSet: boolean;
-  /** Value of OMC_STATE_DIR, or null when unset. */
+  /** Value of OMQ_STATE_DIR, or null when unset. */
   stateDirEnvValue: string | null;
-  /** When both OMC_STATE_DIR and .omq-workspace are active, this is true (warn: OMC_STATE_DIR wins). */
+  /** When both OMQ_STATE_DIR and .omq-workspace are active, this is true (warn: OMQ_STATE_DIR wins). */
   precedenceConflict: boolean;
 }
 
@@ -336,11 +336,11 @@ export function checkClaudeMdStatus(): ConflictReport['claudeMdStatus'] {
  * Check environment flags that affect OMC behavior
  */
 export function checkEnvFlags(): ConflictReport['envFlags'] {
-  const disableOmc = process.env.DISABLE_OMC === 'true' || process.env.DISABLE_OMC === '1';
+  const disableOmc = process.env.DISABLE_OMQ === 'true' || process.env.DISABLE_OMQ === '1';
   const skipHooks: string[] = [];
 
-  if (process.env.OMC_SKIP_HOOKS) {
-    skipHooks.push(...process.env.OMC_SKIP_HOOKS.split(',').map(h => h.trim()));
+  if (process.env.OMQ_SKIP_HOOKS) {
+    skipHooks.push(...process.env.OMQ_SKIP_HOOKS.split(',').map(h => h.trim()));
   }
 
   return { disableOmc, skipHooks };
@@ -581,18 +581,18 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
 }
 
 /**
- * Check for .omq-workspace marker presence and OMC_STATE_DIR precedence.
+ * Check for .omq-workspace marker presence and OMQ_STATE_DIR precedence.
  *
  * Reports:
  *  - Whether a .omq-workspace marker was found (and where).
- *  - Whether OMC_STATE_DIR is set.
- *  - When both are set, emits a precedenceConflict flag (OMC_STATE_DIR wins per
- *    the resolution-order principle: OMC_STATE_DIR > .omq-workspace > git > cwd).
+ *  - Whether OMQ_STATE_DIR is set.
+ *  - When both are set, emits a precedenceConflict flag (OMQ_STATE_DIR wins per
+ *    the resolution-order principle: OMQ_STATE_DIR > .omq-workspace > git > cwd).
  */
 export function checkWorkspaceMarker(): WorkspaceMarkerStatus {
   const markerRoot = findWorkspaceRoot();
-  const stateDirEnvValue = process.env.OMC_STATE_DIR && process.env.OMC_STATE_DIR.trim()
-    ? process.env.OMC_STATE_DIR.trim()
+  const stateDirEnvValue = process.env.OMQ_STATE_DIR && process.env.OMQ_STATE_DIR.trim()
+    ? process.env.OMQ_STATE_DIR.trim()
     : null;
   const stateDirEnvSet = stateDirEnvValue !== null;
   const precedenceConflict = stateDirEnvSet && markerRoot !== null;
@@ -716,13 +716,13 @@ export function formatReport(report: ConflictReport, json: boolean): string {
   lines.push(colors.bold('🔧 Environment Flags'));
   lines.push('');
   if (report.envFlags.disableOmc) {
-    lines.push(`  ${colors.red('✗')} DISABLE_OMC is set - OMC is disabled`);
+    lines.push(`  ${colors.red('✗')} DISABLE_OMQ is set - OMC is disabled`);
   } else {
-    lines.push(`  ${colors.green('✓')} DISABLE_OMC not set`);
+    lines.push(`  ${colors.green('✓')} DISABLE_OMQ not set`);
   }
 
   if (report.envFlags.skipHooks.length > 0) {
-    lines.push(`  ${colors.yellow('⚠')} OMC_SKIP_HOOKS: ${report.envFlags.skipHooks.join(', ')}`);
+    lines.push(`  ${colors.yellow('⚠')} OMQ_SKIP_HOOKS: ${report.envFlags.skipHooks.join(', ')}`);
   } else {
     lines.push(`  ${colors.green('✓')} No hooks are being skipped`);
   }
@@ -808,14 +808,14 @@ export function formatReport(report: ConflictReport, json: boolean): string {
     lines.push(`  ${colors.gray('ℹ')} No ${WORKSPACE_MARKER} marker found (single-repo mode)`);
   }
   if (wm.stateDirEnvSet) {
-    lines.push(`  ${colors.green('✓')} OMC_STATE_DIR is set: ${wm.stateDirEnvValue}`);
+    lines.push(`  ${colors.green('✓')} OMQ_STATE_DIR is set: ${wm.stateDirEnvValue}`);
   } else {
-    lines.push(`  ${colors.gray('ℹ')} OMC_STATE_DIR not set`);
+    lines.push(`  ${colors.gray('ℹ')} OMQ_STATE_DIR not set`);
   }
   if (wm.precedenceConflict) {
-    lines.push(`  ${colors.yellow('⚠')} Both OMC_STATE_DIR and ${WORKSPACE_MARKER} are active.`);
-    lines.push(`    ${colors.gray('OMC_STATE_DIR takes precedence (resolution order: OMC_STATE_DIR > .omq-workspace > git > cwd).')}`);
-    lines.push(`    ${colors.gray('If you intended .omq-workspace to anchor state, unset OMC_STATE_DIR.')}`);
+    lines.push(`  ${colors.yellow('⚠')} Both OMQ_STATE_DIR and ${WORKSPACE_MARKER} are active.`);
+    lines.push(`    ${colors.gray('OMQ_STATE_DIR takes precedence (resolution order: OMQ_STATE_DIR > .omq-workspace > git > cwd).')}`);
+    lines.push(`    ${colors.gray('If you intended .omq-workspace to anchor state, unset OMQ_STATE_DIR.')}`);
   }
   lines.push('');
 

@@ -1,7 +1,7 @@
 import { spawnSync } from 'child_process';
 
-const OMC_CLI_BINARY = 'omc';
-const OMC_PLUGIN_BRIDGE_PREFIX = 'node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs';
+const OMQ_CLI_BINARY = 'omc';
+const OMQ_PLUGIN_BRIDGE_PREFIX = 'node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs';
 
 export interface OmcCliRenderOptions {
   env?: NodeJS.ProcessEnv;
@@ -19,17 +19,17 @@ function commandExists(command: string, env: NodeJS.ProcessEnv): boolean {
 
 export function resolveOmcCliPrefix(options: OmcCliRenderOptions = {}): string {
   const env = options.env ?? process.env;
-  const omcAvailable = options.omcAvailable ?? commandExists(OMC_CLI_BINARY, env);
+  const omcAvailable = options.omcAvailable ?? commandExists(OMQ_CLI_BINARY, env);
   if (omcAvailable) {
-    return OMC_CLI_BINARY;
+    return OMQ_CLI_BINARY;
   }
 
   const pluginRoot = typeof env.CLAUDE_PLUGIN_ROOT === 'string' ? env.CLAUDE_PLUGIN_ROOT.trim() : '';
   if (pluginRoot) {
-    return OMC_PLUGIN_BRIDGE_PREFIX;
+    return OMQ_PLUGIN_BRIDGE_PREFIX;
   }
 
-  return OMC_CLI_BINARY;
+  return OMQ_CLI_BINARY;
 }
 
 function resolveInvocationPrefix(

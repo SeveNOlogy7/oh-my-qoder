@@ -145,8 +145,8 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
       },
       launchBinary: 'codex',
       launchArgs: ['--full-auto', '--model', 'gpt-5;touch /tmp/pwn'],
@@ -172,8 +172,8 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
       },
       launchBinary: 'codex',
       launchArgs: ['--full-auto'],
@@ -218,8 +218,8 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
       },
       launchBinary: 'codex',
       launchArgs: ['--full-auto'],
@@ -243,8 +243,8 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
       },
       launchBinary: 'codex',
       launchArgs: ['--full-auto'],
@@ -270,8 +270,8 @@ describe('spawnWorkerInPane', () => {
           teamName: 'safe-team',
           workerName: 'worker-1',
           envVars: {
-            OMC_TEAM_NAME: 'safe-team',
-            OMC_TEAM_WORKER: 'safe-team/worker-1',
+            OMQ_TEAM_NAME: 'safe-team',
+            OMQ_TEAM_WORKER: 'safe-team/worker-1',
             SECRET_ENV: secret,
           },
           launchBinary: 'codex',
@@ -310,8 +310,8 @@ describe('spawnWorkerInPane', () => {
           teamName: 'safe-team',
           workerName: 'worker-1',
           envVars: {
-            OMC_TEAM_NAME: 'safe-team',
-            OMC_TEAM_WORKER: 'safe-team/worker-1',
+            OMQ_TEAM_NAME: 'safe-team',
+            OMQ_TEAM_WORKER: 'safe-team/worker-1',
             SECRET_ENV: secret,
           },
           launchBinary: 'codex',
@@ -352,8 +352,8 @@ describe('spawnWorkerInPane', () => {
         teamName: 'safe-team',
         workerName: 'worker-1',
         envVars: {
-          OMC_TEAM_NAME: 'safe-team',
-          OMC_TEAM_WORKER: 'safe-team/worker-1',
+          OMQ_TEAM_NAME: 'safe-team',
+          OMQ_TEAM_WORKER: 'safe-team/worker-1',
         },
         launchBinary: 'codex',
         launchArgs: ['--full-auto'],
@@ -372,9 +372,9 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
-        OMC_TEAM_LONG_VALUE: 'x'.repeat(160),
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_LONG_VALUE: 'x'.repeat(160),
       },
       launchBinary: 'codex',
       launchArgs: ['--full-auto', '--model', 'gpt-5.5', '--reasoning-effort', 'high'],
@@ -394,9 +394,9 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
-        OMC_TEAM_LONG_VALUE: 'x'.repeat(160),
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_LONG_VALUE: 'x'.repeat(160),
       },
       launchBinary: 'codex',
       launchArgs: ['--full-auto', '--model', 'gpt-5.5', '--reasoning-effort', 'high'],
@@ -413,8 +413,8 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
       },
       launchBinary: 'cursor-agent',
       cwd: '/tmp',
@@ -433,8 +433,8 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
       },
       launchBinary: 'claude',
       launchArgs: ['--dangerously-skip-permissions'],
@@ -459,8 +459,8 @@ describe('spawnWorkerInPane', () => {
       teamName: 'safe-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_NAME: 'safe-team',
-        OMC_TEAM_WORKER: 'safe-team/worker-1',
+        OMQ_TEAM_NAME: 'safe-team',
+        OMQ_TEAM_WORKER: 'safe-team/worker-1',
       },
       launchBinary: 'codex',
       launchArgs: ['--full-auto'],
@@ -471,15 +471,15 @@ describe('spawnWorkerInPane', () => {
   it('does not accept inline TUI worker submission when the pane is dead', async () => {
     mockedCalls.enterSubmitsCommand = false;
     mockedCalls.paneStatusAfterEnter = '1 codex\n';
-    vi.stubEnv('OMC_TEAM_START_SUBMIT_TIMEOUT_MS', '200');
+    vi.stubEnv('OMQ_TEAM_START_SUBMIT_TIMEOUT_MS', '200');
 
     await expect(
       spawnWorkerInPane('session:0', '%2', {
         teamName: 'safe-team',
         workerName: 'worker-1',
         envVars: {
-          OMC_TEAM_NAME: 'safe-team',
-          OMC_TEAM_WORKER: 'safe-team/worker-1',
+          OMQ_TEAM_NAME: 'safe-team',
+          OMQ_TEAM_WORKER: 'safe-team/worker-1',
         },
         launchBinary: 'codex',
         launchArgs: ['--full-auto'],
@@ -490,15 +490,15 @@ describe('spawnWorkerInPane', () => {
 
   it('fails loudly when a single Cursor worker start command remains unsubmitted after Enter', async () => {
     mockedCalls.enterSubmitsCommand = false;
-    vi.stubEnv('OMC_TEAM_START_SUBMIT_TIMEOUT_MS', '200');
+    vi.stubEnv('OMQ_TEAM_START_SUBMIT_TIMEOUT_MS', '200');
 
     await expect(
       spawnWorkerInPane('session:0', '%2', {
         teamName: 'safe-team',
         workerName: 'worker-1',
         envVars: {
-          OMC_TEAM_NAME: 'safe-team',
-          OMC_TEAM_WORKER: 'safe-team/worker-1',
+          OMQ_TEAM_NAME: 'safe-team',
+          OMQ_TEAM_WORKER: 'safe-team/worker-1',
         },
         launchBinary: 'cursor-agent',
         cwd: '/tmp',
@@ -513,8 +513,8 @@ describe('spawnWorkerInPane', () => {
         teamName: 'safe-team',
         workerName: 'worker-1',
         envVars: {
-          OMC_TEAM_NAME: 'safe-team',
-          OMC_TEAM_WORKER: 'safe-team/worker-1',
+          OMQ_TEAM_NAME: 'safe-team',
+          OMQ_TEAM_WORKER: 'safe-team/worker-1',
         },
         launchBinary: 'codex',
         launchArgs: ['--full-auto'],
@@ -530,7 +530,7 @@ describe('spawnWorkerInPane', () => {
       spawnWorkerInPane('session:0', '%2', {
         teamName: 'Bad-Team',
         workerName: 'worker-1',
-        envVars: { OMC_TEAM_NAME: 'Bad-Team' },
+        envVars: { OMQ_TEAM_NAME: 'Bad-Team' },
         launchBinary: 'codex',
         launchArgs: ['--full-auto'],
         cwd: '/tmp',
@@ -555,7 +555,7 @@ describe('spawnWorkerInPane', () => {
       spawnWorkerInPane('session:0', '%2', {
         teamName: 'safe-team',
         workerName: 'worker-1',
-        envVars: { OMC_TEAM_NAME: 'safe-team' },
+        envVars: { OMQ_TEAM_NAME: 'safe-team' },
         launchBinary: 'codex;touch /tmp/pwn',
         cwd: '/tmp',
       })

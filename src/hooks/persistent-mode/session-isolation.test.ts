@@ -34,7 +34,7 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
-    delete process.env.OMC_TEST_FLOCK_AVAILABLE;
+    delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
   });
 
   describe("checkPersistentModes session isolation", () => {
@@ -190,7 +190,7 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
         expires_at: new Date(now + 30_000).toISOString(),
         target_state_sha256: createHash("sha256").update(JSON.stringify(state)).digest("hex"),
       }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = "0";
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = "0";
 
       await expect(checkPersistentModes(sessionId, tempDir)).resolves.toMatchObject({
         shouldBlock: true,
@@ -208,7 +208,7 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
         requested_at: new Date().toISOString(),
         source: "state_clear",
       }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = "0";
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = "0";
 
       await expect(checkPersistentModes(sessionId, tempDir)).resolves.toMatchObject({
         shouldBlock: false,
@@ -234,7 +234,7 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
         requested_at: new Date().toISOString(),
         source: "state_clear",
       }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = "0";
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = "0";
 
       await expect(checkPersistentModes(sessionId, tempDir)).resolves.toMatchObject({
         shouldBlock: true,

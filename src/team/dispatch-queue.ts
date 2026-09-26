@@ -85,7 +85,7 @@ export type PatchPendingDispatchReasonResult =
 
 // ── Lock constants ─────────────────────────────────────────────────────────
 
-const OMC_DISPATCH_LOCK_TIMEOUT_ENV = 'OMC_TEAM_DISPATCH_LOCK_TIMEOUT_MS';
+const OMQ_DISPATCH_LOCK_TIMEOUT_ENV = 'OMQ_TEAM_DISPATCH_LOCK_TIMEOUT_MS';
 const DEFAULT_DISPATCH_LOCK_TIMEOUT_MS = 15_000;
 const MIN_DISPATCH_LOCK_TIMEOUT_MS = 1_000;
 const MAX_DISPATCH_LOCK_TIMEOUT_MS = 120_000;
@@ -133,7 +133,7 @@ function isStrictNonNegativeInteger(value: unknown): value is number {
 // ── Lock ───────────────────────────────────────────────────────────────────
 
 export function resolveDispatchLockTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
-  const raw = env[OMC_DISPATCH_LOCK_TIMEOUT_ENV];
+  const raw = env[OMQ_DISPATCH_LOCK_TIMEOUT_ENV];
   if (raw === undefined || raw === '') return DEFAULT_DISPATCH_LOCK_TIMEOUT_MS;
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) return DEFAULT_DISPATCH_LOCK_TIMEOUT_MS;
@@ -180,7 +180,7 @@ async function withDispatchLock<T>(teamName: string, cwd: string, fn: () => Prom
       if (Date.now() > deadline) {
         throw new Error(
           `Timed out acquiring dispatch lock for ${teamName} after ${timeoutMs}ms. ` +
-          `Set ${OMC_DISPATCH_LOCK_TIMEOUT_ENV} to increase (current: ${timeoutMs}ms, max: ${MAX_DISPATCH_LOCK_TIMEOUT_MS}ms).`,
+          `Set ${OMQ_DISPATCH_LOCK_TIMEOUT_ENV} to increase (current: ${timeoutMs}ms, max: ${MAX_DISPATCH_LOCK_TIMEOUT_MS}ms).`,
         );
       }
 

@@ -146,7 +146,7 @@ export interface PluginConfig {
      * Force all agents to inherit the parent model instead of using OMC model routing.
      * When true, the `model` parameter is stripped from all Task/Agent calls so agents use
      * the user's Claude Code model setting. Overrides all per-agent model recommendations.
-     * Env: OMC_ROUTING_FORCE_INHERIT=true
+     * Env: OMQ_ROUTING_FORCE_INHERIT=true
      */
     forceInherit?: boolean;
     /** Enable automatic escalation on failure */
@@ -179,7 +179,7 @@ export interface PluginConfig {
      *   (useful on non-Anthropic backends without the nuclear forceInherit)
      * - `{ haiku: 'sonnet' }` — promote all haiku agents to sonnet tier
      *
-     * Env: OMC_MODEL_ALIAS_HAIKU, OMC_MODEL_ALIAS_SONNET, OMC_MODEL_ALIAS_OPUS, OMC_MODEL_ALIAS_FABLE
+     * Env: OMQ_MODEL_ALIAS_HAIKU, OMQ_MODEL_ALIAS_SONNET, OMQ_MODEL_ALIAS_OPUS, OMQ_MODEL_ALIAS_FABLE
      */
     modelAliases?: Partial<Record<"haiku" | "sonnet" | "opus" | "fable", ModelType>>;
     /** Keywords that force escalation to higher tier */

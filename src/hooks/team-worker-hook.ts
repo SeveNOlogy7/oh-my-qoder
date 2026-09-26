@@ -3,7 +3,7 @@
  *
  * Mirrors OMX scripts/notify-hook/team-worker.js behavior exactly.
  *
- * Short-circuit: if OMC_TEAM_WORKER is not set, returns immediately (<1ms).
+ * Short-circuit: if OMQ_TEAM_WORKER is not set, returns immediately (<1ms).
  *
  * State files:
  *   workers/{name}/heartbeat.json
@@ -45,34 +45,34 @@ export function parseTeamWorkerEnv(rawValue: unknown): { teamName: string; worke
 }
 
 export function resolveWorkerIdleNotifyEnabled(): boolean {
-  const raw = safeString(process.env.OMC_TEAM_WORKER_IDLE_NOTIFY || '').trim().toLowerCase();
+  const raw = safeString(process.env.OMQ_TEAM_WORKER_IDLE_NOTIFY || '').trim().toLowerCase();
   if (raw === 'false' || raw === '0' || raw === 'off') return false;
   return true;
 }
 
 export function resolveWorkerIdleCooldownMs(): number {
-  const raw = safeString(process.env.OMC_TEAM_WORKER_IDLE_COOLDOWN_MS || '');
+  const raw = safeString(process.env.OMQ_TEAM_WORKER_IDLE_COOLDOWN_MS || '');
   const parsed = asNumber(raw);
   if (parsed !== null && parsed >= 5_000 && parsed <= 600_000) return parsed;
   return 30_000;
 }
 
 export function resolveAllWorkersIdleCooldownMs(): number {
-  const raw = safeString(process.env.OMC_TEAM_ALL_IDLE_COOLDOWN_MS || '');
+  const raw = safeString(process.env.OMQ_TEAM_ALL_IDLE_COOLDOWN_MS || '');
   const parsed = asNumber(raw);
   if (parsed !== null && parsed >= 5_000 && parsed <= 600_000) return parsed;
   return 60_000;
 }
 
 function resolveStatusStaleMs(): number {
-  const raw = safeString(process.env.OMC_TEAM_STATUS_STALE_MS || '');
+  const raw = safeString(process.env.OMQ_TEAM_STATUS_STALE_MS || '');
   const parsed = asNumber(raw);
   if (parsed !== null && parsed >= 5_000 && parsed <= 3_600_000) return parsed;
   return 120_000;
 }
 
 function resolveHeartbeatStaleMs(): number {
-  const raw = safeString(process.env.OMC_TEAM_HEARTBEAT_STALE_MS || '');
+  const raw = safeString(process.env.OMQ_TEAM_HEARTBEAT_STALE_MS || '');
   const parsed = asNumber(raw);
   if (parsed !== null && parsed >= 5_000 && parsed <= 3_600_000) return parsed;
   return 180_000;
@@ -245,7 +245,7 @@ export async function updateWorkerHeartbeat(
 
 // ── Idle notifications ─────────────────────────────────────────────────────
 
-const DEFAULT_MARKER = '[OMC_TMUX_INJECT]';
+const DEFAULT_MARKER = '[OMQ_TMUX_INJECT]';
 
 export async function maybeNotifyLeaderWorkerIdle(params: {
   cwd: string;

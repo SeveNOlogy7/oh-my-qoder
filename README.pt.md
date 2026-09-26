@@ -32,7 +32,7 @@
 /omc-setup
 ```
 
-Se você executar OMC via `omc --plugin-dir <path>` ou `claude --plugin-dir <path>`, adicione `--plugin-dir-mode` a `omc setup` (ou exporte `OMC_PLUGIN_ROOT` antes) para evitar duplicar habilidades/agentes que o plugin já fornece em tempo de execução. Consulte a [seção Plugin directory flags em REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) para uma matriz de decisão completa e todos os sinalizadores disponíveis.
+Se você executar OMC via `omc --plugin-dir <path>` ou `claude --plugin-dir <path>`, adicione `--plugin-dir-mode` a `omc setup` (ou exporte `OMQ_PLUGIN_ROOT` antes) para evitar duplicar habilidades/agentes que o plugin já fornece em tempo de execução. Consulte a [seção Plugin directory flags em REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) para uma matriz de decisão completa e todos os sinalizadores disponíveis.
 
 <!-- TODO(i18n): verify translation -->
 
@@ -169,7 +169,7 @@ Múltiplas estratégias para diferentes casos de uso — da orquestração com T
 
 - **Magic keywords** - `ralph`, `ulw`, `plan` para controle explícito
 - **HUD statusline** - Métricas de orquestração em tempo real na sua barra de status
-  - Se você iniciar Claude Code diretamente com `claude --plugin-dir <path>` (ignorando o shim `omc`), exporte `OMC_PLUGIN_ROOT=<path>` no seu shell para que o bundle HUD se resolva para o mesmo checkout do carregador de plugins. Veja a [seção Plugin directory flags em REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) para detalhes.
+  - Se você iniciar Claude Code diretamente com `claude --plugin-dir <path>` (ignorando o shim `omc`), exporte `OMQ_PLUGIN_ROOT=<path>` no seu shell para que o bundle HUD se resolva para o mesmo checkout do carregador de plugins. Veja a [seção Plugin directory flags em REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) para detalhes.
 
   <!-- TODO(i18n): verify translation -->
 - **Aprendizado de skills** - Extraia padrões reutilizáveis das suas sessões
@@ -303,9 +303,9 @@ Encaminhe eventos de sessão do Claude Code para um gateway do [OpenClaw](https:
 
 | Variável | Descrição |
 |----------|-----------|
-| `OMC_OPENCLAW=1` | Habilitar OpenClaw |
-| `OMC_OPENCLAW_DEBUG=1` | Habilitar logs de depuração |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | Caminho alternativo do arquivo de configuração |
+| `OMQ_OPENCLAW=1` | Habilitar OpenClaw |
+| `OMQ_OPENCLAW_DEBUG=1` | Habilitar logs de depuração |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | Caminho alternativo do arquivo de configuração |
 
 **Eventos de hook suportados (6 ativos em bridge.ts):**
 

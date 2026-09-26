@@ -614,7 +614,7 @@ describe('recovery pane rollback evidence', () => {
         runtimeCliPath: config.launchBootstrapPath,
         context: config.launchContext,
       });
-      const gateSpec = JSON.parse(config.envVars.OMC_RECOVERY_GATE_SPEC);
+      const gateSpec = JSON.parse(config.envVars.OMQ_RECOVERY_GATE_SPEC);
       launchedPath = `${gateSpec.runPath}.launched`;
       expectedLaunchAttemptId = attempt.attempt_id;
       expect(gateSpec).toMatchObject({

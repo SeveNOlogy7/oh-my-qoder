@@ -139,9 +139,9 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
         tool_response: 'read output',
       },
       {
-        OMC_QUIET: '2',
-        OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-        OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+        OMQ_QUIET: '2',
+        OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+        OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
       },
     );
 
@@ -159,10 +159,10 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
     const dir = makeTempDir();
     const transcriptPath = writeTranscript(dir, 75, 100);
     const env = {
-      OMC_QUIET: '2',
-      OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-      OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
-      OMC_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
+      OMQ_QUIET: '2',
+      OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+      OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+      OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
     };
 
     const first = runPostToolVerifier(
@@ -194,10 +194,10 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
     const dir = makeTempDir();
     const transcriptPath = writeTranscript(dir, 75, 100);
     const env = {
-      OMC_QUIET: '2',
-      OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-      OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
-      OMC_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
+      OMQ_QUIET: '2',
+      OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+      OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+      OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
     };
 
     const first = runPostToolVerifier(
@@ -237,10 +237,10 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
         tool_response: 'read output',
       },
       {
-        OMC_QUIET: '2',
-        OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-        OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
-        OMC_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
+        OMQ_QUIET: '2',
+        OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+        OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+        OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
       },
     );
 
@@ -254,10 +254,10 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
         tool_response: 'read output',
       },
       {
-        OMC_QUIET: '2',
-        OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-        OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
-        OMC_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
+        OMQ_QUIET: '2',
+        OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+        OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+        OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS: '60000',
       },
     );
 
@@ -287,9 +287,9 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
         },
       },
       {
-        OMC_QUIET: '2',
-        OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-        OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+        OMQ_QUIET: '2',
+        OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+        OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
       },
     );
 
@@ -324,9 +324,9 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
         },
       },
       {
-        OMC_QUIET: '2',
-        OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-        OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+        OMQ_QUIET: '2',
+        OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+        OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
       },
     );
 
@@ -356,9 +356,9 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
       },
       {
         CLAUDE_PLUGIN_ROOT: process.cwd(),
-        OMC_QUIET: '2',
-        OMC_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
-        OMC_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+        OMQ_QUIET: '2',
+        OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+        OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
       },
     );
 
@@ -393,7 +393,7 @@ describe('post-tool-verifier Write/Edit response envelopes', () => {
           content: longFailureProse,
         },
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(result).toEqual({ continue: true, suppressOutput: true });
@@ -410,7 +410,7 @@ describe('post-tool-verifier Write/Edit response envelopes', () => {
           content: longFailureProse,
         },
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(result).toEqual({ continue: true, suppressOutput: true });
@@ -424,7 +424,7 @@ describe('post-tool-verifier Write/Edit response envelopes', () => {
         session_id: 'write-string-failure-test',
         tool_response: 'Error: failed to write file',
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(result).toEqual({
@@ -444,7 +444,7 @@ describe('post-tool-verifier Write/Edit response envelopes', () => {
         session_id: 'edit-string-failure-test',
         tool_response: 'Error: failed to edit file',
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(result).toEqual({

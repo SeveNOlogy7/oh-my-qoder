@@ -33,26 +33,26 @@ function runPreToolEnforcerWithEnv(
       HOME: homeDir,
       CLAUDE_CONFIG_DIR: join(homeDir, '.claude'),
       NODE_ENV: 'test',
-      DISABLE_OMC: '',
-      OMC_SKIP_HOOKS: '',
-      // Advisory verbosity: unset it so a contributor running with OMC_QUIET
+      DISABLE_OMQ: '',
+      OMQ_SKIP_HOOKS: '',
+      // Advisory verbosity: unset it so a contributor running with OMQ_QUIET
       // exported does not silence the advisories these tests assert on.
-      // The OMC_QUIET suites pass their own value via `env`, which wins below.
-      OMC_QUIET: '',
+      // The OMQ_QUIET suites pass their own value via `env`, which wins below.
+      OMQ_QUIET: '',
       // Reset Bedrock/routing env vars so tests are isolated from the host environment.
       // Tests that exercise Bedrock model-routing behaviour set these explicitly via `env`.
-      OMC_AGENT_PREFLIGHT_CONTEXT_THRESHOLD: '',
-      OMC_ROUTING_FORCE_INHERIT: '',
-      OMC_SUBAGENT_MODEL: '',
+      OMQ_AGENT_PREFLIGHT_CONTEXT_THRESHOLD: '',
+      OMQ_ROUTING_FORCE_INHERIT: '',
+      OMQ_SUBAGENT_MODEL: '',
       CLAUDE_MODEL: '',
       ANTHROPIC_MODEL: '',
       ANTHROPIC_BASE_URL: '',
       CLAUDE_CODE_USE_BEDROCK: '',
       CLAUDE_CODE_USE_VERTEX: '',
       // Reset tier-resolution chain env vars (resolveTierAliasToSafeModel reads these).
-      OMC_MODEL_LOW: '',
-      OMC_MODEL_MEDIUM: '',
-      OMC_MODEL_HIGH: '',
+      OMQ_MODEL_LOW: '',
+      OMQ_MODEL_MEDIUM: '',
+      OMQ_MODEL_HIGH: '',
       CLAUDE_CODE_BEDROCK_HAIKU_MODEL: '',
       CLAUDE_CODE_BEDROCK_SONNET_MODEL: '',
       CLAUDE_CODE_BEDROCK_OPUS_MODEL: '',
@@ -103,8 +103,8 @@ describe('pre-tool-enforcer advisory throttling (issue #3163)', () => {
         session_id: 'session-3163',
       },
       {
-        OMC_PRE_TOOL_ADVISORY_COOLDOWN_MS: '5000',
-        OMC_PRE_TOOL_ADVISORY_NOW_MS: nowMs,
+        OMQ_PRE_TOOL_ADVISORY_COOLDOWN_MS: '5000',
+        OMQ_PRE_TOOL_ADVISORY_NOW_MS: nowMs,
       },
     );
   }
@@ -149,8 +149,8 @@ describe('pre-tool-enforcer advisory throttling (issue #3163)', () => {
       tool_input: { command: 'echo safe' },
     };
     const env = {
-      OMC_PRE_TOOL_ADVISORY_COOLDOWN_MS: '5000',
-      OMC_PRE_TOOL_ADVISORY_NOW_MS: '1000',
+      OMQ_PRE_TOOL_ADVISORY_COOLDOWN_MS: '5000',
+      OMQ_PRE_TOOL_ADVISORY_NOW_MS: '1000',
     };
 
     const first = runPreToolEnforcerWithEnv(input, env);
@@ -635,13 +635,13 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     );
   });
 
-  it('suppresses routine pre-tool reminders when OMC_QUIET=1', () => {
+  it('suppresses routine pre-tool reminders when OMQ_QUIET=1', () => {
     const bash = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Bash',
         cwd: tempDir,
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(bash).toEqual({ continue: true, suppressOutput: true });
@@ -651,13 +651,13 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         tool_name: 'Read',
         cwd: tempDir,
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(read).toEqual({ continue: true, suppressOutput: true });
   });
 
-  it('keeps active-mode and team-routing enforcement visible when OMC_QUIET is enabled', () => {
+  it('keeps active-mode and team-routing enforcement visible when OMQ_QUIET is enabled', () => {
     const sessionId = 'session-1646';
     writeJson(
       join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'),
@@ -681,7 +681,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         cwd: tempDir,
         session_id: sessionId,
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(String((modeOutput.hookSpecificOutput as Record<string, unknown>).additionalContext))
@@ -698,14 +698,14 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         cwd: tempDir,
         session_id: sessionId,
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(String((taskOutput.hookSpecificOutput as Record<string, unknown>).additionalContext))
       .toContain('TEAM ROUTING REQUIRED');
   });
 
-  it('suppresses routine agent spawn chatter at OMC_QUIET=2 but not enforcement', () => {
+  it('suppresses routine agent spawn chatter at OMQ_QUIET=2 but not enforcement', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Task',
@@ -717,7 +717,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         cwd: tempDir,
         session_id: 'session-1646-quiet',
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(output).toEqual({ continue: true, suppressOutput: true });
@@ -757,7 +757,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         cwd: tempDir,
         session_id: 'session-slop-warning-quiet',
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     const hookSpecificOutput = output.hookSpecificOutput as Record<string, unknown>;
@@ -1095,7 +1095,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       transcriptPath,
       env: {
         ...process.env,
-        OMC_AGENT_PREFLIGHT_CONTEXT_THRESHOLD: 'abc',
+        OMQ_AGENT_PREFLIGHT_CONTEXT_THRESHOLD: 'abc',
       },
     });
 
@@ -1156,7 +1156,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
 
   // === Model routing / forceInherit tests (issue #1868 catch-22) ===
 
-  it('allows tier alias "sonnet" through when OMC_SUBAGENT_MODEL is set and forceInherit is enabled', () => {
+  it('allows tier alias "sonnet" through when OMQ_SUBAGENT_MODEL is set and forceInherit is enabled', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1165,19 +1165,19 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
 
-    // Tier alias + OMC_SUBAGENT_MODEL configured → allow through
+    // Tier alias + OMQ_SUBAGENT_MODEL configured → allow through
     expect(output.continue).toBe(true);
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  // --- ANTHROPIC_DEFAULT_*_MODEL resolution (eliminates mandatory OMC_SUBAGENT_MODEL) ---
+  // --- ANTHROPIC_DEFAULT_*_MODEL resolution (eliminates mandatory OMQ_SUBAGENT_MODEL) ---
 
-  it('allows tier alias "sonnet" via ANTHROPIC_DEFAULT_SONNET_MODEL without OMC_SUBAGENT_MODEL', () => {
+  it('allows tier alias "sonnet" via ANTHROPIC_DEFAULT_SONNET_MODEL without OMQ_SUBAGENT_MODEL', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1186,8 +1186,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-sonnet',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
@@ -1196,7 +1196,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  it('allows tier alias "opus" via ANTHROPIC_DEFAULT_OPUS_MODEL without OMC_SUBAGENT_MODEL', () => {
+  it('allows tier alias "opus" via ANTHROPIC_DEFAULT_OPUS_MODEL without OMQ_SUBAGENT_MODEL', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1205,8 +1205,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-opus',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'global.anthropic.claude-opus-4-6-v1',
       },
     );
@@ -1215,7 +1215,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  it('allows tier alias "haiku" via ANTHROPIC_DEFAULT_HAIKU_MODEL without OMC_SUBAGENT_MODEL', () => {
+  it('allows tier alias "haiku" via ANTHROPIC_DEFAULT_HAIKU_MODEL without OMQ_SUBAGENT_MODEL', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1224,8 +1224,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-haiku',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_HAIKU_MODEL: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
       },
     );
@@ -1234,7 +1234,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  it('allows tier alias "fable" via ANTHROPIC_DEFAULT_FABLE_MODEL without OMC_SUBAGENT_MODEL (issue #3246)', () => {
+  it('allows tier alias "fable" via ANTHROPIC_DEFAULT_FABLE_MODEL without OMQ_SUBAGENT_MODEL (issue #3246)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1243,8 +1243,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-fable',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_FABLE_MODEL: 'global.anthropic.claude-fable-5-v1',
       },
     );
@@ -1262,8 +1262,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-fable-cc-bedrock-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         CLAUDE_CODE_BEDROCK_FABLE_MODEL: 'us.anthropic.claude-fable-5-v1:0',
       },
     );
@@ -1281,8 +1281,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-fable-no-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_FABLE_MODEL: '',
       },
     );
@@ -1304,8 +1304,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: sessionId,
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_MODEL: 'glm-5.1:cloud',
         [envKey]: proxyModel,
       },
@@ -1324,8 +1324,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-proxy-empty',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '   ',
       },
     );
@@ -1343,8 +1343,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-proxy-invalid-bedrock-var',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         CLAUDE_CODE_BEDROCK_SONNET_MODEL: 'glm-5.1:cloud',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '',
       },
@@ -1367,8 +1367,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-config-proxy-default',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'glm-5.1:cloud',
       },
     );
@@ -1386,8 +1386,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-env-force-normal-claude-proxy-default',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_MODEL: 'claude-sonnet-4-5',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'glm-5.1:cloud',
       },
@@ -1397,7 +1397,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(hookOutput.permissionDecisionReason as string).toContain('MODEL ROUTING');
   });
 
-  it('OMC_SUBAGENT_MODEL takes priority over ANTHROPIC_DEFAULT_*_MODEL when both set', () => {
+  it('OMQ_SUBAGENT_MODEL takes priority over ANTHROPIC_DEFAULT_*_MODEL when both set', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1406,8 +1406,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-priority',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'us.anthropic.claude-sonnet-4-5-v1:0',
       },
     );
@@ -1431,8 +1431,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-lm',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
       },
     );
@@ -1450,8 +1450,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-cc-bedrock-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         CLAUDE_CODE_BEDROCK_SONNET_MODEL: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
       },
     );
@@ -1460,8 +1460,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  it('OMC_MODEL_MEDIUM is not used as routing proof; ANTHROPIC_DEFAULT_SONNET_MODEL resolves the alias', () => {
-    // OMC_MODEL_* is excluded from the resolution chain because CC itself does not read it
+  it('OMQ_MODEL_MEDIUM is not used as routing proof; ANTHROPIC_DEFAULT_SONNET_MODEL resolves the alias', () => {
+    // OMQ_MODEL_* is excluded from the resolution chain because CC itself does not read it
     // for tier-alias routing. ANTHROPIC_DEFAULT_SONNET_MODEL (even with [1m]) is accepted
     // since CC handles that suffix correctly for explicit model= calls.
     const output = runPreToolEnforcerWithEnv(
@@ -1472,9 +1472,9 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-omc-model-fallback',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
-        OMC_MODEL_MEDIUM: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
+        OMQ_MODEL_MEDIUM: 'global.anthropic.claude-sonnet-4-6',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
       },
     );
@@ -1483,8 +1483,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  it('blocks tier alias when only OMC_MODEL_* is set (not a CC-side routing proof)', () => {
-    // OMC_MODEL_* proves OMC-bridge routing, not CC model resolution. Without a CC-native
+  it('blocks tier alias when only OMQ_MODEL_* is set (not a CC-side routing proof)', () => {
+    // OMQ_MODEL_* proves OMC-bridge routing, not CC model resolution. Without a CC-native
     // var (ANTHROPIC_DEFAULT_* or CLAUDE_CODE_BEDROCK_*), CC cannot route the tier alias
     // and the downstream Agent/Task call would fail — so the hook must deny.
     const output = runPreToolEnforcerWithEnv(
@@ -1495,9 +1495,9 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-omc-model-only',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
-        OMC_MODEL_MEDIUM: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
+        OMQ_MODEL_MEDIUM: 'global.anthropic.claude-sonnet-4-6',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '',
         CLAUDE_CODE_BEDROCK_SONNET_MODEL: '',
       },
@@ -1516,8 +1516,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-no-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '',
       },
     );
@@ -1526,7 +1526,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(hookOutput.permissionDecisionReason as string).toContain('MODEL ROUTING');
   });
 
-  it('agent-definition deny works via ANTHROPIC_DEFAULT_*_MODEL without OMC_SUBAGENT_MODEL', () => {
+  it('agent-definition deny works via ANTHROPIC_DEFAULT_*_MODEL without OMQ_SUBAGENT_MODEL', () => {
     const pluginRoot = join(tempDir, 'bare-model-default-env');
     const agentsDir = join(pluginRoot, 'agents');
     mkdirSync(agentsDir, { recursive: true });
@@ -1547,8 +1547,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-agent-def-default-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'global.anthropic.claude-opus-4-6-v1',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1561,7 +1561,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(hookOutput.permissionDecisionReason as string).toContain('claude-opus-4-6');
   });
 
-  it('blocks tier alias when OMC_SUBAGENT_MODEL is itself a bare Anthropic model ID', () => {
+  it('blocks tier alias when OMQ_SUBAGENT_MODEL is itself a bare Anthropic model ID', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1570,8 +1570,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-bare',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'claude-sonnet-4-6',
       },
     );
 
@@ -1579,7 +1579,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(hookOutput.permissionDecisionReason as string).toContain('MODEL ROUTING');
   });
 
-  it('blocks tier alias when OMC_SUBAGENT_MODEL has a [1m] extended-context suffix', () => {
+  it('blocks tier alias when OMQ_SUBAGENT_MODEL has a [1m] extended-context suffix', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1588,8 +1588,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-lm',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
       },
     );
 
@@ -1598,7 +1598,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   });
 
 
-  it('still blocks bare Anthropic model ID even when OMC_SUBAGENT_MODEL is set', () => {
+  it('still blocks bare Anthropic model ID even when OMQ_SUBAGENT_MODEL is set', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1607,8 +1607,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-bare-anthropic',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
 
@@ -1639,8 +1639,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-agent-def-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -1673,8 +1673,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-task-def-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -1706,8 +1706,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-deny-message',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -1718,7 +1718,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(reason).toContain('global.anthropic.claude-sonnet-4-6'); // resolved safe model in guidance
   });
 
-  it('allows tier alias with OMC_SUBAGENT_MODEL set (escape hatch for denied subagent_type calls)', () => {
+  it('allows tier alias with OMQ_SUBAGENT_MODEL set (escape hatch for denied subagent_type calls)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1732,8 +1732,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-escape',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
 
@@ -1741,7 +1741,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  it('still blocks tier alias when OMC_SUBAGENT_MODEL is not configured', () => {
+  it('still blocks tier alias when OMQ_SUBAGENT_MODEL is not configured', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1755,8 +1755,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-no-subagent-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: '',
       },
     );
 
@@ -1778,8 +1778,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-no-force-inherit',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'false',
-        OMC_SUBAGENT_MODEL: '',
+        OMQ_ROUTING_FORCE_INHERIT: 'false',
+        OMQ_SUBAGENT_MODEL: '',
       },
     );
 
@@ -1800,8 +1800,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-shipped-tier-alias',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6-v1:0',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6-v1:0',
       },
     );
 
@@ -1822,8 +1822,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-non-string-subagent-type',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
 
@@ -1844,8 +1844,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-path-traversal',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
 
@@ -1866,8 +1866,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-stale-plugin-root',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: '/nonexistent/path/that/does/not/exist',
       },
     );
@@ -1896,8 +1896,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-partial-plugin',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -1928,8 +1928,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-body-hr-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -1961,8 +1961,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-body-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -1994,8 +1994,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-quoted-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -2030,8 +2030,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-bedrock-quoted',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -2062,8 +2062,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-bom-test',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
     );
@@ -2089,7 +2089,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-no-subagent-type',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
       },
     );
 
@@ -2110,8 +2110,8 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-unknown-agent',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
-        OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
+        OMQ_ROUTING_FORCE_INHERIT: 'true',
+        OMQ_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
 
@@ -2328,7 +2328,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
   function run(input: Record<string, unknown>, env: Record<string, string> = {}): Record<string, unknown> {
     return runPreToolEnforcerWithEnv(
       { cwd: tempDir, ...input },
-      { XDG_CONFIG_HOME: xdgConfigHome, OMC_ROUTING_FORCE_INHERIT: 'false', ...env },
+      { XDG_CONFIG_HOME: xdgConfigHome, OMQ_ROUTING_FORCE_INHERIT: 'false', ...env },
     );
   }
 
@@ -2407,7 +2407,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
         toolInput: { subagent_type: 'oh-my-claudecode:explore', prompt: 'x', description: 'd' },
         session_id: 'session-3242-force-inherit',
       },
-      { OMC_ROUTING_FORCE_INHERIT: 'true' },
+      { OMQ_ROUTING_FORCE_INHERIT: 'true' },
     );
     expect(updatedModel(output)).toBeUndefined();
   });
@@ -2422,8 +2422,8 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     // Pin the throttle clock so the second identical call lands inside the cooldown
     // window and is advisory-throttled.
     const throttleEnv = {
-      OMC_PRE_TOOL_ADVISORY_COOLDOWN_MS: '5000',
-      OMC_PRE_TOOL_ADVISORY_NOW_MS: '1000',
+      OMQ_PRE_TOOL_ADVISORY_COOLDOWN_MS: '5000',
+      OMQ_PRE_TOOL_ADVISORY_NOW_MS: '1000',
     };
 
     const first = run(input, throttleEnv);
@@ -2521,7 +2521,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   });
 
   it('denies skill-as-agent even under force-inherit routing', () => {
-    const output = runTask('oh-my-claudecode:ai-slop-cleaner', 'Task', {}, { OMC_ROUTING_FORCE_INHERIT: 'true' });
+    const output = runTask('oh-my-claudecode:ai-slop-cleaner', 'Task', {}, { OMQ_ROUTING_FORCE_INHERIT: 'true' });
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
@@ -2734,7 +2734,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
         'oh-my-claudecode:Plan',
         'Task',
         {},
-        { USER_TYPE: '', OMC_ROUTING_FORCE_INHERIT: 'true' },
+        { USER_TYPE: '', OMQ_ROUTING_FORCE_INHERIT: 'true' },
       );
       expect((forceInheritVisible.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       expect(denyReason(forceInheritVisible)).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
@@ -2743,7 +2743,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
         'oh-my-claudecode:Remember',
         'Task',
         {},
-        { USER_TYPE: '', OMC_ROUTING_FORCE_INHERIT: 'true' },
+        { USER_TYPE: '', OMQ_ROUTING_FORCE_INHERIT: 'true' },
       );
       expect((forceInheritRemember.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       expect(denyReason(forceInheritRemember)).toContain('Skill(skill="oh-my-claudecode:remember")');
@@ -2897,7 +2897,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     expect(advisory).toContain('Active agents: 1');
   });
 
-  it('resolves the session-scoped tracking read through OMC_STATE_DIR centralized state', () => {
+  it('resolves the session-scoped tracking read through OMQ_STATE_DIR centralized state', () => {
     const sessionId = 'session-3732-centralized';
     const centralRoot = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-central-'));
     const stateRoot = join(centralRoot, `${basename(tempDir)}-${createHash('sha256').update(tempDir).digest('hex').slice(0, 16)}`);
@@ -2921,7 +2921,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
           description: 'issue #3732 centralized regression',
         },
       },
-      { OMC_STATE_DIR: centralRoot },
+      { OMQ_STATE_DIR: centralRoot },
     );
     rmSync(centralRoot, { recursive: true, force: true });
 

@@ -3,7 +3,7 @@
  *
  * Two callers consume this:
  *  - CLI commands (autopilot, ralph, ultragoal, etc.) running in a
- *    shell where the only signal is the `OMC_SESSION_ID` env var.
+ *    shell where the only signal is the `OMQ_SESSION_ID` env var.
  *  - Hooks (session-start, post-tool-use-failure, etc.) running with a
  *    `data.session_id` payload from Claude Code.
  *
@@ -26,7 +26,7 @@ export interface ResolveSessionIdInput {
 }
 
 function readEnv(): string | undefined {
-  const value = process.env.OMC_SESSION_ID;
+  const value = process.env.OMQ_SESSION_ID;
   return value && value.trim() ? value.trim() : undefined;
 }
 

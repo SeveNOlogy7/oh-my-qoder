@@ -52,8 +52,8 @@ const BLOCKER_PATTERNS = [
 ];
 
 function skippedByEnv() {
-  if (process.env.DISABLE_OMC === '1' || process.env.DISABLE_OMC === 'true') return true;
-  return (process.env.OMC_SKIP_HOOKS || '').split(',').map(s => s.trim()).includes(HOOK_NAME);
+  if (process.env.DISABLE_OMQ === '1' || process.env.DISABLE_OMQ === 'true') return true;
+  return (process.env.OMQ_SKIP_HOOKS || '').split(',').map(s => s.trim()).includes(HOOK_NAME);
 }
 
 function safeJsonParse(text) {

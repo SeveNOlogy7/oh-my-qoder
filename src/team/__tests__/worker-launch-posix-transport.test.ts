@@ -6,7 +6,7 @@
  * inline-only launch spec with `worker_launch_descriptor_required`), but the
  * POSIX supervised writer (`buildWorkerStartCommand` via
  * `spawnWorkerInPane`) still delivered the bootstrap spec inline through
- * `OMC_WORKER_LAUNCH_SPEC`. Every supervised POSIX worker launch therefore
+ * `OMQ_WORKER_LAUNCH_SPEC`. Every supervised POSIX worker launch therefore
  * failed before provider startup. This suite pins the writer/reader contract:
  * the POSIX writer must materialize an attempt-owned descriptor and hand the
  * runtime CLI its path, exactly like the native Windows path already does.
@@ -64,7 +64,7 @@ afterEach(async () => {
   originalPlatform = undefined;
   exitSpy?.mockRestore();
   exitSpy = undefined;
-  for (const key of ['OMC_WORKER_LAUNCH_SPEC', 'OMC_WORKER_LAUNCH_SPEC_B64', 'OMC_WORKER_LAUNCH_SPEC_FILE']) {
+  for (const key of ['OMQ_WORKER_LAUNCH_SPEC', 'OMQ_WORKER_LAUNCH_SPEC_B64', 'OMQ_WORKER_LAUNCH_SPEC_FILE']) {
     delete process.env[key];
   }
   vi.unstubAllEnvs();
@@ -81,13 +81,13 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
 
     const attempt = await makeAttempt();
     const providerMarker = join(cwd, 'provider-ran.json');
-    const providerScript = `require('node:fs').writeFileSync(${JSON.stringify(providerMarker)},JSON.stringify({attempt:process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID,transport:process.env.OMC_WORKER_LAUNCH_SPEC_FILE??null}));setTimeout(()=>process.exit(0),200)`;
+    const providerScript = `require('node:fs').writeFileSync(${JSON.stringify(providerMarker)},JSON.stringify({attempt:process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID,transport:process.env.OMQ_WORKER_LAUNCH_SPEC_FILE??null}));setTimeout(()=>process.exit(0),200)`;
     const config = {
       teamName: 'posix-team',
       workerName: 'worker-1',
       envVars: {
-        OMC_TEAM_WORKER: 'posix-team/worker-1',
-        OMC_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
+        OMQ_TEAM_WORKER: 'posix-team/worker-1',
+        OMQ_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
       },
       launchBinary: process.execPath,
       launchArgs: ['-e', providerScript],
@@ -109,15 +109,15 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
     // Writer contract: the delivered POSIX command references the attempt-owned
     // descriptor; it must NOT inline the bootstrap spec (secrets stay off the
     // process list and out of tmux scrollback; command size stays bounded).
-    const descriptorPath = extractEnvAssignment(startCmd, 'OMC_WORKER_LAUNCH_SPEC_FILE');
+    const descriptorPath = extractEnvAssignment(startCmd, 'OMQ_WORKER_LAUNCH_SPEC_FILE');
     expect(descriptorPath).toBe(materialized.bootstrapDescriptorPath);
-    expect(startCmd).not.toContain('OMC_WORKER_LAUNCH_SPEC=');
+    expect(startCmd).not.toContain('OMQ_WORKER_LAUNCH_SPEC=');
     expect(startCmd).not.toContain(providerScript);
     expect(Buffer.byteLength(startCmd, 'utf8')).toBeLessThan(2_048);
 
     // Reader contract: run the runtime CLI exactly as the pane would, with the
     // env assignments the writer emitted.
-    applyEnvAssignments(startCmd, ['OMC_WORKER_LAUNCH_SPEC_FILE', 'OMC_TEAM_WORKER', 'OMC_WORKER_LAUNCH_ATTEMPT_ID']);
+    applyEnvAssignments(startCmd, ['OMQ_WORKER_LAUNCH_SPEC_FILE', 'OMQ_TEAM_WORKER', 'OMQ_WORKER_LAUNCH_ATTEMPT_ID']);
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
 
     const bootstrap = runWorkerLaunchFromEnvironment();
@@ -160,18 +160,18 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
     originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
     Object.defineProperty(process, 'platform', { value: 'linux' });
 
-    process.env.OMC_WORKER_LAUNCH_SPEC = '{"provider_argv":["codex"],';
+    process.env.OMQ_WORKER_LAUNCH_SPEC = '{"provider_argv":["codex"],';
     await expect(runWorkerLaunchFromEnvironment()).rejects.toThrow('worker_launch_invalid_spec_json');
-    delete process.env.OMC_WORKER_LAUNCH_SPEC;
+    delete process.env.OMQ_WORKER_LAUNCH_SPEC;
 
-    process.env.OMC_WORKER_LAUNCH_SPEC = '{}';
-    process.env.OMC_WORKER_LAUNCH_SPEC_FILE = join(cwd ?? '', 'conflicting-worker-launch.json');
+    process.env.OMQ_WORKER_LAUNCH_SPEC = '{}';
+    process.env.OMQ_WORKER_LAUNCH_SPEC_FILE = join(cwd ?? '', 'conflicting-worker-launch.json');
     await expect(runWorkerLaunchFromEnvironment()).rejects.toThrow('worker_launch_spec_source_conflict');
-    delete process.env.OMC_WORKER_LAUNCH_SPEC;
-    delete process.env.OMC_WORKER_LAUNCH_SPEC_FILE;
+    delete process.env.OMQ_WORKER_LAUNCH_SPEC;
+    delete process.env.OMQ_WORKER_LAUNCH_SPEC_FILE;
 
     // An inline-only spec (the pre-fix POSIX writer behavior) stays rejected.
-    process.env.OMC_WORKER_LAUNCH_SPEC = '{"provider_argv":["codex"]}';
+    process.env.OMQ_WORKER_LAUNCH_SPEC = '{"provider_argv":["codex"]}';
     await expect(runWorkerLaunchFromEnvironment()).rejects.toThrow('worker_launch_descriptor_required');
   });
 
@@ -189,7 +189,7 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
     const materialized = await materializeWorkerLaunchTransport({
       attempt,
       providerArgv: [process.execPath, '--token', longValue],
-      providerEnv: { OMC_TEAM_WORKER: 'posix-team/worker-1', PROVIDER_LONG: longValue },
+      providerEnv: { OMQ_TEAM_WORKER: 'posix-team/worker-1', PROVIDER_LONG: longValue },
       cwd,
     });
     expect(Buffer.byteLength(await readFile(materialized.bootstrapDescriptorPath, 'utf8'), 'utf8')).toBeGreaterThan(12_000);
@@ -197,7 +197,7 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
     const startCmd = buildWorkerStartCommand({
       teamName: 'posix-team',
       workerName: 'worker-1',
-      envVars: { OMC_TEAM_WORKER: 'posix-team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'posix-team/worker-1' },
       launchBinary: process.execPath,
       launchArgs: ['--version'],
       cwd,
@@ -205,7 +205,7 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
       launchAttempt: attempt,
     });
 
-    const descriptorPath = extractEnvAssignment(startCmd, 'OMC_WORKER_LAUNCH_SPEC_FILE');
+    const descriptorPath = extractEnvAssignment(startCmd, 'OMQ_WORKER_LAUNCH_SPEC_FILE');
     expect(descriptorPath).toBe(attempt.bootstrapDescriptorPath);
     expect(startCmd).not.toContain(longValue);
     expect(Buffer.byteLength(startCmd, 'utf8')).toBeLessThan(2_048);

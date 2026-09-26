@@ -135,12 +135,12 @@ function compareVersions(v1, v2) {
   return 0;
 }
 
-const OMC_STARTUP_COMPACTABLE_SECTIONS = [
+const OMQ_STARTUP_COMPACTABLE_SECTIONS = [
   'agent_catalog',
   'skills',
   'team_compositions',
 ];
-const OMC_STARTUP_GUIDANCE_MAX_CHARS = 8000;
+const OMQ_STARTUP_GUIDANCE_MAX_CHARS = 8000;
 const SESSION_START_CONTEXT_BUDGET = 6000;
 const SESSION_START_OMISSION_NOTICE = '[Additional SessionStart context omitted to preserve the 6000-character aggregate budget.]';
 
@@ -191,8 +191,8 @@ async function readRoutingForceInheritFromConfig(directory) {
 }
 
 async function shouldEmitModelRoutingOverride(directory) {
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'true') return true;
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'false') return false;
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'true') return true;
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'false') return false;
   if (await readRoutingForceInheritFromConfig(directory)) return true;
 
   if (isBedrockSession() || isVertexSession()) return true;
@@ -219,7 +219,7 @@ function looksLikeOmcGuidance(content) {
     typeof content === 'string' &&
     content.includes('<guidance_schema_contract>') &&
     /oh-my-(claudecode|codex)/i.test(content) &&
-    OMC_STARTUP_COMPACTABLE_SECTIONS.some(
+    OMQ_STARTUP_COMPACTABLE_SECTIONS.some(
       section => content.includes(`<${section}>`) && content.includes(`</${section}>`),
     )
   );
@@ -231,7 +231,7 @@ function compactOmcStartupGuidance(content) {
   let compacted = content;
   let removedAny = false;
 
-  for (const section of OMC_STARTUP_COMPACTABLE_SECTIONS) {
+  for (const section of OMQ_STARTUP_COMPACTABLE_SECTIONS) {
     const pattern = new RegExp(`\n*<${section}>[\\s\\S]*?</${section}>\n*`, 'g');
     const next = compacted.replace(pattern, '\n\n');
     removedAny = removedAny || next !== compacted;
@@ -243,12 +243,12 @@ function compactOmcStartupGuidance(content) {
     .replace(/\n\n---\n\n---\n\n/g, '\n\n---\n\n')
     .trim();
 
-  if (normalized.length <= OMC_STARTUP_GUIDANCE_MAX_CHARS) {
+  if (normalized.length <= OMQ_STARTUP_GUIDANCE_MAX_CHARS) {
     return removedAny ? normalized : content;
   }
 
   const notice = '\n\n[OMC startup guidance truncated to preserve an 8000-character budget. Read the source file directly for the full document.]';
-  return `${normalized.slice(0, OMC_STARTUP_GUIDANCE_MAX_CHARS - notice.length).trimEnd()}${notice}`;
+  return `${normalized.slice(0, OMQ_STARTUP_GUIDANCE_MAX_CHARS - notice.length).trimEnd()}${notice}`;
 }
 
 function formatUpdateNoticeForUser(updateInfo, options = {}) {

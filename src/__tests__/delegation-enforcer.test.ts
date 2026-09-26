@@ -17,11 +17,11 @@ describe('delegation-enforcer', () => {
   let originalDebugEnv: string | undefined;
   // Save/restore env vars that trigger non-Claude provider detection (issue #1201)
   // so existing tests run in a standard Claude environment
-  const providerEnvKeys = ['ANTHROPIC_BASE_URL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'OMC_ROUTING_FORCE_INHERIT', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'OMC_MODEL_HIGH', 'OMC_MODEL_MEDIUM', 'OMC_MODEL_LOW'];
+  const providerEnvKeys = ['ANTHROPIC_BASE_URL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'OMQ_ROUTING_FORCE_INHERIT', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'OMQ_MODEL_HIGH', 'OMQ_MODEL_MEDIUM', 'OMQ_MODEL_LOW'];
   const savedProviderEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
-    originalDebugEnv = process.env.OMC_DEBUG;
+    originalDebugEnv = process.env.OMQ_DEBUG;
     for (const key of providerEnvKeys) {
       savedProviderEnv[key] = process.env[key];
       delete process.env[key];
@@ -30,9 +30,9 @@ describe('delegation-enforcer', () => {
 
   afterEach(() => {
     if (originalDebugEnv === undefined) {
-      delete process.env.OMC_DEBUG;
+      delete process.env.OMQ_DEBUG;
     } else {
-      process.env.OMC_DEBUG = originalDebugEnv;
+      process.env.OMQ_DEBUG = originalDebugEnv;
     }
     for (const key of providerEnvKeys) {
       if (savedProviderEnv[key] === undefined) {
@@ -317,7 +317,7 @@ describe('delegation-enforcer', () => {
 
       it('validates skill names under force-inherit routing (issue #3667 P2)', () => {
         delete process.env.USER_TYPE;
-        process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+        process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
         clearSkillsCache();
         let thrown: Error | undefined;
         try {
@@ -327,7 +327,7 @@ describe('delegation-enforcer', () => {
         }
         expect(thrown).toBeDefined();
         expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
-        delete process.env.OMC_ROUTING_FORCE_INHERIT;
+        delete process.env.OMQ_ROUTING_FORCE_INHERIT;
       });
 
       it('keeps valid agents passing validation with an explicit model', () => {
@@ -337,7 +337,7 @@ describe('delegation-enforcer', () => {
       });
     });
 
-    it('logs warning only when OMC_DEBUG=true', () => {
+    it('logs warning only when OMQ_DEBUG=true', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -345,12 +345,12 @@ describe('delegation-enforcer', () => {
       };
 
       // Without debug flag
-      delete process.env.OMC_DEBUG;
+      delete process.env.OMQ_DEBUG;
       const resultWithoutDebug = enforceModel(input);
       expect(resultWithoutDebug.warning).toBeUndefined();
 
       // With debug flag
-      process.env.OMC_DEBUG = 'true';
+      process.env.OMQ_DEBUG = 'true';
       const resultWithDebug = enforceModel(input);
       expect(resultWithDebug.warning).toBeDefined();
       expect(resultWithDebug.warning).toContain('Auto-injecting model');
@@ -358,14 +358,14 @@ describe('delegation-enforcer', () => {
       expect(resultWithDebug.warning).toContain('executor');
     });
 
-    it('does not log warning when OMC_DEBUG is false', () => {
+    it('does not log warning when OMQ_DEBUG is false', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'executor'
       };
 
-      process.env.OMC_DEBUG = 'false';
+      process.env.OMQ_DEBUG = 'false';
       const result = enforceModel(input);
       expect(result.warning).toBeUndefined();
     });
@@ -489,7 +489,7 @@ describe('delegation-enforcer', () => {
       expect(result.warning).toBeUndefined();
     });
 
-    it('logs warning only when OMC_DEBUG=true and model injected', () => {
+    it('logs warning only when OMQ_DEBUG=true and model injected', () => {
       const toolInput: AgentInput = {
         description: 'Test',
         prompt: 'Test',
@@ -497,12 +497,12 @@ describe('delegation-enforcer', () => {
       };
 
       // Without debug
-      delete process.env.OMC_DEBUG;
+      delete process.env.OMQ_DEBUG;
       const resultWithoutDebug = processPreToolUse('Agent', toolInput);
       expect(resultWithoutDebug.warning).toBeUndefined();
 
       // With debug
-      process.env.OMC_DEBUG = 'true';
+      process.env.OMQ_DEBUG = 'true';
       const resultWithDebug = processPreToolUse('Agent', toolInput);
       expect(resultWithDebug.warning).toBeDefined();
     });
@@ -589,7 +589,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('preserves Bedrock family env model IDs when forceInherit is explicitly disabled', () => {
-      process.env.OMC_ROUTING_FORCE_INHERIT = 'false';
+      process.env.OMQ_ROUTING_FORCE_INHERIT = 'false';
       process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
@@ -612,7 +612,7 @@ describe('delegation-enforcer', () => {
 
   describe('modelAliases config override (issue #1211)', () => {
     const savedEnv: Record<string, string | undefined> = {};
-    const aliasEnvKeys = ['OMC_MODEL_ALIAS_HAIKU', 'OMC_MODEL_ALIAS_SONNET', 'OMC_MODEL_ALIAS_OPUS', 'OMC_MODEL_ALIAS_FABLE'];
+    const aliasEnvKeys = ['OMQ_MODEL_ALIAS_HAIKU', 'OMQ_MODEL_ALIAS_SONNET', 'OMQ_MODEL_ALIAS_OPUS', 'OMQ_MODEL_ALIAS_FABLE'];
 
     beforeEach(() => {
       for (const key of aliasEnvKeys) {
@@ -632,7 +632,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('remaps haiku agents to inherit via env var', () => {
-      process.env.OMC_MODEL_ALIAS_HAIKU = 'inherit';
+      process.env.OMQ_MODEL_ALIAS_HAIKU = 'inherit';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -644,7 +644,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('remaps haiku agents to sonnet via env var', () => {
-      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -656,7 +656,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('does not remap when no alias configured for the tier', () => {
-      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
       // executor defaults to sonnet — no alias for sonnet
       const input: AgentInput = {
         description: 'Test task',
@@ -669,7 +669,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('explicit model param takes priority over alias', () => {
-      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -682,8 +682,8 @@ describe('delegation-enforcer', () => {
     });
 
     it('forceInherit takes priority over alias', () => {
-      process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
-      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -695,7 +695,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('remaps opus agents to fable via env var (issue #3726)', () => {
-      process.env.OMC_MODEL_ALIAS_OPUS = 'fable';
+      process.env.OMQ_MODEL_ALIAS_OPUS = 'fable';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -707,7 +707,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('remaps opus agents to inherit via env var', () => {
-      process.env.OMC_MODEL_ALIAS_OPUS = 'inherit';
+      process.env.OMQ_MODEL_ALIAS_OPUS = 'inherit';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -719,8 +719,8 @@ describe('delegation-enforcer', () => {
     });
 
     it('includes alias note in debug warning', () => {
-      process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
-      process.env.OMC_DEBUG = 'true';
+      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_DEBUG = 'true';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -733,7 +733,7 @@ describe('delegation-enforcer', () => {
 
   describe('non-Claude provider support (issue #1201)', () => {
     const savedEnv: Record<string, string | undefined> = {};
-    const envKeys = ['CLAUDE_MODEL', 'ANTHROPIC_BASE_URL', 'OMC_ROUTING_FORCE_INHERIT'];
+    const envKeys = ['CLAUDE_MODEL', 'ANTHROPIC_BASE_URL', 'OMQ_ROUTING_FORCE_INHERIT'];
 
     beforeEach(() => {
       for (const key of envKeys) {

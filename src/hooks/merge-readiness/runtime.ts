@@ -31,8 +31,8 @@ const MODE = "merge-readiness";
 // must never be used as override authority. The server launcher injects the
 // authenticated principal and the allowlist; neither value is accepted from a
 // tool call or slash-command argument.
-const MAINTAINER_PRINCIPAL_ENV = "OMC_MERGE_READINESS_AUTHENTICATED_PRINCIPAL";
-const MAINTAINER_ALLOWLIST_ENV = "OMC_MERGE_READINESS_MAINTAINERS";
+const MAINTAINER_PRINCIPAL_ENV = "OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL";
+const MAINTAINER_ALLOWLIST_ENV = "OMQ_MERGE_READINESS_MAINTAINERS";
 
 function resolveAuthenticatedMaintainerPrincipal(): string | null {
   const principal = process.env[MAINTAINER_PRINCIPAL_ENV]?.trim();
@@ -700,7 +700,7 @@ export function overrideMergeReadiness(directory: string, reason: string, sessio
   if (!principal) {
     state.validation_errors = [
       ...(state.validation_errors ?? []),
-      "Override rejected: no authenticated maintainer principal is available for this MCP server. Configure OMC_MERGE_READINESS_AUTHENTICATED_PRINCIPAL and OMC_MERGE_READINESS_MAINTAINERS in the trusted server launcher.",
+      "Override rejected: no authenticated maintainer principal is available for this MCP server. Configure OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL and OMQ_MERGE_READINESS_MAINTAINERS in the trusted server launcher.",
     ];
     return persistOrFailClosed(workingDir, state, sessionId);
   }

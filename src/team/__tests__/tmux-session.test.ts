@@ -266,7 +266,7 @@ describe('buildWorkerStartCommand', () => {
     expect(() => buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 't/w' },
+      envVars: { OMQ_TEAM_WORKER: 't/w' },
       launchBinary: 'C:\\Program Files\\OpenAI\\Codex\\codex.exe',
       launchArgs: ['--full-auto'],
       cwd: 'C:\\repo'
@@ -281,17 +281,17 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 'team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'team/worker-1' },
       launchBinary: 'C:\\Users\\tester\\AppData\\Local\\Programs\\claude\\claude.exe',
       launchArgs: ['--agent-id', 'worker-1'],
       cwd: 'C:\\repo'
     });
 
     expect(cmd).toBe(
-      'C:\\Windows\\System32\\cmd.exe /d /s /c "set "OMC_TEAM_WORKER=team/worker-1" && ' +
+      'C:\\Windows\\System32\\cmd.exe /d /s /c "set "OMQ_TEAM_WORKER=team/worker-1" && ' +
       '"C:\\Users\\tester\\AppData\\Local\\Programs\\claude\\claude.exe" "--agent-id" "worker-1"" & exit /b'
     );
-    expect(cmd).not.toContain('$env:OMC_TEAM_WORKER');
+    expect(cmd).not.toContain('$env:OMQ_TEAM_WORKER');
   });
 
   it('preserves POSIX argv-style exec while routing launch through the acknowledgement bootstrap', () => {
@@ -300,7 +300,7 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 't/w' },
+      envVars: { OMQ_TEAM_WORKER: 't/w' },
       launchBinary: '/opt/codex/bin/codex',
       launchArgs: ['--label', 'worker one'],
       cwd: '/tmp/team workspace',
@@ -329,8 +329,8 @@ describe('buildWorkerStartCommand', () => {
 
     // Supervised POSIX launches reference the attempt-owned descriptor by path
     // (issue #3655); the bootstrap spec itself must never travel inline.
-    expect(cmd).toContain("OMC_WORKER_LAUNCH_SPEC_FILE='/tmp/bootstrap.json'");
-    expect(cmd).not.toContain('OMC_WORKER_LAUNCH_SPEC=');
+    expect(cmd).toContain("OMQ_WORKER_LAUNCH_SPEC_FILE='/tmp/bootstrap.json'");
+    expect(cmd).not.toContain('OMQ_WORKER_LAUNCH_SPEC=');
     expect(cmd).toContain("exec \"$@\"");
     expect(cmd).toContain("'--worker-launch'");
     expect(cmd).toContain("'/opt/omc/runtime-cli.cjs'");
@@ -342,7 +342,7 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 't/w' },
+      envVars: { OMQ_TEAM_WORKER: 't/w' },
       launchBinary: 'C:\\Program Files\\Codex\\codex.exe',
       launchArgs: ['--label', '100% ready %USERPROFILE%', '--title="quoted"'],
       cwd: 'C:\\team workspace',
@@ -373,9 +373,9 @@ describe('buildWorkerStartCommand', () => {
     // Supervised launches deliver the attempt-owned descriptor by path; the
     // bootstrap spec (and its percent/quote metacharacters) never travels in
     // the command line or cmd environment (issue #3655).
-    expect(cmd).toContain('set "OMC_WORKER_LAUNCH_SPEC_FILE=C:\\state\\bootstrap.json"');
-    expect(cmd).not.toContain('OMC_WORKER_LAUNCH_SPEC_B64=');
-    expect(cmd).not.toContain('OMC_WORKER_LAUNCH_SPEC=');
+    expect(cmd).toContain('set "OMQ_WORKER_LAUNCH_SPEC_FILE=C:\\state\\bootstrap.json"');
+    expect(cmd).not.toContain('OMQ_WORKER_LAUNCH_SPEC_B64=');
+    expect(cmd).not.toContain('OMQ_WORKER_LAUNCH_SPEC=');
     expect(cmd).not.toContain('100% ready %USERPROFILE%');
     expect(cmd).not.toContain('pane_id=%%2');
   });
@@ -389,8 +389,8 @@ describe('buildWorkerStartCommand', () => {
       teamName: 't',
       workerName: 'w',
       envVars: {
-        OMC_TEAM_WORKER: "team name/worker 'one'",
-        OMC_TEAM_STATE_ROOT: 'C:\\Users\\Test User\\AppData\\Local\\omc state',
+        OMQ_TEAM_WORKER: "team name/worker 'one'",
+        OMQ_TEAM_STATE_ROOT: 'C:\\Users\\Test User\\AppData\\Local\\omc state',
         CLAUDE_CODE_USE_BEDROCK: 'value with spaces & [brackets] "quotes"',
       },
       launchBinary: 'C:\\Program Files\\Claude Code\\claude.exe',
@@ -402,11 +402,11 @@ describe('buildWorkerStartCommand', () => {
       cwd: 'C:\\repo'
     });
 
-    expect(cmd).toContain('set "OMC_TEAM_WORKER=team name/worker \'one\'"');
-    expect(cmd).toContain('set "OMC_TEAM_STATE_ROOT=C:\\Users\\Test User\\AppData\\Local\\omc state"');
+    expect(cmd).toContain('set "OMQ_TEAM_WORKER=team name/worker \'one\'"');
+    expect(cmd).toContain('set "OMQ_TEAM_STATE_ROOT=C:\\Users\\Test User\\AppData\\Local\\omc state"');
     expect(cmd).toContain('set "CLAUDE_CODE_USE_BEDROCK=value with spaces & [brackets] ""quotes"""');
     expect(cmd).toContain('"C:\\Program Files\\Claude Code\\claude.exe" "--model" "sonnet ""quoted""" "--label=worker \'one\'"');
-    expect(cmd).not.toContain('$env:OMC_TEAM_WORKER');
+    expect(cmd).not.toContain('$env:OMQ_TEAM_WORKER');
   });
 
   it('escapes literal percent signs in native Windows cmd env values and launch args', () => {
@@ -417,15 +417,15 @@ describe('buildWorkerStartCommand', () => {
       teamName: 't',
       workerName: 'w',
       envVars: {
-        OMC_TEAM_WORKER: 'team/worker-1',
-        OMC_TOKEN: 'literal%USERPROFILE%token%25',
+        OMQ_TEAM_WORKER: 'team/worker-1',
+        OMQ_TOKEN: 'literal%USERPROFILE%token%25',
       },
       launchBinary: 'C:\\Program Files\\Claude Code\\claude.exe',
       launchArgs: ['--label', '100% ready %USERPROFILE%', '--token=abc%25'],
       cwd: 'C:\\repo'
     });
 
-    expect(cmd).toContain('set "OMC_TOKEN=literal%%USERPROFILE%%token%%25"');
+    expect(cmd).toContain('set "OMQ_TOKEN=literal%%USERPROFILE%%token%%25"');
     expect(cmd).toContain('"100%% ready %%USERPROFILE%%"');
     expect(cmd).toContain('"--token=abc%%25"');
     expect(cmd).not.toContain('literal%USERPROFILE%token%25');
@@ -438,18 +438,18 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_RECOVERY_GATE_SPEC: JSON.stringify(gate) },
+      envVars: { OMQ_RECOVERY_GATE_SPEC: JSON.stringify(gate) },
       launchBinary: 'C:\\Program Files\\nodejs\\node.exe',
       launchArgs: ['C:\\omc\\runtime-cli.cjs', '--recovery-gate'],
       cwd: 'C:\\repo',
     });
 
-    const marker = 'set "OMC_RECOVERY_GATE_SPEC_B64=';
+    const marker = 'set "OMQ_RECOVERY_GATE_SPEC_B64=';
     const encodedStart = cmd.indexOf(marker) + marker.length;
     const encodedEnd = cmd.indexOf('" &&', encodedStart);
     expect(JSON.parse(Buffer.from(cmd.slice(encodedStart, encodedEnd), 'base64').toString('utf8')))
       .toMatchObject({ launchAttempt: { pane_id: '%2' } });
-    expect(cmd).not.toContain('OMC_RECOVERY_GATE_SPEC=');
+    expect(cmd).not.toContain('OMQ_RECOVERY_GATE_SPEC=');
     expect(cmd).not.toContain('pane_id=%%2');
   });
 
@@ -464,13 +464,13 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TOKEN: 'literal%USERPROFILE%token%25' },
+      envVars: { OMQ_TOKEN: 'literal%USERPROFILE%token%25' },
       launchBinary: '/c/Program Files/Git/bin/bash.exe',
       launchArgs: ['--label=100% ready'],
       cwd: '/c/repo'
     });
 
-    expect(cmd).toContain("OMC_TOKEN='literal%USERPROFILE%token%25'");
+    expect(cmd).toContain("OMQ_TOKEN='literal%USERPROFILE%token%25'");
     expect(cmd).toContain("'--label=100% ready'");
     expect(cmd).not.toContain('%%USERPROFILE%%');
   });
@@ -483,14 +483,14 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 'team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'team/worker-1' },
       launchBinary: 'C:\\Program Files\\OpenAI\\Codex\\codex.exe',
       launchArgs: ['--full-auto'],
       cwd: 'C:\\repo'
     });
 
     expect(cmd).toBe(
-      'C:\\Windows\\System32\\cmd.exe /d /s /c "set "OMC_TEAM_WORKER=team/worker-1" && ' +
+      'C:\\Windows\\System32\\cmd.exe /d /s /c "set "OMQ_TEAM_WORKER=team/worker-1" && ' +
       '"C:\\Program Files\\OpenAI\\Codex\\codex.exe" "--full-auto"" & exit /b'
     );
   });
@@ -505,17 +505,17 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 'team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'team/worker-1' },
       launchBinary: '/c/Program Files/Git/bin/bash.exe',
       launchArgs: ['--login'],
       cwd: '/c/repo'
     });
 
-    expect(cmd).toContain("'env' OMC_TEAM_WORKER='team/worker-1'");
+    expect(cmd).toContain("'env' OMQ_TEAM_WORKER='team/worker-1'");
     expect(cmd).toContain("'/usr/bin/bash' '-lc'");
     expect(cmd).toContain("'--' '/c/Program Files/Git/bin/bash.exe' '--login'");
     expect(cmd).not.toContain('/d /s /c');
-    expect(cmd).not.toContain('$env:OMC_TEAM_WORKER');
+    expect(cmd).not.toContain('$env:OMQ_TEAM_WORKER');
   });
 
   it('uses exec \"$@\" for launchBinary with non-fish shells', () => {
@@ -526,7 +526,7 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 't/w' },
+      envVars: { OMQ_TEAM_WORKER: 't/w' },
       launchBinary: 'codex',
       launchArgs: ['--full-auto'],
       cwd: '/tmp'
@@ -544,7 +544,7 @@ describe('buildWorkerStartCommand', () => {
     const cmd = buildWorkerStartCommand({
       teamName: 't',
       workerName: 'w',
-      envVars: { OMC_TEAM_WORKER: 't/w' },
+      envVars: { OMQ_TEAM_WORKER: 't/w' },
       launchBinary: 'codex',
       launchArgs: ['--full-auto'],
       cwd: '/tmp'
@@ -602,7 +602,7 @@ describe('buildWorkerStartCommand', () => {
       teamName: 't',
       workerName: 'w',
       envVars: {
-        OMC_TEAM_WORKER: 'my-team/worker-1',
+        OMQ_TEAM_WORKER: 'my-team/worker-1',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
       },
       launchBinary: '/usr/local/bin/claude',
@@ -611,7 +611,7 @@ describe('buildWorkerStartCommand', () => {
     });
 
     // Values with / and [] must be preserved without extra quoting
-    expect(cmd).toContain("OMC_TEAM_WORKER='my-team/worker-1'");
+    expect(cmd).toContain("OMQ_TEAM_WORKER='my-team/worker-1'");
     expect(cmd).toContain("ANTHROPIC_DEFAULT_SONNET_MODEL='global.anthropic.claude-sonnet-4-6[1m]'");
   });
 
@@ -642,7 +642,7 @@ describe('buildWorkerStartCommand', () => {
 
 describe('shouldAttemptAdaptiveRetry', () => {
   it('only enables adaptive retry for busy panes with visible unsent message', () => {
-    delete process.env.OMC_TEAM_AUTO_INTERRUPT_RETRY;
+    delete process.env.OMQ_TEAM_AUTO_INTERRUPT_RETRY;
     expect(shouldAttemptAdaptiveRetry({
       paneBusy: false,
       latestCapture: '❯ check-inbox',
@@ -680,8 +680,8 @@ describe('shouldAttemptAdaptiveRetry', () => {
     })).toBe(true);
   });
 
-  it('respects OMC_TEAM_AUTO_INTERRUPT_RETRY=0', () => {
-    process.env.OMC_TEAM_AUTO_INTERRUPT_RETRY = '0';
+  it('respects OMQ_TEAM_AUTO_INTERRUPT_RETRY=0', () => {
+    process.env.OMQ_TEAM_AUTO_INTERRUPT_RETRY = '0';
     expect(shouldAttemptAdaptiveRetry({
       paneBusy: true,
       latestCapture: '❯ check-inbox',
@@ -689,7 +689,7 @@ describe('shouldAttemptAdaptiveRetry', () => {
       paneInCopyMode: false,
       retriesAttempted: 0,
     })).toBe(false);
-    delete process.env.OMC_TEAM_AUTO_INTERRUPT_RETRY;
+    delete process.env.OMQ_TEAM_AUTO_INTERRUPT_RETRY;
   });
 });
 
@@ -797,7 +797,7 @@ describe('sendToWorker implementation guards', () => {
   const source = readFileSync(join(__dirname, '..', 'tmux-session.ts'), 'utf-8');
 
   it('uses a longer default readiness timeout for worker startup', () => {
-    expect(source).toContain('OMC_SHELL_READY_TIMEOUT_MS');
+    expect(source).toContain('OMQ_SHELL_READY_TIMEOUT_MS');
     expect(source).toContain('30_000');
   });
 
@@ -807,7 +807,7 @@ describe('sendToWorker implementation guards', () => {
   });
 
   it('supports env-gated adaptive interrupt retry', () => {
-    expect(source).toContain('OMC_TEAM_AUTO_INTERRUPT_RETRY');
+    expect(source).toContain('OMQ_TEAM_AUTO_INTERRUPT_RETRY');
     expect(source).toContain("await sendKey('C-u')");
   });
 

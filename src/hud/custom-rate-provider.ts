@@ -210,7 +210,7 @@ export async function executeCustomProvider(
     const buckets = parseOutput(stdout, config.periods);
 
     if (buckets === null) {
-      if (process.env.OMC_DEBUG) {
+      if (process.env.OMQ_DEBUG) {
         console.error('[custom-rate-provider] Invalid output format from command');
       }
       if (cache) return { buckets: cache.buckets, stale: true };
@@ -220,7 +220,7 @@ export async function executeCustomProvider(
     writeCache(buckets);
     return { buckets, stale: false };
   } catch (err) {
-    if (process.env.OMC_DEBUG) {
+    if (process.env.OMQ_DEBUG) {
       console.error(
         '[custom-rate-provider] Command failed:',
         err instanceof Error ? err.message : err,

@@ -32,7 +32,7 @@ const SAFE_EXIT_FLUSH_TIMEOUT_MS = 100;
 
 
 function getSafetyTimeoutMs() {
-  const parsed = Number.parseInt(process.env.OMC_PERSISTENT_MODE_TIMEOUT_MS || "", 10);
+  const parsed = Number.parseInt(process.env.OMQ_PERSISTENT_MODE_TIMEOUT_MS || "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SAFETY_TIMEOUT_MS;
 }
 
@@ -58,14 +58,14 @@ function writeSafeContinue(onFlushed) {
 }
 
 function shouldSkipPersistentModeHook() {
-  const skipHooks = (process.env.OMC_SKIP_HOOKS || "")
+  const skipHooks = (process.env.OMQ_SKIP_HOOKS || "")
     .split(",")
     .map((hook) => hook.trim())
     .filter(Boolean);
 
   return (
-    process.env.DISABLE_OMC === "1" ||
-    process.env.DISABLE_OMC === "true" ||
+    process.env.DISABLE_OMQ === "1" ||
+    process.env.DISABLE_OMQ === "true" ||
     skipHooks.includes("persistent-mode") ||
     skipHooks.includes("stop-continuation")
   );

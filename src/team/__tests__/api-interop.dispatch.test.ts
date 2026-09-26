@@ -145,7 +145,7 @@ describe('team api dispatch-aware messaging', () => {
     expect(typeof requests[0]?.delivered_at).toBe('string');
   });
 
-  it('uses OMC_TEAM_STATE_ROOT placeholder in mailbox triggers for worktree-backed workers', async () => {
+  it('uses OMQ_TEAM_STATE_ROOT placeholder in mailbox triggers for worktree-backed workers', async () => {
     const configPath = join(cwd, '.omq', 'state', 'team', teamName, 'config.json');
     await writeFile(configPath, JSON.stringify({
       name: teamName,
@@ -176,7 +176,7 @@ describe('team api dispatch-aware messaging', () => {
 
     const requests = await listDispatchRequests(teamName, cwd, { kind: 'mailbox', to_worker: 'worker-1' });
     expect(requests).toHaveLength(1);
-    expect(requests[0]?.trigger_message).toContain('$OMC_TEAM_STATE_ROOT/mailbox/worker-1.json');
+    expect(requests[0]?.trigger_message).toContain('$OMQ_TEAM_STATE_ROOT/mailbox/worker-1.json');
     expect(requests[0]?.trigger_message).toContain('report progress');
   });
 

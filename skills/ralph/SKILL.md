@@ -306,8 +306,8 @@ Why good: The falsified criterion stops governing, the measurement is preserved 
 
 ## Parallel session caveats
 
-- **Multi-repo workspace anchor:** drop a `.omq-workspace` marker at the parent directory so multiple sessions across sub-repos share one `.omq/`. Resolution order: `OMC_STATE_DIR > .omq-workspace > git > cwd`. See `docs/REFERENCE.md`.
-- **Session id source:** OMC_SESSION_ID env var wins in CLI contexts; hook payload data.session_id wins in hook contexts.
+- **Multi-repo workspace anchor:** drop a `.omq-workspace` marker at the parent directory so multiple sessions across sub-repos share one `.omq/`. Resolution order: `OMQ_STATE_DIR > .omq-workspace > git > cwd`. See `docs/REFERENCE.md`.
+- **Session id source:** OMQ_SESSION_ID env var wins in CLI contexts; hook payload data.session_id wins in hook contexts.
 - **Plan id (when applicable):** Two ralph runs in the same workspace will conflict on `prd.json`. Use distinct session IDs (the hook payload session_id is already isolated per Claude Code session). For parallel ultragoal-backed ralph runs, use `--plan-id`.
 - **Parallel verdict:** supported (each session writes its own session-scoped state)
 

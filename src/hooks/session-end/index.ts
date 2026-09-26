@@ -49,7 +49,7 @@ const SESSION_STARTED_MARKER_FILE = 'session-started.json';
 
 const DEFAULT_SESSION_END_CLEANUP_BUDGET_MS = 2_000;
 const MAX_SESSION_END_CLEANUP_BUDGET_MS = 10_000;
-const SESSION_END_CLEANUP_BUDGET_ENV = 'OMC_SESSIONEND_CLEANUP_BUDGET_MS';
+const SESSION_END_CLEANUP_BUDGET_ENV = 'OMQ_SESSIONEND_CLEANUP_BUDGET_MS';
 
 export interface SessionEndCleanupWorkerPayload {
   directory: string;
@@ -844,7 +844,7 @@ function deferredSessionEndSnapshot(directory: string, sessionId: string): { met
 
 export async function runSessionEndCallbacks(directory: string, sessionId: string, idempotencyKey?: string, strict = false): Promise<void> {
   const { metrics, input } = deferredSessionEndSnapshot(directory, sessionId);
-  const profileName = process.env.OMC_NOTIFY_PROFILE;
+  const profileName = process.env.OMQ_NOTIFY_PROFILE;
   const config = getNotificationConfig(profileName);
   const platforms = config && hasExplicitNotificationConfig(profileName) ? getEnabledPlatforms(config, 'session-end') : [];
   const outcome = await runSessionEndDeferredAction({ name: 'legacy-callback', class: 'best-effort', idempotencyKey, payload: { skipPlatforms: platforms.length > 0 ? getLegacyPlatformsCoveredByNotifications(platforms) : [], idempotencyKey }, budgetMs: 2_000 }, { directory, sessionId, transcriptPath: input.transcript_path ?? '', metrics, input, deadlineAt: new Date(Date.now() + 2_000).toISOString(), action: { name: 'legacy-callback', class: 'best-effort', idempotencyKey, payload: { idempotencyKey }, budgetMs: 2_000 } });
@@ -852,7 +852,7 @@ export async function runSessionEndCallbacks(directory: string, sessionId: strin
 }
 
 export async function runSessionEndNotifications(directory: string, sessionId: string, strict = false): Promise<void> {
-  const profileName = process.env.OMC_NOTIFY_PROFILE;
+  const profileName = process.env.OMQ_NOTIFY_PROFILE;
   const config = getNotificationConfig(profileName);
   if (!config || !hasExplicitNotificationConfig(profileName)) return;
   const { metrics, input } = deferredSessionEndSnapshot(directory, sessionId);
@@ -862,7 +862,7 @@ export async function runSessionEndNotifications(directory: string, sessionId: s
 
 export async function runSessionEndOpenClaw(directory: string, sessionId: string, strict = false): Promise<void> {
   const { metrics, input } = deferredSessionEndSnapshot(directory, sessionId);
-  const outcome = await runSessionEndDeferredAction({ name: 'openclaw-wake', class: 'best-effort', payload: { enabled: process.env.OMC_OPENCLAW === '1', reason: metrics.reason, sessionId }, budgetMs: 2_000 }, { directory, sessionId, transcriptPath: input.transcript_path ?? '', metrics, input, deadlineAt: new Date(Date.now() + 2_000).toISOString(), action: { name: 'openclaw-wake', class: 'best-effort', payload: {}, budgetMs: 2_000 } });
+  const outcome = await runSessionEndDeferredAction({ name: 'openclaw-wake', class: 'best-effort', payload: { enabled: process.env.OMQ_OPENCLAW === '1', reason: metrics.reason, sessionId }, budgetMs: 2_000 }, { directory, sessionId, transcriptPath: input.transcript_path ?? '', metrics, input, deadlineAt: new Date(Date.now() + 2_000).toISOString(), action: { name: 'openclaw-wake', class: 'best-effort', payload: {}, budgetMs: 2_000 } });
   if (strict && outcome.status !== 'completed' && outcome.status !== 'skipped') throw new Error(`openclaw-wake-${outcome.status}`);
 }
 
@@ -892,8 +892,8 @@ function buildDurableSessionEndPayload(directory: string, input: SessionEndInput
     input,
     metrics,
     initialTeamNames: teamName ? [teamName] : [],
-    notificationProfile: typeof process.env.OMC_NOTIFY_PROFILE === 'string' ? process.env.OMC_NOTIFY_PROFILE : undefined,
-    openClawEnabled: process.env.OMC_OPENCLAW === '1',
+    notificationProfile: typeof process.env.OMQ_NOTIFY_PROFILE === 'string' ? process.env.OMQ_NOTIFY_PROFILE : undefined,
+    openClawEnabled: process.env.OMQ_OPENCLAW === '1',
   };
 }
 

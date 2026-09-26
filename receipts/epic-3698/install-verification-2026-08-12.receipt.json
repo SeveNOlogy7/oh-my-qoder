@@ -14,7 +14,7 @@
       { "command": "omc --version (scratch HOME)", "verdict": "passed", "evidence": "printed 4.15.10, matching package.json" },
       { "command": "omc doctor conflicts (scratch HOME)", "verdict": "passed", "evidence": "exit 0; 'No conflicts detected / OMC is properly configured'" },
       { "command": "node scripts/generate-inventory-graph.mjs --verify", "verdict": "passed", "evidence": "baseline current; public=95 internal=1258 generated=4328 prompt=40; nodes=6103 edges=6695; provenance base=05c800f40d1a planningHead=0a91273e61db head=570028b24ede" },
-      { "command": "alias resolver smoke: resolveWorkflowInputWithWarning('autopilot','s1') twice (scratch OMC_STATE_DIR)", "verdict": "passed", "evidence": "first call warned once ('Alias \"autopilot\" is deprecated → use \"execute\" (Tier-0)'), second call suppressed; alias-telemetry.jsonl retained both events (warned=true and warned=false); alias-receipts.json migration receipt emitted with byAlias/byCanonical counts" }
+      { "command": "alias resolver smoke: resolveWorkflowInputWithWarning('autopilot','s1') twice (scratch OMQ_STATE_DIR)", "verdict": "passed", "evidence": "first call warned once ('Alias \"autopilot\" is deprecated → use \"execute\" (Tier-0)'), second call suppressed; alias-telemetry.jsonl retained both events (warned=true and warned=false); alias-receipts.json migration receipt emitted with byAlias/byCanonical counts" }
     ],
     "note": "No release, tag, publish, or main mutation was performed or attempted. The npm pack artifact was installed only into a scratch prefix and is not published."
   }

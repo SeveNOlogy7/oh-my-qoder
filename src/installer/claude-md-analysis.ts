@@ -10,8 +10,8 @@ export function decodeClaudeMdUtf8(bytes: Buffer, path: string): string {
   }
 }
 
-export const OMC_START_MARKER = '<!-- OMC:START -->';
-export const OMC_END_MARKER = '<!-- OMC:END -->';
+export const OMQ_START_MARKER = '<!-- OMC:START -->';
+export const OMQ_END_MARKER = '<!-- OMC:END -->';
 
 export interface ClaudeMdLine {
   start: number;
@@ -106,10 +106,10 @@ export function parseClaudeMdMarkers(content: string): MarkerParseResult {
   let open: ClaudeMdLine | undefined;
   let sawMarker = false;
   for (const line of lines) {
-    if (line.text !== OMC_START_MARKER && line.text !== OMC_END_MARKER) continue;
+    if (line.text !== OMQ_START_MARKER && line.text !== OMQ_END_MARKER) continue;
     sawMarker = true;
     counters.parserSteps += 2;
-    if (line.text === OMC_START_MARKER) {
+    if (line.text === OMQ_START_MARKER) {
       if (open) diagnostics.push('nested-or-duplicate-start');
       else open = line;
     } else if (!open) {

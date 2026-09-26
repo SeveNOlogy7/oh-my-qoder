@@ -110,26 +110,26 @@ If both configurations exist, **project-scoped takes precedence** over global:
 
 | Variable                   | Default              | Description                                                                                                                                                                                                                                                                 |
 | -------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OMC_STATE_DIR`            | _(unset)_            | Centralized state directory. When set, OMC stores state at `$OMC_STATE_DIR/{project-id}/` instead of `{worktree}/.omq/`. This preserves state across worktree deletions. The project identifier is derived from the git remote URL (or worktree path for local-only repos). |
-| `OMC_BRIDGE_SCRIPT`        | _(auto-detected)_    | Path to the Python bridge script                                                                                                                                                                                                                                            |
-| `OMC_PARALLEL_EXECUTION`   | `true`               | Enable/disable parallel agent execution                                                                                                                                                                                                                                     |
-| `OMC_CODEX_DEFAULT_MODEL`  | _(provider default)_ | Default model for Codex CLI workers                                                                                                                                                                                                                                         |
-| `OMC_GEMINI_DEFAULT_MODEL`       | _(provider default)_ | Default model for Gemini CLI workers                                                                                                                                                                                                                                    |
-| `OMC_ANTIGRAVITY_DEFAULT_MODEL`  | _(provider default)_ | Default model for Antigravity CLI (`agy`) workers                                                                                                                                                                                                                       |
-| `OMC_GROK_DEFAULT_MODEL`         | _(provider default)_ | Default model for Grok Build CLI workers                                                                                                                                                                                                                                |
-| `OMC_LSP_TIMEOUT_MS`       | `15000`              | Timeout (ms) for LSP requests. Increase for large repos or slow language servers                                                                                                                                                                                            |
-| `OMC_MIGRATE_LEGACY_STATE` | _(unset)_            | Set to `1` to enable one-shot legacy→session-scoped state migration on next read. See [Legacy state migration](#legacy-state-migration-omc_migrate_legacy_state) below.                                                                                                      |
-| `OMC_DISABLE_MULTIREPO`    | _(unset)_            | Set to `1` to disable workspace-marker resolution and fall back to git-root + cwd resolution order. `OMC_STATE_DIR` is still honoured. See [Rollback / disable multi-repo](#rollback--disable-multi-repo-omc_disable_multirepo) below.                                       |
-| `DISABLE_OMC`              | _(unset)_            | Set to `1` or `true` to disable all OMC hooks |
-| `OMC_SKIP_HOOKS`           | _(unset)_            | Comma-separated list of hook names to skip                                                                                                                                                                                                                                  |
+| `OMQ_STATE_DIR`            | _(unset)_            | Centralized state directory. When set, OMC stores state at `$OMQ_STATE_DIR/{project-id}/` instead of `{worktree}/.omq/`. This preserves state across worktree deletions. The project identifier is derived from the git remote URL (or worktree path for local-only repos). |
+| `OMQ_BRIDGE_SCRIPT`        | _(auto-detected)_    | Path to the Python bridge script                                                                                                                                                                                                                                            |
+| `OMQ_PARALLEL_EXECUTION`   | `true`               | Enable/disable parallel agent execution                                                                                                                                                                                                                                     |
+| `OMQ_CODEX_DEFAULT_MODEL`  | _(provider default)_ | Default model for Codex CLI workers                                                                                                                                                                                                                                         |
+| `OMQ_GEMINI_DEFAULT_MODEL`       | _(provider default)_ | Default model for Gemini CLI workers                                                                                                                                                                                                                                    |
+| `OMQ_ANTIGRAVITY_DEFAULT_MODEL`  | _(provider default)_ | Default model for Antigravity CLI (`agy`) workers                                                                                                                                                                                                                       |
+| `OMQ_GROK_DEFAULT_MODEL`         | _(provider default)_ | Default model for Grok Build CLI workers                                                                                                                                                                                                                                |
+| `OMQ_LSP_TIMEOUT_MS`       | `15000`              | Timeout (ms) for LSP requests. Increase for large repos or slow language servers                                                                                                                                                                                            |
+| `OMQ_MIGRATE_LEGACY_STATE` | _(unset)_            | Set to `1` to enable one-shot legacy→session-scoped state migration on next read. See [Legacy state migration](#legacy-state-migration-omc_migrate_legacy_state) below.                                                                                                      |
+| `OMQ_DISABLE_MULTIREPO`    | _(unset)_            | Set to `1` to disable workspace-marker resolution and fall back to git-root + cwd resolution order. `OMQ_STATE_DIR` is still honoured. See [Rollback / disable multi-repo](#rollback--disable-multi-repo-omc_disable_multirepo) below.                                       |
+| `DISABLE_OMQ`              | _(unset)_            | Set to `1` or `true` to disable all OMC hooks |
+| `OMQ_SKIP_HOOKS`           | _(unset)_            | Comma-separated list of hook names to skip                                                                                                                                                                                                                                  |
 
-#### Centralized State with `OMC_STATE_DIR`
+#### Centralized State with `OMQ_STATE_DIR`
 
-By default, OMC stores state in `{worktree}/.omq/`. This is lost when worktrees are deleted. To preserve state across worktree lifecycles, set `OMC_STATE_DIR`:
+By default, OMC stores state in `{worktree}/.omq/`. This is lost when worktrees are deleted. To preserve state across worktree lifecycles, set `OMQ_STATE_DIR`:
 
 ```bash
 # In your shell profile (~/.bashrc, ~/.zshrc, etc.)
-export OMC_STATE_DIR="$HOME/.claude/omc"
+export OMQ_STATE_DIR="$HOME/.claude/omc"
 ```
 
 This resolves to `~/.claude/omc/{project-identifier}/` where the project identifier uses a hash of the git remote URL (stable across worktrees/clones) with a fallback to the directory path hash for local-only repos.
@@ -138,7 +138,7 @@ If both a legacy `{worktree}/.omq/` directory and a centralized directory exist,
 
 #### OMC state, gitignore, worktree, and workspace contract
 
-OMC's project-local state root is `.omq/` unless `OMC_STATE_DIR` or `.omq-workspace` changes the root resolution described below. The default root contains runtime and audit artifacts such as:
+OMC's project-local state root is `.omq/` unless `OMQ_STATE_DIR` or `.omq-workspace` changes the root resolution described below. The default root contains runtime and audit artifacts such as:
 
 - `.omq/state/` and `.omq/state/sessions/{sessionId}/` — mode state, session-scoped state, replay markers, and recovery metadata.
 - `.omq/notepad.md` and `.omq/project-memory.json` — local session notes and project memory.
@@ -151,8 +151,8 @@ Git handling is intentionally conservative. The repository `.gitignore` keeps `.
 Worktree behavior follows the resolved state root:
 
 - **Default single repo / monorepo**: `getOmcRoot()` uses the git toplevel, so every package below one git root shares `{repo}/.omq/`.
-- **Linked git worktrees**: without `OMC_STATE_DIR`, each linked worktree has its own `{worktree}/.omq/`; removing that worktree removes its local OMC state. Re-run setup from the worktree you are actively using so installed hooks and generated instructions match that checkout.
-- **Persistent state across worktree deletion**: set `OMC_STATE_DIR`; OMC writes to `$OMC_STATE_DIR/{project-id}/`, where the project id is stable across linked worktrees when a remote or primary git dir is available.
+- **Linked git worktrees**: without `OMQ_STATE_DIR`, each linked worktree has its own `{worktree}/.omq/`; removing that worktree removes its local OMC state. Re-run setup from the worktree you are actively using so installed hooks and generated instructions match that checkout.
+- **Persistent state across worktree deletion**: set `OMQ_STATE_DIR`; OMC writes to `$OMQ_STATE_DIR/{project-id}/`, where the project id is stable across linked worktrees when a remote or primary git dir is available.
 - **Multi-repo workspace**: add `.omq-workspace` to a non-git parent when independent sibling repos should share `{parent}/.omq/`. This is for multi-repo workspaces, not ordinary monorepos.
 
 Plan persistence follows the same rule. Default generated plans under `.omq/plans/` are local operational artifacts and are ignored. If a plan should become durable project documentation, move it to a tracked docs path or configure `planOutput.directory` to a reviewed directory such as `docs/plans`; keep machine-local session state in `.omq/`.
@@ -176,7 +176,7 @@ From any sub-directory (including inside any sub-git-repo), OMC resolves `.omq/`
 
 Resolution order inside `getOmcRoot()`:
 
-1. `OMC_STATE_DIR` (centralized).
+1. `OMQ_STATE_DIR` (centralized).
 2. `.omq-workspace` marker (multi-repo workspace).
 3. `git rev-parse --show-toplevel` (monorepo / single repo).
 4. `process.cwd()` (last resort).
@@ -207,39 +207,39 @@ interface SessionStatePaths {
 
 The brand prevents a hook from silently passing a read-fallback path to a writer (or vice versa) — TypeScript rejects the cross-assignment at compile time. The only legitimate producer of the brand is `resolveSessionStatePaths()` itself; an ESLint `no-restricted-syntax` rule in `eslint.config.js` blocks `as ReadPath` / `as WritePath` casts anywhere outside `worktree-paths.ts` and its tests. Compile-time regression guard at `src/lib/__tests__/session-state-paths.type-test.ts`.
 
-#### Legacy state migration (`OMC_MIGRATE_LEGACY_STATE`)
+#### Legacy state migration (`OMQ_MIGRATE_LEGACY_STATE`)
 
-When you adopt `OMC_STATE_DIR` or `.omq-workspace` on a repo that already has existing `{worktree}/.omq/state/` files, you can opt in to a one-shot copy of legacy state into the new session-scoped path:
+When you adopt `OMQ_STATE_DIR` or `.omq-workspace` on a repo that already has existing `{worktree}/.omq/state/` files, you can opt in to a one-shot copy of legacy state into the new session-scoped path:
 
 ```bash
-export OMC_MIGRATE_LEGACY_STATE=1
+export OMQ_MIGRATE_LEGACY_STATE=1
 ```
 
 Semantics:
 - **Trigger**: checked once per state-file read by callers that wrap their write through the migration helper.
 - **Operation**: copies `{omcRoot}/state/{name}-state.json` → `{omcRoot}/state/sessions/{sessionId}/{name}-state.json` using an atomic `.migrating` sentinel + rename for crash recovery.
 - **Idempotent**: a second run with the flag set is a no-op if the session-scoped file already exists.
-- **Opt-in only**: never triggers automatically; only when `OMC_MIGRATE_LEGACY_STATE=1` is set.
+- **Opt-in only**: never triggers automatically; only when `OMQ_MIGRATE_LEGACY_STATE=1` is set.
 - **No auto-trigger**: do not set this permanently in your shell profile; set it once for the migration session, then unset it.
 
-#### Rollback / disable multi-repo (`OMC_DISABLE_MULTIREPO`)
+#### Rollback / disable multi-repo (`OMQ_DISABLE_MULTIREPO`)
 
 If the workspace-marker resolution causes unexpected behaviour (e.g., after dropping a stale `.omq-workspace` marker), you can disable multi-repo path resolution in one env-var flip:
 
 ```bash
-export OMC_DISABLE_MULTIREPO=1
+export OMQ_DISABLE_MULTIREPO=1
 ```
 
 Exact semantics:
 - **Skips** `.omq-workspace` marker detection — `findWorkspaceRoot()` returns `null` immediately.
 - **Falls back** to the standard `git rev-parse --show-toplevel` → `process.cwd()` resolution order.
-- **Preserves** `OMC_STATE_DIR` if set — centralized state storage still works.
+- **Preserves** `OMQ_STATE_DIR` if set — centralized state storage still works.
 - **Scope**: per-process; set in the shell session where you run `claude`, not project-wide.
 
 To restore multi-repo behaviour, unset the variable:
 
 ```bash
-unset OMC_DISABLE_MULTIREPO
+unset OMQ_DISABLE_MULTIREPO
 ```
 
 #### Ultragoal multi-plan layout
@@ -408,12 +408,12 @@ Use these names when writing docs or handoffs so the same concept remains portab
 | Goal/spec artifact      | `.omq/specs/<slug>.md` or `.omq/plans/<slug>.md`                           | `.omx/specs/<slug>.md` or `.omx/plans/<slug>.md`                           | Durable statement of the user goal, constraints, acceptance criteria, and execution handoff.                                                                                       |
 | Approved execution plan | `.omq/plans/<slug>.md`                                                     | `.omx/plans/<slug>.md`                                                     | Reviewed implementation plan consumed by execution workflows such as team or ralph.                                                                                                |
 | Task/runtime state      | `.omq/state/<mode>.json` or `.omq/state/sessions/<session-id>/<mode>.json` | `.omx/state/<mode>.json` or `.omx/state/sessions/<session-id>/<mode>.json` | Machine-readable workflow state. Session-scoped state wins over legacy flat files when present.                                                                                    |
-| Team coordination state | `.omq/state/team/<team-name>/...`                                          | `.omx/state/team/<team-name>/...`                                          | Worker task files, mailbox, status, events, and dispatch metadata. Worktree-backed workers should use `OMC_TEAM_STATE_ROOT`/compat env to find the leader-owned coordination root. |
+| Team coordination state | `.omq/state/team/<team-name>/...`                                          | `.omx/state/team/<team-name>/...`                                          | Worker task files, mailbox, status, events, and dispatch metadata. Worktree-backed workers should use `OMQ_TEAM_STATE_ROOT`/compat env to find the leader-owned coordination root. |
 | Ask/advisor artifacts   | `.omq/artifacts/ask/<provider>-<slug>-<timestamp>.md`                      | `.omx/artifacts/ask/<provider>-<slug>-<timestamp>.md`                      | Persisted advisor output from `omc ask` or compatibility wrappers.                                                                                                                 |
 | Plan-scoped notepad     | `.omq/notepads/<plan-name>/`                                               | `.omx/notepads/<plan-name>/`                                               | Durable notes gathered while planning or executing a named goal.                                                                                                                   |
 | Project memory          | `.omq/project-memory.json` and `.omq/notepad.md`                           | `.omx/project-memory.json` and `.omx/notepad.md`                           | Reusable project facts and session notes.                                                                                                                                          |
 
-When an environment variable such as `OMC_STATE_DIR` centralizes storage, resolve the OMC project-local root through that setting before expanding the paths above. In docs, phrase this as "the OMC state root" or "the team coordination root" when the exact filesystem path may vary.
+When an environment variable such as `OMQ_STATE_DIR` centralizes storage, resolve the OMC project-local root through that setting before expanding the paths above. In docs, phrase this as "the OMC state root" or "the team coordination root" when the exact filesystem path may vary.
 
 ### `/goal` interoperability notes
 
@@ -442,22 +442,22 @@ When you launch OMC via a local development checkout instead of the marketplace 
 omc --plugin-dir /path/to/oh-my-claudecode setup --plugin-dir-mode
 ```
 
-- **What it does**: Parses `--plugin-dir <path>` (or `--plugin-dir=<path>`), resolves it to an absolute path, sets `OMC_PLUGIN_ROOT` environment variable, then passes the flag through to Claude Code untouched.
+- **What it does**: Parses `--plugin-dir <path>` (or `--plugin-dir=<path>`), resolves it to an absolute path, sets `OMQ_PLUGIN_ROOT` environment variable, then passes the flag through to Claude Code untouched.
 - **Non-consuming**: The flag stays in the argument list so Claude Code's plugin loader still sees it.
-- **Precedence**: Explicit `--plugin-dir` flag wins over any pre-existing `OMC_PLUGIN_ROOT` env var (with a warning if they disagree).
+- **Precedence**: Explicit `--plugin-dir` flag wins over any pre-existing `OMQ_PLUGIN_ROOT` env var (with a warning if they disagree).
 - **Resolution**: Relative paths are resolved to absolute via `path.resolve()`. Note: `~` is **not** expanded — use `$HOME` or an absolute path instead.
-- **Pair with setup**: `--plugin-dir` alone only affects the current Claude session. You must **also** run `omc setup --plugin-dir-mode` (or let auto-detection kick in from `OMC_PLUGIN_ROOT`) so HUD, hooks, and CLAUDE.md are installed for the linked checkout. Skipping this step leaves `~/.claude/` pointing at a stale plugin root.
+- **Pair with setup**: `--plugin-dir` alone only affects the current Claude session. You must **also** run `omc setup --plugin-dir-mode` (or let auto-detection kick in from `OMQ_PLUGIN_ROOT`) so HUD, hooks, and CLAUDE.md are installed for the linked checkout. Skipping this step leaves `~/.claude/` pointing at a stale plugin root.
 
 ### `claude --plugin-dir <path>` (direct)
 
 **Usage**: When you launch Claude Code directly without the `omc` shim.
 
 ```bash
-export OMC_PLUGIN_ROOT=/path/to/oh-my-claudecode
+export OMQ_PLUGIN_ROOT=/path/to/oh-my-claudecode
 claude --plugin-dir /path/to/oh-my-claudecode
 ```
 
-- **Requirement**: You must manually set `OMC_PLUGIN_ROOT` environment variable so the HUD wrapper and other env-aware components can resolve the same path as the plugin loader.
+- **Requirement**: You must manually set `OMQ_PLUGIN_ROOT` environment variable so the HUD wrapper and other env-aware components can resolve the same path as the plugin loader.
 - **Why**: The HUD bundle needs to know where agents/skills/commands are located so they stay in sync with the plugin instance.
 - **Note**: Plain `claude` (without `omc`) does not automatically capture `--plugin-dir` for you.
 
@@ -476,7 +476,7 @@ omc setup --plugin-dir-mode
   - CLAUDE.md configuration files
   - `.omq-config.json` state
 - **Conflicts with `--no-plugin`**: If both flags are set, `--no-plugin` takes precedence (with a warning).
-- **Auto-detection**: If `OMC_PLUGIN_ROOT` is already set in the environment, `--plugin-dir-mode` is auto-enabled (unless `--no-plugin` overrides it).
+- **Auto-detection**: If `OMQ_PLUGIN_ROOT` is already set in the environment, `--plugin-dir-mode` is auto-enabled (unless `--no-plugin` overrides it).
 
 ### `omc doctor --plugin-dir <path>` (NEW)
 
@@ -487,17 +487,17 @@ omc doctor --plugin-dir /path/to/oh-my-claudecode
 omc doctor conflicts --plugin-dir /path/to/oh-my-claudecode
 ```
 
-- **What it does**: Resolves the provided path to absolute, sets `OMC_PLUGIN_ROOT` before the doctor action runs, matching `launch.ts` semantics.
-- **Precedence**: Explicit `--plugin-dir` flag wins over pre-existing `OMC_PLUGIN_ROOT` env var (with a warning if they disagree).
+- **What it does**: Resolves the provided path to absolute, sets `OMQ_PLUGIN_ROOT` before the doctor action runs, matching `launch.ts` semantics.
+- **Precedence**: Explicit `--plugin-dir` flag wins over pre-existing `OMQ_PLUGIN_ROOT` env var (with a warning if they disagree).
 - **Subcommand support**: Works with both `omc doctor` and `omc doctor conflicts`.
 - **Output**: Diagnostic results reflect the plugin directory you specified.
 
-### `OMC_PLUGIN_ROOT` environment variable
+### `OMQ_PLUGIN_ROOT` environment variable
 
 **Usage**: Authoritative source for the active plugin root when launching Claude Code.
 
 ```bash
-export OMC_PLUGIN_ROOT=/path/to/oh-my-claudecode
+export OMQ_PLUGIN_ROOT=/path/to/oh-my-claudecode
 claude --plugin-dir /path/to/oh-my-claudecode
 ```
 
@@ -512,7 +512,7 @@ claude --plugin-dir /path/to/oh-my-claudecode
 | ------------------------------------- | ------------------------------------------------------------ | ------------------------------- | ------------------------------------------------------------------- |
 | **Marketplace plugin** (recommended)  | `omc` or `claude` (default)                                  | `omc setup`                     | Normal: agents/skills copied to `~/.claude/`                        |
 | **Local dev checkout, want OMC shim** | `omc --plugin-dir /path`                                     | `omc setup --plugin-dir-mode`   | Dev mode: agents/skills loaded from `/path`, not copied             |
-| **Local dev checkout, no OMC shim**   | `claude --plugin-dir /path` + `export OMC_PLUGIN_ROOT=/path` | `omc setup --plugin-dir-mode`   | Dev mode + manual env: agents/skills loaded from `/path`            |
+| **Local dev checkout, no OMC shim**   | `claude --plugin-dir /path` + `export OMQ_PLUGIN_ROOT=/path` | `omc setup --plugin-dir-mode`   | Dev mode + manual env: agents/skills loaded from `/path`            |
 | **Local dev, want bundled skills**    | `omc --plugin-dir /path`                                     | `omc setup --no-plugin`         | Forces local bundled skills to `~/.claude/skills/`, ignoring plugin |
 | **Troubleshooting a specific path**   | N/A                                                          | `omc doctor --plugin-dir /path` | Diagnostics show status for `/path`                                 |
 
@@ -533,7 +533,7 @@ omc ask claude --agent-prompt executor --prompt "create an implementation plan"
 
 - Provider matrix: `claude | codex | gemini | antigravity | grok | cursor`
 - Artifacts: `.omq/artifacts/ask/{provider}-{slug}-{timestamp}.md`
-- Canonical env vars: `OMC_ASK_ADVISOR_SCRIPT`, `OMC_ASK_ORIGINAL_TASK`
+- Canonical env vars: `OMQ_ASK_ADVISOR_SCRIPT`, `OMQ_ASK_ORIGINAL_TASK`
 - Phase-1 aliases (deprecated warning): `OMX_ASK_ADVISOR_SCRIPT`, `OMX_ASK_ORIGINAL_TASK`
 - Skill entrypoint: `/oh-my-claudecode:ask <claude|codex|gemini|antigravity|grok|cursor> <prompt>` routes to this command
 
@@ -548,7 +548,7 @@ omc team api claim-task --input '{"team_name":"auth-review","task_id":"1","worke
 
 Supported entrypoints: direct start (`omc team [N:agent] "<task>"`), `status`, `shutdown`, and `api`.
 
-Native team worker worktrees are an opt-in/config-gated runtime-v2 rollout. See [Native Team Worktree Mode](TEAM-WORKTREE-MODE.md) for the worktree path contract, canonical `OMC_TEAM_STATE_ROOT` behavior, status fields, and dirty-worktree cleanup policy.
+Native team worker worktrees are an opt-in/config-gated runtime-v2 rollout. See [Native Team Worktree Mode](TEAM-WORKTREE-MODE.md) for the worktree path contract, canonical `OMQ_TEAM_STATE_ROOT` behavior, status fields, and dirty-worktree cleanup policy.
 
 Topology behavior:
 
@@ -587,7 +587,7 @@ Use OMC's terminal and library surfaces in non-interactive environments:
 
 - Run CLI commands that have deterministic exit codes, for example `omc setup`, `omc ask ...`, `omc session search ... --json`, or repo-owned verification scripts such as `npm run sync-metadata:verify`.
 - Provide authentication through runner environment variables (`ANTHROPIC_API_KEY`) or pre-authenticated provider CLIs for `codex`, `gemini`, `antigravity`, `grok`, or `cursor` when using `omc ask` / `omc team`.
-- Keep state explicit for ephemeral runners by setting `OMC_STATE_DIR` when state must survive worktree deletion or checkout replacement.
+- Keep state explicit for ephemeral runners by setting `OMQ_STATE_DIR` when state must survive worktree deletion or checkout replacement.
 - Avoid interactive slash skills (`/autopilot`, `/ralph`, `/execute`, `/deep-interview`, `/team`) in CI jobs; they require an active Claude Code session and user-visible conversation loop.
 - OMC does not currently provide a VS Code extension or VS Code-specific automation contract. The documented IDE path is to use Claude Code's own integrations, then install OMC through the Claude Code plugin surface.
 - Programmatic Agent SDK usage is supported through the exported TypeScript helpers and the in-process MCP server helpers in this package; it is a Node.js library surface, not an interactive plugin installer.
@@ -1116,7 +1116,7 @@ stopomc
 
 > **Windows**: Native Windows (win32) support is experimental. Features that launch tmux-backed worker panes require a tmux-compatible binary. OMC supports native [psmux](https://github.com/psmux/psmux) for PowerShell 7+ users who want visible Claude Code teammate panes in interactive team workflows, and recommends WSL2 as the fallback when no compatible `tmux` command is installed or native Windows behavior is insufficient. psmux does not force worktree agents, non-interactive/print-mode agents, or model-selected in-process agents into visible panes. Native Windows issues may have limited support.
 
-> **Advanced**: Set `OMC_USE_NODE_HOOKS=1` to use Node.js hooks on macOS/Linux.
+> **Advanced**: Set `OMQ_USE_NODE_HOOKS=1` to use Node.js hooks on macOS/Linux.
 
 ### Available Tools
 

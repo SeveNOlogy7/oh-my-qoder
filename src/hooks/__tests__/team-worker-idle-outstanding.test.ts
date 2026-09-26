@@ -167,7 +167,7 @@ describe('team-worker-hook idle outstanding metadata (issue #3662)', () => {
     // Must NOT be a plain "idle" claim: it must carry outstanding-work metadata.
     expect(text).toContain(`[OMC] ${WORKER} idle`);
     expect(text).toContain('outstanding: 1 unanswered');
-    expect(text).toContain('[OMC_TMUX_INJECT]');
+    expect(text).toContain('[OMQ_TMUX_INJECT]');
   });
 
   it('writes undelivered_inbound_count into the worker_idle event', async () => {

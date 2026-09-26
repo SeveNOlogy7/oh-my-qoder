@@ -2,7 +2,7 @@
  * Integration tests for multi-repo workspace anchor behaviour (Wave 4).
  *
  * Verifies getOmcRoot, getProjectIdentifier, resolveSessionStatePaths,
- * findWorkspaceRoot, and OMC_STATE_DIR precedence across sibling sub-repos
+ * findWorkspaceRoot, and OMQ_STATE_DIR precedence across sibling sub-repos
  * that share a .omq-workspace marker at a common parent directory.
  */
 
@@ -22,7 +22,7 @@ describe('multi-repo workspace anchor', () => {
   let parent: string;
   let repoA: string;
   let repoB: string;
-  const savedOMC_STATE_DIR = process.env.OMC_STATE_DIR;
+  const savedOMC_STATE_DIR = process.env.OMQ_STATE_DIR;
 
   beforeEach(() => {
     clearWorktreeCache();
@@ -36,11 +36,11 @@ describe('multi-repo workspace anchor', () => {
 
   afterEach(() => {
     clearWorktreeCache();
-    // Restore OMC_STATE_DIR
+    // Restore OMQ_STATE_DIR
     if (savedOMC_STATE_DIR === undefined) {
-      delete process.env.OMC_STATE_DIR;
+      delete process.env.OMQ_STATE_DIR;
     } else {
-      process.env.OMC_STATE_DIR = savedOMC_STATE_DIR;
+      process.env.OMQ_STATE_DIR = savedOMC_STATE_DIR;
     }
     if (parent) rmSync(parent, { recursive: true, force: true });
   });
@@ -98,18 +98,18 @@ describe('multi-repo workspace anchor', () => {
     expect(pathsB.effectiveWrite.startsWith(sessionsRoot)).toBe(true);
   });
 
-  it('OMC_STATE_DIR overrides workspace marker and ignores .omq-workspace', () => {
+  it('OMQ_STATE_DIR overrides workspace marker and ignores .omq-workspace', () => {
     writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
     const stateDir = mkdtempSync(join(tmpdir(), 'omc-statedir-'));
     try {
-      process.env.OMC_STATE_DIR = stateDir;
+      process.env.OMQ_STATE_DIR = stateDir;
       clearWorktreeCache();
 
       const root = getOmcRoot(repoA);
 
-      // Must resolve under OMC_STATE_DIR, not under the workspace marker parent
+      // Must resolve under OMQ_STATE_DIR, not under the workspace marker parent
       expect(root.startsWith(stateDir)).toBe(true);
       expect(root.startsWith(parent)).toBe(false);
     } finally {

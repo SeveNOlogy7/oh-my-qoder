@@ -8,7 +8,7 @@ const ROOT = process.cwd();
 const SCRIPT = join(ROOT, 'scripts', 'workflow-drift-guard.mjs');
 const TEMPLATE = join(ROOT, 'templates', 'hooks', 'workflow-drift-guard.mjs');
 const QUESTION_REASON_MARKERS = ['AskUserQuestion', 'allowOther'];
-const AMBIENT_PARENT_LANE_SENTINEL = 'OMC_WORKFLOW_DRIFT_GUARD_AMBIENT_LANE';
+const AMBIENT_PARENT_LANE_SENTINEL = 'OMQ_WORKFLOW_DRIFT_GUARD_AMBIENT_LANE';
 
 interface GuardResult {
   decision?: string;
@@ -19,8 +19,8 @@ interface GuardResult {
 
 function runGuard(input: Record<string, unknown>, env: Record<string, string> = {}) {
   const cleanEnv = { ...process.env };
-  delete cleanEnv.DISABLE_OMC;
-  delete cleanEnv.OMC_SKIP_HOOKS;
+  delete cleanEnv.DISABLE_OMQ;
+  delete cleanEnv.OMQ_SKIP_HOOKS;
   const output = execFileSync(process.execPath, [SCRIPT], {
     input: JSON.stringify(input),
     encoding: 'utf8',
@@ -56,7 +56,7 @@ function makeRepo() {
   return dir;
 }
 
-function restoreEnvironment(name: 'DISABLE_OMC' | 'OMC_SKIP_HOOKS', value: string | undefined) {
+function restoreEnvironment(name: 'DISABLE_OMQ' | 'OMQ_SKIP_HOOKS', value: string | undefined) {
   if (value === undefined) delete process.env[name];
   else process.env[name] = value;
 }
@@ -276,35 +276,35 @@ describe('workflow-drift-guard Stop hook', () => {
   });
 
   it('honors explicit skip controls only when supplied to the child process', () => {
-    expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { DISABLE_OMC: '1' }));
-    expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { DISABLE_OMC: 'true' }));
-    expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { OMC_SKIP_HOOKS: 'workflow-drift-guard' }));
+    expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { DISABLE_OMQ: '1' }));
+    expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { DISABLE_OMQ: 'true' }));
+    expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { OMQ_SKIP_HOOKS: 'workflow-drift-guard' }));
   });
 
   it('clears ambient skip controls before each normal child-process case', () => {
-    const disable = process.env.DISABLE_OMC;
-    const skip = process.env.OMC_SKIP_HOOKS;
+    const disable = process.env.DISABLE_OMQ;
+    const skip = process.env.OMQ_SKIP_HOOKS;
     try {
-      process.env.DISABLE_OMC = '1';
-      process.env.OMC_SKIP_HOOKS = 'workflow-drift-guard';
+      process.env.DISABLE_OMQ = '1';
+      process.env.OMQ_SKIP_HOOKS = 'workflow-drift-guard';
       expectBlock(runGuard(guardInput('PostgreSQL or SQLite?')));
-      expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { DISABLE_OMC: '1' }));
+      expectPass(runGuard(guardInput('PostgreSQL or SQLite?'), { DISABLE_OMQ: '1' }));
     } finally {
-      restoreEnvironment('DISABLE_OMC', disable);
-      restoreEnvironment('OMC_SKIP_HOOKS', skip);
+      restoreEnvironment('DISABLE_OMQ', disable);
+      restoreEnvironment('OMQ_SKIP_HOOKS', skip);
     }
   });
 
   it.skipIf(process.env[AMBIENT_PARENT_LANE_SENTINEL] === '1')('passes the complete suite with disabled ambient parent variables', () => {
     const cleanEnv = { ...process.env };
-    delete cleanEnv.DISABLE_OMC;
-    delete cleanEnv.OMC_SKIP_HOOKS;
+    delete cleanEnv.DISABLE_OMQ;
+    delete cleanEnv.OMQ_SKIP_HOOKS;
     expect(() => execFileSync('npm', ['exec', 'vitest', '--', 'run', 'src/hooks/__tests__/workflow-drift-guard-script.test.ts'], {
       cwd: ROOT,
       env: {
         ...cleanEnv,
-        DISABLE_OMC: '1',
-        OMC_SKIP_HOOKS: 'workflow-drift-guard',
+        DISABLE_OMQ: '1',
+        OMQ_SKIP_HOOKS: 'workflow-drift-guard',
         [AMBIENT_PARENT_LANE_SENTINEL]: '1',
       },
       stdio: 'pipe',

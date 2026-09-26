@@ -66,8 +66,8 @@ describe('task recovery checkpoints', () => {
     const taskPath = absPath(cwd, TeamPaths.taskFile(teamName, taskId));
     mkdirSync(join(taskPath, '..'), { recursive: true });
     writeFileSync(taskPath, JSON.stringify(task()));
-    const previousWorker = process.env.OMC_TEAM_WORKER;
-    process.env.OMC_TEAM_WORKER = `${teamName}/${workerName}`;
+    const previousWorker = process.env.OMQ_TEAM_WORKER;
+    process.env.OMQ_TEAM_WORKER = `${teamName}/${workerName}`;
     const args = {
       team_name: teamName,
       task_id: taskId,
@@ -89,8 +89,8 @@ describe('task recovery checkpoints', () => {
         expect(secondData.checkpoint.updated_at).toBe(firstData.checkpoint.updated_at);
       }
     } finally {
-      if (previousWorker === undefined) delete process.env.OMC_TEAM_WORKER;
-      else process.env.OMC_TEAM_WORKER = previousWorker;
+      if (previousWorker === undefined) delete process.env.OMQ_TEAM_WORKER;
+      else process.env.OMQ_TEAM_WORKER = previousWorker;
     }
   });
 

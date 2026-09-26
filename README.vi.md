@@ -32,7 +32,7 @@
 /omc-setup
 ```
 
-Nếu bạn chạy OMC qua `omc --plugin-dir <path>` hoặc `claude --plugin-dir <path>`, hãy thêm `--plugin-dir-mode` vào `omc setup` (hoặc xuất `OMC_PLUGIN_ROOT` trước) để tránh trùng lặp các kỹ năng/tác nhân mà plugin đã cung cấp trong thời gian chạy. Để xem ma trận quyết định đầy đủ và tất cả các cờ có sẵn, hãy xem [phần Plugin directory flags trong REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags).
+Nếu bạn chạy OMC qua `omc --plugin-dir <path>` hoặc `claude --plugin-dir <path>`, hãy thêm `--plugin-dir-mode` vào `omc setup` (hoặc xuất `OMQ_PLUGIN_ROOT` trước) để tránh trùng lặp các kỹ năng/tác nhân mà plugin đã cung cấp trong thời gian chạy. Để xem ma trận quyết định đầy đủ và tất cả các cờ có sẵn, hãy xem [phần Plugin directory flags trong REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags).
 
 <!-- TODO(i18n): verify translation -->
 
@@ -169,7 +169,7 @@ Nhiều chiến lược cho nhiều tình huống — từ điều phối dựa 
 
 - **Magic keywords** - `ralph`, `ulw`, `plan` để kiểm soát rõ ràng
 - **HUD statusline** - Chỉ số điều phối theo thời gian thực trong status bar
-  - Nếu bạn khởi chạy Claude Code trực tiếp bằng `claude --plugin-dir <path>` (bỏ qua shim `omc`), hãy xuất `OMC_PLUGIN_ROOT=<path>` trong shell của bạn để gói HUD phân giải thành cùng một checkout như trình tải plugin. Xem [phần Plugin directory flags trong REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) để biết chi tiết.
+  - Nếu bạn khởi chạy Claude Code trực tiếp bằng `claude --plugin-dir <path>` (bỏ qua shim `omc`), hãy xuất `OMQ_PLUGIN_ROOT=<path>` trong shell của bạn để gói HUD phân giải thành cùng một checkout như trình tải plugin. Xem [phần Plugin directory flags trong REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) để biết chi tiết.
 
   <!-- TODO(i18n): verify translation -->
 - **Học kỹ năng** - Trích xuất các mẫu tái sử dụng từ các phiên làm việc
@@ -303,9 +303,9 @@ Chuyển tiếp các sự kiện phiên Claude Code đến gateway [OpenClaw](ht
 
 | Biến | Mô tả |
 |------|-------|
-| `OMC_OPENCLAW=1` | Bật OpenClaw |
-| `OMC_OPENCLAW_DEBUG=1` | Bật ghi log gỡ lỗi |
-| `OMC_OPENCLAW_CONFIG=/path/to/config.json` | Thay đổi đường dẫn file cấu hình |
+| `OMQ_OPENCLAW=1` | Bật OpenClaw |
+| `OMQ_OPENCLAW_DEBUG=1` | Bật ghi log gỡ lỗi |
+| `OMQ_OPENCLAW_CONFIG=/path/to/config.json` | Thay đổi đường dẫn file cấu hình |
 
 **Các sự kiện hook được hỗ trợ (6 hoạt động trong bridge.ts):**
 

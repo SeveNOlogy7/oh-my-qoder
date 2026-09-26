@@ -29,8 +29,8 @@ function runSkillInjector(env: NodeJS.ProcessEnv = {}, payload: Record<string, u
     env: {
       ...process.env,
       NODE_ENV: 'test',
-      DISABLE_OMC: '',
-      OMC_SKIP_HOOKS: '',
+      DISABLE_OMQ: '',
+      OMQ_SKIP_HOOKS: '',
       ...env,
     },
     timeout: 15000,
@@ -44,9 +44,9 @@ afterEach(() => {
 
 describe('skill-injector.mjs early disable guard', () => {
   it.each([
-    ['DISABLE_OMC=1', { DISABLE_OMC: '1' }],
-    ['DISABLE_OMC=true', { DISABLE_OMC: 'true' }],
-    ['a trimmed skill-injector skip token', { OMC_SKIP_HOOKS: ' keyword-detector , skill-injector ' }],
+    ['DISABLE_OMQ=1', { DISABLE_OMQ: '1' }],
+    ['DISABLE_OMQ=true', { DISABLE_OMQ: 'true' }],
+    ['a trimmed skill-injector skip token', { OMQ_SKIP_HOOKS: ' keyword-detector , skill-injector ' }],
   ])('does not load the bridge for %s', (_label, guardEnv) => {
     const projectDir = makeTempDir('skill-injector-guard-project-');
     const poisonDir = makeTempDir('skill-injector-poison-');
@@ -92,8 +92,8 @@ Module._load = function(request, parent, isMain) {
 
   it('does not treat unrelated skip tokens or non-exact global values as disabled', () => {
     const output = runSkillInjector({
-      DISABLE_OMC: 'TRUE',
-      OMC_SKIP_HOOKS: 'keyword-detector',
+      DISABLE_OMQ: 'TRUE',
+      OMQ_SKIP_HOOKS: 'keyword-detector',
     });
 
     expect(output.continue).toBe(true);
@@ -157,7 +157,7 @@ Write concise release notes.`);
         session_id: 'worker-learned-skill',
         prompt: 'Please prepare release notes.',
       }),
-      env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, DISABLE_OMC: '', OMC_SKIP_HOOKS: '' },
+      env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, DISABLE_OMQ: '', OMQ_SKIP_HOOKS: '' },
       timeout: 15000,
     });
 
