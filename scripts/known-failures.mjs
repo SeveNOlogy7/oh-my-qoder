@@ -30,6 +30,20 @@ export function stripAnsi(text) {
 }
 
 /**
+ * Remove a GitHub Actions log prefix: `<job>\t<step>\t<ISO timestamp>Z `.
+ *
+ * Without this, "FAIL" never sits at the start of a line and a log holding dozens
+ * of failures parses as zero -- which is indistinguishable from "suite is green".
+ * Step names contain spaces ("Test (captured)") and a test title may itself
+ * contain "Z ", so the fields are anchored on tabs and the timestamp is matched
+ * as a whole instead of located with indexOf('Z ').
+ */
+export function stripRunnerPrefix(line) {
+  const match = /^[^\t]+\t[^\t]+\t\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z /.exec(line);
+  return match ? line.slice(match[0].length) : line;
+}
+
+/**
  * Parse vitest output and extract failed test lines.
  * 
  * Vitest output format:
@@ -43,11 +57,7 @@ export function parseVitestOutput(output) {
   const failures = [];
 
   for (const rawLine of lines) {
-    // A GitHub Actions log prefixes every line with `<job>\t<step>\t<ts>Z `.
-    // Without removing it, "FAIL" never sits at line start and a 49-failure
-    // log parses as zero.
-    const marker = rawLine.indexOf('Z ');
-    const line = marker >= 0 && /^\S+\t\S+\t\d{4}-/.test(rawLine) ? rawLine.slice(marker + 2) : rawLine;
+    const line = stripRunnerPrefix(rawLine);
     // Match FAIL lines: " FAIL  path > test name"
     const match = line.match(/^\s*FAIL\s+(.+)$/);
     if (match) {
