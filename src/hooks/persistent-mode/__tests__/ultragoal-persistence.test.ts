@@ -20,7 +20,7 @@ function runHook(script: string, payload: Record<string, unknown>, env: Record<s
 
 function makeTempProject(prefix: string) {
   const cwd = mkdtempSync(join(tmpdir(), prefix));
-  mkdirSync(join(cwd, '.omc', 'state', 'sessions', 'session-a'), { recursive: true });
+  mkdirSync(join(cwd, '.omq', 'state', 'sessions', 'session-a'), { recursive: true });
   return cwd;
 }
 
@@ -37,14 +37,14 @@ function writeUltragoalState(cwd: string, overrides: Record<string, unknown> = {
     ...overrides,
   };
   writeFileSync(
-    join(cwd, '.omc', 'state', 'sessions', 'session-a', 'ultragoal-state.json'),
+    join(cwd, '.omq', 'state', 'sessions', 'session-a', 'ultragoal-state.json'),
     `${JSON.stringify(state, null, 2)}\n`,
   );
   return state;
 }
 
 function ultragoalStatePath(cwd: string) {
-  return join(cwd, '.omc', 'state', 'sessions', 'session-a', 'ultragoal-state.json');
+  return join(cwd, '.omq', 'state', 'sessions', 'session-a', 'ultragoal-state.json');
 }
 
 function readUltragoalState(cwd: string) {
@@ -562,7 +562,7 @@ describe('ultragoal persistence and Claude /goal enforcement', () => {
       prompt: 'Review whether ultragoal keyword activation steals unrelated prompts',
     });
 
-    const statePath = join(cwd, '.omc', 'state', 'sessions', 'session-a', 'ultragoal-state.json');
+    const statePath = join(cwd, '.omq', 'state', 'sessions', 'session-a', 'ultragoal-state.json');
     expect(existsSync(statePath)).toBe(false);
   });
 

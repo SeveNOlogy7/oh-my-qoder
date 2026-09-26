@@ -99,7 +99,7 @@ describe("readHudConfig", () => {
         const s = String(path);
         return (
           /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(s) ||
-          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omc[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         );
@@ -112,7 +112,7 @@ describe("readHudConfig", () => {
           return JSON.stringify({ someOtherKey: true });
         }
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omc[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         ) {
@@ -164,7 +164,7 @@ describe("readHudConfig", () => {
           });
         }
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omc[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         ) {
@@ -212,7 +212,7 @@ describe("readHudConfig", () => {
           throw new Error("Read error");
         }
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omc[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         ) {
@@ -385,7 +385,7 @@ describe("writeHudConfig", () => {
   it("merges legacy hud-config defaults into the written omcHud payload", () => {
     mockExistsSync.mockImplementation((path) => {
       const s = String(path);
-      return s.endsWith("settings.json") || s.endsWith(".omc/hud-config.json");
+      return s.endsWith("settings.json") || s.endsWith(".omq/hud-config.json");
     });
     mockReadFileSync.mockImplementation((path) => {
       const s = String(path);

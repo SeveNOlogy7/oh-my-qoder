@@ -178,12 +178,12 @@ Aprende una vez, reutiliza para siempre. OMC extrae conocimiento valioso de depu
 
 | | Alcance de Proyecto | Alcance de Usuario |
 |---|---|---|
-| **Ruta** | `.omc/skills/` | `~/.omc/skills/` |
+| **Ruta** | `.omq/skills/` | `~/.omq/skills/` |
 | **Compartido con** | Equipo (controlado por versiones) | Todos tus proyectos |
 | **Prioridad** | Mayor (anula el alcance de usuario) | Menor (respaldo) |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

@@ -80,14 +80,14 @@ function captureFilename(sessionId: string, capturedAt: string): string {
 }
 
 /**
- * Load wiki config from .omc-config.json.
+ * Load wiki config from .omq-config.json.
  * Returns defaults if config doesn't exist or wiki section is missing.
  */
 function loadWikiConfig(root: string): WikiConfig {
   try {
-    const configPath = join(getOmcRoot(root), '.omc-config.json');
+    const configPath = join(getOmcRoot(root), '.omq-config.json');
     // Try active Claude config too
-    const activeConfigPath = join(getClaudeConfigDir(), '.omc-config.json');
+    const activeConfigPath = join(getClaudeConfigDir(), '.omq-config.json');
 
     for (const path of [configPath, activeConfigPath]) {
       if (existsSync(path)) {
@@ -224,7 +224,7 @@ export function onSessionStart(data: { cwd?: string }): { additionalContext?: st
     if (!index || pages.length === 0) return {};
 
     const summary = [
-      `[LLM Wiki: ${pages.length} pages at .omc/wiki/]`,
+      `[LLM Wiki: ${pages.length} pages at .omq/wiki/]`,
       '',
       'Use wiki_query to search, wiki_list to browse, wiki_read to view pages.',
       '',

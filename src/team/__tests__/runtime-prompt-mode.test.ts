@@ -154,7 +154,7 @@ function makeRuntime(cwd: string, agentType: 'gemini' | 'codex' | 'claude' | 'gr
 }
 
 function setupTaskDir(cwd: string): void {
-  const tasksDir = join(cwd, '.omc/state/team/test-team/tasks');
+  const tasksDir = join(cwd, '.omq/state/team/test-team/tasks');
   mkdirSync(tasksDir, { recursive: true });
   writeFileSync(join(tasksDir, '1.json'), JSON.stringify({
     id: '1',
@@ -163,13 +163,13 @@ function setupTaskDir(cwd: string): void {
     status: 'pending',
     owner: null,
   }));
-  const workerDir = join(cwd, '.omc/state/team/test-team/workers/worker-1');
+  const workerDir = join(cwd, '.omq/state/team/test-team/workers/worker-1');
   mkdirSync(workerDir, { recursive: true });
 }
 
 function denyTaskReset(cwd: string): void {
   writeFileSync(
-    join(cwd, '.omc/state/team/test-team/tasks/1.lock'),
+    join(cwd, '.omq/state/team/test-team/tasks/1.lock'),
     JSON.stringify({ pid: process.pid, timestamp: Date.now() }),
   );
 }
@@ -209,7 +209,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     // Should contain -p flag for prompt mode
     expect(launchCmd).toContain("'-p'");
     // Should contain the inbox path reference
-    expect(launchCmd).toContain('.omc/state/team/test-team/workers/worker-1/inbox.md');
+    expect(launchCmd).toContain('.omq/state/team/test-team/workers/worker-1/inbox.md');
     expect(launchCmd).toContain('execute now');
     expect(launchCmd).toContain('concrete progress');
 
@@ -256,7 +256,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     expect((rollbackFailure.cause?.taskCleanupError as Error).message)
       .toBe('worker_layout_task_reset_unconfirmed:worker-1:1');
 
-    const task = JSON.parse(readFileSync(join(cwd, '.omc/state/team/test-team/tasks/1.json'), 'utf-8')) as {
+    const task = JSON.parse(readFileSync(join(cwd, '.omq/state/team/test-team/tasks/1.json'), 'utf-8')) as {
       status: string;
       owner: string | null;
     };
@@ -283,7 +283,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     expect(rollbackFailure.message).toBe('worker_startup_task_reset_unconfirmed:worker-1:1');
     expect(rollbackFailure.cause?.taskCleanupError).toBeInstanceOf(Error);
 
-    const task = JSON.parse(readFileSync(join(cwd, '.omc/state/team/test-team/tasks/1.json'), 'utf-8')) as {
+    const task = JSON.parse(readFileSync(join(cwd, '.omq/state/team/test-team/tasks/1.json'), 'utf-8')) as {
       status: string;
       owner: string | null;
     };
@@ -309,7 +309,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     expect(launchCmd).not.toContain("'--print'");
     // prompt-mode flag for the file-pointer instruction, with the inbox path as its value
     expect(launchCmd).toContain("'-p'");
-    expect(launchCmd).toContain('.omc/state/team/test-team/workers/worker-1/inbox.md');
+    expect(launchCmd).toContain('.omq/state/team/test-team/workers/worker-1/inbox.md');
     // --dangerously-skip-permissions precedes -p (flags before the -p value)
     expect(launchCmd.indexOf("'--dangerously-skip-permissions'")).toBeLessThan(launchCmd.indexOf("'-p'"));
 
@@ -353,7 +353,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
 
     await spawnWorkerForTask(runtime, 'worker-1', 0);
 
-    const inboxPath = join(cwd, '.omc/state/team/test-team/workers/worker-1/inbox.md');
+    const inboxPath = join(cwd, '.omq/state/team/test-team/workers/worker-1/inbox.md');
     const content = readFileSync(inboxPath, 'utf-8');
     expect(content).toContain('Initial Task Assignment');
     expect(content).toContain('Test task');
@@ -377,7 +377,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     expect(launchCmd).toContain('/usr/local/bin/codex');
     expect(launchCmd).toContain('--dangerously-bypass-approvals-and-sandbox');
     expect(launchCmd).not.toContain("'exec'");
-    expect(launchCmd).not.toContain('.omc/state/team/test-team/workers/worker-1/inbox.md');
+    expect(launchCmd).not.toContain('.omq/state/team/test-team/workers/worker-1/inbox.md');
     expect(launchCmd).not.toContain('execute now');
     expect(launchCmd).not.toContain('concrete progress');
 
@@ -423,7 +423,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
 
     await expect(spawnWorkerForTask(runtime, 'worker-1', 0)).rejects.toThrow('worker_pane_not_ready:worker-1');
 
-    const taskPath = join(cwd, '.omc/state/team/test-team/tasks/1.json');
+    const taskPath = join(cwd, '.omq/state/team/test-team/tasks/1.json');
     const task = JSON.parse(readFileSync(taskPath, 'utf-8')) as { status: string; owner: string | null };
     expect(task.status).toBe('pending');
     expect(task.owner).toBeNull();
@@ -454,7 +454,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     expect((rollbackFailure.cause?.taskCleanupError as Error).message)
       .toBe('worker_startup_task_reset_unconfirmed:worker-1:1');
 
-    const task = JSON.parse(readFileSync(join(cwd, '.omc/state/team/test-team/tasks/1.json'), 'utf-8')) as {
+    const task = JSON.parse(readFileSync(join(cwd, '.omq/state/team/test-team/tasks/1.json'), 'utf-8')) as {
       status: string;
       owner: string | null;
     };
@@ -485,7 +485,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     expect(rollbackFailure.cause?.paneCleanupError).toBeInstanceOf(Error);
     expect(rollbackFailure.cause?.taskCleanupError).toBeUndefined();
 
-    const task = JSON.parse(readFileSync(join(cwd, '.omc/state/team/test-team/tasks/1.json'), 'utf-8')) as {
+    const task = JSON.parse(readFileSync(join(cwd, '.omq/state/team/test-team/tasks/1.json'), 'utf-8')) as {
       status: string;
       owner: string | null;
     };
@@ -513,7 +513,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     expect(rollbackFailure.message).toBe('tmux_send-keys_failed');
     expect(rollbackFailure.cause).toBeUndefined();
 
-    const task = JSON.parse(readFileSync(join(cwd, '.omc/state/team/test-team/tasks/1.json'), 'utf-8')) as {
+    const task = JSON.parse(readFileSync(join(cwd, '.omq/state/team/test-team/tasks/1.json'), 'utf-8')) as {
       status: string;
       owner: string | null;
     };
@@ -524,7 +524,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
   });
 
   it('returns empty and skips spawn when task is already in_progress (claim already taken)', async () => {
-    const taskPath = join(cwd, '.omc/state/team/test-team/tasks/1.json');
+    const taskPath = join(cwd, '.omq/state/team/test-team/tasks/1.json');
     writeFileSync(taskPath, JSON.stringify({
       id: '1',
       subject: 'Test task',

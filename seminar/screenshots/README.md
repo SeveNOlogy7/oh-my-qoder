@@ -68,7 +68,7 @@ autopilot: build a React dashboard with user authentication
 │   ✓ Defined API endpoints (12 routes)                                      │
 │   ✓ Database schema designed (3 tables)                                    │
 │                                                                             │
-│   📄 Output: .omc/autopilot/spec.md (428 lines)                            │
+│   📄 Output: .omq/autopilot/spec.md (428 lines)                            │
 │                                                                             │
 │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
 │ ▶ Phase 1: Planning                                              [1m 48s]  │
@@ -84,7 +84,7 @@ autopilot: build a React dashboard with user authentication
 │   ✓ Technical feasibility: APPROVED                                        │
 │   ✓ Risk assessment: LOW                                                   │
 │                                                                             │
-│   📄 Output: .omc/plans/autopilot-impl.md (23 tasks)                       │
+│   📄 Output: .omq/plans/autopilot-impl.md (23 tasks)                       │
 │                                                                             │
 │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
 │ ▶ Phase 2: Execution                                             [4m 32s]  │
@@ -503,7 +503,7 @@ Time →
    /oh-my-claudecode:pipeline review "analyze the authentication system"
    ```
 2. Capture showing each stage completing and passing data to next
-3. Alternative: Check `.omc/logs/pipeline.log` for formatted output
+3. Alternative: Check `.omq/logs/pipeline.log` for formatted output
 
 **ASCII Mockup:**
 ```
@@ -762,7 +762,7 @@ Time →
    /oh-my-claudecode:swarm 5:executor "implement all CRUD operations"
    ```
 2. Capture when agents are actively claiming tasks
-3. Check `.omc/state/swarm-tasks.json` for task status
+3. Check `.omq/state/swarm-tasks.json` for task status
 
 **ASCII Mockup:**
 ```

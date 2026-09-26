@@ -412,13 +412,13 @@ function getLegacyStateFileCandidates(mode: StateToolMode, root: string): string
     getStatePath(mode, root),
     join(getOmcRoot(root), `${normalizedName}.json`),
   ];
-  if (mode === 'autopilot') candidates.push(join(homedir(), '.omc', 'state', 'autopilot-state.json'));
+  if (mode === 'autopilot') candidates.push(join(homedir(), '.omq', 'state', 'autopilot-state.json'));
 
   return [...new Set(candidates)];
 }
 
 function isSharedHomeAutopilotCandidate(path: string, root: string): boolean {
-  const sharedHomeStateRoot = resolve(homedir(), '.omc', 'state');
+  const sharedHomeStateRoot = resolve(homedir(), '.omq', 'state');
   const candidatePath = resolve(path);
   const canonicalStateRoot = resolve(getOmcRoot(root), 'state');
   const isDescendant = (ancestor: string, descendant: string): boolean => {

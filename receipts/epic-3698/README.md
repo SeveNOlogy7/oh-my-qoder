@@ -27,7 +27,7 @@ Kind-specific payload requirements enforced by the verifier:
   retirement policy only when `minorReleases >= 2` AND `daysSinceDeprecation >= 90`
   AND `canonicalShare >= 0.95` for `consecutiveReleasesAtThreshold >= 2` AND
   `knownCriticalIntegrations == 0`. Source adapter: the #3706 alias resolver emits
-  `.omc/state/<project>/state/alias-receipts.json` with `totals.aliasUses` and
+  `.omq/state/<project>/state/alias-receipts.json` with `totals.aliasUses` and
   `byCanonical` counts; canonical share = canonicalUses / (canonicalUses + aliasUses).
   The release-window fields are supplied by #3711 receipts once releases ship.
 - `ci-evidence`: `pullRequests[]` with `number`, `headSha`, and `checks[]`; each check

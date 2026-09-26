@@ -88,8 +88,8 @@ function validateSessionId(sessionId) {
 // ============================================================================
 
 /**
- * Walk up from startDir looking for .omc-workspace, then .git, then fallback
- * to startDir itself. Returns the .omc subdirectory of the found root.
+ * Walk up from startDir looking for .omq-workspace, then .git, then fallback
+ * to startDir itself. Returns the .omq subdirectory of the found root.
  * Mirrors getOmcRoot from src/lib/worktree-paths.ts — inlined synchronously for .mjs.
  *
  * NOTE: OMC_STATE_DIR with content-hash is handled asynchronously in state-root.mjs.
@@ -97,18 +97,18 @@ function validateSessionId(sessionId) {
  * which is correct for the fallback path (bridge handles OMC_STATE_DIR when available).
  *
  * @param {string} startDir - Directory to start from (data.cwd)
- * @returns {string} Absolute path to the .omc root directory
+ * @returns {string} Absolute path to the .omq root directory
  */
 function resolveOmcRootSync(startDir) {
   let dir = startDir;
 
-  // Walk up looking for .omc-workspace or .git
+  // Walk up looking for .omq-workspace or .git
   while (dir) {
-    if (existsSync(join(dir, '.omc-workspace'))) {
-      return join(dir, '.omc');
+    if (existsSync(join(dir, '.omq-workspace'))) {
+      return join(dir, '.omq');
     }
     if (existsSync(join(dir, '.git'))) {
-      return join(dir, '.omc');
+      return join(dir, '.omq');
     }
     const parent = dirname(dir);
     if (parent === dir) break; // filesystem root reached
@@ -116,7 +116,7 @@ function resolveOmcRootSync(startDir) {
   }
 
   // Fallback: use startDir
-  return join(startDir, '.omc');
+  return join(startDir, '.omq');
 }
 
 // ============================================================================
@@ -128,7 +128,7 @@ function resolveOmcRootSync(startDir) {
  * Session-scoped: <omcRoot>/state/sessions/<sid>/skill-sessions-fallback-state.json
  * Legacy:         <omcRoot>/state/skill-sessions-fallback.json
  *
- * @param {string} omcRoot - Resolved .omc root directory
+ * @param {string} omcRoot - Resolved .omq root directory
  * @param {string|undefined} sessionId - Validated session id (or undefined)
  * @returns {{ statePath: string, stateDir: string }}
  */
@@ -632,8 +632,8 @@ if (isDisabled) {
 
   const cfgDir = getClaudeConfigDir();
   USER_SKILLS_DIR = join(cfgDir, 'skills', 'omc-learned');
-  GLOBAL_SKILLS_DIR = join(homedir(), '.omc', 'skills');
-  PROJECT_SKILLS_SUBDIR = join('.omc', 'skills');
+  GLOBAL_SKILLS_DIR = join(homedir(), '.omq', 'skills');
+  PROJECT_SKILLS_SUBDIR = join('.omq', 'skills');
   SKILL_EXTENSION = '.md';
   MAX_SKILLS_PER_SESSION = 5;
   MAX_LEARNED_SKILL_DESCRIPTOR_CHARS = 1000;

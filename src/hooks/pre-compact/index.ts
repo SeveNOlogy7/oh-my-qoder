@@ -286,7 +286,7 @@ function readTodoSummary(directory: string): {
 
 /**
  * Get summary of active and recent background jobs from SQLite DB
- * Queries .omc/state/jobs.db for Codex/Gemini job statuses
+ * Queries .omq/state/jobs.db for Codex/Gemini job statuses
  */
 async function getActiveJobsSummary(directory: string): Promise<{
   activeJobs: Array<{ jobId: string; provider: string; model: string; agentRole: string; spawnedAt: string }>;
@@ -369,8 +369,8 @@ export function collectPlanRefs(
   }
 
   // Boulder plan (OMC orchestrator)
-  // readBoulderState resolves {directory}/.omc/boulder.json itself, so pass
-  // the project directory, not the already-resolved .omc root.
+  // readBoulderState resolves {directory}/.omq/boulder.json itself, so pass
+  // the project directory, not the already-resolved .omq root.
   try {
     const boulder = readBoulderState(directory);
     if (boulder && boulder.active) {

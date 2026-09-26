@@ -114,14 +114,14 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
     // The pinned path and everything chaining through it still resolve
     for (const v of [STALE, ...LEGACY]) expect(hookResolves(v)).toBe(true);
     // No aside directory survives a clean run
-    expect(readdirSync(pluginDir).filter(n => n.includes('.omc-stale-'))).toEqual([]);
+    expect(readdirSync(pluginDir).filter(n => n.includes('.omq-stale-'))).toEqual([]);
   });
 
   it('restores the backup when only a squatter holds the pinned path', () => {
     // Exactly the damage observed in the wild: the real version was moved aside
     // and something re-created the path with nothing but a .DS_Store.
     const stale = writeVersion(STALE);
-    const aside = `${stale}.omc-stale-999999`;
+    const aside = `${stale}.omq-stale-999999`;
     renameSync(stale, aside);
     mkdirSync(stale);
     writeFileSync(join(stale, '.DS_Store'), 'x');
@@ -140,7 +140,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
     // rename(dir -> symlink) raises ENOTDIR on POSIX, and existsSync cannot see
     // a dangling link, so this only works if the occupant is unlinked by lstat.
     const stale = writeVersion(STALE);
-    const aside = `${stale}.omc-stale-999998`;
+    const aside = `${stale}.omq-stale-999998`;
     renameSync(stale, aside);
     symlinkSync(join(pluginDir, 'gone-away'), stale, 'dir');
     expect(existsSync(stale)).toBe(false);            // follows the broken link
@@ -176,7 +176,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
       installedPlugins();
 
       const stale = writeVersion(STALE);
-      const aside = `${stale}.omc-stale-999996`;
+      const aside = `${stale}.omq-stale-999996`;
       renameSync(stale, aside);
       mkdirSync(join(stale, ...junk.slice(0, -1)), { recursive: true });
       writeFileSync(join(stale, ...junk), 'x');
@@ -193,7 +193,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
   it('discards the backup when the path carries real plugin payload', () => {
     // The counter-case: a genuine reinstall must win over an older backup.
     const stale = writeVersion(STALE);
-    const aside = `${stale}.omc-stale-999995`;
+    const aside = `${stale}.omq-stale-999995`;
     renameSync(stale, aside);
     writeVersion(STALE);                       // reinstalled, has scripts/run.cjs
     mkdirSync(join(pluginDir, STALE, 'hooks'), { recursive: true });
@@ -209,7 +209,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
 
   it('leaves a backup alone while its owning purge is still running', () => {
     const stale = writeVersion(STALE);
-    const aside = `${stale}.omc-stale-${process.pid}`;   // this process is alive
+    const aside = `${stale}.omq-stale-${process.pid}`;   // this process is alive
     renameSync(stale, aside);
     makeStale(aside);
 
@@ -224,7 +224,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
     // Both entries present. Whichever order readdir returns them in, the backup
     // must be restored before the squatter can be demoted.
     const stale = writeVersion(STALE);
-    const aside = `${stale}.omc-stale-999997`;
+    const aside = `${stale}.omq-stale-999997`;
     renameSync(stale, aside);
     mkdirSync(stale);
     writeFileSync(join(stale, '.DS_Store'), 'x');
@@ -241,13 +241,13 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
   });
 
   it('never destroys the namespace for an aside entry with no version prefix', () => {
-    // A bare `.omc-stale-<pid>` has an empty prefix, so the "original" path is the
+    // A bare `.omq-stale-<pid>` has an empty prefix, so the "original" path is the
     // plugin namespace itself.  Renaming the entry over its own parent reports
     // ENOTEMPTY, which the placement helper would read as an occupied path and
     // clear recursively — taking the active version and every sibling with it.
     const stale = writeVersion(STALE);
     makeStale(stale);
-    const orphan = join(pluginDir, '.omc-stale-999994');
+    const orphan = join(pluginDir, '.omq-stale-999994');
     mkdirSync(join(orphan, 'scripts'), { recursive: true });
     writeFileSync(join(orphan, 'scripts', 'run.cjs'), '//\n');
     makeStale(orphan);
@@ -271,7 +271,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
     mkdirSync(join(elsewhere, 'random'), { recursive: true });
 
     const stale = writeVersion(STALE);
-    const aside = `${stale}.omc-stale-999993`;
+    const aside = `${stale}.omq-stale-999993`;
     renameSync(stale, aside);
     symlinkSync(elsewhere, stale, 'dir');
     expect(existsSync(stale)).toBe(true);       // the link resolves…
@@ -288,7 +288,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
   it('discards the backup when the path redirects to a real plugin root', () => {
     // The counter-case: a completed redirect is usable and the backup is litter.
     const stale = writeVersion(STALE);
-    const aside = `${stale}.omc-stale-999992`;
+    const aside = `${stale}.omq-stale-999992`;
     renameSync(stale, aside);
     symlinkSync(join(pluginDir, ACTIVE), stale, 'dir');
     makeStale(aside);
@@ -351,7 +351,7 @@ describe('invariant across every cache shape', () => {
 
     let aside: string | null = null;
     if (backup !== 'none') {
-      aside = `${V}.omc-stale-${backup.endsWith('live') ? process.pid : DEAD_PID}`;
+      aside = `${V}.omq-stale-${backup.endsWith('live') ? process.pid : DEAD_PID}`;
       if (backup.startsWith('payload')) {
         // A backup this purge created came from a live version, so it is a
         // complete root — the same shape writeVersion() produces.
@@ -376,7 +376,7 @@ describe('invariant across every cache shape', () => {
     && existsSync(join(dir, 'scripts'));
 
   const intactBackupSurvives = () =>
-    readdirSync(pluginDir).filter(n => n.includes('.omc-stale-'))
+    readdirSync(pluginDir).filter(n => n.includes('.omq-stale-'))
       .some(n => loadableRoot(join(pluginDir, n)));
 
   it('never ends with a broken pinned path and nothing to show for it', () => {

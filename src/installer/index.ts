@@ -43,8 +43,8 @@ export const SKILLS_DIR = join(CLAUDE_CONFIG_DIR, 'skills');
 export const HOOKS_DIR = join(CLAUDE_CONFIG_DIR, 'hooks');
 export const HUD_DIR = join(CLAUDE_CONFIG_DIR, 'hud');
 export const SETTINGS_FILE = join(CLAUDE_CONFIG_DIR, 'settings.json');
-export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omc-version.json');
-const OMC_MANAGED_SKILL_MARKER = '.omc-managed';
+export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omq-version.json');
+const OMC_MANAGED_SKILL_MARKER = '.omq-managed';
 const PLUGIN_FULL_SKILL_BODIES_DIR = 'skill-bodies';
 const PLUGIN_COMPACT_SKILL_SHIM_MARKER = '<!-- OMC:COMPACT-PLUGIN-SKILL -->';
 
@@ -306,14 +306,14 @@ export interface InstallOptions {
    * `<configDir>` because the user is launching OMC via
    * `claude --plugin-dir <path>` (or `omc --plugin-dir <path>`) and the
    * plugin already provides them at runtime. HUD, hooks, CLAUDE.md, and
-   * `.omc-config.json` are still installed. Mutually exclusive with
+   * `.omq-config.json` are still installed. Mutually exclusive with
    * `noPlugin` (the CLI gives `noPlugin` precedence).
    */
   pluginDirMode?: boolean;
 }
 
 /**
- * Read hudEnabled from .omc-config.json without importing auto-update
+ * Read hudEnabled from .omq-config.json without importing auto-update
  * (avoids circular dependency since auto-update imports from installer)
  */
 export function isHudEnabledInConfig(): boolean {
@@ -1262,7 +1262,7 @@ export function prunePluginDuplicateSkills(log: (msg: string) => void): string[]
   const removed: string[] = [];
   for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    if (entry.name === 'omc-learned' || entry.name === '.omc-trash') continue;
+    if (entry.name === 'omc-learned' || entry.name === '.omq-trash') continue;
 
     // Only prune skills whose name matches a plugin-provided skill
     if (!pluginSkillNames.has(entry.name)) continue;
@@ -1275,7 +1275,7 @@ export function prunePluginDuplicateSkills(log: (msg: string) => void): string[]
 
       // Safety check: only remove if the standalone content exactly matches the
       // plugin's copy, OR the directory is explicitly marked as OMC-owned via the
-      // .omc-managed marker file. Frontmatter structure alone is not a reliable
+      // .omq-managed marker file. Frontmatter structure alone is not a reliable
       // ownership signal — user skills routinely use the same ---/name: format.
       const pluginContent = pluginSkillHashes.get(entry.name);
       const skillDir = join(skillsDir, entry.name);
@@ -2656,7 +2656,7 @@ export function install(options: InstallOptions = {}): InstallResult {
     } else if (hudDisabledByOption) {
       log('Skipping HUD statusline (user opted out)');
     } else if (hudDisabledByConfig) {
-      log('Skipping HUD statusline (hudEnabled is false in .omc-config.json)');
+      log('Skipping HUD statusline (hudEnabled is false in .omq-config.json)');
     } else {
       log('Installing HUD statusline...');
     }
@@ -2708,7 +2708,7 @@ export function install(options: InstallOptions = {}): InstallResult {
         runningAsPlugin,
       });
 
-      // 3. Persist the detected node binary path into .omc-config.json so that
+      // 3. Persist the detected node binary path into .omq-config.json so that
       //    find-node.sh (used in hooks/hooks.json) can locate it at hook runtime
       //    even when node is not on PATH (nvm/fnm users, issue #892).
       try {
@@ -2721,7 +2721,7 @@ export function install(options: InstallOptions = {}): InstallResult {
         if (detectedNode !== 'node') {
           omcConfig.nodeBinary = detectedNode;
           writeFileSync(configPath, JSON.stringify(omcConfig, null, 2));
-          log(`  Saved node binary path to .omc-config.json: ${detectedNode}`);
+          log(`  Saved node binary path to .omq-config.json: ${detectedNode}`);
         }
       } catch {
         log('  Warning: Could not save node binary path (non-fatal)');

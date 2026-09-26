@@ -19,7 +19,7 @@ async function captureLog(fn: () => Promise<void>): Promise<string[]> {
 
 /** Helper: init minimal team state on disk */
 async function initTeamState(teamName: string, wd: string): Promise<void> {
-  const base = join(wd, '.omc', 'state', 'team', teamName);
+  const base = join(wd, '.omq', 'state', 'team', teamName);
   await mkdir(join(base, 'tasks'), { recursive: true });
   await mkdir(join(base, 'workers', 'worker-1'), { recursive: true });
   await mkdir(join(base, 'mailbox'), { recursive: true });
@@ -212,7 +212,7 @@ describe('teamCommand api operations', () => {
 
   it('ignores stale team state without a live tmux session when enforcing leader spawn gate', async () => {
     wd = await mkdtemp(join(tmpdir(), 'omc-team-stale-gate-'));
-    const stale = join(wd, '.omc', 'state', 'team', 'stale-team');
+    const stale = join(wd, '.omq', 'state', 'team', 'stale-team');
     await mkdir(stale, { recursive: true });
     await writeFile(join(stale, 'config.json'), JSON.stringify({
       name: 'stale-team',
@@ -234,7 +234,7 @@ describe('teamCommand api operations', () => {
     wd = await mkdtemp(join(tmpdir(), 'omc-team-governance-'));
     previousCwd = process.cwd();
     process.chdir(wd);
-    const base = join(wd, '.omc', 'state', 'team', 'demo-team');
+    const base = join(wd, '.omq', 'state', 'team', 'demo-team');
     await mkdir(base, { recursive: true });
     await writeFile(join(base, 'manifest.json'), JSON.stringify({
       schema_version: 2,
@@ -442,7 +442,7 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
     expect(parsed.teamName.endsWith('-')).toBe(false);
 
     const slugWd = await mkdtemp(join(tmpdir(), 'omc-team-slug-'));
-    await mkdir(join(slugWd, '.omc', 'state', 'team', parsed.teamName), { recursive: true });
+    await mkdir(join(slugWd, '.omq', 'state', 'team', parsed.teamName), { recursive: true });
     expect(resolveAvailableTeamName(parsed.teamName, slugWd)).toBe(`${parsed.teamName.slice(0, 28).replace(/-$/g, '')}-2`);
     await rm(slugWd, { recursive: true, force: true });
   });

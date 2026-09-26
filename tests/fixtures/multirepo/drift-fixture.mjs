@@ -1,6 +1,6 @@
 // Drift fixture for scripts/ci/check-multirepo-paths.mjs
 //
-// This file intentionally contains a raw .omc construction that bypasses
+// This file intentionally contains a raw .omq construction that bypasses
 // resolveSessionStatePaths()/getOmcRoot(). The gate must DETECT this when
 // the file is scanned outside its whitelisted parent directory.
 //
@@ -17,5 +17,5 @@ import { join } from 'node:path';
 
 export function intentionallyWrong(dir) {
   // ↓ This is the construction the gate is designed to catch.
-  return join(dir, '.omc', 'state', 'fixture.json');
+  return join(dir, '.omq', 'state', 'fixture.json');
 }

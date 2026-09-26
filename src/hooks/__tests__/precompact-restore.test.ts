@@ -84,7 +84,7 @@ function withPublisherPreload<T>(
 
 function createTempDir(): string {
   const dir = mkdtempSync(join(tmpdir(), 'precompact-restore-test-'));
-  mkdirSync(join(dir, '.omc', 'state'), { recursive: true });
+  mkdirSync(join(dir, '.omq', 'state'), { recursive: true });
   return dir;
 }
 
@@ -131,7 +131,7 @@ function writeCheckpoint(
 
 /** Minimal mirror of getOmcRoot for tests (no OMC_STATE_DIR in test env). */
 function getOmcRootForTest(dir: string): string {
-  return join(dir, '.omc');
+  return join(dir, '.omq');
 }
 
 
@@ -157,7 +157,7 @@ describe('PreCompact writer - plan anchors (issue #3730)', () => {
 
   it('captures PRD anchors when a PRD is active', async () => {
     // Arrange: session-scoped PRD (ralph PRD mode)
-    // PRD lives at .omc/state/sessions/{sessionId}/prd.json
+    // PRD lives at .omq/state/sessions/{sessionId}/prd.json
     const prdDir = join(getOmcRootForTest(tempDir), 'state', 'sessions', 'test-session');
     mkdirSync(prdDir, { recursive: true });
     writeFileSync(
@@ -458,7 +458,7 @@ describe('PreCompact restore (issue #3730)', () => {
       .not.toContain('EXTERNAL_HARD_LINK_CHECKPOINT_MARKER');
   });
 
-  it('rejects a symlinked .omc/state ancestor before reading external checkpoints', async () => {
+  it('rejects a symlinked .omq/state ancestor before reading external checkpoints', async () => {
     const omcRoot = getOmcRootForTest(tempDir);
     const statePath = join(omcRoot, 'state');
     rmSync(statePath, { recursive: true, force: true });
@@ -728,14 +728,14 @@ syncBuiltinESMExports();
       },
       plan_refs: {
         prd: {
-          path: '/repo/.omc/state/session/s1/prd.json',
+          path: '/repo/.omq/state/session/s1/prd.json',
           title: 'Fix the login bug',
           status: 'in_progress',
           stories_total: 4,
           stories_completed: 2,
         },
         boulder: {
-          active_plan: '/repo/.omc/plans/refactor.md',
+          active_plan: '/repo/.omq/plans/refactor.md',
           plan_name: 'refactor',
           progress: { total: 6, completed: 3, isComplete: false },
         },

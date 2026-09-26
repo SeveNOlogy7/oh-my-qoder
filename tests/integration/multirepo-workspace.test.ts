@@ -3,7 +3,7 @@
  *
  * Verifies getOmcRoot, getProjectIdentifier, resolveSessionStatePaths,
  * findWorkspaceRoot, and OMC_STATE_DIR precedence across sibling sub-repos
- * that share a .omc-workspace marker at a common parent directory.
+ * that share a .omq-workspace marker at a common parent directory.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -26,7 +26,7 @@ describe('multi-repo workspace anchor', () => {
 
   beforeEach(() => {
     clearWorktreeCache();
-    // Fresh temp parent dir per test — no .git, no .omc-workspace yet
+    // Fresh temp parent dir per test — no .git, no .omq-workspace yet
     parent = mkdtempSync(join(tmpdir(), 'omc-multirepo-'));
     repoA = join(parent, 'repoA');
     repoB = join(parent, 'repoB');
@@ -45,20 +45,20 @@ describe('multi-repo workspace anchor', () => {
     if (parent) rmSync(parent, { recursive: true, force: true });
   });
 
-  it('sibling sub-repos both resolve .omc root to the parent workspace anchor', () => {
-    writeFileSync(join(parent, '.omc-workspace'), '{}');
+  it('sibling sub-repos both resolve .omq root to the parent workspace anchor', () => {
+    writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
     const rootA = getOmcRoot(repoA);
     const rootB = getOmcRoot(repoB);
-    const expected = join(parent, '.omc');
+    const expected = join(parent, '.omq');
 
     expect(rootA).toBe(expected);
     expect(rootB).toBe(expected);
   });
 
   it('sibling sub-repos share the same project identifier', () => {
-    writeFileSync(join(parent, '.omc-workspace'), '{}');
+    writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
     const idA = getProjectIdentifier(repoA);
@@ -71,7 +71,7 @@ describe('multi-repo workspace anchor', () => {
   });
 
   it('marker with {"id":"myws"} derives project identifier from sanitized id', () => {
-    writeFileSync(join(parent, '.omc-workspace'), JSON.stringify({ id: 'myws' }));
+    writeFileSync(join(parent, '.omq-workspace'), JSON.stringify({ id: 'myws' }));
     clearWorktreeCache();
 
     const id = getProjectIdentifier(repoA);
@@ -83,7 +83,7 @@ describe('multi-repo workspace anchor', () => {
   });
 
   it('session state paths for two sessions under the same workspace are isolated', () => {
-    writeFileSync(join(parent, '.omc-workspace'), '{}');
+    writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
     const pathsA = resolveSessionStatePaths('ralph', 'sessA', repoA);
@@ -92,14 +92,14 @@ describe('multi-repo workspace anchor', () => {
     // Write paths must differ
     expect(pathsA.effectiveWrite).not.toBe(pathsB.effectiveWrite);
 
-    // Both write paths must live under the shared workspace .omc/state/sessions/
-    const sessionsRoot = join(parent, '.omc', 'state', 'sessions');
+    // Both write paths must live under the shared workspace .omq/state/sessions/
+    const sessionsRoot = join(parent, '.omq', 'state', 'sessions');
     expect(pathsA.effectiveWrite.startsWith(sessionsRoot)).toBe(true);
     expect(pathsB.effectiveWrite.startsWith(sessionsRoot)).toBe(true);
   });
 
-  it('OMC_STATE_DIR overrides workspace marker and ignores .omc-workspace', () => {
-    writeFileSync(join(parent, '.omc-workspace'), '{}');
+  it('OMC_STATE_DIR overrides workspace marker and ignores .omq-workspace', () => {
+    writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
     const stateDir = mkdtempSync(join(tmpdir(), 'omc-statedir-'));
@@ -118,7 +118,7 @@ describe('multi-repo workspace anchor', () => {
   });
 
   it('findWorkspaceRoot walks up from a sub-repo and finds the parent marker', () => {
-    writeFileSync(join(parent, '.omc-workspace'), '{}');
+    writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
     const wsRoot = findWorkspaceRoot(repoA);

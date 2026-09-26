@@ -706,7 +706,7 @@ describe('worker launch acknowledgement', () => {
       cwd,
     });
 
-    expect(materialized.wrapperRelativePath).toMatch(/^\.omc\\state\\team\\launch-team\\workers\\worker-1\\launch-attempts\\[0-9a-f-]+\\launch\.cmd$/);
+    expect(materialized.wrapperRelativePath).toMatch(/^\.omq\\state\\team\\launch-team\\workers\\worker-1\\launch-attempts\\[0-9a-f-]+\\launch\.cmd$/);
     expect(Buffer.byteLength(materialized.wrapperRelativePath, 'utf8')).toBeLessThan(256);
     const wrapper = await readFile(materialized.wrapperPath, 'utf8');
     expect(wrapper).toContain('setlocal DisableDelayedExpansion');
@@ -749,7 +749,7 @@ describe('worker launch acknowledgement', () => {
 
   it('uses a safe relative wrapper command when worker cwd is nested below the leader state root', async () => {
     const launchAttempt = await attempt();
-    const workerCwd = join(cwd, '.omc', 'team', 'launch-team', 'worktrees', 'worker-1');
+    const workerCwd = join(cwd, '.omq', 'team', 'launch-team', 'worktrees', 'worker-1');
     await mkdir(workerCwd, { recursive: true });
     const materialized = await materializeWorkerLaunchTransport({
       attempt: launchAttempt,

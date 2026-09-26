@@ -50,7 +50,7 @@ function backdateFile(filePath: string, msAgo: number): void {
 function backdatePrd(directory: string, sessionId?: string, msAgo = 1000): void {
   const prd = readPrd(directory, sessionId);
   expect(prd).not.toBeNull();
-  const prdPath = sessionId ? getSessionPrdPath(directory, sessionId) : join(directory, '.omc', 'prd.json');
+  const prdPath = sessionId ? getSessionPrdPath(directory, sessionId) : join(directory, '.omq', 'prd.json');
   backdateFile(prdPath, msAgo);
 }
 
@@ -67,8 +67,8 @@ function gitCommitAll(directory: string, message: string): void {
 
 function readAuditEntries(directory: string, sessionId?: string): Record<string, unknown>[] {
   const auditDir = sessionId
-    ? join(directory, '.omc', 'state', 'sessions', sessionId)
-    : join(directory, '.omc', 'state');
+    ? join(directory, '.omq', 'state', 'sessions', sessionId)
+    : join(directory, '.omq', 'state');
   const auditPath = join(auditDir, PRD_RECONCILIATION_AUDIT_FILENAME);
   if (!existsSync(auditPath)) {
     return [];
@@ -451,8 +451,8 @@ describe('Ralph PRD Stale-State Detection & Reconciliation (#3669)', () => {
         { id: 'US-001', title: 'A', description: '', acceptanceCriteria: [], priority: 1, passes: false, architectVerified: false },
       ],
     };
-    mkdirSync(join(testDir, '.omc'), { recursive: true });
-    writeFileSync(join(testDir, '.omc', 'prd.json'), JSON.stringify(legacyRaw, null, 2));
+    mkdirSync(join(testDir, '.omq'), { recursive: true });
+    writeFileSync(join(testDir, '.omq', 'prd.json'), JSON.stringify(legacyRaw, null, 2));
 
     const prd = readPrd(testDir);
     expect(prd?.userStories[0].passes).toBe(false);
@@ -473,11 +473,11 @@ describe('Ralph PRD Stale-State Detection & Reconciliation (#3669)', () => {
     const legacy = makePrd({
       reconciliation: { staleAfterMs: 1, observableChecks: { 'US-001': [{ type: 'fileExists', path: 'src/landed.ts' }] } },
     });
-    mkdirSync(join(testDir, '.omc'), { recursive: true });
+    mkdirSync(join(testDir, '.omq'), { recursive: true });
     mkdirSync(join(testDir, 'src'), { recursive: true });
     writeFileSync(join(testDir, 'src', 'landed.ts'), 'x');
-    writeFileSync(join(testDir, '.omc', 'prd.json'), JSON.stringify(legacy, null, 2));
-    const legacyPath = join(testDir, '.omc', 'prd.json');
+    writeFileSync(join(testDir, '.omq', 'prd.json'), JSON.stringify(legacy, null, 2));
+    const legacyPath = join(testDir, '.omq', 'prd.json');
     const legacyBefore = readFileSync(legacyPath, 'utf-8');
 
     const result = ensurePrdForStartup(testDir, 'Project', 'branch', 'task', undefined, 'session-migrate');

@@ -122,7 +122,7 @@ async function clearAwaitingConfirmationFlag(directory, stateName, sessionId) {
   const paths = [
     safeSessionId ? path.join(stateDir, 'sessions', safeSessionId, `${stateName}-state.json`) : null,
     path.join(stateDir, `${stateName}-state.json`),
-    path.join(homedir(), '.omc', 'state', `${stateName}-state.json`),
+    path.join(homedir(), '.omq', 'state', `${stateName}-state.json`),
   ].filter(Boolean);
 
   for (const statePath of paths) {
@@ -363,7 +363,7 @@ function evaluateSkillAsAgentCall(toolName, toolInput, directory) {
 // Allowed path patterns (no warning)
 // Paths are normalized to forward slashes before matching
 const ALLOWED_PATH_PATTERNS = [
-  /^\.omc\//,          // .omc/** (anchored)
+  /^\.omq\//,          // .omq/** (anchored)
   /^\.claude\//,       // .claude/** (anchored)
   /\/\.claude\//,      // any /.claude/ path (intentionally unanchored for absolute paths)
   /CLAUDE\.md$/,

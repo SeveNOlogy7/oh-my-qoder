@@ -953,7 +953,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
 
     await launchCommand(['--print']);
 
-    const runtimeDir = join(configDir, '.omc-launch');
+    const runtimeDir = join(configDir, '.omq-launch');
     expect(process.env.CLAUDE_CONFIG_DIR).toBe(runtimeDir);
     expect(existsSync(join(runtimeDir, 'CLAUDE.md'))).toBe(true);
     expect(readFileSync(join(runtimeDir, 'CLAUDE.md'), 'utf-8')).toContain('# OMC companion');
@@ -1693,7 +1693,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
     writeFileSync(join(configDir, 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC base\n<!-- OMC:END -->\n');
 
     expect(prepareOmcLaunchConfigDir(configDir)).toBe(configDir);
-    expect(existsSync(join(configDir, '.omc-launch'))).toBe(false);
+    expect(existsSync(join(configDir, '.omq-launch'))).toBe(false);
   });
 
   it('does not keep CLAUDE_CONFIG_DIR set when it resolves to the default ~/.claude path', async () => {

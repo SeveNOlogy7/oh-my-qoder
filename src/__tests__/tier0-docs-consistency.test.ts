@@ -67,7 +67,7 @@ describe('Tier-0 contract docs consistency', () => {
     expect(claudeDoc).toContain('<failure_mode_guards>');
     expect(claudeDoc).toContain('use AskUserQuestion instead of ending with a prose question');
     expect(claudeDoc).toContain('git status --short --branch');
-    expect(claudeDoc).toContain('`.omc/state/` or `.omc/handoffs/`');
+    expect(claudeDoc).toContain('`.omq/state/` or `.omq/handoffs/`');
     expect(claudeDoc).toContain('TODO-style placeholder notes');
     expect(claudeDoc).toContain('`test.skip`/`.only`, stub tests');
   });
@@ -108,7 +108,7 @@ describe('Tier-0 contract docs consistency', () => {
 
     expect(agentsDoc).toContain('# oh-my-claudecode - Intelligent Multi-Agent Orchestration');
     expect(agentsDoc).toContain('You are running with oh-my-claudecode (OMC), a multi-agent orchestration layer for Claude Code.');
-    expect(agentsDoc).toContain('`.omc/state/`');
+    expect(agentsDoc).toContain('`.omq/state/`');
     expect(agentsDoc).toContain('Run `omc setup` to install all components. Run `omc doctor` to verify installation.');
     expect(agentsDoc).not.toContain('oh-my-codex');
     expect(agentsDoc).not.toContain('OMX_TEAM_WORKER_LAUNCH_ARGS');

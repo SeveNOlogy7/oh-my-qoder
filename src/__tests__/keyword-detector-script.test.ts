@@ -41,7 +41,7 @@ function runKeywordDetector(
 }
 
 function getRalplanStatePath(cwd: string, sessionId: string) {
-  return join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralplan-state.json');
+  return join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralplan-state.json');
 }
 
 describe('keyword-detector.mjs mode-message dispatch', () => {
@@ -178,7 +178,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
   it('launches the approved Team follow-up instead of re-entering ralplan when OMX planning artifacts already exist', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'keyword-detector-ralplan-followup-'));
     const sessionId = 'session-2714-followup';
-    const sessionStateDir = join(cwd, '.omc', 'state', 'sessions', sessionId);
+    const sessionStateDir = join(cwd, '.omq', 'state', 'sessions', sessionId);
     const omxPlansDir = join(cwd, '.omx', 'plans');
 
     mkdirSync(sessionStateDir, { recursive: true });
@@ -238,7 +238,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
   it('does not launch execution follow-up while ralplan is still active after compact continuation', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'keyword-detector-ralplan-compact-readonly-'));
     const sessionId = 'session-3122-compact-active';
-    const sessionStateDir = join(cwd, '.omc', 'state', 'sessions', sessionId);
+    const sessionStateDir = join(cwd, '.omq', 'state', 'sessions', sessionId);
     const omxPlansDir = join(cwd, '.omx', 'plans');
 
     mkdirSync(sessionStateDir, { recursive: true });
@@ -301,7 +301,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
   it('does not launch execution follow-up from a pending approval plan without a launch hint', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'keyword-detector-ralplan-no-hint-'));
     const sessionId = 'session-3122-no-hint';
-    const sessionStateDir = join(cwd, '.omc', 'state', 'sessions', sessionId);
+    const sessionStateDir = join(cwd, '.omq', 'state', 'sessions', sessionId);
     const omxPlansDir = join(cwd, '.omx', 'plans');
 
     mkdirSync(sessionStateDir, { recursive: true });
@@ -373,7 +373,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
       expect(output.continue).toBe(true);
       expect(output.suppressOutput).toBe(true);
       expect(output.hookSpecificOutput).toBeUndefined();
-      expect(existsSync(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralplan-state.json'))).toBe(false);
+      expect(existsSync(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralplan-state.json'))).toBe(false);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -393,7 +393,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
       expect(output.continue).toBe(true);
       expect(output.suppressOutput).toBe(true);
       expect(output.hookSpecificOutput).toBeUndefined();
-      expect(existsSync(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
+      expect(existsSync(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -412,7 +412,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
       expect(context).toContain('[RALPLAN INIT]');
       expect(context).toContain('[MAGIC KEYWORD: RALPLAN]');
 
-      const statePath = join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralplan-state.json');
+      const statePath = join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralplan-state.json');
       expect(existsSync(statePath)).toBe(true);
 
       const state = JSON.parse(readFileSync(statePath, 'utf-8')) as {
@@ -576,7 +576,7 @@ diff --git a/a b/b
     const sessionId = `session-3411-negative-${prompt.replace(/\W+/g, '-').slice(0, 80)}`;
     const output = runKeywordDetector(prompt, cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const ralphStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+    const ralphStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
@@ -591,7 +591,7 @@ diff --git a/a b/b
     const sessionId = `session-3411-positive-${prompt.replace(/\W+/g, '-').slice(0, 80)}`;
     const output = runKeywordDetector(prompt, cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const ralphStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+    const ralphStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
@@ -603,7 +603,7 @@ diff --git a/a b/b
     const sessionId = 'session-3162-ralph-banter';
     const output = runKeywordDetector('너도 ralph라도 쥐어줘야해?ㅋㅋ', cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const ralphStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+    const ralphStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
@@ -615,7 +615,7 @@ diff --git a/a b/b
     const sessionId = 'session-3162-ultrawork-meta';
     const output = runKeywordDetector('울트라워크랑 랄프는 무슨 관계야?', cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const stateDir = join(cwd, '.omc', 'state', 'sessions', sessionId);
+    const stateDir = join(cwd, '.omq', 'state', 'sessions', sessionId);
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
@@ -640,7 +640,7 @@ diff --git a/a b/b
       const context = output.hookSpecificOutput?.additionalContext ?? '';
 
       expect(context).toContain(`[MAGIC KEYWORD: ${mode.toUpperCase()}]`);
-      expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, `${mode}-state.json`))).toBe(true);
+      expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, `${mode}-state.json`))).toBe(true);
     }
   });
 
@@ -649,7 +649,7 @@ diff --git a/a b/b
     const sessionId = 'session-3162-mixed-intent';
     const output = runKeywordDetector('랄프랑 울트라워크는 무슨 관계야? 울트라워크 돌려', cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const stateDir = join(cwd, '.omc', 'state', 'sessions', sessionId);
+    const stateDir = join(cwd, '.omq', 'state', 'sessions', sessionId);
 
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
     expect(context).toContain('[MAGIC KEYWORD: ULTRAWORK]');
@@ -664,7 +664,7 @@ diff --git a/a b/b
     const context = output.hookSpecificOutput?.additionalContext ?? '';
 
     expect(context).not.toContain('[MAGIC KEYWORD: ULTRAWORK]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ultrawork-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ultrawork-state.json'))).toBe(false);
   });
 
   // Regression: "autonomous" appearing in technical / research prose must not
@@ -681,7 +681,7 @@ diff --git a/a b/b
       sessionId,
     );
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const autopilotStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json');
+    const autopilotStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
@@ -693,7 +693,7 @@ diff --git a/a b/b
     const sessionId = 'session-autopilot-positive';
     const output = runKeywordDetector('autopilot build a todo CLI', cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const autopilotStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json');
+    const autopilotStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: AUTOPILOT]');
@@ -724,7 +724,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain(marker);
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, stateFile))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, stateFile))).toBe(false);
   });
 
   it.each([
@@ -738,7 +738,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(true);
   });
 
   it('does not activate autopilot for colon-prefixed heading help question', () => {
@@ -749,7 +749,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   it('does not activate autopilot for English help-style use questions in the script copy', () => {
@@ -760,7 +760,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   it.each([
@@ -775,7 +775,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(true);
   });
 
   // Regression (issue #3380): a keyword quoted inside reported/example text
@@ -793,7 +793,7 @@ diff --git a/a b/b
       sessionId,
     );
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const autopilotStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json');
+    const autopilotStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
@@ -808,7 +808,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
   });
 
   // Regression (issue #3380, QA round 2): the execution-directive check that
@@ -830,7 +830,7 @@ diff --git a/a b/b
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   // Regression (issue #3382): an informational/reference occurrence of a
@@ -848,7 +848,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
   });
 
   it('does not activate ralph for an informational mention followed by a quoted please phrase', () => {
@@ -863,7 +863,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
   });
 
   it('does not activate autopilot for an informational mention followed by a quoted please phrase', () => {
@@ -878,7 +878,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   // Regression (issue #3380, repo-owner review bot finding against the round-1
@@ -898,7 +898,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   it('does not activate autopilot when asked to implement a regression test for the quoted phrase', () => {
@@ -913,7 +913,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   it('does not activate ralph when asked to address a false positive describing the quoted phrase', () => {
@@ -928,7 +928,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
   });
 
   // Regression (issue #3380, QA round 3): the execution-directive check must
@@ -949,7 +949,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   it('does not activate autopilot for a narrated quote containing a directive, while still detecting an unrelated genuine command', () => {
@@ -965,7 +965,7 @@ diff --git a/a b/b
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: AUTOPILOT]');
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(false);
   });
 
   // Regression (issue #3380, repo-owner review bot finding against commit
@@ -983,7 +983,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
   });
 
   it('still activates autopilot when the mode name alone is quoted for emphasis after an activation verb', () => {
@@ -994,7 +994,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: AUTOPILOT]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'))).toBe(true);
   });
 
   it('still activates ultrawork when the mode name alone is quoted for emphasis after an activation verb', () => {
@@ -1005,7 +1005,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: ULTRAWORK]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ultrawork-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ultrawork-state.json'))).toBe(true);
   });
 
   // Japanese full-width katakana variants must fire on the deployed runtime
@@ -1020,7 +1020,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
   });
 
   it('activates ultrawork for "ウルトラワークで並列実行して" katakana invocation', () => {
@@ -1031,7 +1031,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: ULTRAWORK]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ultrawork-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ultrawork-state.json'))).toBe(true);
   });
 
   it('activates ralplan for bare "ラルプラン" katakana invocation', () => {
@@ -1053,7 +1053,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
   });
 
   it('does not activate ralph for Japanese complaint "ラルフ、また失敗した"', () => {
@@ -1064,7 +1064,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
   });
 
   it.each([
@@ -1079,7 +1079,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain(marker);
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, stateFile))).toBe(false);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, stateFile))).toBe(false);
   });
 
   it('activates ralph for Japanese execution request that asks for the result', () => {
@@ -1090,7 +1090,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
   });
 
   it('does not activate ralph for a leading proper-noun mention ("Ralph Step 0a wiring")', () => {
@@ -1098,7 +1098,7 @@ diff --git a/a b/b
     const sessionId = 'session-ralph-proper-noun';
     const output = runKeywordDetector('Ralph Step 0a wiring is advisory, not a hook.', cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const ralphStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+    const ralphStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
@@ -1110,7 +1110,7 @@ diff --git a/a b/b
     const sessionId = 'session-ralph-hyphen';
     const output = runKeywordDetector('wire ralph-step-0a.sh into its callers', cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const ralphStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+    const ralphStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
@@ -1122,7 +1122,7 @@ diff --git a/a b/b
     const sessionId = 'session-ralph-state-file';
     const output = runKeywordDetector('inspect ralph-state.json without starting the hook', cwd, sessionId);
     const context = output.hookSpecificOutput?.additionalContext ?? '';
-    const ralphStatePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+    const ralphStatePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
 
     expect(output.continue).toBe(true);
     expect(context).not.toContain('[MAGIC KEYWORD: RALPH]');
@@ -1137,7 +1137,7 @@ diff --git a/a b/b
 
     expect(output.continue).toBe(true);
     expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-    expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(true);
   });
 });
 

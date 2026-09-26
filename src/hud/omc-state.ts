@@ -39,9 +39,9 @@ function isStateFileStale(filePath: string): boolean {
 
 /**
  * Resolve state file path with fallback chain:
- * 1. Session-scoped paths (.omc/state/sessions/{id}/{filename}) - newest first
- * 2. Standard path (.omc/state/{filename})
- * 3. Legacy path (.omc/{filename})
+ * 1. Session-scoped paths (.omq/state/sessions/{id}/{filename}) - newest first
+ * 2. Standard path (.omq/state/{filename})
+ * 3. Legacy path (.omq/{filename})
  *
  * Returns the most recently modified matching path, or null if none found.
  * This ensures the HUD displays state from any active session (Issue #456).
@@ -171,7 +171,7 @@ interface UltraworkState {
 
 /**
  * Read Ultrawork state for HUD display.
- * Checks only local .omc/state location.
+ * Checks only local .omq/state location.
  */
 export function readUltraworkStateForHud(
   directory: string,
@@ -217,14 +217,14 @@ interface PRD {
 
 /**
  * Read PRD state for HUD display.
- * Checks both root prd.json and .omc/prd.json.
+ * Checks both root prd.json and .omq/prd.json.
  */
 export function readPrdStateForHud(directory: string): PrdStateForHud | null {
   // Check root first
   let prdPath = join(directory, 'prd.json');
 
   if (!existsSync(prdPath)) {
-    // Check .omc
+    // Check .omq
     prdPath = join(getOmcRoot(directory), 'prd.json');
 
     if (!existsSync(prdPath)) {

@@ -1202,7 +1202,7 @@ const capabilitiesCmd = program
   .addHelpText('after', `
 Examples:
   $ omc capabilities lock
-  $ omc capabilities lock --json --lockfile .omc/capabilities.lock.json
+  $ omc capabilities lock --json --lockfile .omq/capabilities.lock.json
   $ omc capabilities check --json`);
 
 capabilitiesCmd
@@ -1515,7 +1515,7 @@ program
 /**
  * Ultragoal command - Durable repo-native multi-goal workflow with Claude /goal handoff
  *
- * Writes plan/ledger artifacts under .omc/ultragoal/ and prints model-facing
+ * Writes plan/ledger artifacts under .omq/ultragoal/ and prints model-facing
  * handoff text that tells the active Claude agent when to invoke /goal,
  * checkpoint progress, and gate final completion behind ai-slop-cleaner +
  * verification + $code-review evidence. The shell cannot mutate the Claude

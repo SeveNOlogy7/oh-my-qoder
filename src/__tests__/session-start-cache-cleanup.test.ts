@@ -30,9 +30,9 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
     fakeCacheBase = join(fakeHome, '.claude', 'plugins', 'cache', 'omc', 'oh-my-claudecode');
     fakeProject = join(tmpDir, 'project');
 
-    // Create fake project directory with .omc
-    mkdirSync(join(fakeProject, '.omc', 'state'), { recursive: true });
-    // session-start validateCwd requires a real workspace anchor (.git / .omc-workspace)
+    // Create fake project directory with .omq
+    mkdirSync(join(fakeProject, '.omq', 'state'), { recursive: true });
+    // session-start validateCwd requires a real workspace anchor (.git / .omq-workspace)
     mkdirSync(join(fakeProject, '.git'), { recursive: true });
 
     // Create fake cache base
@@ -93,8 +93,8 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
   it('keeps explicit external plugin roots authoritative for update checks', () => {
     createFakeVersion('4.14.5');
     const externalRoot = createExternalPluginRoot('4.14.4');
-    const updateCache = join(fakeHome, '.claude', '.omc', 'update-check.json');
-    mkdirSync(join(fakeHome, '.claude', '.omc'), { recursive: true });
+    const updateCache = join(fakeHome, '.claude', '.omq', 'update-check.json');
+    mkdirSync(join(fakeHome, '.claude', '.omq'), { recursive: true });
     writeFileSync(updateCache, JSON.stringify({
       timestamp: Date.now(),
       latestVersion: '4.14.5',
@@ -112,8 +112,8 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
   it('uses latest managed cache version for stale managed cache roots', () => {
     createFakeVersion('4.14.4');
     createFakeVersion('4.14.5');
-    const updateCache = join(fakeHome, '.claude', '.omc', 'update-check.json');
-    mkdirSync(join(fakeHome, '.claude', '.omc'), { recursive: true });
+    const updateCache = join(fakeHome, '.claude', '.omq', 'update-check.json');
+    mkdirSync(join(fakeHome, '.claude', '.omq'), { recursive: true });
     writeFileSync(updateCache, JSON.stringify({
       timestamp: Date.now(),
       latestVersion: '4.14.5',

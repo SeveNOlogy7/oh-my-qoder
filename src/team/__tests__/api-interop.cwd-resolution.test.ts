@@ -11,7 +11,7 @@ describe('team api working-directory resolution', () => {
   const teamName = 'resolution-team';
 
   async function seedTeamState(): Promise<string> {
-    const base = join(cwd, '.omc', 'state', 'team', teamName);
+    const base = join(cwd, '.omq', 'state', 'team', teamName);
     await mkdir(join(base, 'tasks'), { recursive: true });
     await mkdir(join(base, 'mailbox'), { recursive: true });
     await writeFile(join(base, 'config.json'), JSON.stringify({
@@ -112,7 +112,7 @@ describe('team api working-directory resolution', () => {
   it('reads recovery results from canonical leader state rather than a colliding foreign worker cwd', async () => {
     const leaderStateRoot = await seedTeamState();
     const foreignCwd = join(cwd, 'worktrees', 'worker-1', 'nested');
-    const foreignTeamRoot = join(foreignCwd, '.omc', 'state', 'team', teamName);
+    const foreignTeamRoot = join(foreignCwd, '.omq', 'state', 'team', teamName);
     await mkdir(foreignTeamRoot, { recursive: true });
     await writeFile(join(foreignTeamRoot, 'config.json'), JSON.stringify({
       name: teamName,

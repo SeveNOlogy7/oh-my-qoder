@@ -58,19 +58,19 @@ function withTempDir(fn) {
 }
 
 function skillStatePath(tempDir, sessionId) {
-  return join(tempDir, '.omc', 'state', 'sessions', sessionId, 'skill-active-state.json');
+  return join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json');
 }
 
 function legacySkillStatePath(tempDir) {
-  return join(tempDir, '.omc', 'state', 'skill-active-state.json');
+  return join(tempDir, '.omq', 'state', 'skill-active-state.json');
 }
 
 function ralplanStatePath(tempDir, sessionId) {
-  return join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralplan-state.json');
+  return join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralplan-state.json');
 }
 
 function writeSkillStateFixtures(tempDir, sessionId, skillName = 'plan') {
-  mkdirSync(join(tempDir, '.omc', 'state', 'sessions', sessionId), { recursive: true });
+  mkdirSync(join(tempDir, '.omq', 'state', 'sessions', sessionId), { recursive: true });
   writeFileSync(
     skillStatePath(tempDir, sessionId),
     JSON.stringify({
@@ -84,7 +84,7 @@ function writeSkillStateFixtures(tempDir, sessionId, skillName = 'plan') {
       stale_ttl_ms: 900000,
     }),
   );
-  mkdirSync(join(tempDir, '.omc', 'state'), { recursive: true });
+  mkdirSync(join(tempDir, '.omq', 'state'), { recursive: true });
   writeFileSync(
     legacySkillStatePath(tempDir),
     JSON.stringify({
@@ -95,7 +95,7 @@ function writeSkillStateFixtures(tempDir, sessionId, skillName = 'plan') {
 }
 
 function writeRalplanStateFixture(tempDir, sessionId, overrides = {}) {
-  mkdirSync(join(tempDir, '.omc', 'state', 'sessions', sessionId), { recursive: true });
+  mkdirSync(join(tempDir, '.omq', 'state', 'sessions', sessionId), { recursive: true });
   writeFileSync(
     ralplanStatePath(tempDir, sessionId),
     JSON.stringify({
@@ -896,9 +896,9 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
       .toContain('produced valid output');
 
     const taskSummary = withTempDir((tempDir) => {
-      mkdirSync(join(tempDir, '.omc', 'state'), { recursive: true });
+      mkdirSync(join(tempDir, '.omq', 'state'), { recursive: true });
       writeFileSync(
-        join(tempDir, '.omc', 'state', 'subagent-tracking.json'),
+        join(tempDir, '.omq', 'state', 'subagent-tracking.json'),
         JSON.stringify({
           agents: [{ status: 'running', agent_type: 'oh-my-claudecode:executor' }],
           total_completed: 1,

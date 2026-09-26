@@ -354,7 +354,7 @@ describe("plan output configuration", () => {
   it("includes plan output defaults", () => {
     const config = loadConfig();
     expect(config.planOutput).toEqual({
-      directory: ".omc/plans",
+      directory: ".omq/plans",
       filenameTemplate: "{{name}}.md",
     });
   });

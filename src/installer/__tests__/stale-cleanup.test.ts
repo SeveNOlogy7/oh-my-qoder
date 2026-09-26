@@ -54,7 +54,7 @@ function createUserSkillDir(dir: string, skillName: string): void {
 }
 
 function createManagedSkillMarker(dir: string, skillName: string): void {
-  writeFileSync(join(dir, skillName, '.omc-managed'), 'omc-managed\n');
+  writeFileSync(join(dir, skillName, '.omq-managed'), 'omc-managed\n');
 }
 
 function historicalAgent(filename: string, fixturePath = filename): Buffer {
@@ -701,7 +701,7 @@ describe('prunePluginDuplicateSkills', () => {
       join(customSkillDir, 'SKILL.md'),
       '---\nname: ralph\ndescription: My custom ralph workflow\n---\n\n# My Custom Ralph\nThis is my personalized version.\n',
     );
-    // No .omc-managed marker — this is user-owned
+    // No .omq-managed marker — this is user-owned
 
     const removed = prune(log);
 

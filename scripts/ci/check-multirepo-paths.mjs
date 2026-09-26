@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * AST-grep CI gate: detect raw .omc path constructions that bypass
+ * AST-grep CI gate: detect raw .omq path constructions that bypass
  * resolveSessionStatePaths() / getOmcRoot() / resolveOmcStateRoot().
  *
  * Exits non-zero if any match is found outside the whitelist.
@@ -21,7 +21,7 @@ const rootArgIdx = process.argv.indexOf('--root');
 const hasRootOverride = rootArgIdx !== -1;
 const searchRoot = hasRootOverride ? resolve(process.argv[rootArgIdx + 1]) : REPO_ROOT;
 
-// Files/dirs that are intentionally allowed to contain raw .omc constructions.
+// Files/dirs that are intentionally allowed to contain raw .omq constructions.
 // Canonical delegators own the path logic; specific scripts own workspace-marker
 // resolution; tests assert on constructed paths.
 const WHITELIST_FILES = new Set([
@@ -29,14 +29,14 @@ const WHITELIST_FILES = new Set([
   'src/lib/worktree-paths.ts',
   'scripts/lib/state-root.mjs',
   'scripts/lib/state-root.cjs',
-  // The gate itself (contains '.omc' literals in its own patterns)
+  // The gate itself (contains '.omq' literals in its own patterns)
   'scripts/ci/check-multirepo-paths.mjs',
   // Hook scripts that resolve workspace markers inline (own resolver, pre-dist)
   'scripts/post-tool-verifier.mjs',
   'scripts/pre-tool-enforcer.mjs',
   'scripts/skill-injector.mjs',
   'scripts/session-start.mjs',
-  // Multi-repo test fixtures and audits (construct fake .omc trees)
+  // Multi-repo test fixtures and audits (construct fake .omq trees)
   'scripts/smoke-multirepo.mjs',
   'scripts/audit-multirepo-e2e.mjs',
 ].map(p => resolve(REPO_ROOT, p)));
@@ -69,7 +69,7 @@ function isWhitelisted(filePath) {
  * A match is benign when the first argument resolves to a known GLOBAL config root
  * (homedir(), os.homedir(), getClaudeConfigDir(), CLAUDE_CONFIG_DIR). These are
  * NOT workspace state — they're per-user installs of the OMC binary itself.
- * The multi-repo enforcement applies only to workspace-scoped `.omc/`.
+ * The multi-repo enforcement applies only to workspace-scoped `.omq/`.
  */
 // Global config first-arg patterns. When join()'s first arg is one of these,
 // the construction is a per-user OMC install config path (NOT workspace state).
@@ -81,7 +81,7 @@ const GLOBAL_FIRST_ARG_PATTERNS = [
   /^(?:path\.)?join\(\s*configDir\s*,/,
 ];
 function isGlobalConfigMatch(matchText) {
-  // matchText looks like: join(homedir(), '.omc', 'state', ...) or path.join(os.homedir(), '.omc', ...)
+  // matchText looks like: join(homedir(), '.omq', 'state', ...) or path.join(os.homedir(), '.omq', ...)
   // Args may span lines — normalize whitespace before matching.
   const normalized = matchText.replace(/\s+/g, ' ').trimStart();
   return GLOBAL_FIRST_ARG_PATTERNS.some(re => re.test(normalized));
@@ -100,21 +100,21 @@ const { parse, Lang } = sg;
 
 // Patterns to search — (language, pattern string) pairs
 const TS_PATTERNS = [
-  "join($_, '.omc', $$$)",
-  'join($_, ".omc", $$$)',
-  "path.join($_, '.omc', $$$)",
-  "`${$_}/.omc/$$$`",
-  "`${$_}\\.omc\\$$$`",
+  "join($_, '.omq', $$$)",
+  'join($_, ".omq", $$$)',
+  "path.join($_, '.omq', $$$)",
+  "`${$_}/.omq/$$$`",
+  "`${$_}\\.omq\\$$$`",
 ];
 const JS_PATTERNS = [
-  "join($_, '.omc', $$$)",
-  'join($_, ".omc", $$$)',
-  "path.join($_, '.omc', $$$)",
-  "`${$_}/.omc/$$$`",
-  "`${$_}\\.omc\\$$$`",
+  "join($_, '.omq', $$$)",
+  'join($_, ".omq", $$$)',
+  "path.join($_, '.omq', $$$)",
+  "`${$_}/.omq/$$$`",
+  "`${$_}\\.omq\\$$$`",
 ];
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'bridge', 'coverage', '.omc']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'bridge', 'coverage', '.omq']);
 
 function* walkFiles(dir) {
   let entries;
@@ -164,7 +164,7 @@ for (const filePath of walkFiles(searchRoot)) {
       const line = pos?.line ?? '?';
       const fullText = match.text();
       const text = fullText.trim().slice(0, 80);
-      // Skip global-config constructions: homedir()/.omc, getClaudeConfigDir()/.omc, etc.
+      // Skip global-config constructions: homedir()/.omq, getClaudeConfigDir()/.omq, etc.
       if (isGlobalConfigMatch(fullText)) continue;
       hitLines.push(`  ${rel}:${line}  ${text}`);
       totalHits++;
@@ -173,10 +173,10 @@ for (const filePath of walkFiles(searchRoot)) {
 }
 
 if (totalHits === 0) {
-  console.log('multirepo-paths gate: OK (no raw .omc constructions found outside whitelist)');
+  console.log('multirepo-paths gate: OK (no raw .omq constructions found outside whitelist)');
   process.exit(0);
 } else {
-  console.error(`multirepo-paths gate: FAIL — ${totalHits} raw .omc construction(s) found:\n`);
+  console.error(`multirepo-paths gate: FAIL — ${totalHits} raw .omq construction(s) found:\n`);
   for (const line of hitLines) {
     console.error(line);
   }

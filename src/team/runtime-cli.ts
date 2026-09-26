@@ -854,7 +854,7 @@ async function main(): Promise<void> {
   } = input;
 
   const workerCount = input.workerCount ?? agentTypes.length;
-  const stateRoot = join(cwd, `.omc/state/team/${teamName}`);
+  const stateRoot = join(cwd, `.omq/state/team/${teamName}`);
 
   const config: RuntimeCliConfig = {
     teamName,

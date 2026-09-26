@@ -896,7 +896,7 @@ Q3: What are your security requirements?
 [After user answers...]
 
 Creating implementation plan...
-Plan saved to: .omc/plans/auth-system.md
+Plan saved to: .omq/plans/auth-system.md
 ```
 
 Note: Planning mode uses an interactive interview to gather requirements before creating a detailed plan.
@@ -1009,7 +1009,7 @@ Note: The HUD integrates with Claude Code's statusLine API to show real-time orc
 
 **Plan-scoped knowledge capture:**
 
-Location: `.omc/notepads/{plan-name}/`
+Location: `.omq/notepads/{plan-name}/`
 
 | File | Purpose | Example |
 |------|---------|---------|

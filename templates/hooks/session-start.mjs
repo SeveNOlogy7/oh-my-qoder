@@ -178,7 +178,7 @@ function isVertexSession() {
 async function readRoutingForceInheritFromConfig(directory) {
   const omcRoot = await resolveOmcStateRoot(directory);
   const configPaths = [
-    join(configDir, '.omc-config.json'),
+    join(configDir, '.omq-config.json'),
     join(omcRoot, 'config.json'),
   ];
 
@@ -314,7 +314,7 @@ const PRIORITY_HEADER = '## Priority Context';
 const WORKING_MEMORY_HEADER = '## Working Memory';
 
 /**
- * Get notepad path in .omc directory
+ * Get notepad path in .omq directory
  */
 async function getNotepadPath(directory) {
   const omcRoot = await resolveOmcStateRoot(directory);
@@ -386,19 +386,19 @@ const STALE_STATE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 /**
  * Validate that a candidate cwd is a real OMC workspace anchor.
  * Returns the candidate unchanged if it is non-empty AND contains a
- * `.omc-workspace` marker OR a `.git` directory.
+ * `.omq-workspace` marker OR a `.git` directory.
  * Otherwise emits a one-line warning to stderr and returns null,
  * signalling the caller to skip all state mutations.
  */
 function validateCwd(candidate) {
   if (!candidate || typeof candidate !== 'string') {
     process.stderr.write(
-      `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omc-workspace or .git marker)\n`
+      `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
     );
     return null;
   }
   // cwd is commonly a subdirectory of the repo/workspace root, so walk up
-  // looking for a `.omc-workspace` marker or `.git` dir. Stop before scanning
+  // looking for a `.omq-workspace` marker or `.git` dir. Stop before scanning
   // $HOME (or above) so a stray marker/repo in $HOME cannot validate an
   // unrelated directory. Returns the original candidate so downstream root
   // resolution (getOmcRoot/resolveOmcStateRoot) can anchor it.
@@ -407,7 +407,7 @@ function validateCwd(candidate) {
   let cursor = candidate;
   while (true) {
     if (home && cursor === home) break;
-    if (existsSync(join(cursor, '.omc-workspace')) || existsSync(join(cursor, '.git'))) {
+    if (existsSync(join(cursor, '.omq-workspace')) || existsSync(join(cursor, '.git'))) {
       return candidate;
     }
     const parent = dirname(cursor);
@@ -415,7 +415,7 @@ function validateCwd(candidate) {
     cursor = parent;
   }
   process.stderr.write(
-    `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omc-workspace or .git marker)\n`
+    `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
   );
   return null;
 }
@@ -482,7 +482,7 @@ function hasConflictingUltraworkRestore(state, sessionId, directory, source) {
 
 async function getUltraworkRestoreCandidate(directory, sessionId) {
   const { readPath: localPath } = await resolveSessionStatePathsForHook(directory, 'ultrawork', sessionId || undefined);
-  const globalPath = join(homedir(), '.omc', 'state', 'ultrawork-state.json');
+  const globalPath = join(homedir(), '.omq', 'state', 'ultrawork-state.json');
 
   const localState = readJsonFile(localPath);
   if (hasConflictingUltraworkRestore(localState, sessionId, directory, 'local')) {
@@ -515,7 +515,7 @@ Detected an active ultrawork session for ${scope}.
 Owner session: ${ownerSession}
 Started: ${startedAt}
 
-To avoid shared \.omc/state bleed across parallel sessions, OMC suppressed the restore for this session.
+To avoid shared \.omq/state bleed across parallel sessions, OMC suppressed the restore for this session.
 Continue normally in this session, or use a separate worktree / close the other same-root session before resuming the prior ultrawork state.
 
 </session-restore>
@@ -598,7 +598,7 @@ async function main() {
 
     const updateInfo = currentVersion ? await checkForUpdates(currentVersion) : null;
     if (updateInfo) {
-      const configPath = join(getClaudeConfigDir(), '.omc-config.json');
+      const configPath = join(getClaudeConfigDir(), '.omq-config.json');
       const omcConfig = readJsonFile(configPath) || {};
       userMessages.push(formatUpdateNoticeForUser(updateInfo, {
         autoUpgradePrompt: omcConfig.autoUpgradePrompt !== false,

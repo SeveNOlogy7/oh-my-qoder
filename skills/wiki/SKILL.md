@@ -46,25 +46,25 @@ wiki_delete({ page: "outdated-page" })    # Delete a page
 ```
 
 ### Log
-View wiki operation history by reading `.omc/wiki/log.md`.
+View wiki operation history by reading `.omq/wiki/log.md`.
 
 ## Categories
 Pages are organized by category: `architecture`, `decision`, `pattern`, `debugging`, `environment`, `session-log`
 
 ## Storage
-- Pages: `.omc/wiki/*.md` (markdown with YAML frontmatter)
-- Index: `.omc/wiki/index.md` (auto-maintained catalog)
-- Log: `.omc/wiki/log.md` (append-only operation chronicle)
+- Pages: `.omq/wiki/*.md` (markdown with YAML frontmatter)
+- Index: `.omq/wiki/index.md` (auto-maintained catalog)
+- Log: `.omq/wiki/log.md` (append-only operation chronicle)
 
 ## Cross-References
 Use `[[page-name]]` wiki-link syntax to create cross-references between pages.
 
 ## Auto-Capture
-At session end, significant discoveries are automatically captured as session-log pages. Configure via `wiki.autoCapture` in `.omc-config.json` (default: enabled).
+At session end, significant discoveries are automatically captured as session-log pages. Configure via `wiki.autoCapture` in `.omq-config.json` (default: enabled).
 
 ## Hard Constraints
 - NO vector embeddings — query uses keyword + tag matching only
-- Wiki pages are git-ignored by default (`.omc/wiki/` is project-local)
+- Wiki pages are git-ignored by default (`.omq/wiki/` is project-local)
 
 ## Model Routing
 

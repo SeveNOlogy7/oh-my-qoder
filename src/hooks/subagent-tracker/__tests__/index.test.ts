@@ -41,7 +41,7 @@ describe("subagent-tracker", () => {
 
   beforeEach(() => {
     testDir = join(tmpdir(), `subagent-test-${Date.now()}`);
-    mkdirSync(join(testDir, ".omc", "state"), { recursive: true });
+    mkdirSync(join(testDir, ".omq", "state"), { recursive: true });
   });
 
   afterEach(() => {
@@ -720,7 +720,7 @@ describe("subagent-tracker", () => {
       ).toBe(true);
 
       // Sanity: explicitly assert no pid-* session dir got created for this run.
-      const sessionsDir = join(testDir, ".omc", "state", "sessions");
+      const sessionsDir = join(testDir, ".omq", "state", "sessions");
       const entries = require("fs").readdirSync(sessionsDir) as string[];
       expect(entries.filter((name) => name.startsWith("pid-"))).toHaveLength(0);
       expect(entries).toContain("parent-uuid-xyz");
@@ -1340,12 +1340,12 @@ describe("subagent-tracker", () => {
 
     function makeGitRepo(): string {
       const repoDir = join(testDir, `repo-${Math.random().toString(36).slice(2)}`);
-      mkdirSync(join(repoDir, ".omc", "state"), { recursive: true });
+      mkdirSync(join(repoDir, ".omq", "state"), { recursive: true });
       git(repoDir, ["init"]);
       git(repoDir, ["config", "user.email", "test@test.com"]);
       git(repoDir, ["config", "user.name", "Test"]);
       git(repoDir, ["config", "commit.gpgsign", "false"]);
-      writeFileSync(join(repoDir, ".gitignore"), ".omc/\n");
+      writeFileSync(join(repoDir, ".gitignore"), ".omq/\n");
       writeFileSync(join(repoDir, "tracked.txt"), "seed\n");
       git(repoDir, ["add", ".gitignore", "tracked.txt"]);
       git(repoDir, ["commit", "-m", "seed"]);

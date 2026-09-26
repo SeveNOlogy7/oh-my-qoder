@@ -398,7 +398,7 @@ describe('commit watcher + auto-merge', () => {
 
       const persistedPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -592,7 +592,7 @@ describe('commit watcher + auto-merge', () => {
 
       const eventLog = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -669,7 +669,7 @@ describe('M1 existing-rebase short-circuit', () => {
       // Create a fake worktree dir with .git/rebase-merge for "bob".
       const bobWtPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
@@ -711,7 +711,7 @@ describe('M1 existing-rebase short-circuit', () => {
       // The skip event should be in the orchestrator event log.
       const eventLog = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -755,7 +755,7 @@ describe('M4 dirty-tree audit', () => {
       // simulate the worker resolving it. The status mock returns dirty files.
       const bobWtPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
@@ -826,7 +826,7 @@ describe('M4 dirty-tree audit', () => {
       // Inbox should contain the audit message.
       const inboxPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         cfg.teamName,
@@ -859,13 +859,13 @@ describe('M6 recoverFromRestart', () => {
       // Seed persisted state.
       const persistedPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
         'auto-merge-state.json',
       );
-      mkdirSync(join(repoRoot, '.omc', 'state', 'team', sanitizeName(cfg.teamName)), {
+      mkdirSync(join(repoRoot, '.omq', 'state', 'team', sanitizeName(cfg.teamName)), {
         recursive: true,
       });
       atomicWriteJson(persistedPath, { lastShas: { alice: 'sha-1', bob: 'sha-2' } });
@@ -873,7 +873,7 @@ describe('M6 recoverFromRestart', () => {
       // Seed worktrees.json metadata.
       const worktreesMetaPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -881,7 +881,7 @@ describe('M6 recoverFromRestart', () => {
       );
       const aliceWtPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
@@ -889,7 +889,7 @@ describe('M6 recoverFromRestart', () => {
       );
       const bobWtPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
@@ -924,7 +924,7 @@ describe('M6 recoverFromRestart', () => {
       // Bob should have received the recovery message.
       const bobInbox = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         cfg.teamName,
@@ -999,7 +999,7 @@ describe('drainAndStop', () => {
       // Teardown audit row should have been written.
       const auditPath = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -1139,7 +1139,7 @@ describe('drainAndStop suppresses fan-out rebase', () => {
       // rebase_succeeded events emitted (fan-out is suppressed after stop).
       const eventLog = join(
         repoRoot,
-        '.omc',
+        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),

@@ -14,7 +14,7 @@ const TEAM = 'demo-team';
 const WORKER = 'worker-1';
 
 function seed(cwd: string, options: { undeliveredInbound?: boolean; undeliveredOutbound?: boolean } = {}): string {
-  const stateDir = join(cwd, '.omc', 'state');
+  const stateDir = join(cwd, '.omq', 'state');
   const teamDir = join(stateDir, 'team', TEAM);
   const mailboxDir = join(teamDir, 'mailbox');
   const nowIso = new Date().toISOString();

@@ -33,13 +33,13 @@ const CONCURRENT_RESTORE_HELPERS: Array<[string, string, boolean]> = [
 
 function makeProject(root: string): string {
   const project = join(root, 'project');
-  // session-start validateCwd requires a real workspace anchor (.git / .omc-workspace)
+  // session-start validateCwd requires a real workspace anchor (.git / .omq-workspace)
   mkdirSync(join(project, '.git'), { recursive: true });
   return project;
 }
 
 function writeCheckpoint(project: string, createdAt: string, extra: Record<string, unknown> = {}): string {
-  const dir = join(project, '.omc', 'state', 'checkpoints');
+  const dir = join(project, '.omq', 'state', 'checkpoints');
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `checkpoint-${createdAt.replace(/[:.]/g, '-')}.json`);
   writeFileSync(
@@ -195,7 +195,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
       {
         plan_refs: {
           boulder: {
-            active_plan: '/repo/.omc/plans/epic.md',
+            active_plan: '/repo/.omq/plans/epic.md',
             plan_name: 'epic',
             progress: { total: 3, completed: 2, isComplete: false },
           },
@@ -320,7 +320,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
 
     const markerPath = join(
       project,
-      '.omc',
+      '.omq',
       'state',
       'checkpoints-restored',
       'marker-advance-installed',
@@ -349,7 +349,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
   it('does not commit a restore marker when oversized Priority Context evicts the sentinel', () => {
     if (!SECURE_MARKER_SUPPORTED) return;
     writeCheckpoint(project, new Date().toISOString(), { session_id: 'budgeted-restore-installed' });
-    const notepad = join(project, '.omc', 'notepad.md');
+    const notepad = join(project, '.omq', 'notepad.md');
     writeFileSync(notepad, `## Priority Context\n${'P'.repeat(7000)}\n`, 'utf-8');
 
     const first = runHook(
@@ -359,7 +359,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
     );
     expect(parseContext(first.stdout)).not.toContain('PRECOMPACT CHECKPOINT RESTORED');
     expect(
-      existsSync(join(project, '.omc', 'state', 'checkpoints-restored', 'budgeted-restore-installed', 'restored.json')),
+      existsSync(join(project, '.omq', 'state', 'checkpoints-restored', 'budgeted-restore-installed', 'restored.json')),
     ).toBe(false);
 
     rmSync(notepad, { force: true });
@@ -370,14 +370,14 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
     );
     expect(parseContext(retry.stdout)).toContain('PRECOMPACT CHECKPOINT RESTORED');
     expect(
-      existsSync(join(project, '.omc', 'state', 'checkpoints-restored', 'budgeted-restore-installed', 'restored.json')),
+      existsSync(join(project, '.omq', 'state', 'checkpoints-restored', 'budgeted-restore-installed', 'restored.json')),
     ).toBe(true);
   });
 
   it('does not consume a checkpoint when the aggregate budget truncates the restore closing sentinel', () => {
     if (!SECURE_MARKER_SUPPORTED) return;
     writeCheckpoint(project, new Date().toISOString(), { session_id: 'partial-sentinel-installed' });
-    const notepad = join(project, '.omc', 'notepad.md');
+    const notepad = join(project, '.omq', 'notepad.md');
     writeFileSync(notepad, `## Priority Context\n${'P'.repeat(5450)}\n`, 'utf-8');
 
     const sessionId = 'partial-sentinel-installed';
@@ -390,7 +390,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
     expect(context).not.toContain('PRECOMPACT CHECKPOINT RESTORED');
     expect(context).not.toContain('</session-restore>');
     expect(
-      existsSync(join(project, '.omc', 'state', 'checkpoints-restored', sessionId, 'restored.json')),
+      existsSync(join(project, '.omq', 'state', 'checkpoints-restored', sessionId, 'restored.json')),
     ).toBe(false);
 
     rmSync(notepad, { force: true });
@@ -415,7 +415,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
 
     const markerPath = join(
       project,
-      '.omc',
+      '.omq',
       'state',
       'checkpoints-restored',
       'marker-advance-template',
@@ -444,7 +444,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
   it('template SessionStart defers marker commit when Priority Context evicts restore', () => {
     if (!SECURE_MARKER_SUPPORTED) return;
     writeCheckpoint(project, new Date().toISOString(), { session_id: 'budgeted-restore-template' });
-    const notepad = join(project, '.omc', 'notepad.md');
+    const notepad = join(project, '.omq', 'notepad.md');
     writeFileSync(notepad, `## Priority Context\n${'P'.repeat(7000)}\n`, 'utf-8');
 
     const first = runTemplateHook(
@@ -454,7 +454,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
     );
     expect(parseContext(first.stdout)).not.toContain('PRECOMPACT CHECKPOINT RESTORED');
     expect(
-      existsSync(join(project, '.omc', 'state', 'checkpoints-restored', 'budgeted-restore-template', 'restored.json')),
+      existsSync(join(project, '.omq', 'state', 'checkpoints-restored', 'budgeted-restore-template', 'restored.json')),
     ).toBe(false);
 
     rmSync(notepad, { force: true });
@@ -465,7 +465,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
     );
     expect(parseContext(retry.stdout)).toContain('PRECOMPACT CHECKPOINT RESTORED');
     expect(
-      existsSync(join(project, '.omc', 'state', 'checkpoints-restored', 'budgeted-restore-template', 'restored.json')),
+      existsSync(join(project, '.omq', 'state', 'checkpoints-restored', 'budgeted-restore-template', 'restored.json')),
     ).toBe(true);
   });
 
@@ -483,7 +483,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
       preparePreCompactCheckpointRestore: (root: string, sid: string) => Record<string, unknown> | null;
       claimPreCompactCheckpointRestore: (...args: unknown[]) => string;
     };
-    const root = join(project, '.omc');
+    const root = join(project, '.omq');
     const prepared = helper.preparePreCompactCheckpointRestore(root, sessionId) as {
       path: string; created_at: string; mtime_ms: number; checkpoint_sha256: string;
     };
@@ -505,7 +505,7 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
     'keeps marker advancement monotonic across delayed %s helper processes', async (_label, helperPath, usesOmcRoot) => {
     if (!SECURE_MARKER_SUPPORTED) return;
     const createdAt = new Date().toISOString();
-    const checkpointDir = join(project, '.omc', 'state', 'checkpoints');
+    const checkpointDir = join(project, '.omq', 'state', 'checkpoints');
     mkdirSync(checkpointDir, { recursive: true });
     const payload = JSON.stringify({
       created_at: createdAt,
@@ -543,7 +543,7 @@ process.stdout.write(JSON.stringify(result));`;
     const delayed = spawn(NODE, ['--import', pathToFileURL(preload).href, '--input-type=module', '-e', code], {
       env: {
         ...process.env,
-        OMC_ROOT: usesOmcRoot ? join(project, '.omc') : project,
+        OMC_ROOT: usesOmcRoot ? join(project, '.omq') : project,
         MARKER_SESSION: `marker-process-${_label}`,
         MARKER_SIGNAL: signal,
         MARKER_RELEASE: release,
@@ -569,7 +569,7 @@ process.stdout.write(JSON.stringify(result));`;
       encoding: 'utf8',
       env: {
         ...process.env,
-        OMC_ROOT: usesOmcRoot ? join(project, '.omc') : project,
+        OMC_ROOT: usesOmcRoot ? join(project, '.omq') : project,
         MARKER_SESSION: `marker-process-${_label}`,
       },
     });
@@ -579,7 +579,7 @@ process.stdout.write(JSON.stringify(result));`;
     expect(delayedStatus, delayedStderr).toBe(0);
     expect(JSON.parse(delayedStdout)).toBeNull();
 
-    const markerPath = join(project, '.omc', 'state', 'checkpoints-restored', `marker-process-${_label}`, 'restored.json');
+    const markerPath = join(project, '.omq', 'state', 'checkpoints-restored', `marker-process-${_label}`, 'restored.json');
     expect(JSON.parse(readFileSync(markerPath, 'utf8')).checkpoint.normalize('NFC')).toBe(realpathSync(checkpointB).normalize('NFC'));
     expect(JSON.parse(readFileSync(markerPath, 'utf8')).checkpoint.normalize('NFC')).not.toBe(realpathSync(checkpointA).normalize('NFC'));
   }, 30_000);
@@ -608,7 +608,7 @@ syncBuiltinESMExports();
 `);
     const code = `import { restorePreCompactCheckpoint } from ${JSON.stringify(pathToFileURL(helperPath).href)};
 process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_ROOT, process.env.MARKER_SESSION)));`;
-    const inputRoot = usesOmcRoot ? join(project, '.omc') : project;
+    const inputRoot = usesOmcRoot ? join(project, '.omq') : project;
     const delayed = spawn(NODE, ['--import', pathToFileURL(preload).href, '--input-type=module', '-e', code], {
       env: {
         ...process.env,
@@ -646,7 +646,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
     ['dist', join(__dirname, '..', '..', 'dist', 'hooks', 'pre-compact', 'restore.js'), false],
   ])('uses mtime to advance equal-created-at checkpoints in the %s helper', (_label, helperPath, usesOmcRoot) => {
     if (!SECURE_MARKER_SUPPORTED) return;
-    const checkpointDir = join(project, '.omc', 'state', 'checkpoints');
+    const checkpointDir = join(project, '.omq', 'state', 'checkpoints');
     mkdirSync(checkpointDir, { recursive: true });
     const createdAt = new Date().toISOString();
     const payload = JSON.stringify({
@@ -664,7 +664,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
     utimesSync(checkpointA, older, older);
     const code = `import { restorePreCompactCheckpoint } from ${JSON.stringify(pathToFileURL(helperPath).href)};
 process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_ROOT, process.env.MARKER_SESSION)));`;
-    const inputRoot = usesOmcRoot ? join(project, '.omc') : project;
+    const inputRoot = usesOmcRoot ? join(project, '.omq') : project;
     const run = () => JSON.parse(execFileSync(NODE, ['--input-type=module', '-e', code], {
       encoding: 'utf8',
       env: { ...process.env, OMC_ROOT: inputRoot, MARKER_SESSION: `equal-time-${_label}` },
@@ -678,7 +678,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
   });
 
   it('fails open (no restore) on a malformed checkpoint', () => {
-    const dir = join(project, '.omc', 'state', 'checkpoints');
+    const dir = join(project, '.omq', 'state', 'checkpoints');
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'checkpoint-broken.json'), '{not json', 'utf-8');
 
@@ -725,7 +725,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
       home,
     );
 
-    const markerPath = join(project, '.omc', 'state', 'checkpoints-restored', 'session-3730', 'restored.json');
+    const markerPath = join(project, '.omq', 'state', 'checkpoints-restored', 'session-3730', 'restored.json');
     expect(existsSync(markerPath)).toBe(SECURE_MARKER_SUPPORTED);
     if (SECURE_MARKER_SUPPORTED) {
       const marker = JSON.parse(readFileSync(markerPath, 'utf-8'));
@@ -813,7 +813,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
   });
 
   it('installed SessionStart helper rejects an in-directory symlink to external JSON', () => {
-    const checkpointDir = join(project, '.omc', 'state', 'checkpoints');
+    const checkpointDir = join(project, '.omq', 'state', 'checkpoints');
     mkdirSync(checkpointDir, { recursive: true });
     const marker = 'EXTERNAL_INSTALLED_SYMLINK_CHECKPOINT_MARKER';
     const externalPath = join(tempDir, 'external-installed-checkpoint.json');
@@ -848,7 +848,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
       existsSync(
         join(
           project,
-          '.omc',
+          '.omq',
           'state',
           'checkpoints-restored',
           'installed-symlink-session',
@@ -858,8 +858,8 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
     ).toBe(false);
   });
 
-  it('installed SessionStart helper rejects a symlinked .omc/state ancestor', () => {
-    const omcRoot = join(project, '.omc');
+  it('installed SessionStart helper rejects a symlinked .omq/state ancestor', () => {
+    const omcRoot = join(project, '.omq');
     const statePath = join(omcRoot, 'state');
     rmSync(statePath, { recursive: true, force: true });
     mkdirSync(omcRoot, { recursive: true });
@@ -910,7 +910,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
   it('installed SessionStart rejects an ancestor redirect between verification and open', async () => {
     const checkpointPath = writeCheckpoint(project, new Date().toISOString());
     const checkpointName = basename(checkpointPath);
-    const statePath = join(project, '.omc', 'state');
+    const statePath = join(project, '.omq', 'state');
     const stateBackupPath = `${statePath}.verified-backup`;
     const externalState = join(tempDir, 'external-installed-redirect-state');
     const externalCheckpointDir = join(externalState, 'checkpoints');
@@ -957,7 +957,7 @@ process.stdout.write(JSON.stringify(restorePreCompactCheckpoint(process.env.OMC_
       existsSync(
         join(
           project,
-          '.omc',
+          '.omq',
           'state',
           'checkpoints-restored',
           'installed-ancestor-redirect-session',
@@ -990,9 +990,9 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-precompact-template-parity-'));
     project = join(tempDir, 'project');
-    mkdirSync(join(project, '.omc', 'state', 'checkpoints'), { recursive: true });
+    mkdirSync(join(project, '.omq', 'state', 'checkpoints'), { recursive: true });
     writeFileSync(
-      join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json'),
+      join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json'),
       JSON.stringify({ created_at: new Date().toISOString(), session_id: 'valid-session-3730', trigger: 'auto', active_modes: {}, todo_summary: { pending: 1, in_progress: 0, completed: 0 }, wisdom_exported: false }),
       'utf-8',
     );
@@ -1004,14 +1004,14 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
 
   it('rejects traversal session IDs in the template helper (parity with scripts/)', async () => {
     const mod = await import(pathToFileURL(TEMPLATE_HELPER).href) as { restorePreCompactCheckpoint: (root: string, sid: string) => { text: string } | null };
-    const omcRoot = join(project, '.omc');
+    const omcRoot = join(project, '.omq');
     const result = mod.restorePreCompactCheckpoint(omcRoot, '../../../../../../tmp/escaped-3730-template-trav');
     expect(result).toBeNull();
     expect(existsSync('/tmp/escaped-3730-template-trav/restored.json')).toBe(false);
   });
 
   it('rejects an in-directory symlink to external JSON without restoring or marking it', async () => {
-    const checkpointDir = join(project, '.omc', 'state', 'checkpoints');
+    const checkpointDir = join(project, '.omq', 'state', 'checkpoints');
     rmSync(join(checkpointDir, 'checkpoint-now.json'));
     const marker = 'EXTERNAL_TEMPLATE_SYMLINK_CHECKPOINT_MARKER';
     const externalPath = join(tempDir, 'external-checkpoint.json');
@@ -1033,7 +1033,7 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
     const mod = await import(pathToFileURL(TEMPLATE_HELPER).href) as {
       restorePreCompactCheckpoint: (root: string, sid: string) => { text: string } | null;
     };
-    const omcRoot = join(project, '.omc');
+    const omcRoot = join(project, '.omq');
     const result = mod.restorePreCompactCheckpoint(omcRoot, 'template-symlink-session');
     expect(result).toBeNull();
     expect(result?.text ?? '').not.toContain(marker);
@@ -1051,7 +1051,7 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
   });
 
   it('rejects externally hard-linked checkpoint in both helper copies', async () => {
-    const checkpointPath = join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json');
+    const checkpointPath = join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json');
     const externalPath = join(tempDir, 'external-hard-linked-checkpoint.json');
     rmSync(checkpointPath, { force: true });
     writeFileSync(
@@ -1073,14 +1073,14 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
       [INSTALLED_HELPER, 'installed-hard-link'],
     ] as const) {
       const mod = await import(`${pathToFileURL(helper).href}?${suffix}`);
-      const result = mod.restorePreCompactCheckpoint(join(project, '.omc'), suffix);
+      const result = mod.restorePreCompactCheckpoint(join(project, '.omq'), suffix);
       expect(result).toBeNull();
       expect(result?.text ?? '').not.toContain('EXTERNAL_PARITY_HARD_LINK_MARKER');
     }
   });
 
-  it('does not write replay markers outside .omc through a symlinked marker parent', async () => {
-    const markerRoot = join(project, '.omc', 'state', 'checkpoints-restored');
+  it('does not write replay markers outside .omq through a symlinked marker parent', async () => {
+    const markerRoot = join(project, '.omq', 'state', 'checkpoints-restored');
     const externalMarkerRoot = join(tempDir, 'external-parity-marker-root');
     mkdirSync(externalMarkerRoot, { recursive: true });
     rmSync(markerRoot, { recursive: true, force: true });
@@ -1091,16 +1091,16 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
       [INSTALLED_HELPER, 'installed-marker-parent-symlink'],
     ] as const) {
       const mod = await import(`${pathToFileURL(helper).href}?${suffix}`);
-      const result = mod.restorePreCompactCheckpoint(join(project, '.omc'), suffix);
+      const result = mod.restorePreCompactCheckpoint(join(project, '.omq'), suffix);
       expect(result).toBeNull();
-      const repeated = mod.restorePreCompactCheckpoint(join(project, '.omc'), suffix);
+      const repeated = mod.restorePreCompactCheckpoint(join(project, '.omq'), suffix);
       expect(repeated).toBeNull();
       expect(existsSync(join(externalMarkerRoot, suffix, 'restored.json'))).toBe(false);
     }
   });
 
   it('does not read or overwrite an external file through a symlinked marker file', async () => {
-    const markerRoot = join(project, '.omc', 'state', 'checkpoints-restored');
+    const markerRoot = join(project, '.omq', 'state', 'checkpoints-restored');
     const externalMarkerDir = join(tempDir, 'external-parity-marker-file');
     mkdirSync(externalMarkerDir, { recursive: true });
 
@@ -1109,7 +1109,7 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
       [INSTALLED_HELPER, 'installed-marker-file-symlink'],
     ] as const) {
       writeFileSync(
-        join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json'),
+        join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json'),
         JSON.stringify({ created_at: new Date().toISOString(), session_id: suffix, trigger: 'auto', active_modes: {}, todo_summary: { pending: 1, in_progress: 0, completed: 0 }, wisdom_exported: false }),
       );
       const markerParent = join(markerRoot, suffix);
@@ -1117,21 +1117,21 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
       const externalMarker = join(externalMarkerDir, `${suffix}.json`);
       writeFileSync(
         externalMarker,
-        JSON.stringify({ checkpoint: join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json') }),
+        JSON.stringify({ checkpoint: join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json') }),
         'utf-8',
       );
       symlinkSync(externalMarker, join(markerParent, 'restored.json'));
 
       const before = readFileSync(externalMarker, 'utf-8');
       const mod = await import(`${pathToFileURL(helper).href}?${suffix}`);
-      const result = mod.restorePreCompactCheckpoint(join(project, '.omc'), suffix);
+      const result = mod.restorePreCompactCheckpoint(join(project, '.omq'), suffix);
       expect(result).toBeNull();
       expect(readFileSync(externalMarker, 'utf-8')).toBe(before);
     }
   });
 
   it('fails closed when a marker parent is replaced before lock publication', async () => {
-    const markerRoot = join(project, '.omc', 'state', 'checkpoints-restored');
+    const markerRoot = join(project, '.omq', 'state', 'checkpoints-restored');
     mkdirSync(markerRoot, { recursive: true });
 
     for (const [helper, suffix] of [
@@ -1139,7 +1139,7 @@ describe('precompact-restore helper parity (issue #3730 security)', () => {
       [INSTALLED_HELPER, 'installed-marker-parent-race'],
     ] as const) {
       writeFileSync(
-        join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json'),
+        join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json'),
         JSON.stringify({ created_at: new Date().toISOString(), session_id: suffix, trigger: 'auto', active_modes: {}, todo_summary: { pending: 1, in_progress: 0, completed: 0 }, wisdom_exported: false }),
       );
       const markerParent = join(markerRoot, suffix);
@@ -1176,9 +1176,9 @@ syncBuiltinESMExports();
       process.env.MARKER_SIGNAL = signalPath;
       try {
         const mod = await import(`${pathToFileURL(helper).href}?${suffix}`);
-        const result = mod.restorePreCompactCheckpoint(join(project, '.omc'), suffix);
+        const result = mod.restorePreCompactCheckpoint(join(project, '.omq'), suffix);
         expect(result).toBeNull();
-        expect(mod.restorePreCompactCheckpoint(join(project, '.omc'), suffix)).toBeNull();
+        expect(mod.restorePreCompactCheckpoint(join(project, '.omq'), suffix)).toBeNull();
         if (process.platform !== 'win32') expect(existsSync(signalPath)).toBe(true);
         expect(existsSync(join(externalMarkerParent, 'restored.json'))).toBe(false);
       } finally {
@@ -1194,8 +1194,8 @@ syncBuiltinESMExports();
     }
   });
 
-  it('rejects a symlinked .omc/state ancestor in the template helper', async () => {
-    const omcRoot = join(project, '.omc');
+  it('rejects a symlinked .omq/state ancestor in the template helper', async () => {
+    const omcRoot = join(project, '.omq');
     const statePath = join(omcRoot, 'state');
     rmSync(statePath, { recursive: true, force: true });
 
@@ -1234,9 +1234,9 @@ syncBuiltinESMExports();
   });
 
   it('rejects a template ancestor redirect between verification and open', async () => {
-    const checkpointPath = join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json');
+    const checkpointPath = join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json');
     const checkpointName = basename(checkpointPath);
-    const omcRoot = join(project, '.omc');
+    const omcRoot = join(project, '.omq');
     const statePath = join(omcRoot, 'state');
     const stateBackupPath = `${statePath}.verified-backup`;
     const externalState = join(tempDir, 'external-template-redirect-state');
@@ -1309,7 +1309,7 @@ syncBuiltinESMExports();
   });
 
   it('keeps the template helper bound to the opened file when its pathname is swapped during read', async () => {
-    const checkpointPath = join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json');
+    const checkpointPath = join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json');
     const backupPath = `${checkpointPath}.original`;
     const externalPath = join(tempDir, 'external-template-mutated-checkpoint.json');
     const marker = 'EXTERNAL_TEMPLATE_MUTATION_CHECKPOINT_MARKER';
@@ -1344,7 +1344,7 @@ syncBuiltinESMExports();
     }) as never);
     try {
       const mod = await import(`${pathToFileURL(TEMPLATE_HELPER).href}?template-mutation`);
-      const result = mod.restorePreCompactCheckpoint(join(project, '.omc'), 'template-mutation-session');
+      const result = mod.restorePreCompactCheckpoint(join(project, '.omq'), 'template-mutation-session');
       expect(swapped).toBe(true);
       expect(result).toBeNull();
       expect(result?.text ?? '').not.toContain(marker);
@@ -1356,7 +1356,7 @@ syncBuiltinESMExports();
   });
 
   it('keeps the installed helper bound to the opened file when its pathname is swapped during read', async () => {
-    const checkpointPath = join(project, '.omc', 'state', 'checkpoints', 'checkpoint-now.json');
+    const checkpointPath = join(project, '.omq', 'state', 'checkpoints', 'checkpoint-now.json');
     const backupPath = `${checkpointPath}.original`;
     const externalPath = join(tempDir, 'external-installed-mutated-checkpoint.json');
     const marker = 'EXTERNAL_INSTALLED_MUTATION_CHECKPOINT_MARKER';
@@ -1391,7 +1391,7 @@ syncBuiltinESMExports();
     }) as never);
     try {
       const mod = await import(`${pathToFileURL(INSTALLED_HELPER).href}?installed-mutation`);
-      const result = mod.restorePreCompactCheckpoint(join(project, '.omc'), 'installed-mutation-session');
+      const result = mod.restorePreCompactCheckpoint(join(project, '.omq'), 'installed-mutation-session');
       expect(swapped).toBe(true);
       expect(result).toBeNull();
       expect(result?.text ?? '').not.toContain(marker);
@@ -1409,7 +1409,7 @@ syncBuiltinESMExports();
         sid: string,
       ) => { text: string; marker_status: string } | null;
     };
-    const omcRoot = join(project, '.omc');
+    const omcRoot = join(project, '.omq');
     const result = mod.restorePreCompactCheckpoint(omcRoot, 'valid-session-3730');
     expect(result).not.toBeNull();
     expect(result!.text).toContain('PRECOMPACT CHECKPOINT RESTORED');
@@ -1424,7 +1424,7 @@ syncBuiltinESMExports();
     const mod = await import(`${pathToFileURL(helper).href}?cross-session`) as {
       restorePreCompactCheckpoint: (root: string, sid: string) => { text: string } | null;
     };
-    const root = usesOmcRoot ? join(project, '.omc') : project;
+    const root = usesOmcRoot ? join(project, '.omq') : project;
     expect(mod.restorePreCompactCheckpoint(root, 'different-session')).toBeNull();
   });
 });

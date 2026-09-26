@@ -29,7 +29,7 @@ export function getQoderConfigDir() {
 }
 
 export function getOmqConfigDir() {
-  return join(getQoderConfigDir(), '.omc');
+  return join(getQoderConfigDir(), '.omq');
 }
 
 export function getUpdateCheckCachePath() {

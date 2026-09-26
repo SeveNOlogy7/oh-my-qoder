@@ -375,7 +375,7 @@ This is a summarized CLAUDE.md without markers.
     expect(existsSync(join(fixture.projectRoot, '.claude', 'CLAUDE.md'))).toBe(false);
   });
 
-  it('adds a local git exclude block for .omc artifacts while preserving .omc/skills', () => {
+  it('adds a local git exclude block for .omq artifacts while preserving .omq/skills', () => {
     const fixture = createPluginFixture(`<!-- OMC:START -->
 <!-- OMC:VERSION:9.9.9 -->
 
@@ -410,10 +410,10 @@ Use the real docs file.
 
     const excludeContents = readFileSync(excludePath, 'utf-8');
     expect(excludeContents).toContain('# BEGIN OMC local artifacts');
-    expect(excludeContents).toContain('!.omc/');
-    expect(excludeContents).toContain('.omc/*');
-    expect(excludeContents).toContain('!.omc/skills/');
-    expect(excludeContents).toContain('!.omc/skills/**');
+    expect(excludeContents).toContain('!.omq/');
+    expect(excludeContents).toContain('.omq/*');
+    expect(excludeContents).toContain('!.omq/skills/');
+    expect(excludeContents).toContain('!.omq/skills/**');
     expect(excludeContents).toContain('.omx/');
     expect(excludeContents).toContain('# END OMC local artifacts');
   });
@@ -428,10 +428,10 @@ Use the real docs file.
 `);
 
     const repoGitignore = readFileSync(join(process.cwd(), '.gitignore'), 'utf-8');
-    expect(repoGitignore).toContain('!.omc/');
-    expect(repoGitignore).toContain('.omc/*');
-    expect(repoGitignore).toContain('!.omc/skills/');
-    expect(repoGitignore).toContain('!.omc/skills/**');
+    expect(repoGitignore).toContain('!.omq/');
+    expect(repoGitignore).toContain('.omq/*');
+    expect(repoGitignore).toContain('!.omq/skills/');
+    expect(repoGitignore).toContain('!.omq/skills/**');
     expect(repoGitignore).toContain('.omx/');
 
     const gitInit = spawnSync('git', ['init'], {
@@ -456,14 +456,14 @@ Use the real docs file.
 
     const excludePath = join(fixture.projectRoot, '.git', 'info', 'exclude');
     const excludeContents = readFileSync(excludePath, 'utf-8');
-    expect(excludeContents).toContain('!.omc/');
-    expect(excludeContents).toContain('.omc/*');
-    expect(excludeContents).toContain('!.omc/skills/');
-    expect(excludeContents).toContain('!.omc/skills/**');
+    expect(excludeContents).toContain('!.omq/');
+    expect(excludeContents).toContain('.omq/*');
+    expect(excludeContents).toContain('!.omq/skills/');
+    expect(excludeContents).toContain('!.omq/skills/**');
     expect(excludeContents).toContain('.omx/');
   });
 
-  it('local git exclude block keeps .omc/skills trackable while ignoring sibling .omc artifacts and .omx runtime cache', () => {
+  it('local git exclude block keeps .omq/skills trackable while ignoring sibling .omq artifacts and .omx runtime cache', () => {
     const fixture = createPluginFixture(`<!-- OMC:START -->
 <!-- OMC:VERSION:9.9.9 -->
 
@@ -483,7 +483,7 @@ Use the real docs file.
     expect(gitInit.status).toBe(0);
 
     const seedExclude = join(fixture.projectRoot, '.git', 'info', 'exclude');
-    writeFileSync(seedExclude, '.omc/\n');
+    writeFileSync(seedExclude, '.omq/\n');
 
     const result = spawnSync('bash', [fixture.scriptPath, 'local'], {
       cwd: fixture.projectRoot,
@@ -495,8 +495,8 @@ Use the real docs file.
     });
     expect(result.status).toBe(0);
 
-    const skillDir = join(fixture.projectRoot, '.omc', 'skills');
-    const stateDir = join(fixture.projectRoot, '.omc', 'state');
+    const skillDir = join(fixture.projectRoot, '.omq', 'skills');
+    const stateDir = join(fixture.projectRoot, '.omq', 'state');
     const omxStateDir = join(fixture.projectRoot, '.omx', 'state');
     mkdirSync(skillDir, { recursive: true });
     mkdirSync(stateDir, { recursive: true });
@@ -505,7 +505,7 @@ Use the real docs file.
     writeFileSync(join(stateDir, 'example.json'), '{}');
     writeFileSync(join(omxStateDir, 'runtime.json'), '{}');
 
-    const skillIgnore = spawnSync('git', ['check-ignore', '-v', '.omc/skills/example.md'], {
+    const skillIgnore = spawnSync('git', ['check-ignore', '-v', '.omq/skills/example.md'], {
       cwd: fixture.projectRoot,
       env: {
         ...process.env,
@@ -514,9 +514,9 @@ Use the real docs file.
       encoding: 'utf-8',
     });
     expect(skillIgnore.status).toBe(0);
-    expect(skillIgnore.stdout).toContain('!.omc/skills/**');
+    expect(skillIgnore.stdout).toContain('!.omq/skills/**');
 
-    const stateIgnore = spawnSync('git', ['check-ignore', '-v', '.omc/state/example.json'], {
+    const stateIgnore = spawnSync('git', ['check-ignore', '-v', '.omq/state/example.json'], {
       cwd: fixture.projectRoot,
       env: {
         ...process.env,
@@ -525,7 +525,7 @@ Use the real docs file.
       encoding: 'utf-8',
     });
     expect(stateIgnore.status).toBe(0);
-    expect(stateIgnore.stdout).toContain('.omc/*');
+    expect(stateIgnore.stdout).toContain('.omq/*');
 
     const omxStateIgnore = spawnSync('git', ['check-ignore', '-v', '.omx/state/runtime.json'], {
       cwd: fixture.projectRoot,
@@ -548,8 +548,8 @@ Use the real docs file.
     });
     expect(status.status).toBe(0);
     expect(status.stdout).not.toContain('.omx/');
-    expect(status.stdout).not.toContain('.omc/state/');
-    expect(status.stdout).toContain('.omc/skills/example.md');
+    expect(status.stdout).not.toContain('.omq/state/');
+    expect(status.stdout).toContain('.omq/skills/example.md');
   });
 
   it('updates an existing local git exclude block to ignore .omx runtime cache', () => {
@@ -573,10 +573,10 @@ Use the real docs file.
 
     const excludePath = join(fixture.projectRoot, '.git', 'info', 'exclude');
     writeFileSync(excludePath, `# BEGIN OMC local artifacts
-!.omc/
-.omc/*
-!.omc/skills/
-!.omc/skills/**
+!.omq/
+.omq/*
+!.omq/skills/
+!.omq/skills/**
 # END OMC local artifacts
 `);
 

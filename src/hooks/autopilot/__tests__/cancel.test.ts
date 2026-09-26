@@ -43,7 +43,7 @@ describe('AutopilotCancel', () => {
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), 'autopilot-cancel-test-'));
     const fs = require('fs');
-    fs.mkdirSync(join(testDir, '.omc', 'state'), { recursive: true });
+    fs.mkdirSync(join(testDir, '.omq', 'state'), { recursive: true });
     vi.clearAllMocks();
   });
 
@@ -73,7 +73,7 @@ describe('AutopilotCancel', () => {
       const state = initAutopilot(testDir, 'test idea');
       if (state) {
         state.active = false;
-        const stateFile = join(testDir, '.omc', 'state', 'autopilot-state.json');
+        const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
         const fs = require('fs');
         fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
       }
@@ -147,7 +147,7 @@ describe('AutopilotCancel', () => {
 
       // Simulate a pre-existing retired ultraqa state file
       writeFileSync(
-        join(testDir, '.omc', 'state', 'ultraqa-state.json'),
+        join(testDir, '.omq', 'state', 'ultraqa-state.json'),
         JSON.stringify({ active: true, cycle: 2 })
       );
 
@@ -167,7 +167,7 @@ describe('AutopilotCancel', () => {
         linked_ultrawork: true
       } as any);
       writeFileSync(
-        join(testDir, '.omc', 'state', 'ultraqa-state.json'),
+        join(testDir, '.omq', 'state', 'ultraqa-state.json'),
         JSON.stringify({ active: true, cycle: 1 })
       );
 
@@ -196,7 +196,7 @@ describe('AutopilotCancel', () => {
       const sessionId = 'same-session-clear-replacement';
       const observed = initAutopilot(testDir, 'old run', sessionId)!;
       writeAutopilotState(testDir, observed, sessionId);
-      const statePath = join(testDir, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json');
+      const statePath = join(testDir, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
       const replacement = { ...observed, originalIdea: 'replacement run' };
       process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
       process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
@@ -241,7 +241,7 @@ describe('AutopilotCancel', () => {
         },
       });
       writeAutopilotState(testDir, state, sessionId);
-      const ralplanStatePath = join(testDir, '.omc', 'state', 'sessions', sessionId, 'ralplan-state.json');
+      const ralplanStatePath = join(testDir, '.omq', 'state', 'sessions', sessionId, 'ralplan-state.json');
       writeFileSync(ralplanStatePath, JSON.stringify({ active: true, session_id: sessionId, current_phase: 'ralplan' }));
       expect(validateNamedWorkflowStateStructure(readAutopilotState(testDir, sessionId)!, sessionId)).not.toBeNull();
       process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
@@ -405,7 +405,7 @@ describe('AutopilotCancel', () => {
 
       // Pre-existing retired ultraqa state (inactive) still gets cleared
       writeFileSync(
-        join(testDir, '.omc', 'state', 'ultraqa-state.json'),
+        join(testDir, '.omq', 'state', 'ultraqa-state.json'),
         JSON.stringify({ active: false, cycle: 3 })
       );
 
@@ -423,7 +423,7 @@ describe('AutopilotCancel', () => {
         linked_ultrawork: true
       } as any);
       writeFileSync(
-        join(testDir, '.omc', 'state', 'ultraqa-state.json'),
+        join(testDir, '.omq', 'state', 'ultraqa-state.json'),
         JSON.stringify({ active: true, cycle: 1 })
       );
 
@@ -522,7 +522,7 @@ describe('AutopilotCancel', () => {
       cancelAutopilot(testDir);
 
       // Age the state file to be older than the stale threshold
-      const stateFile = join(testDir, '.omc', 'state', 'autopilot-state.json');
+      const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
       const pastTime = new Date(Date.now() - STALE_STATE_MAX_AGE_MS - 60_000);
       utimesSync(stateFile, pastTime, pastTime);
 
@@ -536,7 +536,7 @@ describe('AutopilotCancel', () => {
       cancelAutopilot(testDir);
 
       // Age the state file
-      const stateFile = join(testDir, '.omc', 'state', 'autopilot-state.json');
+      const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
       const pastTime = new Date(Date.now() - STALE_STATE_MAX_AGE_MS - 60_000);
       utimesSync(stateFile, pastTime, pastTime);
 
@@ -551,7 +551,7 @@ describe('AutopilotCancel', () => {
       const observed = initAutopilot(testDir, 'old run')!;
       observed.active = false;
       writeAutopilotState(testDir, observed);
-      const stateFile = join(testDir, '.omc', 'state', 'autopilot-state.json');
+      const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
       const pastTime = new Date(Date.now() - STALE_STATE_MAX_AGE_MS - 60_000);
       utimesSync(stateFile, pastTime, pastTime);
       const replacement = { ...observed, active: true, originalIdea: 'replacement run' };
@@ -682,7 +682,7 @@ describe('AutopilotCancel', () => {
       cancelAutopilot(testDir);
 
       // Simulate passage of time — file is now older than 1 hour
-      const stateFile = join(testDir, '.omc', 'state', 'autopilot-state.json');
+      const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
       const pastTime = new Date(Date.now() - STALE_STATE_MAX_AGE_MS - 60_000);
       utimesSync(stateFile, pastTime, pastTime);
 
@@ -707,7 +707,7 @@ describe('AutopilotCancel', () => {
       state.active = false;
       state.workflowRunId = '11111111-1111-4111-8111-111111111111';
       writeAutopilotState(testDir, state);
-      const stateFile = join(testDir, '.omc', 'state', 'autopilot-state.json');
+      const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
       const before = require('fs').readFileSync(stateFile);
 
       expect(canResumeAutopilot(testDir)).toMatchObject({ canResume: false, integrityFailed: true });
@@ -719,7 +719,7 @@ describe('AutopilotCancel', () => {
       state.active = false;
       state.workflow = createWorkflowDescriptor('release-flow', { version: 1, stages: ['ralplan', 'execution'] })!;
       writeAutopilotState(testDir, state);
-      const stateFile = join(testDir, '.omc', 'state', 'autopilot-state.json');
+      const stateFile = join(testDir, '.omq', 'state', 'autopilot-state.json');
       const before = require('fs').readFileSync(stateFile);
       process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
 

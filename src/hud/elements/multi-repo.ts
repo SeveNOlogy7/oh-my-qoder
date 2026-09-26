@@ -6,7 +6,7 @@
  * containing `bidchex-backend/`, `bidchex-frontend/`, …).
  *
  * Two modes:
- *  - Marker present (`.omc-workspace` at cwd): show
+ *  - Marker present (`.omq-workspace` at cwd): show
  *      mr:<parent> | repos:N | sessions:M
  *  - Marker missing: show a one-line suggestion to create it.
  *
@@ -88,7 +88,7 @@ function looksLikeRepo(entryPath: string): boolean {
 }
 
 /**
- * Count session directories under `<cwd>/.omc/state/sessions/`.
+ * Count session directories under `<cwd>/.omq/state/sessions/`.
  *
  * A session is "active" when both:
  *  1. The directory name matches a Claude Code session UUID — filters
@@ -103,7 +103,7 @@ function looksLikeRepo(entryPath: string): boolean {
  */
 function countActiveSessions(cwd: string): number {
   // cwd here is verified to be the workspace anchor (marker present),
-  // so getOmcRoot resolves to <cwd>/.omc. Route through the canonical
+  // so getOmcRoot resolves to <cwd>/.omq. Route through the canonical
   // helper so OMC_STATE_DIR and OMC_DISABLE_MULTIREPO are honored.
   const sessionsDir = join(getOmcRoot(cwd), 'state', 'sessions');
   if (!existsSync(sessionsDir)) return 0;
@@ -186,7 +186,7 @@ export function detectMultiRepo(cwd?: string): MultiRepoInfo | null {
       return null;
     }
 
-    const hasMarker = existsSync(join(key, '.omc-workspace'));
+    const hasMarker = existsSync(join(key, '.omq-workspace'));
     const activeSessions = hasMarker ? countActiveSessions(key) : 0;
     result = {
       isMultiRepo: true,
@@ -209,7 +209,7 @@ export function detectMultiRepo(cwd?: string): MultiRepoInfo | null {
  *
  * Examples:
  *   mr:bidchex-repos repos:11 sessions:2
- *   multi-repo detected — create .omc-workspace to enable shared state
+ *   multi-repo detected — create .omq-workspace to enable shared state
  */
 export function renderMultiRepo(cwd?: string): string | null {
   const info = detectMultiRepo(cwd);
@@ -219,7 +219,7 @@ export function renderMultiRepo(cwd?: string): string | null {
     return (
       yellow('⚠ multi-repo detected') +
       dim(' — run: ') +
-      cyan(`echo {} > "${info.parentName}/.omc-workspace"`) +
+      cyan(`echo {} > "${info.parentName}/.omq-workspace"`) +
       dim(' to enable shared state')
     );
   }

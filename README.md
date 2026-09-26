@@ -340,12 +340,12 @@ Learn once, reuse forever. OMC extracts hard-won debugging knowledge into portab
 
 |                 | Project Scope                                            | User Scope        |
 | --------------- | -------------------------------------------------------- | ----------------- |
-| **Path**        | `.omc/skills/`                                           | `~/.omc/skills/`  |
+| **Path**        | `.omq/skills/`                                           | `~/.omq/skills/`  |
 | **Shared with** | Team (commit the skill file to keep it across worktrees) | All your projects |
 | **Priority**    | Higher (overrides user)                                  | Lower (fallback)  |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError
@@ -359,24 +359,24 @@ Wrap handler at server.py:42 in try/except ClientDisconnectedError...
 **Skillify:** `/skillify` extracts reusable patterns with strict quality gates
 **Auto-inject:** Matching skills load into context automatically — no manual recall needed
 
-Project-scoped OMC-authored skills are stored in `.omc/skills/` and are intended to be committed when you want them shared. During slash/skill execution OMC also reads Claude Code workspace skills from `.claude/skills/` and compatibility skills from `.agents/skills/`, so existing workspace-local `SKILL.md` packages remain callable without copying them into user-global skills. If you create project-local skills inside a linked git worktree and do not commit them, they disappear when that worktree is removed.
+Project-scoped OMC-authored skills are stored in `.omq/skills/` and are intended to be committed when you want them shared. During slash/skill execution OMC also reads Claude Code workspace skills from `.claude/skills/` and compatibility skills from `.agents/skills/`, so existing workspace-local `SKILL.md` packages remain callable without copying them into user-global skills. If you create project-local skills inside a linked git worktree and do not commit them, they disappear when that worktree is removed.
 
-### `.omc/` state and git
+### `.omq/` state and git
 
-OMC writes runtime state, session data, plans, logs, handoffs, research notes, and local artifacts under `.omc/` by default. The repository `.gitignore` keeps that runtime data local with one intentional exception: `.omc/skills/**` remains committable for project-scoped skills you want to share with the team. Treat everything else under `.omc/` as local operational state that may contain prompts, transcripts, or machine-specific paths.
+OMC writes runtime state, session data, plans, logs, handoffs, research notes, and local artifacts under `.omq/` by default. The repository `.gitignore` keeps that runtime data local with one intentional exception: `.omq/skills/**` remains committable for project-scoped skills you want to share with the team. Treat everything else under `.omq/` as local operational state that may contain prompts, transcripts, or machine-specific paths.
 
-For linked git worktrees, the default `.omc/` directory lives inside that worktree, so deleting the worktree deletes its local OMC state. Set `OMC_STATE_DIR` if you want state to survive worktree deletion, or add a `.omc-workspace` marker when several independent repos should share one parent-level state root. See [OMC state, gitignore, worktree, and workspace contract](docs/REFERENCE.md#omc-state-gitignore-worktree-and-workspace-contract).
+For linked git worktrees, the default `.omq/` directory lives inside that worktree, so deleting the worktree deletes its local OMC state. Set `OMC_STATE_DIR` if you want state to survive worktree deletion, or add a `.omq-workspace` marker when several independent repos should share one parent-level state root. See [OMC state, gitignore, worktree, and workspace contract](docs/REFERENCE.md#omc-state-gitignore-worktree-and-workspace-contract).
 
 [Full feature list →](docs/REFERENCE.md)
 
 ### Multi-repo workspaces
 
-When several independent git repos share a parent directory, drop a `.omc-workspace` marker at the parent so all sub-repos share one `.omc/` state root:
+When several independent git repos share a parent directory, drop a `.omq-workspace` marker at the parent so all sub-repos share one `.omq/` state root:
 
 ```bash
 cd /path/to/parent-dir-with-many-repos
-echo '{"id":"my-workspace"}' > .omc-workspace
-# Sessions inside any sub-repo now share /path/.omc/
+echo '{"id":"my-workspace"}' > .omq-workspace
+# Sessions inside any sub-repo now share /path/.omq/
 # For parallel ultragoal runs:
 cd repo-A && omc ultragoal create-goals --auto-plan-id --brief "..."
 cd ../repo-B && omc ultragoal create-goals --auto-plan-id --brief "..."
@@ -413,7 +413,7 @@ These shortcuts run **inside a Claude Code / OMC session**, not as terminal CLI 
 
 ### Provider Advisor (`omc ask` / `/ask`)
 
-Run local provider CLIs and save a markdown artifact under `.omc/artifacts/ask/`.
+Run local provider CLIs and save a markdown artifact under `.omq/artifacts/ask/`.
 
 ```bash
 # Terminal CLI
@@ -471,8 +471,8 @@ omc wait --stop   # Disable daemon
 Use the HUD for live observability and the current session/replay artifacts for post-session inspection:
 
 - HUD preset: `/oh-my-claudecode:hud setup` then use a supported preset such as `"omcHud": { "preset": "focused" }`
-- Session summaries: `.omc/sessions/*.json`
-- Replay logs: `.omc/state/agent-replay-*.jsonl`
+- Session summaries: `.omq/sessions/*.json`
+- Replay logs: `.omq/state/agent-replay-*.jsonl`
 - Live HUD rendering: `omc hud`
 - Local friction reports: `omc session friction report --since 24h` summarizes context-bloat and operator-friction signals from local session artifacts without printing raw prompts or tool output; add `--json` for automation.
 

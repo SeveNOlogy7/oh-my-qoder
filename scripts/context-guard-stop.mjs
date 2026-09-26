@@ -149,7 +149,7 @@ function resolveTranscriptPath(transcriptPath, cwd) {
  */
 function getGuardFilePath(sessionId) {
   const configDir = getClaudeConfigDir();
-  const guardDir = join(configDir, 'projects', '.omc-guards');
+  const guardDir = join(configDir, 'projects', '.omq-guards');
   try {
     mkdirSync(guardDir, { recursive: true, mode: 0o700 });
   } catch (err) {
@@ -189,7 +189,7 @@ function buildStopRecoveryAdvice(contextPercent, blockCount) {
   return `[OMC ${severity}] Context at ${contextPercent}% (threshold: ${THRESHOLD}%). ` +
     `Run /compact immediately before continuing. If /compact cannot complete, ` +
     `stop spawning new agents and recover in a fresh session using existing checkpoints ` +
-    `(.omc/state, .omc/notepad.md). (Block ${blockCount}/${MAX_BLOCKS})`;
+    `(.omq/state, .omq/notepad.md). (Block ${blockCount}/${MAX_BLOCKS})`;
 }
 
 async function main() {

@@ -151,12 +151,12 @@ Team работает как поэтапный pipeline:
 
 | | Область проекта | Область пользователя |
 |---|---|---|
-| **Путь** | `.omc/skills/` | `~/.omc/skills/` |
+| **Путь** | `.omq/skills/` | `~/.omq/skills/` |
 | **Доступно** | Команде (под контролем версий) | Всем вашим проектам |
 | **Приоритет** | Выше (переопределяет пользовательскую область) | Ниже (резервный) |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

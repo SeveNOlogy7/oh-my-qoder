@@ -152,12 +152,12 @@ omc team api list-tasks --input '{"team_name":"review-auth-flow"}' --json
 
 ### TL;DR
 
-`omc team` runtime-v2 is gaining an opt-in worker worktree mode. Worktree-backed workers run from dedicated git worktrees while task lifecycle, mailbox, status, and manifest files stay under the leader workspace's team-specific coordination root (`<repo>/.omc/state/team/<team-name>`).
+`omc team` runtime-v2 is gaining an opt-in worker worktree mode. Worktree-backed workers run from dedicated git worktrees while task lifecycle, mailbox, status, and manifest files stay under the leader workspace's team-specific coordination root (`<repo>/.omq/state/team/<team-name>`).
 
 ### Contract
 
-- Worktree paths use `<repo>/.omc/team/<team-name>/worktrees/<worker-name>`.
-- `OMC_TEAM_STATE_ROOT` points workers back to `<repo>/.omc/state/team/<team-name>`.
+- Worktree paths use `<repo>/.omq/team/<team-name>/worktrees/<worker-name>`.
+- `OMC_TEAM_STATE_ROOT` points workers back to `<repo>/.omq/state/team/<team-name>`.
 - Status/config/manifest/identity surfaces should expose `workspace_mode`, `worktree_mode`, `team_state_root`, and worker worktree metadata.
 - Dirty worker worktrees are preserved and reported; they are not force-cleaned by shutdown/cleanup.
 
@@ -325,7 +325,7 @@ Use canonical role names across prompts, commands, docs, and scripts. Avoid intr
 
 ### Directory and Environment Migration
 
-No directory rename is required for the current OMC state paths. Keep existing `.omc/` project state and `~/.omc/` global state directories in place.
+No directory rename is required for the current OMC state paths. Keep existing `.omq/` project state and `~/.omq/` global state directories in place.
 
 Only update genuinely legacy or custom paths that predate the OMC layout:
 
@@ -428,7 +428,7 @@ npm uninstall -g oh-my-claude-sisyphus
 
 #### 3. Preserve Existing OMC Directories
 
-Do not rename current OMC directories. Existing project state in `.omc/` and global state in `~/.omc/` are already on the current paths.
+Do not rename current OMC directories. Existing project state in `.omq/` and global state in `~/.omq/` are already on the current paths.
 
 #### 4. Update Legacy Config Names
 
@@ -467,8 +467,8 @@ After migration, verify your setup:
 2. **Verify directories exist**:
 
    ```bash
-   ls -la .omc/  # In project directory
-   ls -la ~/.omc/  # Global directory
+   ls -la .omq/  # In project directory
+   ls -la ~/.omq/  # Global directory
    ```
 
 3. **Test a simple command**:
@@ -518,7 +518,7 @@ Next time keywords match → Solution auto-injects
 
 Storage:
 
-- **Project-level**: `.omc/skills/` (intended to be committed with the repo; uncommitted worktree-local skills disappear when that worktree is removed)
+- **Project-level**: `.omq/skills/` (intended to be committed with the repo; uncommitted worktree-local skills disappear when that worktree is removed)
 - **User-level**: `~/.claude/skills/omc-learned/` (portable)
 
 #### 4. HUD Statusline (Real-Time Orchestration)
@@ -595,7 +595,7 @@ Version 3.1 is a minor release adding powerful new features while maintaining fu
 
 Plan-scoped wisdom capture for learnings, decisions, issues, and problems.
 
-**Location:** `.omc/notepads/{plan-name}/`
+**Location:** `.omq/notepads/{plan-name}/`
 
 | File           | Purpose                            |
 | -------------- | ---------------------------------- |
@@ -731,8 +731,8 @@ State files now use standardized paths:
 
 **Standard paths:**
 
-- Local: `.omc/state/{name}.json`
-- Global: `~/.omc/state/{name}.json`
+- Local: `.omq/state/{name}.json`
+- Global: `~/.omq/state/{name}.json`
 
 Legacy locations are auto-migrated on read.
 
@@ -766,7 +766,7 @@ All existing configurations, plans, and workflows continue working unchanged.
 
 #### Default Execution Mode
 
-Set your preferred execution mode in `~/.claude/.omc-config.json`:
+Set your preferred execution mode in `~/.claude/.omq-config.json`:
 
 ```json
 {
@@ -837,7 +837,7 @@ After upgrading, verify new features:
 
 3. **Check state directory**:
    ```bash
-   ls -la .omc/state/
+   ls -la .omq/state/
    ```
 
 ---

@@ -407,7 +407,7 @@ export function getPrdPath(directory: string): string {
 }
 
 /**
- * Get the path to the prd.json in .omc subdirectory
+ * Get the path to the prd.json in .omq subdirectory
  */
 export function getOmcPrdPath(directory: string): string {
   return join(getOmcRoot(directory), PRD_FILENAME);
@@ -486,7 +486,7 @@ export function writePrd(directory: string, prd: PRD, sessionId?: string): boole
     prdPath = getSessionPrdPath(directory, sessionId);
   } else {
     // Backward compatibility for direct callers without a session ID:
-    // prefer writing to an existing legacy location, or .omc by default.
+    // prefer writing to an existing legacy location, or .omq by default.
     prdPath = findPrdPath(directory) ?? getOmcPrdPath(directory);
   }
 

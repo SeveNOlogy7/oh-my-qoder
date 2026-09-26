@@ -89,7 +89,7 @@ describe('shutdownTeamV2 split-pane pane cleanup', () => {
 
   it('preserves the owned pane and state when provider launch identity is missing', async () => {
     const teamName = 'pane-cleanup-team';
-    const teamRoot = `.omc/state/team/${teamName}`;
+    const teamRoot = `.omq/state/team/${teamName}`;
 
     await writeJson(cwd, `${teamRoot}/config.json`, {
       name: teamName,
@@ -127,7 +127,7 @@ describe('shutdownTeamV2 split-pane pane cleanup', () => {
   });
   it('retires and terminates the exact provider while accepting a proven-dead pane', async () => {
     const teamName = 'provider-cleanup-team';
-    const teamRoot = `.omc/state/team/${teamName}`;
+    const teamRoot = `.omq/state/team/${teamName}`;
     const attempt = await prepareWorkerLaunchAttempt({ cwd, teamName, workerName: 'worker-1', paneId: '%2',
       provider: 'claude', runtimeCliPath: resolveRuntimeCliPath(), context: { kind: 'initial' } });
     const bootstrap = runWorkerLaunchBootstrap(buildWorkerLaunchBootstrapSpec(

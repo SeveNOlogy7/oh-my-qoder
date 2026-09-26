@@ -27,7 +27,7 @@ describe('unified MCP registry sync', () => {
     testRoot = mkdtempSync(join(tmpdir(), 'omc-mcp-registry-'));
     claudeDir = join(testRoot, '.claude');
     codexDir = join(testRoot, '.codex');
-    omcDir = join(testRoot, '.omc');
+    omcDir = join(testRoot, '.omq');
 
     mkdirSync(claudeDir, { recursive: true });
     mkdirSync(codexDir, { recursive: true });
@@ -690,14 +690,14 @@ describe('unified MCP registry sync', () => {
     expect(existsSync(join(testRoot, '.state', 'omc', 'mcp-registry-state.json'))).toBe(true);
   });
 
-  it('falls back to legacy ~/.omc registry when the XDG registry does not exist', () => {
+  it('falls back to legacy ~/.omq registry when the XDG registry does not exist', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     delete process.env.OMC_HOME;
     process.env.HOME = testRoot;
     process.env.XDG_CONFIG_HOME = join(testRoot, '.config');
     process.env.XDG_STATE_HOME = join(testRoot, '.state');
 
-    const legacyRegistryDir = join(testRoot, '.omc');
+    const legacyRegistryDir = join(testRoot, '.omq');
     mkdirSync(legacyRegistryDir, { recursive: true });
     writeFileSync(join(legacyRegistryDir, 'mcp-registry.json'), JSON.stringify({
       gitnexus: { command: 'gitnexus', args: ['mcp'] },

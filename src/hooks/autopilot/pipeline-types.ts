@@ -133,7 +133,7 @@ export interface VerificationConfig {
 
 /**
  * User-facing pipeline configuration.
- * Stored in `.omc-config.json` under the `autopilot` key.
+ * Stored in `.omq-config.json` under the `autopilot` key.
  *
  * Example:
  * ```json

@@ -4,7 +4,7 @@
  * Git worktree manager for team worker isolation.
  *
  * Native team worktrees live at:
- *   {repoRoot}/.omc/team/{team}/worktrees/{worker}
+ *   {repoRoot}/.omq/team/{team}/worktrees/{worker}
  * Branch naming (branch mode): omc-team/{teamName}/{workerName}
  *
  * The public create/remove helpers are kept for legacy callers, but the
@@ -110,7 +110,7 @@ function isInsideGitRepo(repoRoot: string): boolean {
 function assertCleanLeaderWorktree(repoRoot: string): void {
   const status = git(repoRoot, ['status', '--porcelain'])
     .split('\n')
-    .filter(line => line.trim() !== '' && !/^\?\? \.omc(?:\/|$)/.test(line))
+    .filter(line => line.trim() !== '' && !/^\?\? \.omq(?:\/|$)/.test(line))
     .join('\n')
     .trim();
   if (status.length > 0) {
@@ -257,7 +257,7 @@ export function installWorktreeRootAgents(
   overlayContent: string,
 ): void {
   // The worker worktree, its root AGENTS.md, and the backup all live under
-  // getOmcRoot(repoRoot) — which in a .omc-workspace layout sits ABOVE repoRoot.
+  // getOmcRoot(repoRoot) — which in a .omq-workspace layout sits ABOVE repoRoot.
   // Validate against the shared OMC root (and the worktree itself for AGENTS.md),
   // not the sub-repo, or multi-repo writes throw false path-traversal errors.
   const omcRoot = getOmcRoot(repoRoot);

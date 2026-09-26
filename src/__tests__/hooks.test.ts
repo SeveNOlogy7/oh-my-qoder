@@ -542,7 +542,7 @@ describe('Team staged workflow integration', () => {
 
   beforeEach(() => {
     testDir = join(tmpdir(), `omc-team-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    mkdirSync(join(testDir, '.omc', 'state', 'sessions', sessionId), { recursive: true });
+    mkdirSync(join(testDir, '.omq', 'state', 'sessions', sessionId), { recursive: true });
     execSync('git init', { cwd: testDir });
   });
 
@@ -552,7 +552,7 @@ describe('Team staged workflow integration', () => {
 
   it('restores active Team stage on session-start', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -617,7 +617,7 @@ schema
 
   it('keeps session-start under budget when only a tiny omission remainder remains', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'ultrawork-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -647,7 +647,7 @@ ${'- preserve this startup guidance\n'.repeat(400)}
 
   it('keeps combined session-start restore context under aggregate budget', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -682,7 +682,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('emits terminal Team restore guidance on cancelled stage', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -704,7 +704,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('enforces verify stage continuation while active and non-terminal', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -727,7 +727,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('enforces fix stage continuation while active and non-terminal', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -750,7 +750,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('skips Team stage continuation on authentication stop reasons', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -772,7 +772,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('allows terminal cleanup when Team stage is cancelled', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -793,7 +793,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('fails open when Team stage is missing', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -812,7 +812,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('fails open when Team stage is unknown or malformed', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -829,7 +829,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
     expect(malformedResult.message || '').not.toContain('[TEAM MODE CONTINUATION]');
 
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -848,7 +848,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 
   it('trips Team continuation circuit breaker after max stop reinforcements', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       JSON.stringify({
         active: true,
         session_id: sessionId,
@@ -857,7 +857,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
       })
     );
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-pipeline-stop-breaker.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'team-pipeline-stop-breaker.json'),
       JSON.stringify({ count: 20, updated_at: new Date().toISOString() }, null, 2)
     );
 
@@ -873,7 +873,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
   it('bypasses autopilot continuation when transcript context is critically exhausted', async () => {
     const transcriptPath = join(testDir, 'transcript.jsonl');
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json'),
+      join(testDir, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json'),
       JSON.stringify({
         active: true,
         phase: 'execution',
@@ -925,8 +925,8 @@ describe('Persistent-mode reply cleanup behavior', () => {
   });
 
   it('does not remove reply-session registry on idle Stop/persistent-mode', async () => {
-    const registryPath = join(homedir(), '.omc', 'state', 'reply-session-registry.jsonl');
-    mkdirSync(join(homedir(), '.omc', 'state'), { recursive: true });
+    const registryPath = join(homedir(), '.omq', 'state', 'reply-session-registry.jsonl');
+    mkdirSync(join(homedir(), '.omq', 'state'), { recursive: true });
     writeFileSync(
       registryPath,
       `${JSON.stringify({

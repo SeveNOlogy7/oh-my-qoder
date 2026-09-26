@@ -52,7 +52,7 @@ function runKeywordDetector(prompt: string, cwd: string, sessionId: string) {
 }
 
 function stateFile(cwd: string, sessionId: string, name: string) {
-  return join(cwd, '.omc', 'state', 'sessions', sessionId, `${name}-state.json`);
+  return join(cwd, '.omq', 'state', 'sessions', sessionId, `${name}-state.json`);
 }
 
 describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {

@@ -151,12 +151,12 @@ Einmal lernen, für immer wiederverwenden. OMC extrahiert hart erarbeitetes Debu
 
 | | Projektbereich | Benutzerbereich |
 |---|---|---|
-| **Pfad** | `.omc/skills/` | `~/.omc/skills/` |
+| **Pfad** | `.omq/skills/` | `~/.omq/skills/` |
 | **Geteilt mit** | Team (versionskontrolliert) | Alle Ihre Projekte |
 | **Priorität** | Höher (überschreibt Benutzerbereich) | Niedriger (Fallback) |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

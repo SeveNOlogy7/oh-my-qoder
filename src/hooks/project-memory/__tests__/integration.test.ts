@@ -70,7 +70,7 @@ describe("Project Memory Integration", () => {
       expect(memory?.techStack.packageManager).toBe("pnpm");
       expect(memory?.build.buildCommand).toBe("pnpm build");
 
-      const omcDir = path.join(tempDir, ".omc");
+      const omcDir = path.join(tempDir, ".omq");
       const omcStat = await fs.stat(omcDir);
       expect(omcStat.isDirectory()).toBe(true);
 
@@ -78,7 +78,7 @@ describe("Project Memory Integration", () => {
       expect(pending.merged).toContain("[Project Environment]");
     });
 
-    it("should persist to centralized state dir without creating local .omc when OMC_STATE_DIR is set", async () => {
+    it("should persist to centralized state dir without creating local .omq when OMC_STATE_DIR is set", async () => {
       const stateDir = await fs.mkdtemp(
         path.join(os.tmpdir(), "integration-state-"),
       );
@@ -107,7 +107,7 @@ describe("Project Memory Integration", () => {
         const content = await fs.readFile(memoryPath, "utf-8");
         expect(JSON.parse(content).projectRoot).toBe(tempDir);
         await expect(
-          fs.access(path.join(tempDir, ".omc", "project-memory.json")),
+          fs.access(path.join(tempDir, ".omq", "project-memory.json")),
         ).rejects.toThrow();
       } finally {
         delete process.env.OMC_STATE_DIR;

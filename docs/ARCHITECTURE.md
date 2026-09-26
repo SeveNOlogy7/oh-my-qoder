@@ -429,12 +429,12 @@ export OMC_SKIP_HOOKS="keyword-detector,persistent-mode"
 
 ### Overview
 
-OMC stores task progress and project knowledge in the `.omc/` directory. The state system preserves critical information even when context compaction resets the context window.
+OMC stores task progress and project knowledge in the `.omq/` directory. The state system preserves critical information even when context compaction resets the context window.
 
 ### Directory Structure
 
 ```
-.omc/
+.omq/
 ├── state/                    # Per-mode state files
 │   ├── autopilot-state.json  # autopilot progress
 │   ├── ralph-state.json      # ralph loop state
@@ -462,14 +462,14 @@ OMC stores task progress and project knowledge in the `.omc/` directory. The sta
 
 OMC keeps orchestration metadata separate from large durable artifacts:
 
-- **Control plane**: queue state, worker assignment, session state, and cross-tool task/message envelopes under `.omc/state/**`.
-- **Data plane**: plans, specs, prompts, results, traces, and other durable artifacts under paths such as `.omc/plans/`, `.omc/notepads/`, `.omc/prompts/`, and `.omc/state/interop/artifacts/**`.
+- **Control plane**: queue state, worker assignment, session state, and cross-tool task/message envelopes under `.omq/state/**`.
+- **Data plane**: plans, specs, prompts, results, traces, and other durable artifacts under paths such as `.omq/plans/`, `.omq/notepads/`, `.omq/prompts/`, and `.omq/state/interop/artifacts/**`.
 - **Concrete handoff examples**:
-  - shared interop state keeps task/message metadata inline while storing oversized task descriptions, task results, and message bodies under `.omc/state/interop/artifacts/**`
-  - prompt persistence stores durable prompt/response files under `.omc/prompts/**` and records descriptor metadata alongside job status
+  - shared interop state keeps task/message metadata inline while storing oversized task descriptions, task results, and message bodies under `.omq/state/interop/artifacts/**`
+  - prompt persistence stores durable prompt/response files under `.omq/prompts/**` and records descriptor metadata alongside job status
 
 **Global State:**
-- `~/.omc/state/{name}.json` — user preferences and global config
+- `~/.omq/state/{name}.json` — user preferences and global config
 
 Legacy locations are auto-migrated on read.
 
@@ -498,7 +498,7 @@ When a handoff needs to reference a large artifact, prefer a descriptor/handle o
 
 ### Notepad
 
-**File:** `.omc/notepad.md`
+**File:** `.omq/notepad.md`
 
 The notepad survives context compaction. Content written to it persists even after the context window is reset.
 
@@ -522,7 +522,7 @@ Notes can be saved using the `notepad_write_manual` MCP tool or the `notepad_wri
 
 ### Project Memory
 
-**File:** `.omc/project-memory.json`
+**File:** `.omq/project-memory.json`
 
 Project memory is a persistent store for project-level knowledge. It survives across sessions.
 
@@ -542,13 +542,13 @@ Project memory is a persistent store for project-level knowledge. It survives ac
 
 ### Session Scope
 
-**Path:** `.omc/state/sessions/{sessionId}/`
+**Path:** `.omq/state/sessions/{sessionId}/`
 
 Stores state isolated per session. Multiple sessions on the same project run simultaneously without state conflicts.
 
 ### Plan Notepad (Per-Plan Knowledge Capture)
 
-**Path:** `.omc/notepads/{plan-name}/`
+**Path:** `.omq/notepads/{plan-name}/`
 
 Stores learnings from each execution plan separately.
 
@@ -563,7 +563,7 @@ All entries are timestamped automatically.
 
 ### Centralized State (Optional)
 
-By default, state is stored in the project's `.omc/` directory and is deleted when the worktree is removed.
+By default, state is stored in the project's `.omq/` directory and is deleted when the worktree is removed.
 
 To preserve state across worktree deletions, set the `OMC_STATE_DIR` environment variable:
 

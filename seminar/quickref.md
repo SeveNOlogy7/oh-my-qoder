@@ -88,20 +88,20 @@
 | `writing` | Sonnet | 0.5 | medium | Documentation |
 
 ## Plan Notepads (Wisdom Capture)
-**Location:** `.omc/notepads/{plan-name}/`
+**Location:** `.omq/notepads/{plan-name}/`
 - `learnings.md` - Technical discoveries and patterns
 - `decisions.md` - Architectural and design decisions
 - `issues.md` - Known issues and workarounds
 - `problems.md` - Blockers and challenges
 
 ## State Files
-- `.omc/state/ultrapilot-state.json` - Ultrapilot session
-- `.omc/state/ultrapilot-ownership.json` - File ownership
-- `.omc/state/swarm-{id}.json` - Swarm coordination
-- `.omc/state/pipeline-{id}.json` - Pipeline progress
+- `.omq/state/ultrapilot-state.json` - Ultrapilot session
+- `.omq/state/ultrapilot-ownership.json` - File ownership
+- `.omq/state/swarm-{id}.json` - Swarm coordination
+- `.omq/state/pipeline-{id}.json` - Pipeline progress
 
 ## Configuration
-**File:** `~/.claude/.omc-config.json`
+**File:** `~/.claude/.omq-config.json`
 ```json
 {
   "defaultExecutionMode": "ultrawork",  // or ""

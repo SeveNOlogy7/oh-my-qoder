@@ -337,7 +337,7 @@ describe('worker pane startup safety', () => {
     })).resolves.toBeUndefined();
 
     const launchSend = tmuxState.args.find(args => args[0] === 'send-keys' && args.includes('-l'));
-    expect(launchSend?.at(-1)).toMatch(/^\.omc\\state\\team\\startup-team\\workers\\worker-1\\launch-attempts\\[0-9a-f-]+\\launch\.cmd$/);
+    expect(launchSend?.at(-1)).toMatch(/^\.omq\\state\\team\\startup-team\\workers\\worker-1\\launch-attempts\\[0-9a-f-]+\\launch\.cmd$/);
     expect(launchSend?.at(-1)).not.toContain('cmd.exe');
     expect(launchSend?.at(-1)).not.toContain('OMC_TEAM_WORKER');
     expect(launchSend?.at(-1)).not.toContain('Codex');
@@ -525,7 +525,7 @@ describe('worker pane startup safety', () => {
     })).rejects.toThrow('worker_launch_cleanup_unverified');
 
     expect(tmuxState.args).not.toContainEqual(['kill-pane', '-t', '%2']);
-    const attemptsRoot = join(cwd, '.omc/state/team/startup-team/workers/worker-1/launch-attempts');
+    const attemptsRoot = join(cwd, '.omq/state/team/startup-team/workers/worker-1/launch-attempts');
     const files = await readdir(attemptsRoot, { recursive: true });
     expect(files.some(file => String(file).endsWith('decision.json.retired'))).toBe(true);
     expect(tmuxState.paneStatus).toBe('0 cmd\n');

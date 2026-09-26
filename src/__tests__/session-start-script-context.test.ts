@@ -16,8 +16,8 @@ describe('session-start.mjs regression #1386', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-session-start-script-'));
     fakeHome = join(tempDir, 'home');
     fakeProject = join(tempDir, 'project');
-    mkdirSync(join(fakeProject, '.omc', 'state', 'sessions', 'session-1386'), { recursive: true });
-    // session-start validateCwd requires a real workspace anchor (.git / .omc-workspace)
+    mkdirSync(join(fakeProject, '.omq', 'state', 'sessions', 'session-1386'), { recursive: true });
+    // session-start validateCwd requires a real workspace anchor (.git / .omq-workspace)
     mkdirSync(join(fakeProject, '.git'), { recursive: true });
   });
 
@@ -27,7 +27,7 @@ describe('session-start.mjs regression #1386', () => {
 
   it('marks restored ultrawork state as prior-session context instead of imperative continuation', () => {
     writeFileSync(
-      join(fakeProject, '.omc', 'state', 'sessions', 'session-1386', 'ultrawork-state.json'),
+      join(fakeProject, '.omq', 'state', 'sessions', 'session-1386', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'session-1386',
@@ -62,9 +62,9 @@ describe('session-start.mjs regression #1386', () => {
   });
 
   it('injects persisted project memory into session-start additionalContext', () => {
-    mkdirSync(join(fakeProject, '.omc'), { recursive: true });
+    mkdirSync(join(fakeProject, '.omq'), { recursive: true });
     writeFileSync(
-      join(fakeProject, '.omc', 'project-memory.json'),
+      join(fakeProject, '.omq', 'project-memory.json'),
       JSON.stringify({
         version: '1.0.0',
         lastScanned: Date.now(),
@@ -201,14 +201,14 @@ ${'- oversized startup guidance\n'.repeat(700)}
   it('surfaces update notices through systemMessage without injecting them into additionalContext', () => {
     const claudeDir = join(fakeHome, '.claude');
     const pluginRoot = join(tempDir, 'plugin');
-    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(pluginRoot, { recursive: true });
     writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '1.0.0', type: 'module' }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
     writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omc', 'update-check.json'),
+      join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '999.0.0',
@@ -253,7 +253,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     const claudeDir = join(fakeHome, '.claude');
     const stalePluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.14.4');
     const latestPluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.14.5');
-    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(stalePluginRoot, { recursive: true });
     mkdirSync(latestPluginRoot, { recursive: true });
@@ -262,7 +262,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
     writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omc', 'update-check.json'),
+      join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '4.14.5',
@@ -306,7 +306,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     const claudeDir = join(fakeHome, '.claude');
     const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
-    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(join(pluginRoot), { recursive: true });
     mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
@@ -319,7 +319,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
     writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omc', 'update-check.json'),
+      join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '4.15.5',
@@ -358,7 +358,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     const claudeDir = join(fakeHome, '.claude');
     const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
-    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(pluginRoot, { recursive: true });
     mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
@@ -374,7 +374,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
     writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omc', 'update-check.json'),
+      join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '4.15.5',
@@ -406,7 +406,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     const output = JSON.parse(result.stdout) as { systemMessage?: string };
     expect(output.systemMessage ?? '').not.toContain('[OMC UPDATE AVAILABLE]');
     expect(output.systemMessage ?? '').not.toContain('4.15.5');
-    expect(JSON.parse(readFileSync(join(claudeDir, '.omc', 'update-check.json'), 'utf-8'))).toMatchObject({
+    expect(JSON.parse(readFileSync(join(claudeDir, '.omq', 'update-check.json'), 'utf-8'))).toMatchObject({
       latestVersion: '4.15.4',
       currentVersion: '4.15.4',
       updateAvailable: false,
@@ -456,7 +456,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     const claudeDir = join(fakeHome, '.claude');
     const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.3');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
-    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(join(pluginRoot), { recursive: true });
     mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
@@ -468,7 +468,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
     writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omc', 'update-check.json'),
+      join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '4.15.5',
@@ -509,7 +509,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     const claudeDir = join(fakeHome, '.claude');
     const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
-    mkdirSync(join(claudeDir, '.omc'), { recursive: true });
+    mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(pluginRoot, { recursive: true });
     mkdirSync(join(marketplaceRoot, '.claude-plugin'), { recursive: true });
@@ -517,11 +517,11 @@ ${'- oversized startup guidance\n'.repeat(700)}
     writeFileSync(join(marketplaceRoot, '.claude-plugin', 'marketplace.json'), JSON.stringify({
       plugins: [{ name: 'oh-my-claudecode', version: '4.15.4' }],
     }));
-    writeFileSync(join(claudeDir, '.omc-version.json'), JSON.stringify({ version: '4.15.5' }));
+    writeFileSync(join(claudeDir, '.omq-version.json'), JSON.stringify({ version: '4.15.5' }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
     writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
     writeFileSync(
-      join(claudeDir, '.omc', 'update-check.json'),
+      join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
         timestamp: Date.now(),
         latestVersion: '4.15.5',

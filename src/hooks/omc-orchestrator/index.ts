@@ -2,7 +2,7 @@
  * OMC Orchestrator Hook
  *
  * Enforces orchestrator behavior - delegation over direct implementation.
- * When an orchestrator agent tries to directly modify files outside .omc/,
+ * When an orchestrator agent tries to directly modify files outside .omq/,
  * this hook injects reminders to delegate to subagents instead.
  *
  * Adapted from oh-my-opencode's omc-orchestrator hook for shell-based hooks.
@@ -54,7 +54,7 @@ export function clearEnforcementCache(): void {
 
 /**
  * Read enforcement level from config.
- * Checks: .omc/config.json → [$CLAUDE_CONFIG_DIR|~/.claude]/.omc-config.json → default (warn)
+ * Checks: .omq/config.json → [$CLAUDE_CONFIG_DIR|~/.claude]/.omq-config.json → default (warn)
  */
 function getEnforcementLevel(directory: string): EnforcementLevel {
   const now = Date.now();
@@ -67,7 +67,7 @@ function getEnforcementLevel(directory: string): EnforcementLevel {
   }
 
   const localConfig = path.join(getOmcRoot(directory), 'config.json');
-  const globalConfig = path.join(getClaudeConfigDir(), '.omc-config.json');
+  const globalConfig = path.join(getClaudeConfigDir(), '.omq-config.json');
 
   let level: EnforcementLevel = 'warn'; // Default
 

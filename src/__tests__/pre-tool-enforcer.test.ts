@@ -134,7 +134,7 @@ describe('pre-tool-enforcer advisory throttling (issue #3163)', () => {
 
   it('does not throttle repeated hard-gate denials', () => {
     const sessionId = 'session-3163';
-    writeJson(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ultragoal-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ultragoal-state.json'), {
       active: true,
       session_id: sessionId,
       project_path: tempDir,
@@ -192,7 +192,7 @@ describe('pre-tool-enforcer advisory throttling (issue #3163)', () => {
     const sessionId = 'session-3163';
     const throttlePath = join(
       tempDir,
-      '.omc',
+      '.omq',
       'state',
       'sessions',
       sessionId,
@@ -221,7 +221,7 @@ describe('pre-tool-enforcer advisory throttling (issue #3163)', () => {
     const sessionId = 'session-3163';
     const throttlePath = join(
       tempDir,
-      '.omc',
+      '.omq',
       'state',
       'sessions',
       sessionId,
@@ -272,7 +272,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   it('emits boulder fallback for unknown tools when session-scoped mode is active', () => {
     const sessionId = 'session-970';
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'),
       {
         active: true,
         session_id: sessionId,
@@ -292,7 +292,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   });
 
   it('does not fall back to legacy mode files when a valid session_id is provided', () => {
-    writeJson(join(tempDir, '.omc', 'state', 'ralph-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'ralph-state.json'), {
       active: true,
     });
 
@@ -306,7 +306,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   });
 
   it('uses legacy mode files when session_id is not provided', () => {
-    writeJson(join(tempDir, '.omc', 'state', 'ultrawork-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'ultrawork-state.json'), {
       active: true,
     });
 
@@ -325,7 +325,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   it('injects team-routing redirect when Task called without teammate name during active team session', () => {
     const sessionId = 'session-1006';
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       {
         active: true,
         session_id: sessionId,
@@ -361,7 +361,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   it('does NOT inject team-routing redirect when Task called WITH teammate name', () => {
     const sessionId = 'session-1006b';
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       {
         active: true,
         session_id: sessionId,
@@ -391,7 +391,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   it('injects team-routing redirect when Agent called without teammate name during active team session', () => {
     const sessionId = 'session-3323-agent';
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       {
         active: true,
         session_id: sessionId,
@@ -425,7 +425,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   it('does NOT inject team-routing redirect when Agent called WITH teammate name', () => {
     const sessionId = 'session-3323-agent-named';
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       {
         active: true,
         session_id: sessionId,
@@ -531,7 +531,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   });
 
   it('reads team state from legacy path when session_id is absent', () => {
-    writeJson(join(tempDir, '.omc', 'state', 'team-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'team-state.json'), {
       active: true,
       team_name: 'legacy-team',
     });
@@ -554,7 +554,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
 
   it('routes Task calls from canonical team state when coarse team-state drifts away', () => {
     const sessionId = 'session-canonical-team';
-    const canonicalTeamDir = join(tempDir, '.omc', 'state', 'team', 'canonical-team');
+    const canonicalTeamDir = join(tempDir, '.omq', 'state', 'team', 'canonical-team');
     writeJson(join(canonicalTeamDir, 'manifest.json'), {
       name: 'canonical-team',
       task: 'Canonical team task',
@@ -565,7 +565,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       },
       created_at: new Date().toISOString(),
       leader_cwd: tempDir,
-      team_state_root: join(tempDir, '.omc', 'state'),
+      team_state_root: join(tempDir, '.omq', 'state'),
     });
     writeJson(join(canonicalTeamDir, 'phase-state.json'), {
       current_phase: 'executing',
@@ -591,7 +591,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
 
   it('respects session isolation — ignores team state from different session', () => {
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', 'other-session', 'team-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', 'other-session', 'team-state.json'),
       {
         active: true,
         session_id: 'other-session',
@@ -660,14 +660,14 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   it('keeps active-mode and team-routing enforcement visible when OMC_QUIET is enabled', () => {
     const sessionId = 'session-1646';
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'),
       {
         active: true,
         session_id: sessionId,
       },
     );
     writeJson(
-      join(tempDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(tempDir, '.omq', 'state', 'sessions', sessionId, 'team-state.json'),
       {
         active: true,
         session_id: sessionId,
@@ -1120,7 +1120,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
 
   it('clears awaiting confirmation from session-scoped mode state when a skill is invoked', () => {
     const sessionId = 'session-confirm';
-    const sessionStateDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
+    const sessionStateDir = join(tempDir, '.omq', 'state', 'sessions', sessionId);
     mkdirSync(sessionStateDir, { recursive: true });
     writeJson(join(sessionStateDir, 'ralph-state.json'), {
       active: true,
@@ -1355,7 +1355,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   });
 
   it('allows proxy ANTHROPIC_DEFAULT_*_MODEL in config force-inherit mode when no normal Claude model is active', () => {
-    const configDir = join(tempDir, '.omc');
+    const configDir = join(tempDir, '.omq');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(join(configDir, 'config.json'), JSON.stringify({ routing: { forceInherit: true } }));
 
@@ -2133,7 +2133,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
 
     expect(output).toEqual({ continue: true, suppressOutput: true });
     expect(
-      existsSync(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'skill-active-state.json')),
+      existsSync(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json')),
     ).toBe(false);
   });
 });
@@ -2152,7 +2152,7 @@ describe('pre-tool-enforcer force-agent-delegation enforcement', () => {
   });
 
   function writeDelegationConfig(rules: Array<Record<string, unknown>>, enforce = true): void {
-    writeJson(join(tempDir, '.omc', 'config.json'), {
+    writeJson(join(tempDir, '.omq', 'config.json'), {
       routing: {
         forceDelegation: { enforce, rules },
       },
@@ -2819,7 +2819,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
 
   it('reports running agents from the session-scoped tracking file', () => {
     const sessionId = 'session-3732-scoped';
-    writeJson(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: [
         { agent_id: 'a1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
         { agent_id: 'a2', agent_type: 'oh-my-claudecode:executor', status: 'running' },
@@ -2837,7 +2837,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
 
   it('prefers session-scoped state over a stale legacy file', () => {
     const sessionId = 'session-3732-precedence';
-    writeJson(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: [
         { agent_id: 'a1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
       ],
@@ -2847,7 +2847,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
       last_updated: new Date().toISOString(),
     });
     // Stale legacy file with contradictory counters (the 160-vs-203 symptom).
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: [],
       total_spawned: 160,
       total_completed: 0,
@@ -2862,7 +2862,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
 
   it('falls back to the legacy file when no session-scoped state exists', () => {
     const sessionId = 'session-3732-legacy';
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: [
         { agent_id: 'b1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
       ],
@@ -2879,10 +2879,10 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
   it('falls back to the canonical resolver legacy name when no session-scoped or plain legacy file exists', () => {
     const sessionId = 'session-3732-canonical-legacy';
     // The canonical resolver's legacy read path is
-    // .omc/state/subagent-tracking-state.json (normalized name), distinct from
+    // .omq/state/subagent-tracking-state.json (normalized name), distinct from
     // the pre-Wave-A plain subagent-tracking.json. The read must route through
     // resolveSessionStatePathsForHook and honor this name too.
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking-state.json'), {
       agents: [
         { agent_id: 'c1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
       ],
@@ -2933,11 +2933,11 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
 
   it('rejects invalid session ids before scoped resolution (no escaped read)', () => {
     // A payload with a path-traversal id must not reach the escaped
-    // .omc/state/evil/ location: only the safe legacy roots may be probed.
+    // .omq/state/evil/ location: only the safe legacy roots may be probed.
     // Under the pre-fix code the unvalidated id flowed into the inline
     // resolver fallback, join()-normalized `sessions/../evil` into `state/evil`,
     // and reported counters from the unrelated file below.
-    writeJson(join(tempDir, '.omc', 'state', 'evil', 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'evil', 'subagent-tracking-state.json'), {
       agents: [
         { agent_id: 'x1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
         { agent_id: 'x2', agent_type: 'oh-my-claudecode:executor', status: 'running' },
@@ -2945,7 +2945,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
       total_spawned: 99,
       last_updated: new Date().toISOString(),
     });
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: [
         { agent_id: 'l1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
       ],
@@ -2966,10 +2966,10 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     // Parseable but shape-corrupt: `agents` is not an array. This candidate
     // must be skipped locally so the legacy fallback still resolves and the
     // hook keeps running instead of aborting into suppressOutput.
-    writeJson(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: 'corrupt',
     });
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: [
         { agent_id: 'l1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
       ],
@@ -2988,10 +2988,10 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     // canonical legacy file for the SAME state name holds the valid data. The
     // resolver's effective read points at the (malformed) scoped file, so the
     // legacy file must still be probed explicitly instead of being skipped.
-    writeJson(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: 'corrupt',
     });
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking-state.json'), {
       agents: [
         { agent_id: 'c1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
       ],
@@ -3009,7 +3009,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     // subagent-tracking-state.json must still be probed (the suffixed state
     // name the pre-fix reader used normalizes to a nonexistent
     // `-state.json` name and silently skipped it).
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking-state.json'), {
       agents: [
         { agent_id: 'c1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
       ],
@@ -3031,10 +3031,10 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
 
   it('survives all-malformed tracking candidates with a zero count', () => {
     const sessionId = 'session-3732-all-malformed';
-    writeJson(join(tempDir, '.omc', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: 'corrupt',
     });
-    writeJson(join(tempDir, '.omc', 'state', 'subagent-tracking.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: { agent_id: 'nope' },
       total_spawned: 42,
     });

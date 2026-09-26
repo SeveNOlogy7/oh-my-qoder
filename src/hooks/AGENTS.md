@@ -195,7 +195,7 @@ writeState('autopilot-state', state);
 
 - Test specific hooks with `npm test -- --grep "hook-name"`
 - Test execution modes end-to-end with skill invocation
-- Verify state persistence in `.omc/state/`
+- Verify state persistence in `.omq/state/`
 - For security hooks, follow `templates/rules/security.md` checklist
 
 ## Dependencies
@@ -255,10 +255,10 @@ return {
 
 | Hook | State File |
 |------|------------|
-| autopilot | `.omc/state/autopilot-state.json` |
-| ultrapilot | `.omc/state/ultrapilot-state.json` |
-| ralph | `.omc/state/ralph-state.json` |
-| swarm | `.omc/state/swarm-tasks.db` (SQLite) |
+| autopilot | `.omq/state/autopilot-state.json` |
+| ultrapilot | `.omq/state/ultrapilot-state.json` |
+| ralph | `.omq/state/ralph-state.json` |
+| swarm | `.omq/state/swarm-tasks.db` (SQLite) |
 | learner | `~/.claude/local-skills/` |
 
 <!-- MANUAL: -->

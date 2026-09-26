@@ -115,7 +115,7 @@ function workerName(index: number): string {
 
 function stateRoot(cwd: string, teamName: string): string {
   validateTeamName(teamName);
-  return join(cwd, `.omc/state/team/${teamName}`);
+  return join(cwd, `.omq/state/team/${teamName}`);
 }
 
 async function writeJson(filePath: string, data: unknown): Promise<void> {
@@ -352,7 +352,7 @@ function buildInitialTaskInstruction(
   task: { subject: string; description: string },
   taskId: string
 ): string {
-  const donePath = `.omc/state/team/${teamName}/workers/${workerName}/done.json`;
+  const donePath = `.omq/state/team/${teamName}/workers/${workerName}/done.json`;
   return [
     `## Initial Task Assignment`,
     `Task ID: ${taskId}`,
@@ -378,7 +378,7 @@ export async function startTeam(config: TeamConfig): Promise<TeamRuntime> {
   // Validate CLIs once and pin absolute binary paths for consistent spawn behavior.
   // Reject headless-unsupported providers (e.g. antigravity on Windows) here in
   // preflight — BEFORE writing any team state or creating the tmux session — so an
-  // unsupported provider can never leave stale `.omc/state/team` files or a leader
+  // unsupported provider can never leave stale `.omq/state/team` files or a leader
   // session behind. (spawnWorkerForTask keeps its own guard for the watchdog path.)
   const resolvedBinaryPaths: Partial<Record<CliAgentType, string>> = {};
   for (const agentType of [...new Set(agentTypes)]) {
@@ -977,7 +977,7 @@ export async function assignTask(
   // Write to worker inbox
   const inboxPath = join(root, 'workers', targetWorkerName, 'inbox.md');
   await mkdir(join(inboxPath, '..'), { recursive: true });
-  const msg = `\n\n---\n## New Task Assignment\nTask ID: ${taskId}\nClaim and execute task from: .omc/state/team/${teamName}/tasks/${taskId}.json\n`;
+  const msg = `\n\n---\n## New Task Assignment\nTask ID: ${taskId}\nClaim and execute task from: .omq/state/team/${teamName}/tasks/${taskId}.json\n`;
   const { appendFile } = await import('fs/promises');
   await appendFile(inboxPath, msg, 'utf-8');
 

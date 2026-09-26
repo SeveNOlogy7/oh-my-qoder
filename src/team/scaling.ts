@@ -316,7 +316,7 @@ export async function scaleUpOwned(
       return { ok: false, error: released ? 'team_mutation_busy' : 'scale_up_fence_release_failed' };
     }
 
-    const teamStateRoot = config.team_state_root ?? `${leaderCwd}/.omc/state/team/${sanitized}`;
+    const teamStateRoot = config.team_state_root ?? `${leaderCwd}/.omq/state/team/${sanitized}`;
     const worktreeMode: TeamWorktreeMode = config.worktree_mode ?? 'disabled';
 
     // Resolve the monotonic worker index counter

@@ -191,12 +191,12 @@ OMC에 기여하고 싶으신가요? [CONTRIBUTING.md](./CONTRIBUTING.md)에서 
 
 | | 프로젝트 스코프 | 사용자 스코프 |
 |---|---|---|
-| **경로** | `.omc/skills/` | `~/.omc/skills/` |
+| **경로** | `.omq/skills/` | `~/.omq/skills/` |
 | **공유 대상** | 팀 (버전 관리됨) | 모든 프로젝트에서 사용 |
 | **우선순위** | 높음 (사용자 스코프를 오버라이드) | 낮음 (폴백) |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

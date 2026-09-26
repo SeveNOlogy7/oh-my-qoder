@@ -85,7 +85,7 @@ describe('killWorkerPanes', () => {
 
   it('writes shutdown sentinel before force-killing', async () => {
     const cwd = join(tmpdir(), `omc-cleanup-test-${process.pid}`);
-    const stateDir = join(cwd, '.omc', 'state', 'team', 'myteam');
+    const stateDir = join(cwd, '.omq', 'state', 'team', 'myteam');
     mkdirSync(stateDir, { recursive: true });
 
     try {

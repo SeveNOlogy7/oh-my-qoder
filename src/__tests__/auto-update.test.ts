@@ -103,7 +103,7 @@ describe('auto-update reconciliation', () => {
       if (normalized.endsWith('/.claude-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -336,7 +336,7 @@ describe('auto-update reconciliation', () => {
       if (normalized.endsWith('/.claude-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -669,7 +669,7 @@ describe('auto-update reconciliation', () => {
       if (normalized === '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json') {
         return JSON.stringify({ version: '4.9.0' });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -771,7 +771,7 @@ describe('auto-update reconciliation', () => {
       if (normalized === '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json') {
         return JSON.stringify({ version: '4.9.0' });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -855,7 +855,7 @@ describe('auto-update reconciliation', () => {
       if (normalized.endsWith('/.claude-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -1001,7 +1001,7 @@ describe('auto-update reconciliation', () => {
       if (normalized === '/usr/lib/node_modules/@anthropic-ai/claude-code/package.json') {
         return JSON.stringify({ version: '1.2.3' });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -1187,7 +1187,7 @@ describe('auto-update reconciliation', () => {
         }
         return JSON.stringify({ version: '1.2.3' });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -1394,7 +1394,7 @@ describe('auto-update reconciliation', () => {
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/package.json') {
         return JSON.stringify({ version: '1.2.3' });
       }
-      if (normalized.includes('.omc-version.json')) {
+      if (normalized.includes('.omq-version.json')) {
         return JSON.stringify({
           version: '4.1.5',
           installedAt: '2026-02-09T00:00:00.000Z',
@@ -1750,7 +1750,7 @@ describe('auto-update reconciliation', () => {
       windowsHide: true,
       env: expect.objectContaining({ OMC_UPDATE_RECONCILE: '1' }),
     }));
-    expect(mockedWriteFileSync).toHaveBeenCalledWith(expect.stringContaining('.omc-version.json'), expect.stringContaining('"version": "4.1.6"'));
+    expect(mockedWriteFileSync).toHaveBeenCalledWith(expect.stringContaining('.omq-version.json'), expect.stringContaining('"version": "4.1.6"'));
   });
 
   it('does not persist metadata when Windows reconcile re-exec fails with ENOENT', async () => {

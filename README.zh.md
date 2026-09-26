@@ -187,12 +187,12 @@ Team 按阶段化流水线运行：
 
 | | 项目作用域 | 用户作用域 |
 |---|---|---|
-| **路径** | `.omc/skills/` | `~/.omc/skills/` |
+| **路径** | `.omq/skills/` | `~/.omq/skills/` |
 | **共享范围** | 团队（受版本控制） | 所有项目通用 |
 | **优先级** | 高（覆盖用户作用域） | 低（回退） |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

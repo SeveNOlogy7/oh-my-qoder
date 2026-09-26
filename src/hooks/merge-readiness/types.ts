@@ -98,7 +98,7 @@ export interface MergeReadinessState {
   cancel_owner?: string;
   change_summary: string;
   slug: string;
-  /** Evidence source mode: --from-diff requires a diff; --from-artifacts accepts .omc artifacts. */
+  /** Evidence source mode: --from-diff requires a diff; --from-artifacts accepts .omq artifacts. */
   source_mode?: "diff" | "artifacts";
   /** Summaries of prior terminal attempts on this session, preserved across re-starts. */
   prior_attempts?: MergeReadinessAttempt[];

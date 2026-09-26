@@ -51,7 +51,7 @@ const TELEGRAM_FLAG = '--telegram';
 const DISCORD_FLAG = '--discord';
 const SLACK_FLAG = '--slack';
 const WEBHOOK_FLAG = '--webhook';
-const OMC_RUNTIME_DIRNAME = '.omc-launch';
+const OMC_RUNTIME_DIRNAME = '.omq-launch';
 
 function hasOmcMarkers(path: string): boolean {
   if (!existsSync(path)) return false;
@@ -513,7 +513,7 @@ export function prepareOmcLaunchConfigDir(baseConfigDir = getClaudeConfigDir()):
   const runtimeClaudeJsonPath = join(runtimeConfigDir, '.claude.json');
   const runtimeCredentialsPath = join(runtimeConfigDir, '.credentials.json');
   const sourceClaudeJsonPath = join(dirname(baseConfigDir), '.claude.json');
-  const lifecycleLockPath = lockPathFor(join(baseConfigDir, '.omc-launch.prepare.lock'));
+  const lifecycleLockPath = lockPathFor(join(baseConfigDir, '.omq-launch.prepare.lock'));
 
   return withFileLockSync(lifecycleLockPath, () => {
     const preservedClaudeJson = pathExists(runtimeClaudeJsonPath)
@@ -550,8 +550,8 @@ export function prepareOmcLaunchConfigDir(baseConfigDir = getClaudeConfigDir()):
         'skills',
         'themes',
         OMC_CONFIG_FILE_REL,
-        '.omc-version.json',
-        '.omc-silent-update.json',
+        '.omq-version.json',
+        '.omq-silent-update.json',
         'keybindings.json',
         'settings.json',
         'settings.local.json',
@@ -585,7 +585,7 @@ export function prepareOmcLaunchConfigDir(baseConfigDir = getClaudeConfigDir()):
       }
 
       writeFileSync(
-        join(nextConfigDir, '.omc-launch-profile.json'),
+        join(nextConfigDir, '.omq-launch-profile.json'),
         JSON.stringify({ sourceConfigDir: baseConfigDir, sourceClaudeMd: companionPath }, null, 2),
       );
     } catch (error) {

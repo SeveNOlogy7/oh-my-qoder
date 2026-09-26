@@ -52,7 +52,7 @@ function writeTaskStore(claudeConfigDir: string, identity: string, statuses: str
 }
 
 function ultraworkStatePath(f: Fixture): string {
-  return join(f.project, '.omc', 'state', 'sessions', 'stop-session', 'ultrawork-state.json');
+  return join(f.project, '.omq', 'state', 'sessions', 'stop-session', 'ultrawork-state.json');
 }
 
 function writeActiveUltrawork(f: Fixture) {

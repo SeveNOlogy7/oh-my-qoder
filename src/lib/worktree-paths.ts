@@ -1,12 +1,12 @@
 /**
  * Worktree Path Enforcement
  *
- * Provides strict path validation and resolution for .omc/ paths,
+ * Provides strict path validation and resolution for .omq/ paths,
  * ensuring all operations stay within the worktree boundary.
  *
  * Supports OMC_STATE_DIR environment variable for centralized state storage.
  * When set, state is stored at $OMC_STATE_DIR/{project-identifier}/ instead
- * of {worktree}/.omc/. This preserves state across worktree deletions.
+ * of {worktree}/.omq/. This preserves state across worktree deletions.
  */
 
 import { createHash } from 'crypto';
@@ -27,25 +27,25 @@ import { encodeProjectPath } from '../utils/encode-project-path.js';
  *
  * Resolution order in getOmcRoot(): OMC_STATE_DIR > workspace marker > git > cwd.
  */
-export const WORKSPACE_MARKER = '.omc-workspace';
+export const WORKSPACE_MARKER = '.omq-workspace';
 
-/** Standard .omc subdirectories */
+/** Standard .omq subdirectories */
 export const OmcPaths = {
-  ROOT: '.omc',
-  STATE: '.omc/state',
-  SESSIONS: '.omc/state/sessions',
-  PLANS: '.omc/plans',
-  RESEARCH: '.omc/research',
-  NOTEPAD: '.omc/notepad.md',
-  PROJECT_MEMORY: '.omc/project-memory.json',
-  DRAFTS: '.omc/drafts',
-  NOTEPADS: '.omc/notepads',
-  LOGS: '.omc/logs',
-  SCIENTIST: '.omc/scientist',
-  AUTOPILOT: '.omc/autopilot',
-  SKILLS: '.omc/skills',
-  SHARED_MEMORY: '.omc/state/shared-memory',
-  DEEPINIT_MANIFEST: '.omc/deepinit-manifest.json',
+  ROOT: '.omq',
+  STATE: '.omq/state',
+  SESSIONS: '.omq/state/sessions',
+  PLANS: '.omq/plans',
+  RESEARCH: '.omq/research',
+  NOTEPAD: '.omq/notepad.md',
+  PROJECT_MEMORY: '.omq/project-memory.json',
+  DRAFTS: '.omq/drafts',
+  NOTEPADS: '.omq/notepads',
+  LOGS: '.omq/logs',
+  SCIENTIST: '.omq/scientist',
+  AUTOPILOT: '.omq/autopilot',
+  SKILLS: '.omq/skills',
+  SHARED_MEMORY: '.omq/state/shared-memory',
+  DEEPINIT_MANIFEST: '.omq/deepinit-manifest.json',
 } as const;
 
 /**
@@ -101,7 +101,7 @@ export function findWorkspaceRoot(startDir?: string): string | null {
   let cursor = current;
   let result: string | null = null;
   while (true) {
-    // Stop before scanning $HOME (or above) so a stray ~/.omc-workspace does
+    // Stop before scanning $HOME (or above) so a stray ~/.omq-workspace does
     // not collapse unrelated repos under home into one shared state root.
     if (home && cursor === home) break;
     if (existsSync(join(cursor, WORKSPACE_MARKER))) {
@@ -142,7 +142,7 @@ export function readWorkspaceMarkerConfig(workspaceRoot: string): WorkspaceMarke
 /**
  * If `cwd` is inside a git submodule, return the outermost superproject working
  * tree; otherwise return null. A submodule is a full git repo, so
- * `git rev-parse --show-toplevel` stops at the submodule and `.omc/` would be
+ * `git rev-parse --show-toplevel` stops at the submodule and `.omq/` would be
  * created there instead of at the monorepo root (#3349). Climbing via
  * `--show-superproject-working-tree` anchors state to the superproject, walking
  * up through nested submodules until no superproject remains.
@@ -210,14 +210,14 @@ function resolveSuperprojectRoot(cwd: string): string | null {
  *
  * Many callers pass a raw cwd as `worktreeRoot` (e.g. hooks forwarding
  * `process.cwd()`). When that cwd is inside a git submodule we climb to the
- * outermost superproject so `.omc/` anchors to the monorepo root rather than
+ * outermost superproject so `.omq/` anchors to the monorepo root rather than
  * the submodule (#3349).
  *
  * Crucially, when the provided dir is NOT inside a submodule the path is used
  * VERBATIM (the historical contract) — it is NOT resolved up to its git
  * toplevel. Callers that pass an explicit directory (including tests that
  * isolate state under a per-process subdir of the repo) rely on it being the
- * literal `.omc` base; resolving such a subdir up to the repo root would
+ * literal `.omq` base; resolving such a subdir up to the repo root would
  * collapse separately-scoped state dirs into one and corrupt them.
  */
 function resolveStateAnchorRoot(worktreeRoot?: string): string {
@@ -272,7 +272,7 @@ export function getGitTopLevel(cwd?: string): string | null {
  * Get the state-anchor "worktree root" for a directory.
  *
  * When cwd is inside a git submodule this climbs to the outermost superproject
- * working tree so `.omc/` state anchors to the monorepo root rather than
+ * working tree so `.omq/` state anchors to the monorepo root rather than
  * polluting the submodule working tree (#3349). For normal repos and linked
  * worktrees (no superproject) it returns the literal git toplevel unchanged.
  * Returns null if not in a git repository.
@@ -342,7 +342,7 @@ const dualDirWarnings = new Set<string>();
 const siblingRetrofitWarned = new Set<string>();
 
 /**
- * Scan sibling subdirs of a workspace anchor for pre-existing .omc/state/ content.
+ * Scan sibling subdirs of a workspace anchor for pre-existing .omq/state/ content.
  * Deduplicated per session via a disk marker so repeated hook firings within the
  * same session don't re-stat siblings or re-emit. A fresh session (new sessionId)
  * will re-warn — intentional, since the user may not have seen the prior warning.
@@ -386,8 +386,8 @@ export function warnSiblingRetrofit(workspaceAnchor: string, sessionId?: string)
 
   const dirList = legacyDirs.map(d => `  - ${d}`).join('\n');
   process.stderr.write(
-    `[omc] workspace-retrofit warning: .omc-workspace anchor found at ${workspaceAnchor}\n` +
-    `  but sibling repos have pre-existing local .omc/state/ content:\n${dirList}\n` +
+    `[omc] workspace-retrofit warning: .omq-workspace anchor found at ${workspaceAnchor}\n` +
+    `  but sibling repos have pre-existing local .omq/state/ content:\n${dirList}\n` +
     `  Shared state will go to: ${sharedOmc}\n` +
     `  To migrate legacy state: OMC_MIGRATE_LEGACY_STATE=1 omc setup\n` +
     `  Or manually copy state files to ${sharedOmc}/state/\n`
@@ -456,11 +456,11 @@ export function getProjectIdentifier(worktreeRoot?: string): string {
   // project identifier is a state *identity* (used for OMC_STATE_DIR centralized
   // dirs, which never live inside the working tree), and a submodule must keep
   // its OWN identity — see the "should not change identifier for submodules"
-  // test. The #3349 climb applies only to the on-disk `.omc/` *location*
+  // test. The #3349 climb applies only to the on-disk `.omq/` *location*
   // (getOmcRoot's default branch), not to identity. The no-arg fallback uses
   // getGitTopLevel() (literal toplevel, no climb) so a process launched inside a
   // submodule still resolves the submodule's own identity, and findWorkspaceRoot
-  // below sees the unclimbed root so an inner `.omc-workspace` marker is honored.
+  // below sees the unclimbed root so an inner `.omq-workspace` marker is honored.
   const root = worktreeRoot || getGitTopLevel() || process.cwd();
 
   // Workspace marker can supply a stable, user-controlled identifier.
@@ -531,10 +531,10 @@ export function getProjectIdentifier(worktreeRoot?: string): string {
 }
 
 /**
- * Get the .omc root directory path.
+ * Get the .omq root directory path.
  *
  * When OMC_STATE_DIR is set, returns $OMC_STATE_DIR/{project-identifier}/
- * instead of {worktree}/.omc/. This allows centralized state storage that
+ * instead of {worktree}/.omq/. This allows centralized state storage that
  * survives worktree deletion.
  *
  * @param worktreeRoot - Optional worktree root
@@ -544,7 +544,7 @@ export function getOmcRoot(worktreeRoot?: string): string {
   const customDir = process.env.OMC_STATE_DIR;
   if (customDir) {
     // Centralized state lives at $OMC_STATE_DIR/{projectId} — outside the
-    // working tree — so the #3349 stray-`.omc`-in-submodule problem does not
+    // working tree — so the #3349 stray-`.omq`-in-submodule problem does not
     // apply here. Identity must NOT climb: use the literal git toplevel
     // (getGitTopLevel) for the no-arg fallback so a submodule launched without
     // an explicit worktreeRoot keeps its own centralized id rather than merging
@@ -553,7 +553,7 @@ export function getOmcRoot(worktreeRoot?: string): string {
     const projectId = getProjectIdentifier(root);
     const centralizedPath = join(customDir, projectId);
 
-    // Log notice if both legacy .omc/ and new centralized dir exist
+    // Log notice if both legacy .omq/ and new centralized dir exist
     const legacyPath = join(root, OmcPaths.ROOT);
     const warningKey = `${legacyPath}:${centralizedPath}`;
     if (!dualDirWarnings.has(warningKey) && existsSync(legacyPath) && existsSync(centralizedPath)) {
@@ -569,7 +569,7 @@ export function getOmcRoot(worktreeRoot?: string): string {
 
   // Workspace marker overrides git root resolution. This enables multi-repo
   // workspaces where the parent dir is not itself a git repo: all sub-repos
-  // share the same .omc/ at the marker location.
+  // share the same .omq/ at the marker location.
   const workspaceAnchor = findWorkspaceRoot(worktreeRoot);
   if (workspaceAnchor) {
     return join(workspaceAnchor, OmcPaths.ROOT);
@@ -580,10 +580,10 @@ export function getOmcRoot(worktreeRoot?: string): string {
 }
 
 /**
- * Resolve a relative path under .omc/ to an absolute path.
+ * Resolve a relative path under .omq/ to an absolute path.
  * Validates the path is within the omc boundary.
  *
- * @param relativePath - Path relative to .omc/ (e.g., "state/ralph.json")
+ * @param relativePath - Path relative to .omq/ (e.g., "state/ralph.json")
  * @param worktreeRoot - Optional worktree root (auto-detected if not provided)
  * @returns Absolute path
  * @throws Error if path would escape omc boundary
@@ -621,10 +621,10 @@ export function resolveStatePath(stateName: string, worktreeRoot?: string): stri
 }
 
 /**
- * Ensure a directory exists under .omc/.
+ * Ensure a directory exists under .omq/.
  * Creates parent directories as needed.
  *
- * @param relativePath - Path relative to .omc/
+ * @param relativePath - Path relative to .omq/
  * @param worktreeRoot - Optional worktree root
  * @returns Absolute path to the created directory
  */
@@ -695,7 +695,7 @@ export function resolveWisdomPath(planName: string, worktreeRoot?: string): stri
 }
 
 /**
- * Check if an absolute path is under the .omc directory.
+ * Check if an absolute path is under the .omq directory.
  * @param absolutePath - Absolute path to check
  */
 export function isPathUnderOmc(absolutePath: string, worktreeRoot?: string): boolean {
@@ -706,7 +706,7 @@ export function isPathUnderOmc(absolutePath: string, worktreeRoot?: string): boo
 }
 
 /**
- * Ensure all standard .omc subdirectories exist.
+ * Ensure all standard .omq subdirectories exist.
  */
 export function ensureAllOmcDirs(worktreeRoot?: string): void {
   const omcRoot = getOmcRoot(worktreeRoot);
@@ -834,10 +834,10 @@ export function isValidTranscriptPath(transcriptPath: string): boolean {
   const normalized = normalize(expandedPath);
   const home = homedir();
 
-  // Allowed: [$CLAUDE_CONFIG_DIR|~/.claude], ~/.omc/..., system temp dir
+  // Allowed: [$CLAUDE_CONFIG_DIR|~/.claude], ~/.omq/..., system temp dir
   const allowedPrefixes = [
     getClaudeConfigDir(),
-    join(home, '.omc'),
+    join(home, '.omq'),
     tmpdir(), // honors $TMPDIR; covers /tmp and macOS /var/folders defaults
     '/tmp',
     '/var/folders', // macOS temp
@@ -891,8 +891,8 @@ export type WritePath = string & { readonly __brand: 'WritePath' };
  * provided; legacy root only when sessionId is absent — back-compat mode).
  *
  * Fields:
- *  - `sessionScoped`: `.omc/state/sessions/{sessionId}/{name}.json` (or empty when no sid).
- *  - `legacy`: `.omc/state/{name}.json` — preserved for backwards-compat reads.
+ *  - `sessionScoped`: `.omq/state/sessions/{sessionId}/{name}.json` (or empty when no sid).
+ *  - `legacy`: `.omq/state/{name}.json` — preserved for backwards-compat reads.
  *  - `effectiveRead`: brand-typed path the caller should READ from.
  *    When sid is set and the session-scoped file exists, this is sessionScoped;
  *    otherwise legacy.
@@ -1034,16 +1034,16 @@ export function ensureSessionStateDir(sessionId: string, worktreeRoot?: string):
  * Walks up from `directory` using `git rev-parse --show-toplevel`.
  * Falls back to `getWorktreeRoot(process.cwd())`, then `process.cwd()`.
  *
- * This ensures .omc/ state is always written at the worktree root,
+ * This ensures .omq/ state is always written at the worktree root,
  * even when called from a subdirectory (fixes #576).
  *
  * @param directory - Any directory inside a git worktree (optional)
  * @returns The worktree root (never a subdirectory)
  */
 export function resolveToWorktreeRoot(directory?: string): string {
-  // The resolved root feeds BOTH on-disk `.omc/` placement AND, under
+  // The resolved root feeds BOTH on-disk `.omq/` placement AND, under
   // OMC_STATE_DIR, the centralized-state *identity* (getProjectIdentifier).
-  // The #3349 submodule→superproject climb exists ONLY to place `.omc/` at the
+  // The #3349 submodule→superproject climb exists ONLY to place `.omq/` at the
   // superproject working tree; it must NOT change a submodule's centralized
   // identity (that contract is documented on getProjectIdentifier/getOmcRoot).
   // So when OMC_STATE_DIR is set — where on-disk placement is moot and identity
@@ -1195,7 +1195,7 @@ export function resolveTranscriptPath(transcriptPath: string | undefined, cwd?: 
  * The trusted root is derived from process.cwd(), NOT from user input.
  *
  * Always returns a git top-level — never a subdirectory.
- * This prevents .omc/state/ from being created in subdirectories (#576)
+ * This prevents .omq/state/ from being created in subdirectories (#576)
  * without widening submodule launches to their superproject.
  *
  * @param workingDirectory - User-supplied working directory
@@ -1259,7 +1259,7 @@ export function validateWorkingDirectory(workingDirectory?: string): string {
   }
 
   // Directory is under trusted root but git failed — return trusted root,
-  // never the subdirectory, to prevent .omc/ creation in subdirs (#576).
+  // never the subdirectory, to prevent .omq/ creation in subdirs (#576).
   return trustedRoot;
 }
 

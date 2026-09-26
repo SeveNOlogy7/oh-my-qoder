@@ -160,7 +160,7 @@ function listArtifactFiles(directory: string, sessionId?: string): string[] {
     }
   }
 
-  // Scan .omc/state/ for canonical mode-state files that record a real run
+  // Scan .omq/state/ for canonical mode-state files that record a real run
   // (the "relevant mode state artifacts" advertised in SKILL.md). Scan the
   // legacy/global state dir AND the current session's session-scoped state dir,
   // so a --from-artifacts run after a session-scoped workflow (ralph/team/etc.)
@@ -220,10 +220,10 @@ export function collectMergeReadinessEvidence(directory: string, baseRef?: strin
     missingEvidence.push("No diff stat was detected for the current worktree.");
   }
   if (!/test|spec|qa|verify|validation/.test(evidenceText)) {
-    missingEvidence.push("No test or verification artifact was detected under .omc.");
+    missingEvidence.push("No test or verification artifact was detected under .omq.");
   }
   if (!/review|risk|security|verdict/.test(evidenceText)) {
-    missingEvidence.push("No review or risk artifact was detected under .omc.");
+    missingEvidence.push("No review or risk artifact was detected under .omq.");
   }
   for (const gerr of gitErrors) missingEvidence.push(gerr);
   return { changedFiles: trackedChangedFiles, untrackedFiles, status, diffStat, sourceArtifacts, testEvidence, reviewEvidence, missingEvidence, base_ref: resolvedBase };
@@ -420,7 +420,7 @@ export function createInitialMergeReadinessState(
   baseRef?: string,
 ): MergeReadinessState {
   // Validate sessionId before any path join: listArtifactFiles joins it into
-  // .omc/state/sessions/<sessionId>/ for evidence collection, and an unvalidated
+  // .omq/state/sessions/<sessionId>/ for evidence collection, and an unvalidated
   // traversal id (../../) would scan arbitrary directories outside that scope.
   if (sessionId) validateSessionId(sessionId);
   const now = new Date().toISOString();
@@ -461,7 +461,7 @@ export function createInitialMergeReadinessState(
   };
   if (missingEvidence) {
     state.validation_errors = unsupportedFromPr
-      ? ["--from-pr is unsupported: merge-readiness uses local git and .omc evidence only."]
+      ? ["--from-pr is unsupported: merge-readiness uses local git and .omq evidence only."]
       : sourceModeResult.error
         ? [sourceModeResult.error]
         : ["No minimal evidence for the selected source mode was detected; produce it before running /merge-readiness."];
@@ -748,8 +748,8 @@ export function formatMergeReadinessQuestionMessage(state: MergeReadinessState):
       ? `call merge_readiness_start with summary "--from-diff" and baseRef "${baseRef}"`
       : "call merge_readiness_start with summary \"--from-diff\" and an explicit baseRef";
     const evidenceGuidance = noDiff
-      ? `No diff detected. If changes are committed, ${diffHint}; if relying on .omc artifacts, use --from-artifacts. If there are truly no changes, a merge-readiness gate is not needed.`
-      : "Produce the test/review evidence under .omc, then re-run /merge-readiness (merge_readiness_start).";
+      ? `No diff detected. If changes are committed, ${diffHint}; if relying on .omq artifacts, use --from-artifacts. If there are truly no changes, a merge-readiness gate is not needed.`
+      : "Produce the test/review evidence under .omq, then re-run /merge-readiness (merge_readiness_start).";
     return [
       "[MERGE READINESS BLOCKED]",
       "Do not merge yet. Minimal evidence for the change is missing.",

@@ -188,7 +188,7 @@ function harness(input = params(), overrides: Partial<MailboxNotificationAttempt
 describe('direct mailbox notification orchestration', () => {
   it('hashes the per-request lock name so opaque request text cannot traverse dispatch state', () => {
     const lock = TeamPaths.mailboxNotificationLock('dispatch-team', '../foreign/request');
-    expect(lock).toMatch(/^\.omc\/state\/team\/dispatch-team\/dispatch\/\.mailbox-notification-[a-f0-9]{64}\.lock$/);
+    expect(lock).toMatch(/^\.omq\/state\/team\/dispatch-team\/dispatch\/\.mailbox-notification-[a-f0-9]{64}\.lock$/);
     expect(lock).not.toContain('foreign');
   });
   it('serializes two waiters after mutation then false without a second transport effect', async () => {
@@ -221,7 +221,7 @@ describe('direct mailbox notification orchestration', () => {
     temporaryDirectories.push(root);
     const actualCwd = join(root, 'actual');
     const aliasCwd = join(root, 'alias');
-    await mkdir(join(actualCwd, '.omc', 'state', 'team', 'dispatch-team', 'dispatch'), { recursive: true });
+    await mkdir(join(actualCwd, '.omq', 'state', 'team', 'dispatch-team', 'dispatch'), { recursive: true });
     await symlink(actualCwd, aliasCwd, 'dir');
     const state = harness(params({ cwd: actualCwd }));
     state.dependencies.invokeEffect = vi.fn(async () => ({
@@ -437,7 +437,7 @@ describe('direct mailbox notification orchestration', () => {
   it('uses the broadcast recipient snapshot 1:1 and surfaces a persisted recipient divergence', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'omc-mcp-broadcast-'));
     temporaryDirectories.push(cwd);
-    await mkdir(join(cwd, '.omc', 'state', 'team', 'dispatch-team'), { recursive: true });
+    await mkdir(join(cwd, '.omq', 'state', 'team', 'dispatch-team'), { recursive: true });
 
     let nextMessage = 0;
     const effects: string[] = [];
@@ -477,7 +477,7 @@ describe('direct mailbox notification orchestration', () => {
   it('does not notify a broadcast when persisting the second recipient fails', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'omc-mcp-broadcast-'));
     temporaryDirectories.push(cwd);
-    await mkdir(join(cwd, '.omc', 'state', 'team', 'dispatch-team'), { recursive: true });
+    await mkdir(join(cwd, '.omq', 'state', 'team', 'dispatch-team'), { recursive: true });
     const notify = vi.fn(async () => ({ ok: true, transport: 'hook' as const, reason: 'queued_for_hook_dispatch' }));
 
     await expect(queueBroadcastMailboxMessage({

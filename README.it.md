@@ -142,12 +142,12 @@ Impara una volta, riutilizza per sempre. OMC estrae le conoscenze di debug duram
 
 | | Ambito Progetto | Ambito Utente |
 |---|---|---|
-| **Percorso** | `.omc/skills/` | `~/.omc/skills/` |
+| **Percorso** | `.omq/skills/` | `~/.omq/skills/` |
 | **Condiviso con** | Team (versionato) | Tutti i tuoi progetti |
 | **Priorità** | Più alta (sovrascrive l'ambito utente) | Più bassa (fallback) |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

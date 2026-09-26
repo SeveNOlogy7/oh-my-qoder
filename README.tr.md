@@ -151,12 +151,12 @@ Bir kez öğrenin, sonsuza kadar yeniden kullanın. OMC, hata ayıklama sürecin
 
 | | Proje Kapsamı | Kullanıcı Kapsamı |
 |---|---|---|
-| **Yol** | `.omc/skills/` | `~/.omc/skills/` |
+| **Yol** | `.omq/skills/` | `~/.omq/skills/` |
 | **Paylaşım** | Takım (sürüm kontrollü) | Tüm projeleriniz |
 | **Öncelik** | Yüksek (kullanıcı kapsamını geçersiz kılar) | Düşük (yedek) |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

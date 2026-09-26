@@ -3,7 +3,7 @@
  *
  * When the shell cwd drifts into a git submodule, `git rev-parse --show-toplevel`
  * returns the submodule's own root (a submodule is a complete git repo), so OMC
- * created a stray `.omc/` inside the submodule working tree. The fix climbs to
+ * created a stray `.omq/` inside the submodule working tree. The fix climbs to
  * the outermost superproject working tree via `--show-superproject-working-tree`
  * so state anchors to the monorepo root.
  */
@@ -82,13 +82,13 @@ describe('submodule state anchoring (issue #3349)', () => {
     expect(getWorktreeRoot(submodulePath)).toBe(superRoot);
   });
 
-  it('getOmcRoot from inside a submodule anchors .omc/ to the superproject root', () => {
+  it('getOmcRoot from inside a submodule anchors .omq/ to the superproject root', () => {
     if (!gitAvailable) return;
     clearWorktreeCache();
     const prev = process.env.OMC_STATE_DIR;
     delete process.env.OMC_STATE_DIR;
     try {
-      expect(getOmcRoot(submodulePath)).toBe(join(superRoot, '.omc'));
+      expect(getOmcRoot(submodulePath)).toBe(join(superRoot, '.omq'));
     } finally {
       if (prev !== undefined) process.env.OMC_STATE_DIR = prev;
       clearWorktreeCache();
@@ -152,7 +152,7 @@ describe('submodule state anchoring (issue #3349)', () => {
     }
   });
 
-  it('centralized .omc for a submodule session does not merge into the parent superproject', () => {
+  it('centralized .omq for a submodule session does not merge into the parent superproject', () => {
     if (!gitAvailable) return;
     clearWorktreeCache();
     const prev = process.env.OMC_STATE_DIR;

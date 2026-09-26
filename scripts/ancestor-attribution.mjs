@@ -37,7 +37,7 @@ const repoRoot = resolve(__dirname, '..');
 // Constants
 // ---------------------------------------------------------------------------
 const SKIP_DIRS = new Set([
-  '.git', 'node_modules', 'coverage', '.omq', '.omc', '.qoder',
+  '.git', 'node_modules', 'coverage', '.omq', '.omq', '.qoder',
   '.claude', '.tmp-post-tool-use-failure-tests',
 ]);
 

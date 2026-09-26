@@ -82,7 +82,7 @@ function getUserHomeDir(): string {
  * Legacy global OMC directory under the user's home directory.
  */
 export function getLegacyOmcDir(): string {
-  return join(getUserHomeDir(), '.omc');
+  return join(getUserHomeDir(), '.omq');
 }
 
 /**
@@ -91,7 +91,7 @@ export function getLegacyOmcDir(): string {
  * Precedence:
  * 1. OMC_HOME (existing explicit override)
  * 2. XDG-aware config root on Linux/Unix
- * 3. Legacy ~/.omc elsewhere
+ * 3. Legacy ~/.omq elsewhere
  */
 export function getGlobalOmcConfigRoot(): string {
   const explicitRoot = process.env.OMC_HOME?.trim();
@@ -215,12 +215,12 @@ const RELINK_ATTEMPTS = 3;
 
 /** Suffix for the directory a stale version is moved to while its redirect
  * symlink is placed. Includes the pid so concurrent purges cannot collide. */
-const ASIDE_SUFFIX = '.omc-stale-';
+const ASIDE_SUFFIX = '.omq-stale-';
 
 /** Matches the aside suffix so an interrupted relink can be recognised and
  * repaired instead of being mistaken for a plugin version. Group 1 is the pid
  * of the purge that created it. */
-const ASIDE_SUFFIX_RE = /\.omc-stale-(\d+)$/;
+const ASIDE_SUFFIX_RE = /\.omq-stale-(\d+)$/;
 
 /**
  * What a plugin root has to expose for a pinned session to keep working.
@@ -572,7 +572,7 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
       const plainVersions: string[] = [];
       for (const version of versions) {
         const aside = ASIDE_SUFFIX_RE.exec(version);
-        // A bare `.omc-stale-<pid>` carries no version to restore to: the prefix
+        // A bare `.omq-stale-<pid>` carries no version to restore to: the prefix
         // would be empty and the "original" path would resolve to the plugin
         // namespace itself.  Renaming the entry over its own parent reports
         // ENOTEMPTY, which the placement helper reads as an occupied path and

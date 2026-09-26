@@ -174,7 +174,7 @@ export function buildDefaultConfig(): PluginConfig {
       execution: "solo",
     },
     planOutput: {
-      directory: ".omc/plans",
+      directory: ".omq/plans",
       filenameTemplate: "{{name}}.md",
     },
     teleport: {

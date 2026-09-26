@@ -18,7 +18,7 @@ function writeTranscript(payload: unknown): string {
 }
 
 function writeHudCache(sessionId: string, payload: unknown): string {
-  const sessionDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
+  const sessionDir = join(tempDir, '.omq', 'state', 'sessions', sessionId);
   mkdirSync(sessionDir, { recursive: true });
   const filePath = join(sessionDir, HUD_CACHE_FILENAME);
   writeFileSync(filePath, JSON.stringify(payload), 'utf-8');
@@ -197,7 +197,7 @@ describe('resolveHudCacheContextPercent', () => {
   });
 
   it('falls back to the legacy flat cache before scanning sessions when no identity is known', async () => {
-    const legacyDir = join(tempDir, '.omc', 'state');
+    const legacyDir = join(tempDir, '.omq', 'state');
     mkdirSync(legacyDir, { recursive: true });
     const legacyPayload = makeHudPayload({ context_window: { used_percentage: 55 } });
     writeFileSync(join(legacyDir, HUD_CACHE_FILENAME), JSON.stringify(legacyPayload), 'utf-8');
@@ -258,7 +258,7 @@ describe('resolveHudCacheContextPercent', () => {
   });
 
   it('falls back to the legacy flat cache when every identity candidate is invalid', async () => {
-    const legacyDir = join(tempDir, '.omc', 'state');
+    const legacyDir = join(tempDir, '.omq', 'state');
     mkdirSync(legacyDir, { recursive: true });
     const legacyPayload = makeHudPayload({ context_window: { used_percentage: 38 } });
     writeFileSync(join(legacyDir, HUD_CACHE_FILENAME), JSON.stringify(legacyPayload), 'utf-8');
@@ -317,7 +317,7 @@ describe('resolveHudCacheContextPercent', () => {
   });
 
   it('returns null for a valid env-bound identity with no cache even when the legacy flat cache is populated', async () => {
-    const legacyDir = join(tempDir, '.omc', 'state');
+    const legacyDir = join(tempDir, '.omq', 'state');
     mkdirSync(legacyDir, { recursive: true });
     writeFileSync(
       join(legacyDir, HUD_CACHE_FILENAME),

@@ -35,19 +35,19 @@ function getQuietLevel() {
 }
 
 /**
- * Resolve the .omc root directory for a given starting directory.
+ * Resolve the .omq root directory for a given starting directory.
  *
  * Resolution order (mirrors src/lib/worktree-paths.ts getOmcRoot):
  *   1) OMC_STATE_DIR env — log a warning and fall through (full project-id
  *      derivation lives in the TS layer; .mjs scripts use resolveOmcStateRoot
  *      for the async TS-backed path when they need OMC_STATE_DIR honoring).
- *   2) Walk up from startDir looking for a .omc-workspace marker file.
+ *   2) Walk up from startDir looking for a .omq-workspace marker file.
  *      The first directory containing that file is the workspace anchor.
  *   3) git rev-parse --show-toplevel from startDir.
  *   4) Fallback to startDir itself.
  *
  * @param {string} startDir - Directory to resolve from (usually cwd from hook payload)
- * @returns {string} Absolute path to the .omc root directory
+ * @returns {string} Absolute path to the .omq root directory
  */
 function resolveOmcRoot(startDir) {
   const dir = startDir || process.cwd();
@@ -60,13 +60,13 @@ function resolveOmcRoot(startDir) {
     );
   }
 
-  // 2) Walk up looking for .omc-workspace marker
+  // 2) Walk up looking for .omq-workspace marker
   try {
     let cursor = resolve(dir);
     const home = (() => { try { return resolve(homedir()); } catch { return null; } })();
     while (true) {
-      if (existsSync(join(cursor, '.omc-workspace'))) {
-        return join(cursor, '.omc');
+      if (existsSync(join(cursor, '.omq-workspace'))) {
+        return join(cursor, '.omq');
       }
       const parent = dirname(cursor);
       if (parent === cursor) break;
@@ -86,13 +86,13 @@ function resolveOmcRoot(startDir) {
       timeout: BOUNDED_GIT_TIMEOUT_MS,
       windowsHide: true,
     }).trim();
-    if (top) return join(top, '.omc');
+    if (top) return join(top, '.omq');
   } catch {
     // not in a git repo — fall through
   }
 
   // 4) Fallback to startDir
-  return join(dir, '.omc');
+  return join(dir, '.omq');
 }
 
 function clampPercent(percent, fallback) {
@@ -191,7 +191,7 @@ function updateStats(toolName, sessionId) {
 // Read bash history config (default: enabled)
 function getBashHistoryConfig() {
   try {
-    const configPath = join(cfgDir, '.omc-config.json');
+    const configPath = join(cfgDir, '.omq-config.json');
     if (existsSync(configPath)) {
       const config = JSON.parse(readFileSync(configPath, 'utf-8'));
       if (config.bashHistory === false) return false;

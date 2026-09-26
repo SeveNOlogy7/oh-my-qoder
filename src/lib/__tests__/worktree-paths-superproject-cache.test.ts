@@ -31,8 +31,8 @@ describe("resolveSuperprojectRoot cache", () => {
       });
     });
 
-    expect(getOmcRoot(relativeRoot)).toBe(join(relativeRoot, ".omc"));
-    expect(getOmcRoot(relativeRoot)).toBe(join(relativeRoot, ".omc"));
+    expect(getOmcRoot(relativeRoot)).toBe(join(relativeRoot, ".omq"));
+    expect(getOmcRoot(relativeRoot)).toBe(join(relativeRoot, ".omq"));
     expect(mockedExecFileSync).toHaveBeenCalledTimes(1);
     expect(mockedExecFileSync).toHaveBeenLastCalledWith(
       "git",
@@ -47,8 +47,8 @@ describe("resolveSuperprojectRoot cache", () => {
       throw new Error("spawn failed");
     });
 
-    expect(getOmcRoot(transientRoot)).toBe(join(transientRoot, ".omc"));
-    expect(getOmcRoot(transientRoot)).toBe(join(transientRoot, ".omc"));
+    expect(getOmcRoot(transientRoot)).toBe(join(transientRoot, ".omq"));
+    expect(getOmcRoot(transientRoot)).toBe(join(transientRoot, ".omq"));
     expect(mockedExecFileSync).toHaveBeenCalledTimes(2);
   });
 
@@ -61,8 +61,8 @@ describe("resolveSuperprojectRoot cache", () => {
       throw new Error(`unexpected cwd: ${String(options?.cwd)}`);
     });
 
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omc"));
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omc"));
+    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
+    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
     expect(mockedExecFileSync).toHaveBeenCalledTimes(4);
   });
 
@@ -83,9 +83,9 @@ describe("resolveSuperprojectRoot cache", () => {
       }
     });
 
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omc"));
+    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
     expect(mockedExecFileSync).toHaveBeenCalledTimes(3);
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omc"));
+    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
     expect(mockedExecFileSync).toHaveBeenCalledTimes(3);
   });
 
@@ -105,14 +105,14 @@ describe("resolveSuperprojectRoot cache", () => {
       throw new Error(`unexpected cwd: ${String(options?.cwd)}`);
     });
 
-    expect(getOmcRoot(nonGitRoot)).toBe(join(nonGitRoot, ".omc"));
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omc"));
+    expect(getOmcRoot(nonGitRoot)).toBe(join(nonGitRoot, ".omq"));
+    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
     expect(mockedExecFileSync).toHaveBeenCalledTimes(3);
 
     clearWorktreeCache();
 
-    expect(getOmcRoot(nonGitRoot)).toBe(join(nonGitRoot, ".omc"));
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omc"));
+    expect(getOmcRoot(nonGitRoot)).toBe(join(nonGitRoot, ".omq"));
+    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
     expect(mockedExecFileSync).toHaveBeenCalledTimes(6);
   });
 

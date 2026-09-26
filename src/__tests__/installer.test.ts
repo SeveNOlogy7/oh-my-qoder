@@ -370,7 +370,7 @@ describe('Installer Constants', () => {
   describe('syncPersistedSetupVersion()', () => {
     it('updates setupVersion for already-configured installs', () => {
       const tempDir = mkdtempSync(join(tmpdir(), 'omc-installer-test-'));
-      const configPath = join(tempDir, '.omc-config.json');
+      const configPath = join(tempDir, '.omq-config.json');
       writeFileSync(configPath, JSON.stringify({ setupCompleted: '2026-03-03T17:59:08+09:00', setupVersion: 'v4.6.0' }, null, 2));
 
       const changed = syncPersistedSetupVersion({
@@ -387,7 +387,7 @@ describe('Installer Constants', () => {
 
     it('does not create setupVersion for fresh installs by default', () => {
       const tempDir = mkdtempSync(join(tmpdir(), 'omc-installer-test-'));
-      const configPath = join(tempDir, '.omc-config.json');
+      const configPath = join(tempDir, '.omq-config.json');
       writeFileSync(configPath, JSON.stringify({ hudEnabled: true }, null, 2));
 
       const changed = syncPersistedSetupVersion({

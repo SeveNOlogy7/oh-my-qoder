@@ -5,8 +5,8 @@
  * via withProjectMemoryLock do not lose each other's data (no lost updates).
  *
  * Multi-repo workspace anchor tests (Wave 4 migration): verifies that when a
- * .omc-workspace marker exists in a parent dir, project-memory.json is written
- * to the workspace anchor .omc/ so sibling sub-repos share one memory file.
+ * .omq-workspace marker exists in a parent dir, project-memory.json is written
+ * to the workspace anchor .omq/ so sibling sub-repos share one memory file.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
@@ -28,7 +28,7 @@ describe('concurrent project-memory writes (E.4)', () => {
    * Returns [] if file is absent or malformed.
    */
   function readNotes(projectRoot: string): string[] {
-    const memPath = join(projectRoot, '.omc', 'project-memory.json');
+    const memPath = join(projectRoot, '.omq', 'project-memory.json');
     try {
       if (!existsSync(memPath)) return [];
       const raw = JSON.parse(readFileSync(memPath, 'utf-8'));
@@ -43,7 +43,7 @@ describe('concurrent project-memory writes (E.4)', () => {
    * Mirrors a real read-modify-write cycle.
    */
   async function appendNote(projectRoot: string, note: string): Promise<void> {
-    const memPath = join(projectRoot, '.omc', 'project-memory.json');
+    const memPath = join(projectRoot, '.omq', 'project-memory.json');
     await withProjectMemoryLock(projectRoot, () => {
       const current = (() => {
         try {
@@ -63,7 +63,7 @@ describe('concurrent project-memory writes (E.4)', () => {
 
   it('two concurrent writers preserve both notes (no lost updates)', async () => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-pmem-concurrent-'));
-    mkdirSync(join(tempDir, '.omc'), { recursive: true });
+    mkdirSync(join(tempDir, '.omq'), { recursive: true });
 
     await Promise.all([
       appendNote(tempDir, 'note-from-writer-A'),
@@ -78,7 +78,7 @@ describe('concurrent project-memory writes (E.4)', () => {
 
   it('three concurrent writers each preserve their note', async () => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-pmem-three-'));
-    mkdirSync(join(tempDir, '.omc'), { recursive: true });
+    mkdirSync(join(tempDir, '.omq'), { recursive: true });
 
     await Promise.all([
       appendNote(tempDir, 'note-A'),
@@ -143,7 +143,7 @@ describe('concurrent project-memory writes — multi-repo workspace anchor (E.4 
     workspaceRoot = mkdtempSync(join(tmpdir(), 'omc-pmem-workspace-'));
 
     // Drop workspace marker so getOmcRoot() anchors here
-    writeFileSync(join(workspaceRoot, '.omc-workspace'), '{}');
+    writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
 
     const repoA = join(workspaceRoot, 'repo-a');
     const repoB = join(workspaceRoot, 'repo-b');
@@ -163,17 +163,17 @@ describe('concurrent project-memory writes — multi-repo workspace anchor (E.4 
     expect(notes).toContain('note-from-repo-B');
     expect(notes.length).toBe(2);
 
-    // Sub-repos must not have their own .omc/project-memory.json
-    expect(existsSync(join(repoA, '.omc', 'project-memory.json'))).toBe(false);
-    expect(existsSync(join(repoB, '.omc', 'project-memory.json'))).toBe(false);
+    // Sub-repos must not have their own .omq/project-memory.json
+    expect(existsSync(join(repoA, '.omq', 'project-memory.json'))).toBe(false);
+    expect(existsSync(join(repoB, '.omq', 'project-memory.json'))).toBe(false);
 
     // Workspace anchor has exactly one project-memory.json
-    expect(existsSync(join(workspaceRoot, '.omc', 'project-memory.json'))).toBe(true);
+    expect(existsSync(join(workspaceRoot, '.omq', 'project-memory.json'))).toBe(true);
   });
 
   it('three concurrent writers from different sub-repos each preserve their note at the workspace anchor', async () => {
     workspaceRoot = mkdtempSync(join(tmpdir(), 'omc-pmem-workspace-three-'));
-    writeFileSync(join(workspaceRoot, '.omc-workspace'), '{}');
+    writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
 
     const repoA = join(workspaceRoot, 'repo-a');
     const repoB = join(workspaceRoot, 'repo-b');

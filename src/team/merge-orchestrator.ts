@@ -30,7 +30,7 @@
 // "fix" them by aligning with the plan:
 //
 //   1. Events are written to a dedicated `orchestrator-events.jsonl` log under
-//      `.omc/state/team/{team}/`, NOT to the shared `events.jsonl` used by the
+//      `.omq/state/team/{team}/`, NOT to the shared `events.jsonl` used by the
 //      rest of the runtime. This keeps orchestrator-internal state isolated and
 //      avoids interleaving with worker/leader event streams that have different
 //      consumers and retention rules.
@@ -365,7 +365,7 @@ export async function startMergeOrchestrator(
   const mergerPath = mergerWorktreePathFor(config.repoRoot, config.teamName);
 
   // Validate paths stay under the shared OMC team root (defence-in-depth).
-  // mergerPath lives under getOmcRoot(...)/team, which in a .omc-workspace
+  // mergerPath lives under getOmcRoot(...)/team, which in a .omq-workspace
   // layout is ABOVE repoRoot — validating against repoRoot would false-positive.
   validateResolvedPath(mergerPath, join(getOmcRoot(config.repoRoot), 'team'));
 

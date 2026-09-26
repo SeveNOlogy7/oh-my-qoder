@@ -6,7 +6,7 @@
  *
  * Mode modules import FROM this registry (unidirectional).
  *
- * All modes store state in `.omc/state/` subdirectory for consistency.
+ * All modes store state in `.omq/state/` subdirectory for consistency.
  */
 
 import {
@@ -45,7 +45,7 @@ export type {
  * Mode configuration registry
  *
  * Maps each mode to its state file location and detection method.
- * All paths are relative to .omc/state/ directory.
+ * All paths are relative to .omq/state/ directory.
  */
 const MODE_CONFIGS: Record<ExecutionMode, ModeConfig> = {
   [MODE_NAMES.AUTOPILOT]: {
@@ -147,7 +147,7 @@ export function getMarkerFilePath(
 
 /**
  * Get the global state file path (in ~/.claude/) for modes that support it
- * @deprecated Global state is no longer supported. All modes use local-only state in .omc/state/
+ * @deprecated Global state is no longer supported. All modes use local-only state in .omq/state/
  * @returns Always returns null
  */
 export function getGlobalStateFilePath(_mode: ExecutionMode): string | null {
@@ -441,7 +441,7 @@ function clearDiscoveredJsonFile(
  * Clear all state files for a mode
  *
  * Deletes:
- * - Local state file (.omc/state/{mode}-state.json)
+ * - Local state file (.omq/state/{mode}-state.json)
  * - Session-scoped state file if sessionId provided
  * - Local marker file if applicable
  * - Global state file if applicable (~/.claude/{mode}-state.json)

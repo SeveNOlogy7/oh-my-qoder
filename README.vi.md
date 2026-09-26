@@ -187,12 +187,12 @@ Học một lần, tái sử dụng mãi mãi. OMC trích xuất kiến thức g
 
 | | Phạm vi Dự án | Phạm vi Người dùng |
 |---|---|---|
-| **Đường dẫn** | `.omc/skills/` | `~/.omc/skills/` |
+| **Đường dẫn** | `.omq/skills/` | `~/.omq/skills/` |
 | **Chia sẻ với** | Nhóm (quản lý phiên bản) | Tất cả dự án của bạn |
 | **Ưu tiên** | Cao (ghi đè phạm vi người dùng) | Thấp (dự phòng) |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

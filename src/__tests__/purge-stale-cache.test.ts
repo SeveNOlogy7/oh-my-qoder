@@ -151,7 +151,7 @@ describe('purgeStalePluginCacheVersions', () => {
     expect(result.symlinkPaths).toEqual([staleVersion]);
     // The real dir is moved aside — never deleted outright — before the
     // symlink is created, so the path is never missing.
-    expect(mockedRenameSync).toHaveBeenCalledWith(staleVersion, expect.stringContaining(`${staleVersion}.omc-stale-`));
+    expect(mockedRenameSync).toHaveBeenCalledWith(staleVersion, expect.stringContaining(`${staleVersion}.omq-stale-`));
     expect(mockedRmSync).not.toHaveBeenCalledWith(staleVersion, { recursive: true, force: true });
     expect(mockedSymlinkSync).toHaveBeenCalledWith(activeVersion, staleVersion, 'dir');
     // Active version should NOT be removed
@@ -392,7 +392,7 @@ describe('purgeStalePluginCacheVersions', () => {
     expect(result.removed).toBe(0);
     expect(result.symlinkPaths).toEqual([staleVersion]);
     // Real dir moved aside first, then symlink created in its place
-    expect(mockedRenameSync).toHaveBeenCalledWith(staleVersion, expect.stringContaining(`${staleVersion}.omc-stale-`));
+    expect(mockedRenameSync).toHaveBeenCalledWith(staleVersion, expect.stringContaining(`${staleVersion}.omq-stale-`));
     expect(mockedSymlinkSync).toHaveBeenCalledWith(activeVersion, staleVersion, 'dir');
     // Active version untouched
     expect(mockedRmSync).not.toHaveBeenCalledWith(activeVersion, expect.anything());
@@ -420,7 +420,7 @@ describe('purgeStalePluginCacheVersions', () => {
     });
     // …and lstat must agree, or isUsableVersionPath would treat it as a directory
     mockedLstatSync.mockImplementation((p) => {
-      if (String(p).includes('.omc-stale-')) throw fsError('ENOENT');
+      if (String(p).includes('.omq-stale-')) throw fsError('ENOENT');
       return dirStats();
     });
     mockedReadFileSync.mockReturnValue(JSON.stringify({
@@ -472,7 +472,7 @@ describe('purgeStalePluginCacheVersions', () => {
     expect(result.errors[0]).toContain(staleVersion);
     // Moved aside, then moved back — the path is a real directory again
     const asideDir = mockedRenameSync.mock.calls[0][1];
-    expect(String(asideDir)).toContain(`${staleVersion}.omc-stale-`);
+    expect(String(asideDir)).toContain(`${staleVersion}.omq-stale-`);
     expect(mockedRenameSync).toHaveBeenLastCalledWith(asideDir, staleVersion);
   });
 
@@ -497,7 +497,7 @@ describe('purgeStalePluginCacheVersions', () => {
     expect(restoreAttempts).toBeGreaterThan(1);
     // Restore eventually succeeded, so the original is back at the pinned path
     const restores = mockedRenameSync.mock.calls.filter(c => String(c[1]) === staleVersion);
-    expect(String(restores[restores.length - 1][0])).toContain(`${staleVersion}.omc-stale-`);
+    expect(String(restores[restores.length - 1][0])).toContain(`${staleVersion}.omq-stale-`);
     // The reported error is the symlink failure, not a lost original
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).not.toContain('could not restore');
@@ -518,7 +518,7 @@ describe('purgeStalePluginCacheVersions', () => {
     expect(result.symlinked).toBe(0);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).toContain('could not restore the original');
-    expect(result.errors[0]).toContain('.omc-stale-');
+    expect(result.errors[0]).toContain('.omq-stale-');
   });
 
   it('restores the stale dir when symlink fails with a non-EEXIST error', () => {
@@ -549,7 +549,7 @@ describe('purgeStalePluginCacheVersions', () => {
     const cacheDir = '/mock/.claude/plugins/cache';
     const activeVersion = join(cacheDir, 'omc/oh-my-claudecode/4.15.10');
     const originalDir = join(cacheDir, 'omc/oh-my-claudecode/4.15.6');
-    const asideDir = `${originalDir}.omc-stale-${DEAD_OWNER_PID}`;
+    const asideDir = `${originalDir}.omq-stale-${DEAD_OWNER_PID}`;
     const originalExists = occupant !== 'missing';
 
     mockedLstatSync.mockImplementation((p) => {
@@ -678,7 +678,7 @@ describe('purgeStalePluginCacheVersions', () => {
     const cacheDir = '/mock/.claude/plugins/cache';
     const activeVersion = join(cacheDir, 'omc/oh-my-claudecode/4.15.10');
     const originalDir = join(cacheDir, 'omc/oh-my-claudecode/4.15.6');
-    const asideDir = `${originalDir}.omc-stale-${DEAD_OWNER_PID}`;
+    const asideDir = `${originalDir}.omq-stale-${DEAD_OWNER_PID}`;
 
     mockedLstatSync.mockImplementation((p) => (String(p) === originalDir ? dirStats() : dirStats()));
     mockedExistsSync.mockImplementation((p) => {
@@ -782,9 +782,9 @@ describe('purgeStalePluginCacheVersions', () => {
 
     for (const call of mockedSymlinkSync.mock.calls) {
       expect(String(call[0])).toBe(activeVersion);
-      expect(String(call[1])).not.toContain('.omc-stale-');
+      expect(String(call[1])).not.toContain('.omq-stale-');
     }
-    expect(mockedRenameSync).not.toHaveBeenCalledWith(expect.stringContaining(`.omc-stale-${DEAD_OWNER_PID}`), activeVersion);
+    expect(mockedRenameSync).not.toHaveBeenCalledWith(expect.stringContaining(`.omq-stale-${DEAD_OWNER_PID}`), activeVersion);
   });
 
   it('deletes stale version dir when no active version exists in namespace', () => {

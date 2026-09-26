@@ -526,7 +526,7 @@ export function syncPluginCache(verbose: boolean = false): { synced: boolean; sk
 
 /** Installation paths (respects CLAUDE_CONFIG_DIR env var) */
 export const CLAUDE_CONFIG_DIR = getClaudeConfigDir();
-export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omc-version.json');
+export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omq-version.json');
 export const CONFIG_FILE = join(CLAUDE_CONFIG_DIR, OMC_CONFIG_FILE_REL);
 
 /**
@@ -586,7 +586,7 @@ export interface StopHookCallbacksConfig {
 }
 
 /**
- * OMC configuration (stored in .omc-config.json)
+ * OMC configuration (stored in .omq-config.json)
  */
 export interface OMCConfig {
   /** Whether silent auto-updates are enabled (opt-in for security) */
@@ -1352,7 +1352,7 @@ export interface SilentUpdateConfig {
 }
 
 /** State file for tracking silent update status */
-const SILENT_UPDATE_STATE_FILE = join(CLAUDE_CONFIG_DIR, '.omc-silent-update.json');
+const SILENT_UPDATE_STATE_FILE = join(CLAUDE_CONFIG_DIR, '.omq-silent-update.json');
 
 interface SilentUpdateState {
   lastAttempt?: string;
@@ -1427,7 +1427,7 @@ export async function silentAutoUpdate(config: SilentUpdateConfig = {}): Promise
   const {
     checkIntervalHours = 24,
     autoApply = true,
-    logFile = join(CLAUDE_CONFIG_DIR, '.omc-update.log'),
+    logFile = join(CLAUDE_CONFIG_DIR, '.omq-update.log'),
     maxRetries = 3
   } = config;
 

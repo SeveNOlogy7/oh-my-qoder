@@ -39,7 +39,7 @@ echo "HUD should display in your terminal prompt"
 ### Pre-Demo Checklist
 - [ ] Terminal font size increased for visibility
 - [ ] No active OMC operations running (`/oh-my-claudecode:cancel --all`)
-- [ ] Clean state files (`rm -rf .omc/state/*`)
+- [ ] Clean state files (`rm -rf .omq/state/*`)
 - [ ] Screen recorder ready
 - [ ] Fallback terminal outputs printed/accessible
 - [ ] Demo workspace prepared
@@ -78,7 +78,7 @@ echo "HUD should display in your terminal prompt"
 ## Common Issues & Solutions
 
 ### Issue: Agent not responding
-**Solution**: Check `.omc/logs/agent-lifecycle.log` for errors, or skip to fallback output
+**Solution**: Check `.omq/logs/agent-lifecycle.log` for errors, or skip to fallback output
 
 ### Issue: HUD not showing
 **Solution**: Mention it verbally ("The HUD would show 3 active agents here...")

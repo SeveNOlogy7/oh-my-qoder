@@ -419,19 +419,19 @@ export { MODEL_ROUTING_OVERRIDE_MESSAGE };
 /**
  * Validate that a candidate cwd is a real OMC workspace anchor.
  * Returns the candidate unchanged if it is non-empty AND contains a
- * `.omc-workspace` marker OR a `.git` directory.
+ * `.omq-workspace` marker OR a `.git` directory.
  * Otherwise emits a one-line warning to stderr and returns null,
  * signalling the caller to skip all state mutations.
  */
 function validateCwd(candidate) {
   if (!candidate || typeof candidate !== 'string') {
     process.stderr.write(
-      `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omc-workspace or .git marker)\n`
+      `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
     );
     return null;
   }
   // cwd is commonly a subdirectory of the repo/workspace root, so walk up
-  // looking for a `.omc-workspace` marker or `.git` dir. Stop before scanning
+  // looking for a `.omq-workspace` marker or `.git` dir. Stop before scanning
   // $HOME (or above) so a stray marker/repo in $HOME cannot validate an
   // unrelated directory. Returns the original candidate so downstream root
   // resolution (getOmcRoot/resolveOmcStateRoot) can anchor it.
@@ -440,7 +440,7 @@ function validateCwd(candidate) {
   let cursor = candidate;
   while (true) {
     if (home && cursor === home) break;
-    if (existsSync(join(cursor, '.omc-workspace')) || existsSync(join(cursor, '.git'))) {
+    if (existsSync(join(cursor, '.omq-workspace')) || existsSync(join(cursor, '.git'))) {
       return candidate;
     }
     const parent = dirname(cursor);
@@ -448,7 +448,7 @@ function validateCwd(candidate) {
     cursor = parent;
   }
   process.stderr.write(
-    `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omc-workspace or .git marker)\n`
+    `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
   );
   return null;
 }
@@ -484,8 +484,8 @@ function isVertexSession() {
 
 function readRoutingForceInheritFromConfig(directory) {
   const configPaths = [
-    join(configDir, '.omc-config.json'),
-    join(directory, '.omc', 'config.json'),
+    join(configDir, '.omq-config.json'),
+    join(directory, '.omq', 'config.json'),
   ];
 
   for (const configPath of configPaths) {
@@ -631,7 +631,7 @@ function getMarketplaceCloneVersion() {
 
 function writeUpdateCheckCache(latestVersion, currentVersion, updateAvailable, source) {
   try {
-    const dir = join(configDir, '.omc');
+    const dir = join(configDir, '.omq');
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(getUpdateCheckCachePath(), JSON.stringify({
       timestamp: Date.now(),
@@ -666,7 +666,7 @@ function getPluginVersion() {
 // Get npm global package version
 function getNpmVersion() {
   try {
-    const versionFile = join(configDir, '.omc-version.json');
+    const versionFile = join(configDir, '.omq-version.json');
     const data = readJsonFile(versionFile);
     return data?.version || null;
   } catch { return null; }
@@ -728,7 +728,7 @@ function detectVersionDrift() {
 
 // Check if we should notify (once per unique drift combination)
 function shouldNotifyDrift(driftInfo) {
-  const stateFile = join(configDir, '.omc', 'update-state.json');
+  const stateFile = join(configDir, '.omq', 'update-state.json');
   const driftKey = `plugin:${driftInfo.pluginVersion}-npm:${driftInfo.npmVersion}-claude:${driftInfo.claudeMdVersion}`;
 
   try {
@@ -740,7 +740,7 @@ function shouldNotifyDrift(driftInfo) {
 
   // Save new drift state
   try {
-    const dir = join(configDir, '.omc');
+    const dir = join(configDir, '.omq');
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(stateFile, JSON.stringify({
       lastNotifiedDrift: driftKey,
@@ -971,7 +971,7 @@ async function main() {
       if (pluginVersion) {
         const updateInfo = await checkNpmUpdate(pluginVersion);
         if (updateInfo) {
-          const omcConfig = readJsonFile(join(configDir, '.omc-config.json')) || {};
+          const omcConfig = readJsonFile(join(configDir, '.omq-config.json')) || {};
           userMessages.push(formatUpdateNoticeForUser(updateInfo, { autoUpgradePrompt: omcConfig.autoUpgradePrompt !== false }));
         }
       }
@@ -980,10 +980,10 @@ async function main() {
     // Warn if silentAutoUpdate is enabled but running in plugin mode (#1773)
     if (process.env.CLAUDE_PLUGIN_ROOT) {
       try {
-        const omcConfigPath = join(configDir, '.omc-config.json');
+        const omcConfigPath = join(configDir, '.omq-config.json');
         const omcConfig = readJsonFile(omcConfigPath);
         if (omcConfig?.silentAutoUpdate) {
-          messages.push(`<session-restore>\n\n[OMC] silentAutoUpdate is enabled in .omc-config.json but has no effect in plugin mode.\nTo update, use: /plugin marketplace update omc && /omc-setup\nOr run manually: omc update\n\n</session-restore>\n\n---\n`);
+          messages.push(`<session-restore>\n\n[OMC] silentAutoUpdate is enabled in .omq-config.json but has no effect in plugin mode.\nTo update, use: /plugin marketplace update omc && /omc-setup\nOr run manually: omc update\n\n</session-restore>\n\n---\n`);
         }
       } catch {}
     }

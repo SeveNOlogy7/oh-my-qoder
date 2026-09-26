@@ -169,7 +169,7 @@ function exclusiveVerifiedBackup(state: PreState, root: CapturedRoot, fs: Claude
 }
 function atomicWrite(operation: PlannedOperation, root: CapturedRoot, fs: ClaudeMdTransactionFs, verifyAlias: boolean): void {
   const directory = dirname(operation.path);
-  operation.tempPath = `${directory}/.${basename(operation.path)}.omc-tmp-${randomBytes(12).toString('hex')}`;
+  operation.tempPath = `${directory}/.${basename(operation.path)}.omq-tmp-${randomBytes(12).toString('hex')}`;
   validateTransactionTarget(root, operation.tempPath, true, fs, verifyAlias);
   fs.writeFileSync(operation.tempPath, operation.bytes!, { flag: 'wx', mode: 0o600 });
   validateTransactionTarget(root, operation.tempPath, false, fs, verifyAlias);

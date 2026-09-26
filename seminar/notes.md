@@ -568,7 +568,7 @@ Narrate:
 
 **Notepad Wisdom** (Slide 36)
 - "OMC learns from every session via the notepad system:"
-- "Location: `.omc/notepads/{plan-name}/`"
+- "Location: `.omq/notepads/{plan-name}/`"
 - "  learnings.md - Technical patterns discovered"
 - "  decisions.md - Architectural choices and rationale"
 - "  issues.md - Known problems and workarounds"
@@ -581,7 +581,7 @@ Narrate:
 - "OMC tracks token usage per session:"
 - "See exactly how much each mode costs"
 - "Compare ultrawork vs  for your workload"
-- "Audit logs at `.omc/logs/delegation-audit.jsonl`"
+- "Audit logs at `.omq/logs/delegation-audit.jsonl`"
 - "Know your costs before they surprise you."
 
 ### Transition
@@ -727,7 +727,7 @@ Real-world impact: Tasks that took 30 minutes of back-and-forth with Claude Code
 
 Additionally, OMC includes a security-reviewer agent that can audit code for common vulnerabilities. You can invoke it explicitly: '/pipeline security' runs a security audit pipeline.
 
-The notepad wisdom system stores data locally in `.omc/notepads/`. Nothing is sent to external servers.
+The notepad wisdom system stores data locally in `.omq/notepads/`. Nothing is sent to external servers.
 
 For maximum security, you can review the code - it's fully open-source on GitHub. Every agent prompt is visible."
 
@@ -747,7 +747,7 @@ Focus on: fixtures, parametrization, mocking with pytest-mock.
 
 Then invoke: `Task(subagent_type="oh-my-claudecode:pytest-specialist")`
 
-You can also customize execution modes, delegation categories, and model routing rules via the config file at `~/.claude/.omc-config.json`.
+You can also customize execution modes, delegation categories, and model routing rules via the config file at `~/.claude/.omq-config.json`.
 
 Power users go deep on customization. Casual users never need to touch it."
 

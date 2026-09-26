@@ -75,7 +75,7 @@ function validSessionEndInput(cwd: string, sessionId: string): string {
 function configureDeferredAdapters(cwd: string): void {
   const configDir = join(cwd, '.claude');
   mkdirSync(configDir, { recursive: true });
-  writeFileSync(join(configDir, '.omc-config.json'), JSON.stringify({
+  writeFileSync(join(configDir, '.omq-config.json'), JSON.stringify({
     notifications: { enabled: true },
     stopHookCallbacks: { file: { enabled: true, path: join(cwd, 'callback.md'), format: 'markdown' } },
   }));
@@ -83,7 +83,7 @@ function configureDeferredAdapters(cwd: string): void {
 
 async function waitForTerminalCallback(cwd: string, sessionId: string): Promise<void> {
   const callbackPath = join(cwd, 'callback.md');
-  const manifestPath = join(cwd, '.omc', 'state', 'session-end-jobs', `${sessionId}.json`);
+  const manifestPath = join(cwd, '.omq', 'state', 'session-end-jobs', `${sessionId}.json`);
   const deadline = Date.now() + DETACHED_WORKER_CEILING_MS;
   while (Date.now() < deadline) {
     if (existsSync(callbackPath) && existsSync(manifestPath)) {
@@ -126,7 +126,7 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
   it.skipIf(!HAS_GENERATED_DIST).each(SESSION_END_SCRIPTS)('%s terminates a live manifest-lock contender within the foreground ceiling', async (_name, script) => {
     const cwd = createProject();
     const sessionId = `live-manifest-lock-${_name}`;
-    const jobsDir = join(cwd, '.omc', 'state', 'session-end-jobs');
+    const jobsDir = join(cwd, '.omq', 'state', 'session-end-jobs');
     mkdirSync(jobsDir, { recursive: true });
     writeFileSync(join(jobsDir, `${sessionId}.json.lock`), JSON.stringify({
       pid: process.pid, processStartIdentity: null, nonce: 'live-owner', createdAt: new Date().toISOString(),
@@ -143,7 +143,7 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
     expectPromptExit(result);
 
     if (_name === 'session-end') {
-      const manifestPath = join(cwd, '.omc', 'state', 'session-end-jobs', `${sessionId}.json`);
+      const manifestPath = join(cwd, '.omq', 'state', 'session-end-jobs', `${sessionId}.json`);
       const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as { actions: Record<string, { phase: string }> };
       expect(manifest.actions.callback.phase).toBe('deferred-best-effort');
       expect(manifest.actions.notification.phase).toBe('deferred-best-effort');
@@ -210,7 +210,7 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
       },
     );
     expectPromptExit(result);
-    const manifest = JSON.parse(readFileSync(join(cwd, '.omc', 'state', 'session-end-jobs', 'configured-network-routing.json'), 'utf8')) as { actions: Record<string, { phase: string }> };
+    const manifest = JSON.parse(readFileSync(join(cwd, '.omq', 'state', 'session-end-jobs', 'configured-network-routing.json'), 'utf8')) as { actions: Record<string, { phase: string }> };
     expect(manifest.actions.callback.phase).toBe('deferred-best-effort');
     expect(manifest.actions.notification.phase).toBe('deferred-best-effort');
   });
@@ -218,9 +218,9 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
   it.skipIf(!HAS_GENERATED_DIST)('wiki-session-end exits without waiting for a live wiki lock', async () => {
     const cwd = createProject();
     configureDeferredAdapters(cwd);
-    const wikiDir = join(cwd, '.omc', 'wiki');
+    const wikiDir = join(cwd, '.omq', 'wiki');
     mkdirSync(wikiDir, { recursive: true });
-    writeFileSync(join(cwd, '.omc', '.omc-config.json'), JSON.stringify({ wiki: { autoCapture: true } }));
+    writeFileSync(join(cwd, '.omq', '.omq-config.json'), JSON.stringify({ wiki: { autoCapture: true } }));
     writeFileSync(join(wikiDir, '.wiki-lock.lock'), JSON.stringify({ pid: process.pid, timestamp: Date.now() }));
 
     const result = await runUntilClose(

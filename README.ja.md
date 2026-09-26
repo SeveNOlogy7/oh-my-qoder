@@ -187,12 +187,12 @@ OMC に貢献したいですか？フォーク、ローカル checkout の設定
 
 | | プロジェクトスコープ | ユーザースコープ |
 |---|---|---|
-| **パス** | `.omc/skills/` | `~/.omc/skills/` |
+| **パス** | `.omq/skills/` | `~/.omq/skills/` |
 | **共有先** | チーム（バージョン管理対象） | すべてのプロジェクトで利用可能 |
 | **優先度** | 高（ユーザースコープを上書き） | 低（フォールバック） |
 
 ```yaml
-# .omc/skills/fix-proxy-crash.md
+# .omq/skills/fix-proxy-crash.md
 ---
 name: Fix Proxy Crash
 description: aiohttp proxy crashes on ClientDisconnectedError

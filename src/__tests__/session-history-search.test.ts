@@ -30,7 +30,7 @@ describe('session history search', () => {
     tempRoot = mkdtempSync(join(tmpdir(), 'omc-session-search-'));
     claudeDir = join(tempRoot, 'claude');
     otherProject = join(tempRoot, 'other-project');
-    tildeClaudeDir = join(homedir(), `.omc-session-search-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tildeClaudeDir = join(homedir(), `.omq-session-search-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     process.env.CLAUDE_CONFIG_DIR = claudeDir;
     process.env.OMC_STATE_DIR = join(tempRoot, 'omc-state');
 

@@ -114,7 +114,7 @@ describe('autopilot workflow profile observability', () => {
 
     const directory = mkdtempSync(join(tmpdir(), 'omc-autopilot-profile-'));
     directories.push(directory);
-    const statePath = join(directory, '.omc', 'state', 'autopilot-state.json');
+    const statePath = join(directory, '.omq', 'state', 'autopilot-state.json');
     mkdirSync(join(statePath, '..'), { recursive: true });
     writeFileSync(statePath, JSON.stringify(workflowState({
       workflow: {
@@ -136,7 +136,7 @@ describe('autopilot workflow profile observability', () => {
   it('marks a malformed workflow descriptor invalid when reading HUD state', () => {
     const directory = mkdtempSync(join(tmpdir(), 'omc-autopilot-profile-'));
     directories.push(directory);
-    const statePath = join(directory, '.omc', 'state', 'autopilot-state.json');
+    const statePath = join(directory, '.omq', 'state', 'autopilot-state.json');
     mkdirSync(join(statePath, '..'), { recursive: true });
     writeFileSync(statePath, JSON.stringify(workflowState({
       workflow: { descriptorVersion: 1, workflowName, profileVersion: 1, stages, profileHash: 'bad' },
@@ -150,7 +150,7 @@ describe('autopilot workflow profile observability', () => {
   it('marks a falsy named-workflow marker invalid instead of rendering legacy autopilot state', () => {
     const directory = mkdtempSync(join(tmpdir(), 'omc-autopilot-profile-'));
     directories.push(directory);
-    const statePath = join(directory, '.omc', 'state', 'autopilot-state.json');
+    const statePath = join(directory, '.omq', 'state', 'autopilot-state.json');
     mkdirSync(join(statePath, '..'), { recursive: true });
     writeFileSync(statePath, JSON.stringify({
       active: true,

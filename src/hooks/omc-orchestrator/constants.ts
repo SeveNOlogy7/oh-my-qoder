@@ -9,12 +9,12 @@
 export const HOOK_NAME = 'omc-orchestrator';
 
 /** @deprecated Use ALLOWED_PATH_PATTERNS instead. Legacy single prefix. */
-export const ALLOWED_PATH_PREFIX = '.omc/';
+export const ALLOWED_PATH_PREFIX = '.omq/';
 
 /** Path patterns that orchestrator IS allowed to modify directly.
  *  Paths are normalized to forward slashes before matching (via toForwardSlash). */
 export const ALLOWED_PATH_PATTERNS = [
-  /^\.omc\//,                    // .omc/**
+  /^\.omq\//,                    // .omq/**
   /^\.claude\//,                 // .claude/** (local)
   /^~?\/\.claude\//,             // legacy ~/.claude/** references
   /\/\.claude\//,                // any /.claude/ path
@@ -58,7 +58,7 @@ export const DIRECT_WORK_REMINDER = `
 
 [SYSTEM REMINDER - DELEGATION REQUIRED]
 
-You just performed direct file modifications outside \`.omc/\`.
+You just performed direct file modifications outside \`.omq/\`.
 
 **You are an ORCHESTRATOR, not an IMPLEMENTER.**
 
@@ -68,8 +68,8 @@ As an orchestrator, you should:
 - **COORDINATE** multiple tasks and ensure completion
 
 You should NOT:
-- Write code directly (except for \`.omc/\` files like plans and notepads)
-- Make direct file edits outside \`.omc/\`
+- Write code directly (except for \`.omq/\` files like plans and notepads)
+- Make direct file edits outside \`.omq/\`
 - Implement features yourself
 
 **If you need to make changes:**
@@ -89,7 +89,7 @@ export const ORCHESTRATOR_DELEGATION_REQUIRED = `
 
 **STOP. YOU ARE VIOLATING ORCHESTRATOR PROTOCOL.**
 
-You (coordinator) are attempting to directly modify a file outside \`.omc/\`.
+You (coordinator) are attempting to directly modify a file outside \`.omq/\`.
 
 **Path attempted:** $FILE_PATH
 
@@ -103,7 +103,7 @@ As an ORCHESTRATOR, you MUST:
 3. **COORDINATE** - you orchestrate, you don't implement
 
 **ALLOWED direct file operations:**
-- Files inside \`.omc/\` (plans, notepads, drafts)
+- Files inside \`.omq/\` (plans, notepads, drafts)
 - Files inside \`[$CLAUDE_CONFIG_DIR|~/.claude]/\`
 - \`CLAUDE.md\` and \`AGENTS.md\` files
 - Reading files for verification
@@ -111,7 +111,7 @@ As an ORCHESTRATOR, you MUST:
 
 **FORBIDDEN direct file operations:**
 - Writing/editing source code
-- Creating new files outside \`.omc/\`
+- Creating new files outside \`.omq/\`
 - Any implementation work
 
 ---
@@ -139,7 +139,7 @@ You have an active work plan with incomplete tasks. Continue working.
 RULES:
 - Proceed without asking for permission
 - Mark each checkbox [x] in the plan file when done
-- Use the notepad at .omc/notepads/{PLAN_NAME}/ to record learnings
+- Use the notepad at .omq/notepads/{PLAN_NAME}/ to record learnings
 - Do not stop until all tasks are complete
 - If blocked, document the blocker and move to the next task`;
 

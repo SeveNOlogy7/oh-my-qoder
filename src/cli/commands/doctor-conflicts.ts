@@ -14,13 +14,13 @@ import { inspectUnifiedMcpRegistrySync } from '../../installer/mcp-registry.js';
 import { findWorkspaceRoot, WORKSPACE_MARKER } from '../../lib/worktree-paths.js';
 
 export interface WorkspaceMarkerStatus {
-  /** Absolute path to the directory containing .omc-workspace, or null if absent. */
+  /** Absolute path to the directory containing .omq-workspace, or null if absent. */
   markerRoot: string | null;
   /** True when OMC_STATE_DIR env var is set. */
   stateDirEnvSet: boolean;
   /** Value of OMC_STATE_DIR, or null when unset. */
   stateDirEnvValue: string | null;
-  /** When both OMC_STATE_DIR and .omc-workspace are active, this is true (warn: OMC_STATE_DIR wins). */
+  /** When both OMC_STATE_DIR and .omq-workspace are active, this is true (warn: OMC_STATE_DIR wins). */
   precedenceConflict: boolean;
 }
 
@@ -520,7 +520,7 @@ export function checkLegacySkills(): ConflictReport['legacySkills'] {
  */
 export function checkConfigIssues(): ConflictReport['configIssues'] {
   const unknownFields: string[] = [];
-  const configPath = join(getClaudeConfigDir(), '.omc-config.json');
+  const configPath = join(getClaudeConfigDir(), '.omq-config.json');
 
   if (!existsSync(configPath)) {
     return { unknownFields };
@@ -532,7 +532,7 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
     // Known top-level fields from the current config surfaces:
     // - PluginConfig (src/shared/types.ts)
     // - OMCConfig (src/features/auto-update.ts)
-    // - direct .omc-config.json readers/writers (notifications, auto-invoke,
+    // - direct .omq-config.json readers/writers (notifications, auto-invoke,
     //   delegation enforcement, omc-setup team config)
     // - preserved legacy compatibility keys that still appear in user configs
     const knownFields = new Set([
@@ -581,13 +581,13 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
 }
 
 /**
- * Check for .omc-workspace marker presence and OMC_STATE_DIR precedence.
+ * Check for .omq-workspace marker presence and OMC_STATE_DIR precedence.
  *
  * Reports:
- *  - Whether a .omc-workspace marker was found (and where).
+ *  - Whether a .omq-workspace marker was found (and where).
  *  - Whether OMC_STATE_DIR is set.
  *  - When both are set, emits a precedenceConflict flag (OMC_STATE_DIR wins per
- *    the resolution-order principle: OMC_STATE_DIR > .omc-workspace > git > cwd).
+ *    the resolution-order principle: OMC_STATE_DIR > .omq-workspace > git > cwd).
  */
 export function checkWorkspaceMarker(): WorkspaceMarkerStatus {
   const markerRoot = findWorkspaceRoot();
@@ -757,7 +757,7 @@ export function formatReport(report: ConflictReport, json: boolean): string {
   if (report.configIssues.unknownFields.length > 0) {
     lines.push(colors.bold('⚙️  Configuration Issues'));
     lines.push('');
-    lines.push(`  ${colors.yellow('⚠')} Unknown fields in .omc-config.json:`);
+    lines.push(`  ${colors.yellow('⚠')} Unknown fields in .omq-config.json:`);
     for (const field of report.configIssues.unknownFields) {
       lines.push(`    - ${field}`);
     }
@@ -798,7 +798,7 @@ export function formatReport(report: ConflictReport, json: boolean): string {
   lines.push('');
 
   // Workspace marker
-  lines.push(colors.bold('🗂  Workspace Marker (.omc-workspace)'));
+  lines.push(colors.bold('🗂  Workspace Marker (.omq-workspace)'));
   lines.push('');
   const wm = report.workspaceMarker;
   if (wm.markerRoot) {
@@ -814,8 +814,8 @@ export function formatReport(report: ConflictReport, json: boolean): string {
   }
   if (wm.precedenceConflict) {
     lines.push(`  ${colors.yellow('⚠')} Both OMC_STATE_DIR and ${WORKSPACE_MARKER} are active.`);
-    lines.push(`    ${colors.gray('OMC_STATE_DIR takes precedence (resolution order: OMC_STATE_DIR > .omc-workspace > git > cwd).')}`);
-    lines.push(`    ${colors.gray('If you intended .omc-workspace to anchor state, unset OMC_STATE_DIR.')}`);
+    lines.push(`    ${colors.gray('OMC_STATE_DIR takes precedence (resolution order: OMC_STATE_DIR > .omq-workspace > git > cwd).')}`);
+    lines.push(`    ${colors.gray('If you intended .omq-workspace to anchor state, unset OMC_STATE_DIR.')}`);
   }
   lines.push('');
 
