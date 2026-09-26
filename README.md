@@ -54,31 +54,21 @@ _Don't learn Claude Code. Just use OMC._
 
 **Step 1: Install**
 
-Marketplace/plugin install (recommended for most Claude Code users).
-These are Claude Code slash commands — enter them **one at a time** (pasting both lines at once will fail):
+OMQ runs as a **Qoder CLI plugin**: its skills, agents and lifecycle hooks are embedded
+directly into your `qodercli` sessions. Qoder CLI installs a plugin from a **local
+directory** (`qodercli plugins install <path>`) — there is no marketplace or remote install,
+and that step does not run `npm`. So build the plugin first, then point Qoder CLI at your
+checkout:
 
 ```bash
-/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode
+git clone https://github.com/qoder-plugins/oh-my-qoder.git
+cd oh-my-qoder
+npm install
+npm run build
+qodercli plugins install "$(pwd)"
 ```
 
-Then:
-
-```bash
-/plugin install oh-my-claudecode
-```
-
-If you prefer the npm CLI/runtime path instead of the marketplace flow:
-
-```bash
-npm i -g oh-my-claude-sisyphus@latest
-```
-
-> **Known npm warning:** npm may print `deprecated prebuild-install@7.1.3` during the CLI install.
-> This currently comes from the upstream `better-sqlite3` native-addon dependency
-> (`better-sqlite3 -> prebuild-install`); `prebuild-install@7.1.3` is still the latest
-> published version, so there is no safe repo-side dependency bump or override to remove
-> the warning yet. The warning is tracked in [#2913](https://github.com/Yeachan-Heo/oh-my-claudecode/issues/2913)
-> and does not by itself mean the OMC CLI install failed.
+Restart Qoder CLI, or run `/plugins reload` inside a session, to activate it.
 
 **Step 2: Setup**
 
