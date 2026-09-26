@@ -23,7 +23,7 @@ function writePluginRoot(root: string, version: string): void {
   mkdirSync(join(root, 'docs'), { recursive: true });
   writeFileSync(join(root, 'hooks', 'hooks.json'), '{}\n');
   writeFileSync(join(root, 'skills', 'omc-setup', 'SKILL.md'), '# setup\n');
-  writeFileSync(join(root, 'docs', 'CLAUDE.md'), `<!-- OMC:VERSION:${version} -->\n`);
+  writeFileSync(join(root, 'docs', 'CLAUDE.md'), `<!-- OMQ:VERSION:${version} -->\n`);
 }
 
 afterEach(() => {

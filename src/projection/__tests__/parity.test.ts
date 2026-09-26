@@ -27,15 +27,15 @@ describe('prompt projection parity #3705', () => {
     const projections = composeAllClaudeProjections({ canonicalDocsRaw: docsRaw, version: pkgVer });
     expect(projections).toHaveLength(2);
     for (const p of projections) {
-      expect(p.content).toContain('<!-- OMC:START -->');
-      expect(p.content).toContain(`<!-- OMC:VERSION:${pkgVer} -->`);
-      expect(p.content).toContain('<!-- OMC:END -->');
+      expect(p.content).toContain('<!-- OMQ:START -->');
+      expect(p.content).toContain(`<!-- OMQ:VERSION:${pkgVer} -->`);
+      expect(p.content).toContain('<!-- OMQ:END -->');
       expect(p.digest).toBe(computeDigest(p.content));
       expect(p.digest).toMatch(/^[a-f0-9]{64}$/);
     }
     // sourceRevision is stable regardless of version marker
     const rev1 = canonicalSourceRevision(docsRaw);
-    const rev2 = canonicalSourceRevision(docsRaw.replace(`<!-- OMC:VERSION:${pkgVer} -->`, '<!-- OMC:VERSION:0.0.0 -->'));
+    const rev2 = canonicalSourceRevision(docsRaw.replace(`<!-- OMQ:VERSION:${pkgVer} -->`, '<!-- OMQ:VERSION:0.0.0 -->'));
     expect(rev1).toBe(rev2);
     expect(rev1).toMatch(/^[a-f0-9]{64}$/);
   });

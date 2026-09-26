@@ -16,7 +16,7 @@ function fixture(): { root: string; source: string } {
   const plugin = join(root, 'plugin');
   mkdirSync(plugin);
   const source = join(plugin, 'CLAUDE.md');
-  writeFileSync(source, '<!-- OMC:START -->\n# canonical\n<!-- OMC:END -->\n');
+  writeFileSync(source, '<!-- OMQ:START -->\n# canonical\n<!-- OMQ:END -->\n');
   return { root, source };
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -28,7 +28,7 @@ describe('CLAUDE.md transactions', () => {
     writeFileSync(join(root, 'CLAUDE-omc.md'), 'orphan\n');
     const result = executeClaudeMdTransaction({ mode: 'global-overwrite', root, source, sourceRoot: join(root, 'plugin'), version: '1.0.0' });
     expect(result).toMatchObject({ ok: true, exitCode: 0 });
-    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toContain('<!-- OMC:VERSION:1.0.0 -->');
+    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toContain('<!-- OMQ:VERSION:1.0.0 -->');
     expect(result.backups).toHaveLength(2);
     expect(result.deletedPaths).toEqual([join(root, 'CLAUDE-omc.md')]);
   });
@@ -37,7 +37,7 @@ describe('CLAUDE.md transactions', () => {
     const { root, source } = fixture();
     const result = executeClaudeMdTransaction({ mode: 'local', root, source, sourceRoot: join(root, 'plugin') });
     expect(result.ok).toBe(true);
-    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toBe('<!-- OMC:START -->\n# canonical\n<!-- OMC:END -->\n');
+    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toBe('<!-- OMQ:START -->\n# canonical\n<!-- OMQ:END -->\n');
   });
 
   it('keeps the canonical missing-marker diagnostic compatible', () => {
@@ -89,7 +89,7 @@ describe('CLAUDE.md transactions', () => {
   it('removes a recovered generated customization header in original coordinates', () => {
     const { root, source } = fixture();
     const main = join(root, 'CLAUDE.md');
-    writeFileSync(main, '<!-- OMC:START -->\nold\n<!-- OMC:END -->\n\n<!-- User customizations (recovered from corrupted markers) -->\ntrailing user bytes');
+    writeFileSync(main, '<!-- OMQ:START -->\nold\n<!-- OMQ:END -->\n\n<!-- User customizations (recovered from corrupted markers) -->\ntrailing user bytes');
     const result = executeClaudeMdTransaction({ mode: 'global-overwrite', root, source, sourceRoot: join(root, 'plugin') });
     expect(result.ok).toBe(true);
     const output = readFileSync(main, 'utf8');
@@ -332,11 +332,11 @@ describe('CLAUDE.md transactions', () => {
   it('fails closed on corrupt markers without altering user bytes', () => {
     const { root, source } = fixture();
     const main = join(root, 'CLAUDE.md');
-    writeFileSync(main, 'trailing\n<!-- OMC:START -->\n');
+    writeFileSync(main, 'trailing\n<!-- OMQ:START -->\n');
     const result = executeClaudeMdTransaction({ mode: 'global-preserve', root, source, sourceRoot: join(root, 'plugin') });
     expect(result).toMatchObject({ exitCode: 3, failedPhase: 'validation' });
     expect(result.error).toContain('corrupt OMC markers');
-    expect(readFileSync(main, 'utf8')).toBe('trailing\n<!-- OMC:START -->\n');
+    expect(readFileSync(main, 'utf8')).toBe('trailing\n<!-- OMQ:START -->\n');
   });
 });
 
@@ -359,7 +359,7 @@ describe('strict rooted path containment', () => {
   it('rejects an escaped transaction source before mutation', () => {
     const { root } = fixture();
     const outside = join(root, 'outside.md');
-    writeFileSync(outside, '<!-- OMC:START -->\noutside\n<!-- OMC:END -->\n');
+    writeFileSync(outside, '<!-- OMQ:START -->\noutside\n<!-- OMQ:END -->\n');
     const result = executeClaudeMdTransaction({ mode: 'local', root, source: outside, sourceRoot: join(root, 'plugin') });
     expect(result).toMatchObject({ ok: false, exitCode: 3, failedPhase: 'validation' });
     expect(nodeFs.existsSync(join(root, 'CLAUDE.md'))).toBe(false);

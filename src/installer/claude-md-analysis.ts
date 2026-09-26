@@ -10,8 +10,8 @@ export function decodeClaudeMdUtf8(bytes: Buffer, path: string): string {
   }
 }
 
-export const OMQ_START_MARKER = '<!-- OMC:START -->';
-export const OMQ_END_MARKER = '<!-- OMC:END -->';
+export const OMQ_START_MARKER = '<!-- OMQ:START -->';
+export const OMQ_END_MARKER = '<!-- OMQ:END -->';
 
 export interface ClaudeMdLine {
   start: number;

@@ -256,7 +256,7 @@ function bumpVersionFiles(newVersion: string, dryRun: boolean): string[] {
   const claudeMdPath = join(ROOT, 'docs/CLAUDE.md');
   if (existsSync(claudeMdPath)) {
     const content = readFileSync(claudeMdPath, 'utf-8');
-    const updated = content.replace(/<!-- OMC:VERSION:[^\s]*? -->/, `<!-- OMC:VERSION:${newVersion} -->`);
+    const updated = content.replace(/<!-- OMQ:VERSION:[^\s]*? -->/, `<!-- OMQ:VERSION:${newVersion} -->`);
     if (content !== updated) {
       if (!dryRun) writeFileSync(claudeMdPath, updated, 'utf-8');
       changes.push(`docs/CLAUDE.md: version marker → ${newVersion}`);

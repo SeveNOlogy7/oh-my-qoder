@@ -22,19 +22,19 @@ describe('prompt projection fixtures', () => {
     // golden was generated as deterministic projection from docs canonical; verify via composer module
     // Import dynamically to avoid circular, but we can just check golden contains markers and version
     const pkgVer = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version as string;
-    expect(golden).toContain('<!-- OMC:START -->');
-    expect(golden).toContain(`<!-- OMC:VERSION:${pkgVer} -->`);
-    expect(golden).toContain('<!-- OMC:END -->');
+    expect(golden).toContain('<!-- OMQ:START -->');
+    expect(golden).toContain(`<!-- OMQ:VERSION:${pkgVer} -->`);
+    expect(golden).toContain('<!-- OMQ:END -->');
     const docsBody = readFileSync(join(root, 'tests/fixtures/prompt-projection/claude-body.normalized'), 'utf8');
     expect(golden).toContain(docsBody.trim().split('\n')[0].slice(0,20));
   });
   it('normalized body fixture matches docs canonical body', () => {
     const docsRaw = readFileSync(join(root, 'docs/CLAUDE.md'), 'utf8');
-    const START='<!-- OMC:START -->'; const END='<!-- OMC:END -->';
+    const START='<!-- OMQ:START -->'; const END='<!-- OMQ:END -->';
     const s=docsRaw.indexOf(START); const e=docsRaw.indexOf(END);
     const se=docsRaw.indexOf('\n', s);
     let body=docsRaw.slice(se+1, e);
-    body=body.replace(/<!-- OMC:VERSION:[^\s]*? -->\r?\n?/g,'');
+    body=body.replace(/<!-- OMQ:VERSION:[^\s]*? -->\r?\n?/g,'');
     body=body.replace(/\r\n/g,'\n');
     if(body.length && !body.endsWith('\n')) body+='\n';
     const normalized = readFileSync(join(root, 'tests/fixtures/prompt-projection/claude-body.normalized'), 'utf8');

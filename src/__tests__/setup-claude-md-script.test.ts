@@ -198,7 +198,7 @@ describe('setup-claude-md.sh committed plugin shipping surface (issue #3476)', (
       if (scenario === 'missing') {
         rmSync(coordinator);
       } else {
-        writeFileSync(join(fixture.pluginRoot, 'docs', 'CLAUDE.md'), '<!-- OMC:START -->\n<!-- OMC:VERSION:stale -->\n# stale\n<!-- OMC:END -->\n');
+        writeFileSync(join(fixture.pluginRoot, 'docs', 'CLAUDE.md'), '<!-- OMQ:START -->\n<!-- OMQ:VERSION:stale -->\n# stale\n<!-- OMQ:END -->\n');
       }
 
       const result = spawnSync('bash', [fixture.scriptPath, 'local'], {
@@ -229,7 +229,7 @@ describe('setup-claude-md.sh committed plugin shipping surface (issue #3476)', (
     exportCommittedPlugin(staleRoot);
     exportCommittedPlugin(activeRoot);
     rmSync(join(staleRoot, COMMITTED_COORDINATOR));
-    writeFileSync(join(staleRoot, 'docs', 'CLAUDE.md'), '<!-- OMC:START -->\n<!-- OMC:VERSION:stale -->\n# stale root\n<!-- OMC:END -->\n');
+    writeFileSync(join(staleRoot, 'docs', 'CLAUDE.md'), '<!-- OMQ:START -->\n<!-- OMQ:VERSION:stale -->\n# stale root\n<!-- OMQ:END -->\n');
     mkdirSync(projectRoot, { recursive: true });
     mkdirSync(homeRoot, { recursive: true });
 
@@ -244,19 +244,19 @@ describe('setup-claude-md.sh committed plugin shipping surface (issue #3476)', (
     expect(result.status).toBe(0);
     const installed = readFileSync(join(projectRoot, '.claude', 'CLAUDE.md'), 'utf-8');
     expect(installed).toBe(activeDocs);
-    expect(installed).toContain(`<!-- OMC:VERSION:${activeHandshake.engineVersion} -->`);
+    expect(installed).toContain(`<!-- OMQ:VERSION:${activeHandshake.engineVersion} -->`);
   });
 });
 
 
 describe('setup-claude-md.sh (issue #3442)', () => {
   it('installs the canonical docs/CLAUDE.md content with OMC markers', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const result = spawnSync('bash', [fixture.scriptPath, 'local'], {
@@ -274,9 +274,9 @@ Use the real docs file.
     expect(existsSync(installedPath)).toBe(true);
 
     const installed = readFileSync(installedPath, 'utf-8');
-    expect(installed).toContain('<!-- OMC:START -->');
-    expect(installed).toContain('<!-- OMC:END -->');
-    expect(installed).toContain('<!-- OMC:VERSION:9.9.9 -->');
+    expect(installed).toContain('<!-- OMQ:START -->');
+    expect(installed).toContain('<!-- OMQ:END -->');
+    expect(installed).toContain('<!-- OMQ:VERSION:9.9.9 -->');
     expect(installed).toContain('# Canonical CLAUDE');
 
     const installedSkillPath = join(fixture.projectRoot, '.claude', 'skills', 'wiki', 'SKILL.md');
@@ -285,10 +285,10 @@ Use the real docs file.
   });
 
   it('fails closed when a coordinator reports ok:false with exit status 0', () => {
-    const canonical = `<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const canonical = `<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 # Canonical CLAUDE
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `;
     const fixture = createPluginFixture(canonical);
     const sourceSha256 = createHash('sha256').update(canonical).digest('hex');
@@ -312,10 +312,10 @@ else process.stdout.write(JSON.stringify({ ok: false, exitCode: 0, error: "rejec
   });
 
   it('fails closed when the coordinator handshake is malformed', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 # Canonical CLAUDE
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
     writeFileSync(
       join(fixture.pluginRoot, 'bridge', 'claude-md-coordinator.cjs'),
@@ -334,10 +334,10 @@ else process.stdout.write(JSON.stringify({ ok: false, exitCode: 0, error: "rejec
   });
 
   it('fails closed when the coordinator handshake source hash differs from the canonical file', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 # Canonical CLAUDE
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
     writeFileSync(
       join(fixture.pluginRoot, 'bridge', 'claude-md-coordinator.cjs'),
@@ -376,12 +376,12 @@ This is a summarized CLAUDE.md without markers.
   });
 
   it('adds a local git exclude block for .omq artifacts while preserving .omq/skills', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const gitInit = spawnSync('git', ['init'], {
@@ -419,12 +419,12 @@ Use the real docs file.
   });
 
   it('keeps the local git exclude block aligned with the tracked root .gitignore skill exceptions', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const repoGitignore = readFileSync(join(process.cwd(), '.gitignore'), 'utf-8');
@@ -464,12 +464,12 @@ Use the real docs file.
   });
 
   it('local git exclude block keeps .omq/skills trackable while ignoring sibling .omq artifacts and .omx runtime cache', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const gitInit = spawnSync('git', ['init'], {
@@ -553,12 +553,12 @@ Use the real docs file.
   });
 
   it('updates an existing local git exclude block to ignore .omx runtime cache', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const gitInit = spawnSync('git', ['init'], {
@@ -598,12 +598,12 @@ ${result.stderr}`).toContain('Updated OMC git exclude for local OMX artifacts');
   });
 
   it('does not duplicate the local git exclude block on repeated local setup runs', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const gitInit = spawnSync('git', ['init'], {
@@ -641,10 +641,10 @@ Use the real docs file.
   });
 
   it('removes only exact static 583/292-line legacy guides, preserves surrounding bytes, reports a byte-identical backup, and is idempotent', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 # Canonical CLAUDE
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
     const targetPath = join(fixture.projectRoot, '.claude', 'CLAUDE.md');
     const before = 'before legacy\r\n';
@@ -663,7 +663,7 @@ Use the real docs file.
 
     const installed = readFileSync(targetPath, 'utf-8');
     const preservedUserBytes = `${before}${between}${after}`;
-    expect(installed).toContain('<!-- OMC:START -->');
+    expect(installed).toContain('<!-- OMQ:START -->');
     expect(installed).toContain('<!-- User customizations -->\n' + preservedUserBytes);
     expect(installed).not.toContain(LEGACY_583_LINE_GUIDE);
     expect(installed).not.toContain(LEGACY_292_LINE_GUIDE);
@@ -674,12 +674,12 @@ Use the real docs file.
   });
 
   it('uses CLAUDE_CONFIG_DIR for global setup targets and plugin verification', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -706,12 +706,12 @@ Use the real docs file.
   });
 
   it('does not warn for third-party-only settings hooks', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -746,12 +746,12 @@ Use the real docs file.
   });
 
   it('warns when settings hooks reference a legacy OMC hook command', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -786,12 +786,12 @@ Use the real docs file.
   });
 
   it('does not advise deleting the whole hooks section when hooks are mixed', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -832,12 +832,12 @@ Use the real docs file.
   });
 
   it('overwrites an existing global CLAUDE.md by default when preserve mode is not requested', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -858,20 +858,20 @@ Use the real docs file.
     expect(result.status).toBe(0);
 
     const baseClaude = readFileSync(join(configDir, 'CLAUDE.md'), 'utf-8');
-    expect(baseClaude).toContain('<!-- OMC:START -->');
-    expect(baseClaude).toContain('<!-- OMC:END -->');
+    expect(baseClaude).toContain('<!-- OMQ:START -->');
+    expect(baseClaude).toContain('<!-- OMQ:END -->');
     expect(baseClaude).toContain('<!-- User customizations -->');
     expect(baseClaude).toContain('# User CLAUDE');
     expect(existsSync(join(configDir, 'CLAUDE-omc.md'))).toBe(false);
   });
 
   it('preserves an existing global CLAUDE.md when preserve mode is explicitly requested', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -899,21 +899,21 @@ Use the real docs file.
     expect(baseClaude).toContain('<!-- OMC:IMPORT:START -->');
     expect(baseClaude).toContain('@CLAUDE-omc.md');
     expect(baseClaude).toContain('<!-- OMC:IMPORT:END -->');
-    expect(baseClaude).not.toContain('<!-- OMC:START -->');
+    expect(baseClaude).not.toContain('<!-- OMQ:START -->');
 
-    expect(companionClaude).toContain('<!-- OMC:START -->');
-    expect(companionClaude).toContain('<!-- OMC:END -->');
-    expect(companionClaude).toContain('<!-- OMC:VERSION:9.9.9 -->');
+    expect(companionClaude).toContain('<!-- OMQ:START -->');
+    expect(companionClaude).toContain('<!-- OMQ:END -->');
+    expect(companionClaude).toContain('<!-- OMQ:VERSION:9.9.9 -->');
     expect(companionClaude).toContain('# Canonical CLAUDE');
   });
 
   it('updates the preserved companion file idempotently without duplicating the managed import block', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -944,16 +944,16 @@ Use the real docs file.
     const baseClaude = readFileSync(join(configDir, 'CLAUDE.md'), 'utf-8');
     expect(baseClaude.match(/<!-- OMC:IMPORT:START -->/g)).toHaveLength(1);
     expect(baseClaude.match(/@CLAUDE-omc\.md/g)).toHaveLength(1);
-    expect(readFileSync(join(configDir, 'CLAUDE-omc.md'), 'utf-8')).toContain('<!-- OMC:VERSION:9.9.9 -->');
+    expect(readFileSync(join(configDir, 'CLAUDE-omc.md'), 'utf-8')).toContain('<!-- OMQ:VERSION:9.9.9 -->');
   });
 
   it('cleans up orphaned companion file when switching from preserve to overwrite mode', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -990,8 +990,8 @@ Use the real docs file.
 
     // CLAUDE.md must have OMC markers inline, not an import block
     const baseClaude = readFileSync(join(configDir, 'CLAUDE.md'), 'utf-8');
-    expect(baseClaude).toContain('<!-- OMC:START -->');
-    expect(baseClaude).toContain('<!-- OMC:END -->');
+    expect(baseClaude).toContain('<!-- OMQ:START -->');
+    expect(baseClaude).toContain('<!-- OMQ:END -->');
     expect(baseClaude).not.toContain('<!-- OMC:IMPORT:START -->');
     expect(baseClaude).not.toContain('@CLAUDE-omc.md');
 
@@ -1000,12 +1000,12 @@ Use the real docs file.
   });
 
   it('refuses preserve mode when the companion path is a symlink', () => {
-    const fixture = createPluginFixture(`<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const fixture = createPluginFixture(`<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 
 # Canonical CLAUDE
 Use the real docs file.
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `);
 
     const configDir = join(fixture.homeRoot, 'custom-profile');
@@ -1051,7 +1051,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
       join(oldVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMQ:END -->\n`,
     );
     buildCoordinatorFixture(oldVersion, readFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.8.2');
 
@@ -1088,7 +1088,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     expect(result.status).toBe(0);
 
     const installed = readFileSync(join(projectRoot, '.claude', 'CLAUDE.md'), 'utf-8');
-    expect(installed).toContain('<!-- OMC:VERSION:4.8.2 -->');
+    expect(installed).toContain('<!-- OMQ:VERSION:4.8.2 -->');
     expect(installed).toContain('# Old Version');
   });
 
@@ -1108,11 +1108,11 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     copyFileSync(SETUP_SCRIPT, join(oldVersion, 'scripts', 'setup-claude-md.sh'));
     mkdirSync(join(oldVersion, 'scripts', 'lib'), { recursive: true });
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
-    writeFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), `<!-- OMC:START -->\n<!-- OMC:VERSION:4.8.2 -->\n# Old\n<!-- OMC:END -->\n`);
+    writeFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.8.2 -->\n# Old\n<!-- OMQ:END -->\n`);
     buildCoordinatorFixture(oldVersion, readFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.8.2');
 
     mkdirSync(join(newVersion, 'docs'), { recursive: true });
-    writeFileSync(join(newVersion, 'docs', 'CLAUDE.md'), `<!-- OMC:START -->\n<!-- OMC:VERSION:4.9.0 -->\n# New\n<!-- OMC:END -->\n`);
+    writeFileSync(join(newVersion, 'docs', 'CLAUDE.md'), `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.9.0 -->\n# New\n<!-- OMQ:END -->\n`);
     installSetupSurface(newVersion);
     buildCoordinatorFixture(newVersion, readFileSync(join(newVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.9.0');
 
@@ -1138,7 +1138,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     expect(result.status).toBe(0);
 
     const installed = readFileSync(join(projectRoot, '.claude', 'CLAUDE.md'), 'utf-8');
-    expect(installed).toContain('<!-- OMC:VERSION:4.9.0 -->');
+    expect(installed).toContain('<!-- OMQ:VERSION:4.9.0 -->');
     expect(installed).not.toContain('4.10.0.tmp');
   });
 
@@ -1169,7 +1169,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     );
     writeFileSync(
       join(oldVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMQ:END -->\n`,
     );
     buildCoordinatorFixture(oldVersion, readFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.8.2');
 
@@ -1177,7 +1177,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     mkdirSync(join(newVersion, 'docs'), { recursive: true });
     writeFileSync(
       join(newVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.9.0 -->\n\n# New Version\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.9.0 -->\n\n# New Version\n<!-- OMQ:END -->\n`,
     );
     installSetupSurface(newVersion);
     buildCoordinatorFixture(newVersion, readFileSync(join(newVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.9.0');
@@ -1220,9 +1220,9 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     expect(result.status).toBe(0);
 
     const installed = readFileSync(join(projectRoot, '.claude', 'CLAUDE.md'), 'utf-8');
-    expect(installed).toContain('<!-- OMC:VERSION:4.9.0 -->');
+    expect(installed).toContain('<!-- OMQ:VERSION:4.9.0 -->');
     expect(installed).toContain('# New Version');
-    expect(installed).not.toContain('<!-- OMC:VERSION:4.8.2 -->');
+    expect(installed).not.toContain('<!-- OMQ:VERSION:4.8.2 -->');
     expect(existsSync(staleMutationSentinel)).toBe(false);
   });
 
@@ -1245,7 +1245,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
       join(oldVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMQ:END -->\n`,
     );
     buildCoordinatorFixture(oldVersion, readFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.8.2');
 
@@ -1253,7 +1253,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     mkdirSync(join(newVersion, 'docs'), { recursive: true });
     writeFileSync(
       join(newVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.9.0 -->\n\n# New Version\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.9.0 -->\n\n# New Version\n<!-- OMQ:END -->\n`,
     );
     installSetupSurface(newVersion);
     buildCoordinatorFixture(newVersion, readFileSync(join(newVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.9.0');
@@ -1299,9 +1299,9 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
 
     const installed = readFileSync(join(projectRoot, '.claude', 'CLAUDE.md'), 'utf-8');
     // Should contain the NEW version, not the old one
-    expect(installed).toContain('<!-- OMC:VERSION:4.9.0 -->');
+    expect(installed).toContain('<!-- OMQ:VERSION:4.9.0 -->');
     expect(installed).toContain('# New Version');
-    expect(installed).not.toContain('<!-- OMC:VERSION:4.8.2 -->');
+    expect(installed).not.toContain('<!-- OMQ:VERSION:4.8.2 -->');
   });
 
   it('uses docs/CLAUDE.md from the active version when installed_plugins.json wraps plugins under a plugins key', () => {
@@ -1321,14 +1321,14 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
       join(oldVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.8.2 -->\n\n# Old Version\n<!-- OMQ:END -->\n`,
     );
     buildCoordinatorFixture(oldVersion, readFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.8.2');
 
     mkdirSync(join(newVersion, 'docs'), { recursive: true });
     writeFileSync(
       join(newVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.9.0 -->\n\n# New Version\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.9.0 -->\n\n# New Version\n<!-- OMQ:END -->\n`,
     );
     installSetupSurface(newVersion);
     buildCoordinatorFixture(newVersion, readFileSync(join(newVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.9.0');
@@ -1372,9 +1372,9 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     expect(result.status).toBe(0);
 
     const installed = readFileSync(join(projectRoot, '.claude', 'CLAUDE.md'), 'utf-8');
-    expect(installed).toContain('<!-- OMC:VERSION:4.9.0 -->');
+    expect(installed).toContain('<!-- OMQ:VERSION:4.9.0 -->');
     expect(installed).toContain('# New Version');
-    expect(installed).not.toContain('<!-- OMC:VERSION:4.8.2 -->');
+    expect(installed).not.toContain('<!-- OMQ:VERSION:4.8.2 -->');
   });
 
   it('falls back to scanning cache for latest version when installed_plugins.json is unavailable', () => {
@@ -1395,7 +1395,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     copyFileSync(CONFIG_DIR_HELPER, join(oldVersion, 'scripts', 'lib', 'config-dir.sh'));
     writeFileSync(
       join(oldVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.8.2 -->\n\n# Old\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.8.2 -->\n\n# Old\n<!-- OMQ:END -->\n`,
     );
     buildCoordinatorFixture(oldVersion, readFileSync(join(oldVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.8.2');
 
@@ -1403,7 +1403,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     mkdirSync(join(newVersion, 'docs'), { recursive: true });
     writeFileSync(
       join(newVersion, 'docs', 'CLAUDE.md'),
-      `<!-- OMC:START -->\n<!-- OMC:VERSION:4.9.0 -->\n\n# New\n<!-- OMC:END -->\n`,
+      `<!-- OMQ:START -->\n<!-- OMQ:VERSION:4.9.0 -->\n\n# New\n<!-- OMQ:END -->\n`,
     );
     installSetupSurface(newVersion);
     buildCoordinatorFixture(newVersion, readFileSync(join(newVersion, 'docs', 'CLAUDE.md'), 'utf-8'), '4.9.0');
@@ -1433,8 +1433,8 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
     expect(result.status).toBe(0);
 
     const installed = readFileSync(join(projectRoot, '.claude', 'CLAUDE.md'), 'utf-8');
-    expect(installed).toContain('<!-- OMC:VERSION:4.9.0 -->');
-    expect(installed).not.toContain('<!-- OMC:VERSION:4.8.2 -->');
+    expect(installed).toContain('<!-- OMQ:VERSION:4.9.0 -->');
+    expect(installed).not.toContain('<!-- OMQ:VERSION:4.8.2 -->');
   });
 describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)', () => {
   // Reporter topology: the script runs from a non-cache checkout whose cache
@@ -1453,10 +1453,10 @@ describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)'
     mkdirSync(projectRoot, { recursive: true });
     mkdirSync(join(homeRoot, '.claude', 'plugins'), { recursive: true });
 
-    const canonical = `<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const canonical = `<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 # Issue 3743 fixture
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `;
     // Checkout copy: script location with NO semver siblings (latest == "").
     mkdirSync(join(checkoutRoot, 'docs'), { recursive: true });
@@ -1527,10 +1527,10 @@ describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)'
     // Distinct valid roots force re-exec; seeded depth trips the guard.
     const activeRoot = fixture.checkoutRoot;
     const mirrorRoot = join(fixture.root, 'mirror-root');
-    const canonicalMirror = `<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.9 -->
+    const canonicalMirror = `<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.9 -->
 # Issue 3743 mirror
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `;
     mkdirSync(join(mirrorRoot, 'docs'), { recursive: true });
     mkdirSync(join(mirrorRoot, 'scripts', 'lib'), { recursive: true });
@@ -1565,10 +1565,10 @@ describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)'
     const shimDir = createVoltaShim(fixture.root);
     // Build a valid semver sibling so version selection runs through the shim.
     const newerRoot = join(fixture.cacheBase, '9.9.10');
-    const canonicalNew = `<!-- OMC:START -->
-<!-- OMC:VERSION:9.9.10 -->
+    const canonicalNew = `<!-- OMQ:START -->
+<!-- OMQ:VERSION:9.9.10 -->
 # Issue 3743 newer
-<!-- OMC:END -->
+<!-- OMQ:END -->
 `;
     mkdirSync(join(newerRoot, 'docs'), { recursive: true });
     mkdirSync(join(newerRoot, 'scripts', 'lib'), { recursive: true });

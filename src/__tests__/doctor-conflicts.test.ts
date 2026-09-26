@@ -39,7 +39,7 @@ function writeCanonicalOmcReferenceSkill(content = '# Canonical omc-reference sk
 function writePluginRoot(root: string, content: string): void {
   mkdirSync(join(root, 'docs'), { recursive: true });
   mkdirSync(join(root, 'skills', 'omc-reference'), { recursive: true });
-  writeFileSync(join(root, 'docs', 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+  writeFileSync(join(root, 'docs', 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
   writeFileSync(join(root, 'skills', 'omc-reference', 'SKILL.md'), content);
 }
 
@@ -536,7 +536,7 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
   });
 
   it('detects OMC markers in main CLAUDE.md', () => {
-    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC Config\n<!-- OMC:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMC Config\n<!-- OMQ:END -->\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(true);
@@ -545,7 +545,7 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
 
   it('detects OMC markers in companion file when main CLAUDE.md lacks them', () => {
     writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '# My custom config\n');
-    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC Config\n<!-- OMC:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC Config\n<!-- OMQ:END -->\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(true);
@@ -570,8 +570,8 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
   });
 
   it('prefers main file markers over companion file', () => {
-    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
-    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# Also OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# Also OMC\n<!-- OMQ:END -->\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(true);
@@ -600,9 +600,9 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
     const activePath = join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md');
     const referencedPath = join(TEST_CLAUDE_DIR, 'CLAUDE-referenced.md');
     const genericPath = join(TEST_CLAUDE_DIR, 'CLAUDE-zebra.md');
-    writeFileSync(mainPath, '@CLAUDE-referenced.md\n<!-- OMC:START -->\nmanaged\n<!-- OMC:END -->\n');
-    writeFileSync(activePath, '<!-- OMC:START -->\nactive\n<!-- OMC:END -->\n');
-    writeFileSync(referencedPath, '<!-- OMC:START -->\nreferenced\n<!-- OMC:END -->\n');
+    writeFileSync(mainPath, '@CLAUDE-referenced.md\n<!-- OMQ:START -->\nmanaged\n<!-- OMQ:END -->\n');
+    writeFileSync(activePath, '<!-- OMQ:START -->\nactive\n<!-- OMQ:END -->\n');
+    writeFileSync(referencedPath, '<!-- OMQ:START -->\nreferenced\n<!-- OMQ:END -->\n');
     writeFileSync(genericPath, 'later user content\n');
 
     const status = checkClaudeMdStatus();
@@ -676,9 +676,9 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
   });
 
   it.each([
-    '<!-- OMC:START -->\n',
-    '<!-- OMC:END -->\n',
-    '<!-- OMC:START -->\n<!-- OMC:START -->\n<!-- OMC:END -->\n',
+    '<!-- OMQ:START -->\n',
+    '<!-- OMQ:END -->\n',
+    '<!-- OMQ:START -->\n<!-- OMQ:START -->\n<!-- OMQ:END -->\n',
   ])('marks malformed marker structures for manual review', content => {
     const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
     writeFileSync(mainPath, content);
@@ -690,7 +690,7 @@ describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', (
 
   it('includes aggregated analyzer findings in JSON and formatted reports', () => {
     const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
-    writeFileSync(mainPath, '<!-- OMC:END -->\n');
+    writeFileSync(mainPath, '<!-- OMQ:END -->\n');
     const report = runConflictCheck();
     expect(JSON.parse(formatReport(report, true)).claudeMdStatus.manualReviewPaths).toEqual([mainPath]);
     expect(formatReport(report, false)).toContain(mainPath);
@@ -861,7 +861,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omc-reference'), { recursive: true });
     writeFileSync(join(skillsDir, 'omc-reference', 'SKILL.md'), canonicalContent);
-    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
 
     const report = runConflictCheck();
     expect(report.legacySkills).toHaveLength(0);
@@ -873,7 +873,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     mkdirSync(skillsDir, { recursive: true });
     writeFileSync(join(skillsDir, 'cancel.md'), '# Legacy cancel');
     // Need a CLAUDE.md for the report to work
-    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
 
     const report = runConflictCheck();
     expect(report.legacySkills).toHaveLength(1);

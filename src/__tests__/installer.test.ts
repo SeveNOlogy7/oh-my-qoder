@@ -348,7 +348,7 @@ describe('Installer Constants', () => {
     });
 
     it('should keep docs/CLAUDE.md version marker in sync with package version', () => {
-      const versionMatch = CLAUDE_MD_CONTENT.match(/<!-- OMC:VERSION:([^\s]*?) -->/);
+      const versionMatch = CLAUDE_MD_CONTENT.match(/<!-- OMQ:VERSION:([^\s]*?) -->/);
       expect(versionMatch?.[1]).toBe(VERSION);
     });
   });
@@ -356,7 +356,7 @@ describe('Installer Constants', () => {
 
   describe('extractOmcVersionFromClaudeMd()', () => {
     it('prefers the OMC version marker', () => {
-      const content = `<!-- OMC:VERSION:4.7.7 -->
+      const content = `<!-- OMQ:VERSION:4.7.7 -->
 # oh-my-claudecode - Intelligent Multi-Agent Orchestration`;
       expect(extractOmcVersionFromClaudeMd(content)).toBe('v4.7.7');
     });

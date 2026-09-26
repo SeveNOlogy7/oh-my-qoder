@@ -25,16 +25,16 @@ async function main() {
   const version = pkg.version;
   if (typeof version !== 'string' || !version) throw new Error('package.json missing version');
   const raw = await readFile(docsPath, 'utf8');
-  const START='<!-- OMC:START -->'; const END='<!-- OMC:END -->';
+  const START='<!-- OMQ:START -->'; const END='<!-- OMQ:END -->';
   const s=raw.indexOf(START); const e=raw.indexOf(END);
   if(s===-1||e===-1) throw new Error('missing OMC markers in docs/CLAUDE.md');
   const se=raw.indexOf('\n', s);
   if(se===-1) throw new Error('malformed START marker');
   let body=raw.slice(se+1, e);
-  body=body.replace(/<!-- OMC:VERSION:[^\s]*? -->\r?\n?/g,'');
+  body=body.replace(/<!-- OMQ:VERSION:[^\s]*? -->\r?\n?/g,'');
   body=body.replace(/\r\n/g,'\n');
   if(body.length && !body.endsWith('\n')) body+='\n';
-  const composed = `${START}\n<!-- OMC:VERSION:${version} -->\n${body}${END}\n`;
+  const composed = `${START}\n<!-- OMQ:VERSION:${version} -->\n${body}${END}\n`;
   const normalizeForDigest = (c) => {
     let n=c.replace(/\r\n/g,'\n');
     if(n.length && !n.endsWith('\n')) n+='\n';

@@ -6,8 +6,8 @@
 import { describe, it, expect } from 'vitest';
 import { mergeClaudeMd } from '../index.js';
 
-const START_MARKER = '<!-- OMC:START -->';
-const END_MARKER = '<!-- OMC:END -->';
+const START_MARKER = '<!-- OMQ:START -->';
+const END_MARKER = '<!-- OMQ:END -->';
 const USER_CUSTOMIZATIONS = '<!-- User customizations -->';
 
 describe('mergeClaudeMd', () => {
@@ -42,8 +42,8 @@ describe('mergeClaudeMd', () => {
       expect(result).toContain('User\'s custom content');
       expect(result).not.toContain('Old OMC Content');
       expect(result).not.toContain('Old stuff here');
-      expect((result.match(/<!-- OMC:START -->/g) || []).length).toBe(1);
-      expect((result.match(/<!-- OMC:END -->/g) || []).length).toBe(1);
+      expect((result.match(/<!-- OMQ:START -->/g) || []).length).toBe(1);
+      expect((result.match(/<!-- OMQ:END -->/g) || []).length).toBe(1);
     });
 
     it('normalizes preserved content under the user customizations section', () => {
@@ -167,7 +167,7 @@ describe('mergeClaudeMd', () => {
   describe('Real-world scenarios', () => {
     it('handles typical fresh install scenario', () => {
       const result = mergeClaudeMd(null, omcContent);
-      expect(result).toMatch(/^<!-- OMC:START -->\n.*\n<!-- OMC:END -->\n$/s);
+      expect(result).toMatch(/^<!-- OMQ:START -->\n.*\n<!-- OMQ:END -->\n$/s);
     });
 
     it('handles typical update scenario with user customizations', () => {
@@ -188,8 +188,8 @@ ${USER_CUSTOMIZATIONS}
       expect(result).not.toContain('Old instructions here');
       expect(result).toContain('# My Project-Specific Instructions');
       expect(result).toContain('Follow company coding standards');
-      expect((result.match(/<!-- OMC:START -->/g) || []).length).toBe(1);
-      expect((result.match(/<!-- OMC:END -->/g) || []).length).toBe(1);
+      expect((result.match(/<!-- OMQ:START -->/g) || []).length).toBe(1);
+      expect((result.match(/<!-- OMQ:END -->/g) || []).length).toBe(1);
     });
 
     it('handles migration from old version without markers', () => {
@@ -210,38 +210,38 @@ User added custom stuff here`;
   describe('idempotency guard', () => {
     it('strips markers from omcContent that already has markers', () => {
       // Simulate docs/CLAUDE.md shipping with markers already
-      const omcWithMarkers = `<!-- OMC:START -->
+      const omcWithMarkers = `<!-- OMQ:START -->
 # oh-my-claudecode
 Agent instructions here
-<!-- OMC:END -->`;
+<!-- OMQ:END -->`;
 
       const result = mergeClaudeMd(null, omcWithMarkers);
 
       // Should NOT have nested markers
-      const startCount = (result.match(/<!-- OMC:START -->/g) || []).length;
-      const endCount = (result.match(/<!-- OMC:END -->/g) || []).length;
+      const startCount = (result.match(/<!-- OMQ:START -->/g) || []).length;
+      const endCount = (result.match(/<!-- OMQ:END -->/g) || []).length;
       expect(startCount).toBe(1);
       expect(endCount).toBe(1);
       expect(result).toContain('Agent instructions here');
     });
 
     it('handles omcContent with markers when merging into existing content', () => {
-      const existingContent = `<!-- OMC:START -->
+      const existingContent = `<!-- OMQ:START -->
 Old OMC content
-<!-- OMC:END -->
+<!-- OMQ:END -->
 
 <!-- User customizations -->
 My custom stuff`;
 
-      const omcWithMarkers = `<!-- OMC:START -->
+      const omcWithMarkers = `<!-- OMQ:START -->
 New OMC content v2
-<!-- OMC:END -->`;
+<!-- OMQ:END -->`;
 
       const result = mergeClaudeMd(existingContent, omcWithMarkers);
 
       // Should have exactly one pair of markers
-      const startCount = (result.match(/<!-- OMC:START -->/g) || []).length;
-      const endCount = (result.match(/<!-- OMC:END -->/g) || []).length;
+      const startCount = (result.match(/<!-- OMQ:START -->/g) || []).length;
+      const endCount = (result.match(/<!-- OMQ:END -->/g) || []).length;
       expect(startCount).toBe(1);
       expect(endCount).toBe(1);
       expect(result).toContain('New OMC content v2');
@@ -254,14 +254,14 @@ New OMC content v2
     it('injects the provided version marker on fresh install', () => {
       const result = mergeClaudeMd(null, omcContent, '4.6.7');
 
-      expect(result).toContain('<!-- OMC:VERSION:4.6.7 -->');
+      expect(result).toContain('<!-- OMQ:VERSION:4.6.7 -->');
       expect(result).toContain(START_MARKER);
       expect(result).toContain(END_MARKER);
     });
 
     it('replaces stale version marker when updating existing marker block', () => {
       const existingContent = `${START_MARKER}
-<!-- OMC:VERSION:4.5.0 -->
+<!-- OMQ:VERSION:4.5.0 -->
 Old content
 ${END_MARKER}
 
@@ -270,20 +270,20 @@ my notes`;
 
       const result = mergeClaudeMd(existingContent, omcContent, '4.6.7');
 
-      expect(result).toContain('<!-- OMC:VERSION:4.6.7 -->');
-      expect(result).not.toContain('<!-- OMC:VERSION:4.5.0 -->');
-      expect((result.match(/<!-- OMC:VERSION:/g) || []).length).toBe(1);
+      expect(result).toContain('<!-- OMQ:VERSION:4.6.7 -->');
+      expect(result).not.toContain('<!-- OMQ:VERSION:4.5.0 -->');
+      expect((result.match(/<!-- OMQ:VERSION:/g) || []).length).toBe(1);
       expect(result).toContain('my notes');
     });
 
     it('strips embedded version marker from omc content before inserting current version', () => {
-      const omcWithVersion = `<!-- OMC:VERSION:4.0.0 -->\n${omcContent}`;
+      const omcWithVersion = `<!-- OMQ:VERSION:4.0.0 -->\n${omcContent}`;
 
       const result = mergeClaudeMd(null, omcWithVersion, '4.6.7');
 
-      expect(result).toContain('<!-- OMC:VERSION:4.6.7 -->');
-      expect(result).not.toContain('<!-- OMC:VERSION:4.0.0 -->');
-      expect((result.match(/<!-- OMC:VERSION:/g) || []).length).toBe(1);
+      expect(result).toContain('<!-- OMQ:VERSION:4.6.7 -->');
+      expect(result).not.toContain('<!-- OMQ:VERSION:4.0.0 -->');
+      expect((result.match(/<!-- OMQ:VERSION:/g) || []).length).toBe(1);
     });
   });
 
@@ -304,8 +304,8 @@ My note after duplicate block`;
 
       const result = mergeClaudeMd(existingContent, omcContent);
 
-      expect((result.match(/<!-- OMC:START -->/g) || []).length).toBe(1);
-      expect((result.match(/<!-- OMC:END -->/g) || []).length).toBe(1);
+      expect((result.match(/<!-- OMQ:START -->/g) || []).length).toBe(1);
+      expect((result.match(/<!-- OMQ:END -->/g) || []).length).toBe(1);
       expect(result).toContain(USER_CUSTOMIZATIONS);
       expect(result).toContain('My note before duplicate block');
       expect(result).toContain('My note after duplicate block');

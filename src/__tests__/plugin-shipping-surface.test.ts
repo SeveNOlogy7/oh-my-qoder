@@ -39,7 +39,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
   const root = mkdtempSync(join(tmpdir(), 'omc-plugin-shipping-surface-'));
   tempRoots.push(root);
 
-  const canonicalClaudeMd = '<!-- OMC:START -->\nfixture\n<!-- OMC:END -->\n';
+  const canonicalClaudeMd = '<!-- OMQ:START -->\nfixture\n<!-- OMQ:END -->\n';
   const coordinatorDigest = options.coordinatorDigest ?? createHash('sha256')
     .update(canonicalClaudeMd)
     .digest('hex');
@@ -327,7 +327,7 @@ describe('plugin shipping surface transaction', () => {
 
   it('rejects a correct digest decoy when the active coordinator handshake is stale', () => {
     const canonicalDigest = createHash('sha256')
-      .update('<!-- OMC:START -->\nfixture\n<!-- OMC:END -->\n')
+      .update('<!-- OMQ:START -->\nfixture\n<!-- OMQ:END -->\n')
       .digest('hex');
     const fixture = createFixture({
       coordinatorDigest: '0'.repeat(64),

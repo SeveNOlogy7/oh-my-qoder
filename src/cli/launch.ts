@@ -56,7 +56,7 @@ const OMQ_RUNTIME_DIRNAME = '.omq-launch';
 function hasOmcMarkers(path: string): boolean {
   if (!existsSync(path)) return false;
   const content = readFileSync(path, 'utf-8');
-  return content.includes('<!-- OMC:START -->') && content.includes('<!-- OMC:END -->');
+  return content.includes('<!-- OMQ:START -->') && content.includes('<!-- OMQ:END -->');
 }
 
 function ensureMirroredPath(

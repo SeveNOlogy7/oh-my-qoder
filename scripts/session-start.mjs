@@ -578,7 +578,7 @@ function buildSessionStartAdditionalContext(messages) {
 
 // Extract OMC version from CLAUDE.md content
 function extractOmcVersion(content) {
-  const match = content.match(/<!-- OMC:VERSION:(\d+\.\d+\.\d+[^\s]*?) -->/);
+  const match = content.match(/<!-- OMQ:VERSION:(\d+\.\d+\.\d+[^\s]*?) -->/);
   return match ? match[1] : null;
 }
 

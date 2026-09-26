@@ -286,7 +286,7 @@ describe('installer bundled + standalone skill sync', () => {
       expect(result.success).toBe(true);
       expect(logSpy).toHaveBeenCalledWith('Updated CLAUDE.md (merged with existing content)');
       expect(logSpy).not.toHaveBeenCalledWith('Created CLAUDE.md');
-      expect(readFileSync(join(canonicalConfigDir, 'CLAUDE.md'), 'utf-8')).toContain('<!-- OMC:START -->');
+      expect(readFileSync(join(canonicalConfigDir, 'CLAUDE.md'), 'utf-8')).toContain('<!-- OMQ:START -->');
     } finally {
       logSpy.mockRestore();
     }

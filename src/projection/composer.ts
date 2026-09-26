@@ -41,7 +41,7 @@ function extractCanonicalBody(canonicalDocsRaw: string): string {
   if (startEol === -1) throw new Error('malformed start marker');
   let body = canonicalDocsRaw.slice(startEol + 1, end);
   // strip existing version marker if any
-  body = body.replace(/<!-- OMC:VERSION:[^\s]*? -->\r?\n?/g, '');
+  body = body.replace(/<!-- OMQ:VERSION:[^\s]*? -->\r?\n?/g, '');
   // ensure trailing newline exactly one
   body = body.replace(/\r\n/g, '\n');
   if (body.length > 0 && !body.endsWith('\n')) body += '\n';
@@ -54,7 +54,7 @@ function extractCanonicalBody(canonicalDocsRaw: string): string {
  */
 export function composeManagedBlock(input: ComposerInput): string {
   const body = extractCanonicalBody(input.canonicalDocsRaw);
-  return `${OMQ_START_MARKER}\n<!-- OMC:VERSION:${input.version} -->\n${body}${OMQ_END_MARKER}\n`;
+  return `${OMQ_START_MARKER}\n<!-- OMQ:VERSION:${input.version} -->\n${body}${OMQ_END_MARKER}\n`;
 }
 
 /**

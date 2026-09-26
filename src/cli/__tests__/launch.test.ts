@@ -946,7 +946,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(join(configDir, 'skills'), { recursive: true });
     writeFileSync(join(configDir, 'CLAUDE.md'), '# User base config\n');
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC companion\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC companion\n<!-- OMQ:END -->\n');
     writeFileSync(join(configDir, 'settings.json'), '{"hooks":{}}');
 
     process.env.CLAUDE_CONFIG_DIR = configDir;
@@ -964,7 +964,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('repairs retired team MCP entries in the runtime settings copy', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(join(configDir, 'skills'), { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC companion\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC companion\n<!-- OMQ:END -->\n');
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify({
       theme: 'dark',
       mcpServers: {
@@ -995,7 +995,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(join(configDir, 'rules'), { recursive: true });
     mkdirSync(join(configDir, 'themes'), { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(configDir, 'keybindings.json'), '{"bindings":[]}');
     writeFileSync(join(configDir, 'rules', 'my-rule.md'), '# Rule');
     writeFileSync(join(configDir, 'themes', 'custom-theme.json'), '{"name":"custom"}');
@@ -1016,7 +1016,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(credentialsPath, credentialContent);
 
     try {
@@ -1055,7 +1055,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
       const configDir = join(tempRoot!, '.claude');
       mkdirSync(configDir, { recursive: true });
       const credentialsPath = join(configDir, '.credentials.json');
-      writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+      writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
       writeFileSync(credentialsPath, JSON.stringify({ accessToken: 'test-only-token', expiresAt: 1000 }));
 
       expect(() => prepareWithFailedSymlink(configDir)).toThrow(
@@ -1082,7 +1082,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
       const { prepareOmcLaunchConfigDir: prepareWithFailedSymlink } = await import('../launch.js');
       const configDir = join(tempRoot!, '.claude');
       mkdirSync(configDir, { recursive: true });
-      writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+      writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
       writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
         oauthAccount: { accountUuid: 'same-account' },
       }));
@@ -1118,7 +1118,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('preserves runtime .claude.json across runtime config dir rebuilds', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
 
     const runtimeDir = prepareOmcLaunchConfigDir(configDir);
     writeFileSync(join(runtimeDir, '.claude.json'), '{"session":"keep-me"}');
@@ -1132,7 +1132,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('seeds missing runtime .claude.json mcpServers from source .claude.json', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       mcpServers: {
         github: { command: 'node', args: ['github-mcp.js'] },
@@ -1153,7 +1153,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('refreshes runtime mcpServers from source while preserving runtime metadata', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       mcpServers: {
         exa: { command: 'node', args: ['old-exa.js'] },
@@ -1192,7 +1192,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('seeds onboarding completion and version from source .claude.json', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       hasCompletedOnboarding: true,
       lastOnboardingVersion: '2.1',
@@ -1208,7 +1208,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('inherits onboarding without mcpServers while preserving runtime session and projects', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ hasCompletedOnboarding: true }));
 
     const runtimeDir = prepareOmcLaunchConfigDir(configDir);
@@ -1229,7 +1229,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('replaces mismatched oauthAccount and deletes it when source removes the account', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     const sourceClaudeJsonPath = join(tempRoot!, '.claude.json');
     writeFileSync(sourceClaudeJsonPath, JSON.stringify({ oauthAccount: { accountUuid: 'source-account' } }));
 
@@ -1251,7 +1251,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('promotes a fresher nested runtime credential and preserves unrelated base keys', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'same-account' } }));
     const credentialsPath = join(configDir, '.credentials.json');
     writeFileSync(credentialsPath, JSON.stringify({
@@ -1279,7 +1279,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('promotes a fresher credential when UUID matches despite stale email metadata', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { accountUuid: 'same-account', emailAddress: 'Current@Example.com' },
     }));
@@ -1305,7 +1305,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('promotes a fresher credential when a shared email identity matches case-insensitively', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { emailAddress: 'User@Example.com' },
     }));
@@ -1331,7 +1331,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('blocks credential promotion when account emails appear only in different fields', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { emailAddress: 'same@example.com' },
     }));
@@ -1357,7 +1357,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('does not promote a high-expiry runtime credential without an access token', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     const credentialsPath = join(configDir, '.credentials.json');
     writeFileSync(credentialsPath, JSON.stringify({ claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 } }));
 
@@ -1376,7 +1376,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('does not resurrect a runtime credential when the base credential file is missing', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
 
     const runtimeDir = prepareOmcLaunchConfigDir(configDir);
     const runtimeCredentialsPath = join(runtimeDir, '.credentials.json');
@@ -1393,7 +1393,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('blocks credential promotion when source and runtime account identities differ', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'source-account' } }));
     const credentialsPath = join(configDir, '.credentials.json');
     writeFileSync(credentialsPath, JSON.stringify({ claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 } }));
@@ -1414,7 +1414,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('blocks credential promotion when credential account identities conflict despite matching metadata', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { accountUuid: 'same-account' },
     }));
@@ -1441,7 +1441,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('blocks credential promotion when credential email identities conflict despite matching metadata', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { accountUuid: 'same-account' },
     }));
@@ -1476,7 +1476,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('blocks credential promotion when only the base credential has a stable identity', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { accountUuid: 'stale-account' },
     }));
@@ -1508,7 +1508,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('promotes a fresher credential when credential UUID matches despite stale email', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { accountUuid: 'same-account' },
     }));
@@ -1544,7 +1544,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('blocks credential promotion when either account identity is missing', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'source-account' } }));
     const credentialsPath = join(configDir, '.credentials.json');
     writeFileSync(credentialsPath, JSON.stringify({ claudeAiOauth: { accessToken: 'base-token', expiresAt: 100 } }));
@@ -1566,7 +1566,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('inherits lastOnboardingVersion using semver-aware comparison', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ lastOnboardingVersion: '2.10.0' }));
 
     const runtimeDir = prepareOmcLaunchConfigDir(configDir);
@@ -1580,7 +1580,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('updates a symlink target during credential promotion without replacing the symlink', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({ oauthAccount: { accountUuid: 'same-account' } }));
     const targetCredentialsPath = join(tempRoot!, 'credentials-target.json');
     const credentialsPath = join(configDir, '.credentials.json');
@@ -1608,7 +1608,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it.skipIf(process.platform === 'win32')('resolves a credential symlink chain beyond the former depth cap without replacing links', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
     writeFileSync(join(tempRoot!, '.claude.json'), JSON.stringify({
       oauthAccount: { accountUuid: 'same-account' },
     }));
@@ -1650,7 +1650,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('preserves runtime .claude.json when source .claude.json is absent, invalid, or has no mcpServers', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
 
     const runtimeDir = prepareOmcLaunchConfigDir(configDir);
     const runtimeClaudeJsonPath = join(runtimeDir, '.claude.json');
@@ -1673,7 +1673,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('removes non-mirrored runtime junk across runtime config dir rebuilds', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMC:START -->\n# OMC\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMC\n<!-- OMQ:END -->\n');
 
     const runtimeDir = prepareOmcLaunchConfigDir(configDir);
     writeFileSync(join(runtimeDir, 'junk.txt'), 'remove me');
@@ -1690,7 +1690,7 @@ describe('prepareOmcLaunchConfigDir / launchCommand OMC companion loading', () =
   it('leaves CLAUDE_CONFIG_DIR unchanged when no preserved companion exists', () => {
     const configDir = join(tempRoot!, '.claude');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'CLAUDE.md'), '<!-- OMC:START -->\n# OMC base\n<!-- OMC:END -->\n');
+    writeFileSync(join(configDir, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMC base\n<!-- OMQ:END -->\n');
 
     expect(prepareOmcLaunchConfigDir(configDir)).toBe(configDir);
     expect(existsSync(join(configDir, '.omq-launch'))).toBe(false);

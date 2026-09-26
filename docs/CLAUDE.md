@@ -1,5 +1,5 @@
-<!-- OMC:START -->
-<!-- OMC:VERSION:5.0.0 -->
+<!-- OMQ:START -->
+<!-- OMQ:VERSION:0.1.0 -->
 
 # oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
@@ -70,4 +70,4 @@ State root: `.omq/` by default, or `$OMQ_STATE_DIR/{project-id}/` when `OMQ_STAT
 
 Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
-<!-- OMC:END -->
+<!-- OMQ:END -->

@@ -618,7 +618,7 @@ export function assertTrigger({ tag, sha, cwd = process.cwd() }) {
     fail('.claude-plugin/marketplace.json must include the versioned OMC plugin');
   }
   const docsClaude = readFileSync(join(cwd, 'docs', 'CLAUDE.md'), 'utf8');
-  if (!docsClaude.includes(`<!-- OMC:VERSION:${version} -->`)) {
+  if (!docsClaude.includes(`<!-- OMQ:VERSION:${version} -->`)) {
     fail(`docs/CLAUDE.md does not advertise ${version}`);
   }
   const changelog = readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8');

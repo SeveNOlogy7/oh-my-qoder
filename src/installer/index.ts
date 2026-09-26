@@ -58,7 +58,7 @@ export const CORE_COMMANDS: string[] = [];
 /** Current version */
 export const VERSION = getRuntimePackageVersion();
 
-const OMQ_VERSION_MARKER_PATTERN = /<!-- OMC:VERSION:([^\s]+) -->/;
+const OMQ_VERSION_MARKER_PATTERN = /<!-- OMQ:VERSION:([^\s]+) -->/;
 
 const CC_NATIVE_COMMANDS = new Set([
   'review',
@@ -2254,11 +2254,11 @@ function syncUserSkillCompatShims(log: (msg: string) => void): string[] {
 /**
  * Extract the embedded OMC version from a CLAUDE.md file.
  *
- * Primary source of truth is the injected `<!-- OMC:VERSION:x.y.z -->` marker.
+ * Primary source of truth is the injected `<!-- OMQ:VERSION:x.y.z -->` marker.
  * Falls back to legacy headings that may include a version string inline.
  */
 export function extractOmcVersionFromClaudeMd(content: string): string | null {
-  const versionMarkerMatch = content.match(/<!--\s*OMC:VERSION:([^\s]+)\s*-->/i);
+  const versionMarkerMatch = content.match(/<!--\s*OMQ:VERSION:([^\s]+)\s*-->/i);
   if (versionMarkerMatch?.[1]) {
     const markerVersion = versionMarkerMatch[1].trim();
     return markerVersion.startsWith('v') ? markerVersion : `v${markerVersion}`;
@@ -2346,8 +2346,8 @@ export function mergeClaudeMd(existingContent: string | null, omcContent: string
     cleanOmcContent = omcContent.slice(managed.contentStart, managed.contentEnd).trim();
   }
 
-  cleanOmcContent = cleanOmcContent.replace(/<!-- OMC:VERSION:[^\s]*? -->\n?/, '');
-  const versionMarker = version ? `<!-- OMC:VERSION:${version} -->\n` : '';
+  cleanOmcContent = cleanOmcContent.replace(/<!-- OMQ:VERSION:[^\s]*? -->\n?/, '');
+  const versionMarker = version ? `<!-- OMQ:VERSION:${version} -->\n` : '';
   if (!existingContent) {
     return `${START_MARKER}\n${versionMarker}${cleanOmcContent}\n${END_MARKER}\n`;
   }

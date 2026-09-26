@@ -170,8 +170,8 @@ function getFileSyncConfigs(): FileSync[] {
       path: 'docs/CLAUDE.md',
       replacements: [
         {
-          pattern: /<!-- OMC:VERSION:[^\s]*? -->/g,
-          replacement: (m) => `<!-- OMC:VERSION:${m.version} -->`,
+          pattern: /<!-- OMQ:VERSION:[^\s]*? -->/g,
+          replacement: (m) => `<!-- OMQ:VERSION:${m.version} -->`,
           description: 'CLAUDE.md version marker',
         },
       ],

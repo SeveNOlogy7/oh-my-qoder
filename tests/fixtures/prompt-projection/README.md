@@ -2,7 +2,7 @@
 
 These fixtures freeze normalized behavior contracts for generated projections.
 
-- `claude-managed-block.golden` — expected `<!-- OMC:START -->` / `<!-- OMC:VERSION:x -->` / body / `<!-- OMC:END -->` framing produced by composer or `renderManaged`.
+- `claude-managed-block.golden` — expected `<!-- OMQ:START -->` / `<!-- OMQ:VERSION:x -->` / body / `<!-- OMQ:END -->` framing produced by composer or `renderManaged`.
 - `claude-body.normalized` — LF-normalized canonical body (no version) used for `sourceRevision` handshake.
 - `transaction-backup-rollback.json` — describes transaction phases exercised by `src/installer/__tests__/claude-md-transaction.test.ts` (backup, mutation, rollback, idempotent rerun).
 

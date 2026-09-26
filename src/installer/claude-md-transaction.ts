@@ -110,8 +110,8 @@ function cleanCanonical(source: string): string {
   return source.slice(range.contentStart, range.contentEnd).replace(/\r?\n$/, '');
 }
 function renderManaged(canonical: string, version?: string): string {
-  const body = cleanCanonical(canonical).replace(/<!-- OMC:VERSION:[^\s]*? -->\r?\n?/g, '');
-  return `${OMQ_START_MARKER}\n${version ? `<!-- OMC:VERSION:${version} -->\n` : ''}${body}\n${OMQ_END_MARKER}\n`;
+  const body = cleanCanonical(canonical).replace(/<!-- OMQ:VERSION:[^\s]*? -->\r?\n?/g, '');
+  return `${OMQ_START_MARKER}\n${version ? `<!-- OMQ:VERSION:${version} -->\n` : ''}${body}\n${OMQ_END_MARKER}\n`;
 }
 function importRanges(content: string): Array<{ start: number; end: number }> {
   const lines = parseClaudeMdMarkers(content).lines;

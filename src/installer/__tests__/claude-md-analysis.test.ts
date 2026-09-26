@@ -52,7 +52,7 @@ describe('legacy CLAUDE.md corpus', () => {
       expect(lines).toHaveLength(golden.lineCount);
       expect(lines[0]).toBe(golden.openingLine);
       expect(lines.at(-1)).toBe(golden.finalLine);
-      expect(text.includes('<!-- OMC:START -->')).toBe(false);
+      expect(text.includes('<!-- OMQ:START -->')).toBe(false);
       const compiled = runtime.get(golden.id);
       expect(compiled).toMatchObject({
         sourceCommit: golden.sourceCommit,
@@ -77,29 +77,29 @@ describe('CLAUDE.md structural analysis', () => {
     { eol: '\r\n', terminalEol: '\r\n' },
     { eol: '\r\n', terminalEol: '' },
   ])('extracts only managed source content without closing-marker bytes (%j)', ({ eol, terminalEol }) => {
-    const wrapped = `<!-- OMC:START -->${eol}canonical${eol}<!-- OMC:END -->${terminalEol}`;
-    expect(mergeClaudeMd(null, wrapped)).toBe('<!-- OMC:START -->\ncanonical\n<!-- OMC:END -->\n');
+    const wrapped = `<!-- OMQ:START -->${eol}canonical${eol}<!-- OMQ:END -->${terminalEol}`;
+    expect(mergeClaudeMd(null, wrapped)).toBe('<!-- OMQ:START -->\ncanonical\n<!-- OMQ:END -->\n');
   });
 
   it('rejects corrupt and multiple marker-wrapped canonical sources', () => {
-    expect(() => mergeClaudeMd(null, '<!-- OMC:START -->\ncanonical')).toThrow('at most one complete managed block');
-    expect(() => mergeClaudeMd(null, '<!-- OMC:START -->\na\n<!-- OMC:END -->\n<!-- OMC:START -->\nb\n<!-- OMC:END -->\n')).toThrow('at most one complete managed block');
+    expect(() => mergeClaudeMd(null, '<!-- OMQ:START -->\ncanonical')).toThrow('at most one complete managed block');
+    expect(() => mergeClaudeMd(null, '<!-- OMQ:START -->\na\n<!-- OMQ:END -->\n<!-- OMQ:START -->\nb\n<!-- OMQ:END -->\n')).toThrow('at most one complete managed block');
   });
 
   it('does not join legacy-guide fragments across a managed block before analysis', () => {
     const guide = Buffer.from((corpus.variants as GoldenVariant[])[0].dataBase64, 'base64').toString('utf8');
     const split = guide.indexOf('\n', guide.length / 2) + 1;
-    const existing = `${guide.slice(0, split)}<!-- OMC:START -->\nmanaged\n<!-- OMC:END -->\n${guide.slice(split)}`;
+    const existing = `${guide.slice(0, split)}<!-- OMQ:START -->\nmanaged\n<!-- OMQ:END -->\n${guide.slice(split)}`;
     expect(mergeClaudeMd(existing, 'new managed content')).toContain(guide);
   });
 
   it('pairs only standalone ordered marker lines and projects outside ranges', () => {
-    const content = 'before\r\n<!-- OMC:START -->\r\nmanaged\r\n<!-- OMC:END -->\r\nafter\r\n';
+    const content = 'before\r\n<!-- OMQ:START -->\r\nmanaged\r\n<!-- OMQ:END -->\r\nafter\r\n';
     const parsed = parseClaudeMdMarkers(content);
     expect(parsed.managedRanges).toEqual([
       expect.objectContaining({
         contentStart: content.indexOf('managed'),
-        contentEnd: content.indexOf('<!-- OMC:END -->'),
+        contentEnd: content.indexOf('<!-- OMQ:END -->'),
       }),
     ]);
     expect(parsed.state).toBe('complete');
@@ -107,9 +107,9 @@ describe('CLAUDE.md structural analysis', () => {
   });
 
   it.each([
-    '<!-- OMC:START -->\n<!-- OMC:START -->\n<!-- OMC:END -->\n',
-    '<!-- OMC:END -->\n<!-- OMC:START -->\n',
-    '<!-- OMC:START -->\n',
+    '<!-- OMQ:START -->\n<!-- OMQ:START -->\n<!-- OMQ:END -->\n',
+    '<!-- OMQ:END -->\n<!-- OMQ:START -->\n',
+    '<!-- OMQ:START -->\n',
     'before\rbroken',
   ])('fails closed for malformed marker input', content => {
     expect(parseClaudeMdMarkers(content).state).toBe('corrupt');
@@ -155,7 +155,7 @@ describe('CLAUDE.md structural analysis', () => {
 
   it('keeps marker-contained historical content and bounds heading-dense counters', () => {
     const guide = Buffer.from((corpus.variants as GoldenVariant[])[0].dataBase64, 'base64').toString('utf8');
-    expect(analyzeLegacyClaudeMd(`<!-- OMC:START -->\n${guide}<!-- OMC:END -->\n`).exactMatches).toEqual([]);
+    expect(analyzeLegacyClaudeMd(`<!-- OMQ:START -->\n${guide}<!-- OMQ:END -->\n`).exactMatches).toEqual([]);
     const heading = getLegacyGuideManifestForVerification()[0].openingLine;
     const dense = Array.from({ length: 10_000 }, () => heading).join('\n');
     const analysis = analyzeLegacyClaudeMd(dense);
