@@ -12,6 +12,7 @@ import type { MissionBoardConfig, MissionBoardState } from './mission-board.js';
 import { DEFAULT_MISSION_BOARD_CONFIG } from './mission-board.js';
 
 // Re-export for convenience
+import type { AgentKind, IncomingAgentMessage } from './agent-kind.js';
 export type { AutopilotStateForHud, ApiKeySource, SessionSummaryState };
 
 // ============================================================================
@@ -51,13 +52,13 @@ export interface StatuslineStdin {
   /** Current working directory */
   cwd?: string;
 
-  /** Model information from Qoder CLI statusline stdin */
+  /** Model information from Claude Code statusline stdin */
   model?: {
     id?: string;
     display_name?: string;
   };
 
-  /** Context window metrics from Qoder CLI statusline stdin */
+  /** Context window metrics from Claude Code statusline stdin */
   context_window?: {
     context_window_size?: number;
     total_input_tokens?: number;
@@ -69,7 +70,7 @@ export interface StatuslineStdin {
     };
   };
 
-  /** Rate limits from Qoder CLI statusline stdin */
+  /** Rate limits from Claude Code statusline stdin */
   rate_limits?: {
     five_hour?: {
       used_percentage?: number;
@@ -96,10 +97,23 @@ export interface ActiveAgent {
   id: string;
   type: string;
   model?: string;
+  /** Native Claude Code teammate name when spawned with Agent/Task name="..." */
+  name?: string;
   description?: string;
   status: 'running' | 'completed';
   startTime: Date;
   endTime?: Date;
+  /**
+   * Which mechanism owns this agent (issue #3666). Deterministically derived
+   * from the spawning tool call: named spawns are teammates, unnamed spawns
+   * are subagents. Absent on legacy data that predates this field.
+   */
+  kind?: AgentKind;
+  /**
+   * Session id that issued the spawning tool call, when observable. Absent for
+   * legacy transcripts or when the spawner cannot be determined.
+   */
+  spawnedBy?: string;
 }
 
 export interface SkillInvocation {
@@ -133,6 +147,13 @@ export interface LastRequestTokenUsage {
 
 export interface TranscriptData {
   agents: ActiveAgent[];
+  /**
+   * Classified incoming agent wrapper messages observed in the transcript
+   * (issue #3666). Each entry identifies the sender's kind and identity from
+   * the wrapper's own attributes with the payload redacted. Never populated
+   * from tool_result content, so agent outputs cannot spoof a message.
+   */
+  incomingMessages?: IncomingAgentMessage[];
   todos: TodoItem[];
   sessionStart?: Date;
   lastActivatedSkill?: SkillInvocation;
@@ -176,8 +197,8 @@ export interface PrdStateForHud {
 // ============================================================================
 
 export interface RateLimits {
-  /** 5-hour rolling window usage percentage (0-100) - all models combined */
-  fiveHourPercent: number;
+  /** 5-hour rolling window usage percentage (0-100) - all models combined; absent when provider omitted this bucket */
+  fiveHourPercent?: number;
   /** Weekly usage percentage (0-100) - all models combined (undefined if not applicable) */
   weeklyPercent?: number;
   /** When the 5-hour limit resets (null if unavailable) */
@@ -194,6 +215,25 @@ export interface RateLimits {
   opusWeeklyPercent?: number;
   /** Opus weekly reset time */
   opusWeeklyResetsAt?: Date | null;
+
+  /**
+   * Weekly scoped per-model quotas from `limits[]` (`kind: "weekly_scoped"`) that
+   * did not map onto the recognized Sonnet/Opus families above — e.g. new/unnamed
+   * tiers such as "Fable". Rendered generically so new tiers don't need a source
+   * release (see issue #3576). Deduped by normalized `scope.model.display_name`.
+   */
+  scopedWeeklyBuckets?: Array<{
+    /** Stable identifier for the bucket: `scope.model.id` when present, else the normalized display name */
+    id: string;
+    /** Display label as returned by the API (e.g. "Fable") */
+    label: string;
+    /** Usage percentage (0-100) */
+    percent: number;
+    /** When this bucket resets (null if unavailable) */
+    resetsAt: Date | null;
+    /** Whether the API flagged this bucket as the currently-active/limiting one */
+    isActive: boolean;
+  }>;
 
   /** Monthly usage percentage (0-100), if available from API */
   monthlyPercent?: number;
@@ -217,6 +257,8 @@ export interface RateLimits {
   enterpriseUtilization?: number;
   /** Enterprise billing currency (e.g. 'USD') */
   enterpriseCurrency?: string;
+  /** Minor-unit exponent for the billing currency (USD=2, JPY=0, BHD=3); how many decimals to render */
+  enterpriseDecimalPlaces?: number;
   /** When the enterprise billing period resets (null if unavailable or not returned by API) */
   enterpriseResetsAt?: Date | null;
 }
@@ -318,10 +360,10 @@ export interface HudRenderContext {
   /** Stable display scope for context smoothing (e.g. session/worktree key) */
   contextDisplayScope?: string | null;
 
-  /** Model display name from Qoder CLI statusline stdin; null when unavailable */
+  /** Model display name from Claude Code statusline stdin; null when unavailable */
   modelName: string | null;
 
-  /** Raw model id from Qoder CLI statusline stdin; used when full model format is requested */
+  /** Raw model id from Claude Code statusline stdin; used when full model format is requested */
   modelId?: string | null;
 
   /** Ralph loop state */
@@ -399,6 +441,9 @@ export interface HudRenderContext {
   /** API key source: 'project', 'global', or 'env' */
   apiKeySource: ApiKeySource | null;
 
+  /** True when an Anthropic API key is active (no OAuth subscription); used to surface a usage hint when built-in usage cannot be fetched */
+  apiKeyMode?: boolean;
+
   /** OAuth subscription type (e.g. 'enterprise'), null when unavailable */
   subscriptionType?: string | null;
 
@@ -457,7 +502,7 @@ export type CwdFormat = 'relative' | 'absolute' | 'folder';
  * Model name format options:
  * - short: 'Opus', 'Sonnet', 'Haiku'
  * - versioned: 'Opus 4.8', 'Sonnet 4.5', 'Haiku 4.5'
- * - full: raw model ID like 'qwen-max'
+ * - full: raw model ID like 'claude-opus-4-8-20260528'
  */
 export type ModelFormat = 'short' | 'versioned' | 'full';
 
@@ -694,7 +739,7 @@ export const DEFAULT_HUD_CONFIG: HudConfig = {
     gitBranch: false,         // Disabled by default for backward compatibility
     gitStatus: false,         // Disabled by default for backward compatibility
     gitInfoPosition: 'above',  // Git info above main HUD line (backward compatible)
-    model: true,              // Show only when Qoder CLI statusline stdin provides a model
+    model: true,              // Show only when Claude Code statusline stdin provides a model
     modelFormat: 'versioned', // Preserve model version by default
     omqLabel: true,
     updateNotification: true, // Preserve existing update prompt behavior by default

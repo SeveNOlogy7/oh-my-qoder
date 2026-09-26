@@ -140,12 +140,12 @@ export async function resolveSelfImprovePaths({ projectRoot = process.cwd(), top
 
   // When a sessionId is provided, scope beneath topics/<slug>/sessions/<sid>/
   // so concurrent runs sharing the same topic slug don't collide.
-  // Falls back to OMC_SESSION_ID env var when explicit arg is absent.
+  // Falls back to OMQ_SESSION_ID env var when explicit arg is absent.
   // Legacy layout (no topic/slug supplied, flat .omq/self-improve/ exists) is
   // preserved as-is — session scoping only applies to the topic-scoped layout.
   const rawSessionId = sessionId && sessionId.trim()
     ? sessionId.trim()
-    : (process.env.OMC_SESSION_ID && process.env.OMC_SESSION_ID.trim() ? process.env.OMC_SESSION_ID.trim() : '');
+    : (process.env.OMQ_SESSION_ID && process.env.OMQ_SESSION_ID.trim() ? process.env.OMQ_SESSION_ID.trim() : '');
   const effectiveSessionId = shouldUseLegacyRoot ? '' : rawSessionId;
   const root = shouldUseLegacyRoot
     ? baseRoot

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { isAbsolute, join } from 'path';
 
 /**
@@ -68,6 +69,36 @@ export const TeamPaths = {
   shutdownAck: (teamName: string, workerName: string) =>
     `.omq/state/team/${teamName}/workers/${workerName}/shutdown-ack.json`,
 
+  workerLaunchAttemptRoot: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}`,
+
+  workerLaunchCurrent: (teamName: string, workerName: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/current.json`,
+
+  workerLaunchExpected: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/expected.json`,
+
+  workerLaunchAck: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/ack.json`,
+
+  workerLaunchStarted: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/provider-started.json`,
+
+  workerLaunchTransportOwner: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/transport-owner.json`,
+
+  workerLaunchBootstrapDescriptor: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/bootstrap.json`,
+
+  workerLaunchWrapper: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/launch.cmd`,
+
+  workerLaunchTransportCleanupComplete: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/transport-cleanup-complete.json`,
+
+  workerLaunchDecision: (teamName: string, workerName: string, attemptId: string) =>
+    `.omq/state/team/${teamName}/workers/${workerName}/launch-attempts/${attemptId}/decision.json`,
+
   mailbox: (teamName: string, workerName: string) =>
     `.omq/state/team/${teamName}/mailbox/${workerName}.json`,
 
@@ -79,6 +110,8 @@ export const TeamPaths = {
 
   dispatchLockDir: (teamName: string) =>
     `.omq/state/team/${teamName}/dispatch/.lock`,
+  mailboxNotificationLock: (teamName: string, requestId: string) =>
+    `.omq/state/team/${teamName}/dispatch/.mailbox-notification-${createHash('sha256').update(requestId).digest('hex')}.lock`,
 
   workerStatus: (teamName: string, workerName: string) =>
     `.omq/state/team/${teamName}/workers/${workerName}/status.json`,
@@ -109,6 +142,8 @@ export const TeamPaths = {
 
   scalingLock: (teamName: string) =>
     `.omq/state/team/${teamName}/.scaling-lock`,
+  configMutationLock: (teamName: string) =>
+    `.omq/state/team/${teamName}/.config-mutation.lock`,
 
   workerIdentity: (teamName: string, workerName: string) =>
     `.omq/state/team/${teamName}/workers/${workerName}/identity.json`,
@@ -118,6 +153,66 @@ export const TeamPaths = {
 
   shutdownRequest: (teamName: string, workerName: string) =>
     `.omq/state/team/${teamName}/workers/${workerName}/shutdown-request.json`,
+  checkpoints: (teamName: string, taskId: string, claimTokenHash: string) =>
+    `.omq/state/team/${teamName}/checkpoints/${normalizeTaskFileStem(taskId)}/${claimTokenHash}`,
+  checkpoint: (teamName: string, taskId: string, claimTokenHash: string, sequence: number) =>
+    `.omq/state/team/${teamName}/checkpoints/${normalizeTaskFileStem(taskId)}/${claimTokenHash}/${sequence}.json`,
+  checkpointLatest: (teamName: string, taskId: string, claimTokenHash: string) =>
+    `.omq/state/team/${teamName}/checkpoints/${normalizeTaskFileStem(taskId)}/${claimTokenHash}/latest.json`,
+  taskRecoverySidecar: (teamName: string, recoveryId: string, taskId: string) => {
+    if (recoveryId.length === 0 || recoveryId.length > 128 || recoveryId === '.' || recoveryId === '..'
+      || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(recoveryId)) {
+      throw new Error('invalid_recovery_request_id');
+    }
+    const taskStem = normalizeTaskFileStem(taskId);
+    if (!/^task-\d+$/.test(taskStem)) throw new Error('invalid_task_id');
+    return `.omq/state/team/${teamName}/recovery/task-sidecars/${recoveryId}/${taskStem}.json`;
+  },
+  taskRecoveryReservation: (teamName: string, taskId: string) =>
+    `.omq/state/team/${teamName}/recovery/reservations/${normalizeTaskFileStem(taskId)}.json`,
+  ownerEpochs: (teamName: string) =>
+    `.omq/state/team/${teamName}/recovery/owner-epochs`,
+  ownerEpoch: (teamName: string, epoch: number) =>
+    `.omq/state/team/${teamName}/recovery/owner-epochs/${epoch}.json`,
+  recoveryOwnerBootstrapCandidate: (teamName: string, expectedEpoch: number, nonce: string) => {
+    if (nonce.length === 0 || nonce.length > 128 || nonce === '.' || nonce === '..'
+      || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(nonce)) throw new Error('invalid_recovery_owner_bootstrap_nonce');
+    return `.omq/state/team/${teamName}/recovery/owner-bootstrap/${expectedEpoch}/${nonce}.json`;
+  },
+  recoveryIntents: (teamName: string) =>
+    `.omq/state/team/${teamName}/recovery/intents`,
+  recoveryIntent: (teamName: string, recoveryId: string) =>
+    `.omq/state/team/${teamName}/recovery/intents/${recoveryId}.json`,
+  recoveryAttempts: (teamName: string) =>
+    `.omq/state/team/${teamName}/recovery/attempts`,
+  recoveryAttempt: (teamName: string, recoveryId: string) =>
+    `.omq/state/team/${teamName}/recovery/attempts/${recoveryId}.json`,
+  recoveryActivation: (teamName: string, recoveryId: string, paneAttemptId: string) =>
+    `.omq/state/team/${teamName}/recovery/activation/${recoveryId}/${paneAttemptId}`,
+  recoveryReady: (teamName: string, recoveryId: string, paneAttemptId: string) =>
+    `.omq/state/team/${teamName}/recovery/activation/${recoveryId}/${paneAttemptId}/ready.json`,
+  recoveryActivate: (teamName: string, recoveryId: string, paneAttemptId: string) =>
+    `.omq/state/team/${teamName}/recovery/activation/${recoveryId}/${paneAttemptId}/activate.json`,
+  recoveryRun: (teamName: string, recoveryId: string, paneAttemptId: string) =>
+    `.omq/state/team/${teamName}/recovery/activation/${recoveryId}/${paneAttemptId}/run.json`,
+  recoveryRequestsRoot: () => '.omq/state/team-recovery/by-request',
+  recoveryAdmissionLock: (payloadHash: string) =>
+    `.omq/state/team-recovery/admission-locks/${payloadHash}.lock`,
+  recoveryLifecycleLock: (workspaceHash: string, teamName: string) =>
+    `.omq/state/team-recovery/lifecycle-locks/${workspaceHash}/${teamName}.lock`,
+  recoveryRequestPending: (requestId: string) =>
+    `.omq/state/team-recovery/by-request/${requestId}.pending.json`,
+  recoveryRequestResult: (requestId: string) =>
+    `.omq/state/team-recovery/by-request/${requestId}.result.json`,
+  recoveryResultByTeam: (workspaceHash: string, teamName: string, recoveryId: string) =>
+    `.omq/state/team-recovery/by-team/${workspaceHash}/${teamName}/${recoveryId}.json`,
+  recoveryFinalIndexLock: (workspaceHash: string, teamName: string, recoveryId: string) =>
+    `.omq/state/team-recovery/index-locks/${workspaceHash}/${teamName}/${recoveryId}.lock`,
+  scalingRollbackFailure: (teamName: string, recordedAt: number) =>
+    `.omq/state/team/${teamName}/scaling-rollback/${recordedAt}.json`,
+  recoveryPaneRollbackFailure: (teamName: string, recoveryId: string, paneAttemptId: string, recordedAt: number) =>
+    `.omq/state/team/${teamName}/recovery/rollback-failures/${recoveryId}/${paneAttemptId}-${recordedAt}.json`,
+  recoveryAuditIndex: () => '.omq/state/team-recovery/audit.jsonl',
 } as const;
 
 /**
@@ -156,7 +251,7 @@ export function getTaskStoragePath(cwd: string, teamName: string, taskId?: strin
 /**
  * Legacy task storage path builder (deprecated).
  *
- * Old location: ~/.qoder/tasks/{teamName}/{taskId}.json
+ * Old location: ~/.claude/tasks/{teamName}/{taskId}.json
  *
  * Used only by the compatibility shim in task-file-ops.ts to check
  * for data written by older versions during reads. New code must not

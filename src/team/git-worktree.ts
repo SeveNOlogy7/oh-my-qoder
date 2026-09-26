@@ -5,7 +5,7 @@
  *
  * Native team worktrees live at:
  *   {repoRoot}/.omq/team/{team}/worktrees/{worker}
- * Branch naming (branch mode): omq-team/{teamName}/{workerName}
+ * Branch naming (branch mode): omc-team/{teamName}/{workerName}
  *
  * The public create/remove helpers are kept for legacy callers, but the
  * implementation is conservative: compatible clean worktrees are reused,
@@ -20,7 +20,7 @@ import { atomicWriteJson, ensureDirWithMode, validateResolvedPath } from './fs-u
 import { validateWorktreeRemovalTarget } from '../lib/worktree-cleanup-safety.js';
 import { sanitizeName } from './tmux-session.js';
 import { withFileLockSync } from '../lib/file-lock.js';
-import { getOmqRoot } from '../lib/worktree-paths.js';
+import { getOmcRoot } from '../lib/worktree-paths.js';
 
 export type TeamWorktreeMode = 'disabled' | 'detached' | 'named';
 
@@ -86,16 +86,16 @@ export interface WorktreeRootAgentsRestoreResult {
 
 /** Get canonical native team worktree path for a worker. */
 export function getWorktreePath(repoRoot: string, teamName: string, workerName: string): string {
-  return join(getOmqRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees', sanitizeName(workerName));
+  return join(getOmcRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees', sanitizeName(workerName));
 }
 
 /** Get branch name for a worker. */
 export function getBranchName(teamName: string, workerName: string): string {
-  return `omq-team/${sanitizeName(teamName)}/${sanitizeName(workerName)}`;
+  return `omc-team/${sanitizeName(teamName)}/${sanitizeName(workerName)}`;
 }
 
 function git(repoRoot: string, args: string[], cwd = repoRoot): string {
-  return execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: 'pipe' }).trim();
+  return execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: 'pipe', windowsHide: true }).trim();
 }
 
 function isInsideGitRepo(repoRoot: string): boolean {
@@ -164,7 +164,7 @@ function isRegisteredWorktreePath(repoRoot: string, wtPath: string): boolean {
 
 function isDetached(wtPath: string): boolean {
   try {
-    const branch = execFileSync('git', ['branch', '--show-current'], { cwd: wtPath, encoding: 'utf-8', stdio: 'pipe' }).trim();
+    const branch = execFileSync('git', ['branch', '--show-current'], { cwd: wtPath, encoding: 'utf-8', stdio: 'pipe', windowsHide: true }).trim();
     return branch.length === 0;
   } catch {
     return false;
@@ -197,7 +197,7 @@ function statusEntryPath(line: string): string {
 function isWorktreeDirtyExcept(wtPath: string, ignoredRootPaths: string[] = []): { dirty: boolean; entries: string[] } {
   try {
     const ignored = new Set(ignoredRootPaths);
-    const entries = execFileSync('git', ['status', '--porcelain'], { cwd: wtPath, encoding: 'utf-8', stdio: 'pipe' })
+    const entries = execFileSync('git', ['status', '--porcelain'], { cwd: wtPath, encoding: 'utf-8', stdio: 'pipe', windowsHide: true })
       .split('\n')
       .filter(line => line.trim().length > 0);
     const relevantEntries = entries.filter(line => !ignored.has(statusEntryPath(line)));
@@ -209,16 +209,16 @@ function isWorktreeDirtyExcept(wtPath: string, ignoredRootPaths: string[] = []):
 
 /** Get worktree metadata path. */
 function getMetadataPath(repoRoot: string, teamName: string): string {
-  return join(getOmqRoot(repoRoot), 'state', 'team', sanitizeName(teamName), 'worktrees.json');
+  return join(getOmcRoot(repoRoot), 'state', 'team', sanitizeName(teamName), 'worktrees.json');
 }
 
 function getLegacyMetadataPath(repoRoot: string, teamName: string): string {
-  return join(getOmqRoot(repoRoot), 'state', 'team-bridge', sanitizeName(teamName), 'worktrees.json');
+  return join(getOmcRoot(repoRoot), 'state', 'team-bridge', sanitizeName(teamName), 'worktrees.json');
 }
 
 
 function getWorkerStateDir(repoRoot: string, teamName: string, workerName: string): string {
-  return join(getOmqRoot(repoRoot), 'state', 'team', sanitizeName(teamName), 'workers', sanitizeName(workerName));
+  return join(getOmcRoot(repoRoot), 'state', 'team', sanitizeName(teamName), 'workers', sanitizeName(workerName));
 }
 
 function getRootAgentsBackupPath(repoRoot: string, teamName: string, workerName: string): string {
@@ -236,7 +236,7 @@ function readRootAgentsBackup(
     return JSON.parse(readFileSync(backupPath, 'utf-8')) as WorktreeRootAgentsBackup;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`[omq] warning: worktree root AGENTS backup parse error: ${msg}\n`);
+    process.stderr.write(`[omc] warning: worktree root AGENTS backup parse error: ${msg}\n`);
     const error = new Error(`worktree_root_agents_backup_unreadable:${backupPath}:${msg}`);
     (error as Error & { code?: string }).code = 'worktree_root_agents_backup_unreadable';
     throw error;
@@ -257,15 +257,15 @@ export function installWorktreeRootAgents(
   overlayContent: string,
 ): void {
   // The worker worktree, its root AGENTS.md, and the backup all live under
-  // getOmqRoot(repoRoot) — which in a .omq-workspace layout sits ABOVE repoRoot.
-  // Validate against the shared OMQ root (and the worktree itself for AGENTS.md),
+  // getOmcRoot(repoRoot) — which in a .omq-workspace layout sits ABOVE repoRoot.
+  // Validate against the shared OMC root (and the worktree itself for AGENTS.md),
   // not the sub-repo, or multi-repo writes throw false path-traversal errors.
-  const omqRoot = getOmqRoot(repoRoot);
-  validateResolvedPath(worktreePath, omqRoot);
+  const omcRoot = getOmcRoot(repoRoot);
+  validateResolvedPath(worktreePath, omcRoot);
   const agentsPath = join(worktreePath, 'AGENTS.md');
   validateResolvedPath(agentsPath, worktreePath);
   const backupPath = getRootAgentsBackupPath(repoRoot, teamName, workerName);
-  validateResolvedPath(backupPath, omqRoot);
+  validateResolvedPath(backupPath, omcRoot);
   ensureDirWithMode(getWorkerStateDir(repoRoot, teamName, workerName));
 
   const previous = readRootAgentsBackup(repoRoot, teamName, workerName);
@@ -300,14 +300,14 @@ export function restoreWorktreeRootAgents(
   repoRoot: string,
   worktreePath?: string,
 ): WorktreeRootAgentsRestoreResult {
-  const omqRoot = getOmqRoot(repoRoot);
+  const omcRoot = getOmcRoot(repoRoot);
   const backupPath = getRootAgentsBackupPath(repoRoot, teamName, workerName);
-  validateResolvedPath(backupPath, omqRoot);
+  validateResolvedPath(backupPath, omcRoot);
   const backup = readRootAgentsBackup(repoRoot, teamName, workerName);
   if (!backup) return { restored: false, reason: 'no_backup' };
 
   const resolvedWorktreePath = worktreePath ?? backup.worktreePath;
-  validateResolvedPath(resolvedWorktreePath, omqRoot);
+  validateResolvedPath(resolvedWorktreePath, omcRoot);
   if (!existsSync(resolvedWorktreePath)) {
     try {
       unlinkSync(backupPath);
@@ -349,7 +349,7 @@ function readMetadataResult(repoRoot: string, teamName: string): WorktreeMetadat
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       issues.push({ path: metaPath, message });
-      process.stderr.write(`[omq] warning: worktrees.json parse error at ${metaPath}: ${message}
+      process.stderr.write(`[omc] warning: worktrees.json parse error at ${metaPath}: ${message}
 `);
     }
   }
@@ -362,7 +362,7 @@ function readMetadata(repoRoot: string, teamName: string): WorktreeInfo[] {
 
 
 function listRootAgentsBackupIssues(repoRoot: string, teamName: string, entries: WorktreeInfo[]): WorktreeMetadataReadIssue[] {
-  const workersDir = join(getOmqRoot(repoRoot), 'state', 'team', sanitizeName(teamName), 'workers');
+  const workersDir = join(getOmcRoot(repoRoot), 'state', 'team', sanitizeName(teamName), 'workers');
   if (!existsSync(workersDir)) return [];
   const knownWorkers = new Set(entries.map((entry) => sanitizeName(entry.workerName)));
   const issues: WorktreeMetadataReadIssue[] = [];
@@ -389,8 +389,8 @@ function listRootAgentsBackupIssues(repoRoot: string, teamName: string, entries:
 /** Write native worktree metadata. */
 function writeMetadata(repoRoot: string, teamName: string, entries: WorktreeInfo[]): void {
   const metaPath = getMetadataPath(repoRoot, teamName);
-  validateResolvedPath(metaPath, join(getOmqRoot(repoRoot), 'state', 'team'));
-  ensureDirWithMode(join(getOmqRoot(repoRoot), 'state', 'team', sanitizeName(teamName)));
+  validateResolvedPath(metaPath, join(getOmcRoot(repoRoot), 'state', 'team'));
+  ensureDirWithMode(join(getOmcRoot(repoRoot), 'state', 'team', sanitizeName(teamName)));
   atomicWriteJson(metaPath, entries);
 }
 
@@ -469,10 +469,10 @@ export function ensureWorkerWorktree(
 
   const wtPath = getWorktreePath(repoRoot, teamName, workerName);
   const branch = mode === 'named' ? getBranchName(teamName, workerName) : 'HEAD';
-  validateResolvedPath(wtPath, join(getOmqRoot(repoRoot), 'team'));
+  validateResolvedPath(wtPath, join(getOmcRoot(repoRoot), 'team'));
 
   try {
-    execFileSync('git', ['worktree', 'prune'], { cwd: repoRoot, stdio: 'pipe' });
+    execFileSync('git', ['worktree', 'prune'], { cwd: repoRoot, stdio: 'pipe', windowsHide: true });
   } catch { /* ignore */ }
 
   if (existsSync(wtPath)) {
@@ -493,13 +493,13 @@ export function ensureWorkerWorktree(
     return info;
   }
 
-  const wtDir = join(getOmqRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees');
+  const wtDir = join(getOmcRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees');
   ensureDirWithMode(wtDir);
 
   const args = mode === 'named'
     ? ['worktree', 'add', '-b', branch, wtPath, options.baseRef ?? 'HEAD']
     : ['worktree', 'add', '--detach', wtPath, options.baseRef ?? 'HEAD'];
-  execFileSync('git', args, { cwd: repoRoot, stdio: 'pipe' });
+  execFileSync('git', args, { cwd: repoRoot, stdio: 'pipe', windowsHide: true });
 
   const info: EnsureWorkerWorktreeResult = {
     path: wtPath,
@@ -550,7 +550,7 @@ export function checkWorkerWorktreeRemovalSafety(
 
   validateWorktreeRemovalTarget({
     candidatePath: wtPath,
-    expectedRoots: [join(getOmqRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees')],
+    expectedRoots: [join(getOmcRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees')],
     mainRepoRoots: [repoRoot],
   });
 
@@ -617,7 +617,7 @@ export function removeWorkerWorktree(
 
     const wasRegisteredWorktree = isRegisteredWorktreePath(repoRoot, wtPath);
     try {
-      execFileSync('git', ['worktree', 'remove', wtPath], { cwd: repoRoot, stdio: 'pipe' });
+      execFileSync('git', ['worktree', 'remove', wtPath], { cwd: repoRoot, stdio: 'pipe', windowsHide: true });
     } catch (err) {
       if (wasRegisteredWorktree) {
         const detail = err instanceof Error && err.message ? `: ${err.message}` : '';
@@ -629,19 +629,19 @@ export function removeWorkerWorktree(
     }
 
     try {
-      execFileSync('git', ['worktree', 'prune'], { cwd: repoRoot, stdio: 'pipe' });
+      execFileSync('git', ['worktree', 'prune'], { cwd: repoRoot, stdio: 'pipe', windowsHide: true });
     } catch { /* ignore */ }
 
     try {
-      execFileSync('git', ['branch', '-D', branch], { cwd: repoRoot, stdio: 'pipe' });
+      execFileSync('git', ['branch', '-D', branch], { cwd: repoRoot, stdio: 'pipe', windowsHide: true });
     } catch { /* branch may not exist */ }
 
     // If a stale plain directory remains and it is not a registered worktree, remove it
-    // only after the shared path guard proves it is an OMQ team worktree child.
+    // only after the shared path guard proves it is an OMC team worktree child.
     if (existsSync(wtPath) && !isRegisteredWorktreePath(repoRoot, wtPath)) {
       validateWorktreeRemovalTarget({
         candidatePath: wtPath,
-        expectedRoots: [join(getOmqRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees')],
+        expectedRoots: [join(getOmcRoot(repoRoot), 'team', sanitizeName(teamName), 'worktrees')],
         mainRepoRoots: [repoRoot],
       });
       rmSync(wtPath, { recursive: true, force: true });
@@ -706,7 +706,7 @@ export function cleanupTeamWorktrees(
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       preserved.push({ workerName: entry.workerName, path: entry.path, reason });
-      process.stderr.write(`[omq] warning: preserved worktree ${entry.path}: ${reason}\n`);
+      process.stderr.write(`[omc] warning: preserved worktree ${entry.path}: ${reason}\n`);
     }
   }
 

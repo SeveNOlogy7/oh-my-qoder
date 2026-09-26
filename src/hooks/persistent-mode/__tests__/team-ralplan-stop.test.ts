@@ -158,11 +158,8 @@ function writeStopBreaker(
 function writeSubagentTrackingState(
   tempDir: string,
   agents: Array<Record<string, unknown>>,
-  sessionId?: string,
 ): void {
-  const stateDir = sessionId
-    ? join(tempDir, '.omq', 'state', 'sessions', sessionId)
-    : join(tempDir, '.omq', 'state');
+  const stateDir = join(tempDir, '.omq', 'state');
   mkdirSync(stateDir, { recursive: true });
   writeFileSync(
     join(stateDir, 'subagent-tracking-state.json'),
@@ -441,10 +438,15 @@ describe('team pipeline standalone stop enforcement', () => {
       mkdirSync(stateDir, { recursive: true });
       writeFileSync(
         join(stateDir, 'cancel-signal-state.json'),
-        JSON.stringify({
-          requested_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30000).toISOString(),
-        })
+        JSON.stringify(
+          (() => {
+            const requestedAt = Date.now();
+            return {
+              requested_at: new Date(requestedAt).toISOString(),
+              expires_at: new Date(requestedAt + 30_000).toISOString(),
+            };
+          })()
+        )
       );
 
       const result = await checkPersistentModes(sessionId, tempDir);
@@ -793,7 +795,7 @@ describe('ralplan standalone stop enforcement', () => {
           parent_mode: 'ralplan',
           status: 'running',
         },
-      ], sessionId);
+      ]);
 
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(false);
@@ -821,10 +823,10 @@ describe('ralplan standalone stop enforcement', () => {
           parent_mode: 'ralplan',
           status: 'running',
         },
-      ], sessionId);
+      ]);
 
       const staleUpdatedAt = new Date(now.getTime() - 10_000).toISOString();
-      const trackingPath = join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json');
+      const trackingPath = join(tempDir, '.omq', 'state', 'subagent-tracking-state.json');
       const tracking = JSON.parse(readFileSync(trackingPath, 'utf-8')) as { last_updated?: string };
       tracking.last_updated = staleUpdatedAt;
       writeFileSync(trackingPath, JSON.stringify(tracking, null, 2));
@@ -853,13 +855,13 @@ describe('ralplan standalone stop enforcement', () => {
           parent_mode: 'ralplan',
           status: 'running',
         },
-      ], sessionId);
+      ]);
 
       const bypassResult = await checkPersistentModes(sessionId, tempDir);
       expect(bypassResult.shouldBlock).toBe(false);
       expect(bypassResult.mode).toBe('ralplan');
 
-      writeSubagentTrackingState(tempDir, [], sessionId);
+      writeSubagentTrackingState(tempDir, []);
 
       const resumedResult = await checkPersistentModes(sessionId, tempDir);
       expect(resumedResult.shouldBlock).toBe(true);
@@ -882,10 +884,15 @@ describe('ralplan standalone stop enforcement', () => {
       mkdirSync(stateDir, { recursive: true });
       writeFileSync(
         join(stateDir, 'cancel-signal-state.json'),
-        JSON.stringify({
-          requested_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30000).toISOString(),
-        })
+        JSON.stringify(
+          (() => {
+            const requestedAt = Date.now();
+            return {
+              requested_at: new Date(requestedAt).toISOString(),
+              expires_at: new Date(requestedAt + 30_000).toISOString(),
+            };
+          })()
+        )
       );
 
       const result = await checkPersistentModes(sessionId, tempDir);

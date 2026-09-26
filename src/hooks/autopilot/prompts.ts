@@ -33,6 +33,7 @@ function resolvePromptOpenQuestionsPath(
 export function getExpansionPrompt(
   idea: string,
   openQuestionsPathOrConfig?: string | PluginConfig,
+  includeLegacyCompletion = true,
 ): string {
   const openQuestionsPath = resolvePromptOpenQuestionsPath(
     openQuestionsPathOrConfig,
@@ -48,7 +49,7 @@ Your task: Expand this product idea into detailed requirements and technical spe
 
 \`\`\`
 Task(
-  subagent_type="oh-my-qoder:analyst",
+  subagent_type="oh-my-claudecode:analyst",
   model="opus",
   prompt="REQUIREMENTS ANALYSIS for: ${escapeForPrompt(idea)}
 
@@ -70,7 +71,7 @@ After Analyst completes, spawn Architect:
 
 \`\`\`
 Task(
-  subagent_type="oh-my-qoder:architect",
+  subagent_type="oh-my-claudecode:architect",
   model="opus",
   prompt="TECHNICAL SPECIFICATION for: ${escapeForPrompt(idea)}
 
@@ -101,9 +102,9 @@ The Analyst is read-only and cannot write files, so you must persist its open qu
 Combine Analyst requirements + Architect technical spec into a single document.
 Save to: \`.omq/autopilot/spec.md\`
 
-### Step 4: Signal Completion
+${includeLegacyCompletion ? `### Step 4: Signal Completion
 
-When the spec is saved, signal: EXPANSION_COMPLETE
+When the spec is saved, signal: EXPANSION_COMPLETE` : ''}
 `;
 }
 
@@ -131,7 +132,7 @@ Spawn Architect to create the implementation plan:
 
 \`\`\`
 Task(
-  subagent_type="oh-my-qoder:architect",
+  subagent_type="oh-my-claudecode:architect",
   model="opus",
   prompt="CREATE IMPLEMENTATION PLAN
 
@@ -169,7 +170,7 @@ After Architect creates the plan:
 
 \`\`\`
 Task(
-  subagent_type="oh-my-qoder:critic",
+  subagent_type="oh-my-claudecode:critic",
   model="opus",
   prompt="REVIEW IMPLEMENTATION PLAN
 
@@ -220,13 +221,13 @@ Ralph and Ultrawork are now active. Execute tasks in parallel where possible.
 
 \`\`\`
 // For simple tasks (single file, straightforward logic)
-Task(subagent_type="oh-my-qoder:executor-low", model="haiku", prompt="...")
+Task(subagent_type="oh-my-claudecode:executor-low", model="haiku", prompt="...")
 
 // For standard implementation (feature, multiple methods)
-Task(subagent_type="oh-my-qoder:executor", model="sonnet", prompt="...")
+Task(subagent_type="oh-my-claudecode:executor", model="sonnet", prompt="...")
 
 // For complex work (architecture, debugging, refactoring)
-Task(subagent_type="oh-my-qoder:executor-high", model="opus", prompt="...")
+Task(subagent_type="oh-my-claudecode:executor-high", model="opus", prompt="...")
 \`\`\`
 
 ### Progress Tracking
@@ -245,10 +246,10 @@ When all tasks from the plan are complete: EXECUTION_COMPLETE
 /**
  * Generate the QA phase prompt (Phase 3)
  */
-export function getQAPrompt(): string {
+export function getQAPrompt(includeLegacyCompletion = true): string {
   return `## AUTOPILOT PHASE 3: QUALITY ASSURANCE
 
-Run UltraQA cycles until build/lint/tests pass.
+Run build/lint/test cycles until all pass.
 
 ### QA Sequence
 
@@ -277,7 +278,7 @@ For each failure:
 1. **Diagnose** - Understand the error
 \`\`\`
 Task(
-  subagent_type="oh-my-qoder:architect-low",
+  subagent_type="oh-my-claudecode:architect-low",
   model="haiku",
   prompt="Diagnose this error and suggest fix: [ERROR]"
 )
@@ -286,7 +287,7 @@ Task(
 2. **Fix** - Apply the fix
 \`\`\`
 Task(
-  subagent_type="oh-my-qoder:debugger",
+  subagent_type="oh-my-claudecode:debugger",
   model="sonnet",
   prompt="Fix this error with minimal changes: [ERROR]"
 )
@@ -297,11 +298,11 @@ Task(
 
 ### Exit Conditions
 
-- All checks pass → QA_COMPLETE
+- All checks pass${includeLegacyCompletion ? ' → QA_COMPLETE' : ''}
 - Max cycles reached → Report failures
 - Same error 3 times → Escalate to user
 
-When all checks pass: QA_COMPLETE
+${includeLegacyCompletion ? 'When all checks pass: QA_COMPLETE' : ''}
 `;
 }
 
@@ -322,7 +323,7 @@ Each reviewer must return ONLY a concise review summary under 100 words with ver
 \`\`\`
 // Functional Completeness Review
 Task(
-  subagent_type="oh-my-qoder:architect",
+  subagent_type="oh-my-claudecode:architect",
   model="opus",
   prompt="FUNCTIONAL COMPLETENESS REVIEW
 
@@ -339,7 +340,7 @@ Verdict: APPROVED (all requirements met) or REJECTED (with specific gaps)"
 
 // Security Review
 Task(
-  subagent_type="oh-my-qoder:security-reviewer",
+  subagent_type="oh-my-claudecode:security-reviewer",
   model="opus",
   prompt="SECURITY REVIEW
 
@@ -356,7 +357,7 @@ Verdict: APPROVED (no vulnerabilities) or REJECTED (with specific issues)"
 
 // Code Quality Review
 Task(
-  subagent_type="oh-my-qoder:code-reviewer",
+  subagent_type="oh-my-claudecode:code-reviewer",
   model="opus",
   prompt="CODE QUALITY REVIEW
 

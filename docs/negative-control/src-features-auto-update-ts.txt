@@ -1,0 +1,174 @@
+# Negative Control Carrier: src-features-auto-update-ts
+
+- **Lane**: src-features-auto-update-ts
+- **Fix commit**: 4c9cacf
+- **Patched file**: src/features/auto-update.ts
+- **Named observation**: src/__tests__/auto-update.test.ts
+- **Verified observation**: src/__tests__/auto-update.test.ts
+- **Description**: fix(paths): discover the plugin cache under any marketplace slug -- reverting src/features/auto-update.ts should turn src/__tests__/auto-update.test.ts RED (observation found by rule "reference-and-co-changed").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/auto-update.test.ts` | 0 | 1 | RED after revert |
+| `src/__tests__/auto-upgrade-prompt.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/conflict-ledger.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/hooks.test.ts` | 1 | - | red before revert |
+| `src/__tests__/hud/cli-diagnostic.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/hud/watch-mode-init.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/tier0-contracts.test.ts` | 0 | 0 | still GREEN |
+| `src/cli/__tests__/setup-command-precedence.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/beads-context/__tests__/index.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/keyword-detector/__tests__/index.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/callbacks.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/duplicate-notifications.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/openclaw-session-end.test.ts` | 0 | 0 | still GREEN |
+| `src/hooks/session-end/__tests__/session-end-timeout.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+: Failed to sync dist to /root/.qoder/plugins/cache/omq/oh-my-qoder/4.14.1: copy failed
+
+stderr | src/__tests__/auto-update.test.ts > auto-update reconciliation > does not rewrite installed_plugins.json when the versioned cache is missing runtime-critical files after sync
+[omq update] Plugin cache sync warning: /root/.qoder/plugins/cache/omq/oh-my-qoder/4.14.1: Missing required plugin payload file: dist/hooks/skill-bridge.cjs
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/auto-update.test.ts > auto-update reconciliation > refuses to update: no npm channel is configured
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 5 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      "npm root -g",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 10000,
+      },
+    ]
+
+  2nd vi.fn() call:
+
+    Array [
+      "command -v qodercli 2>/dev/null || which qodercli 2>/dev/null",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 5000,
+      },
+    ]
+
+  3rd vi.fn() call:
+
+    Array [
+      "npm install -g oh-my-qoder@latest",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 120000,
+      },
+    ]
+
+  4th vi.fn() call:
+
+    Array [
+      "npm root -g",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 10000,
+      },
+    ]
+
+  5th vi.fn() call:
+
+    Array [
+      "which omq 2>/dev/null || where omq 2>NUL",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 5000,
+      },
+    ]
+
+
+Number of calls: 5
+
+ ❯ src/__tests__/auto-update.test.ts:897:32
+    895|     // The refusal must not reach for npm at all: `oh-my-qoder` is unc…
+    896|     // public registry, so an install could only fetch whoever registe…
+    897|     expect(mockedExecSync).not.toHaveBeenCalled();
+       |                                ^
+    898|   });
+    899|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+,
+        "stdio": "pipe",
+        "timeout": 5000,
+      },
+    ]
+
+  3rd vi.fn() call:
+
+    Array [
+      "npm install -g oh-my-qoder@latest",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 120000,
+      },
+    ]
+
+  4th vi.fn() call:
+
+    Array [
+      "npm root -g",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 10000,
+      },
+    ]
+
+  5th vi.fn() call:
+
+    Array [
+      "which omq 2>/dev/null || where omq 2>NUL",
+      Object {
+        "encoding": "utf-8",
+        "stdio": "pipe",
+        "timeout": 5000,
+      },
+    ]
+
+
+Number of calls: 5
+
+ ❯ src/__tests__/auto-update.test.ts:897:32
+    895|     // The refusal must not reach for npm at all: `oh-my-qoder` is unc…
+    896|     // public registry, so an install could only fetch whoever registe…
+    897|     expect(mockedExecSync).not.toHaveBeenCalled();
+       |                                ^
+    898|   });
+    899|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```

@@ -7,16 +7,18 @@
 
 import * as path from 'path';
 import { dirname } from 'path';
-import { existsSync, mkdirSync, writeFileSync, renameSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, mkdirSync, writeFileSync, renameSync, readFileSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { homedir } from 'os';
+import { getClaudeConfigDir } from './lib/config-dir.mjs';
+import { isSkillVisibleToUser } from './lib/skill-entitlements.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Dynamic import for the shared stdin module
 const { readStdin } = await import(pathToFileURL(path.join(__dirname, 'lib', 'stdin.mjs')).href);
-const { resolveOmqStateRoot } = await import(pathToFileURL(path.join(__dirname, 'lib', 'state-root.mjs')).href);
+const { resolveOmcStateRoot } = await import(pathToFileURL(path.join(__dirname, 'lib', 'state-root.mjs')).href);
 
 // ---------------------------------------------------------------------------
 // Skill Active State (issue #1033)
@@ -41,7 +43,7 @@ const PROTECTION_CONFIGS = {
 const SKILL_PROTECTION = {
   // Already have mode state → no protection needed
   autopilot: 'none', ralph: 'none', ultrawork: 'none', team: 'none',
-  'omc-teams': 'none', ultraqa: 'none', cancel: 'none',
+  'omc-teams': 'none', cancel: 'none',
   // Instant / read-only → no protection needed
   trace: 'none', hud: 'none', 'omc-doctor': 'none', 'omc-help': 'none',
   'learn-about-omc': 'none', note: 'none',
@@ -59,7 +61,7 @@ const SKILL_PROTECTION = {
 };
 
 function getSkillProtection(skillName) {
-  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-claudecode:/, '');
   return SKILL_PROTECTION[normalized] || 'light';
 }
 
@@ -79,7 +81,7 @@ async function writeSkillActiveState(directory, skillName, sessionId) {
 
   const config = PROTECTION_CONFIGS[protection];
   const now = new Date().toISOString();
-  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-claudecode:/, '');
 
   const state = {
     active: true,
@@ -92,7 +94,7 @@ async function writeSkillActiveState(directory, skillName, sessionId) {
     stale_ttl_ms: config.staleTtlMs,
   };
 
-  const stateDir = path.join(await resolveOmqStateRoot(directory), 'state');
+  const stateDir = path.join(await resolveOmcStateRoot(directory), 'state');
 
   // Write to session-scoped path when sessionId is available (must match persistent-mode.mjs reads)
   const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
@@ -115,12 +117,12 @@ async function writeSkillActiveState(directory, skillName, sessionId) {
 
 
 async function clearAwaitingConfirmationFlag(directory, stateName, sessionId) {
-  const stateDir = path.join(await resolveOmqStateRoot(directory), 'state');
+  const stateDir = path.join(await resolveOmcStateRoot(directory), 'state');
   const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
   const paths = [
     safeSessionId ? path.join(stateDir, 'sessions', safeSessionId, `${stateName}-state.json`) : null,
     path.join(stateDir, `${stateName}-state.json`),
-    path.join(homedir(), '.omc', 'state', `${stateName}-state.json`),
+    path.join(homedir(), '.omq', 'state', `${stateName}-state.json`),
   ].filter(Boolean);
 
   for (const statePath of paths) {
@@ -159,15 +161,211 @@ async function confirmSkillModeStates(directory, skillName, sessionId) {
 }
 
 // ---------------------------------------------------------------------------
+// Skill vs agent namespace guard (issue #3667)
+//
+// Task/Agent subagent_type identifiers and bundled skills share the same
+// `oh-my-claudecode:` namespace. Deny skill names before Claude Code's native
+// agent boundary so callers receive actionable Skill-tool guidance instead of
+// a generic "Agent type not found" error.
+// ---------------------------------------------------------------------------
+
+const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-claudecode:', 'omc:'];
+const SKILL_IDENTIFIER_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+function splitAgentNamespace(subagentType) {
+  const folded = subagentType.toLowerCase();
+  for (const prefix of SKILL_AGENT_NAMESPACE_PREFIXES) {
+    if (folded.startsWith(prefix.toLowerCase())) {
+      return { name: subagentType.slice(prefix.length), namespaced: true };
+    }
+  }
+  return { name: subagentType, namespaced: false };
+}
+
+function getTemplatePackageRoot() {
+  return path.resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+}
+
+function getPluginAgentDirs() {
+  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+  const packageAgentsDir = path.join(getTemplatePackageRoot(), 'agents');
+  return pluginRoot
+    ? [path.join(pluginRoot, 'agents'), packageAgentsDir]
+    : [path.join(getClaudeConfigDir(), 'agents')];
+}
+
+function getPluginSkillsDirs() {
+  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+  const packageSkillsDir = path.join(getTemplatePackageRoot(), 'skills');
+  return pluginRoot
+    ? [path.join(pluginRoot, 'skills'), packageSkillsDir]
+    : [path.join(getClaudeConfigDir(), 'skills')];
+}
+
+/** Whether an agent definition resolves for the given identifier. */
+function agentDefinitionExists(agentType, directory, namespaced) {
+  const agentDirs = getPluginAgentDirs();
+  if (!namespaced) {
+    agentDirs.push(path.join(directory, '.claude', 'agents'));
+    agentDirs.push(path.join(getClaudeConfigDir(), 'agents'));
+  }
+  return agentDirs.some((agentsDir) => existsSync(path.join(agentsDir, `${agentType}.md`)));
+}
+
+/** Extract a bundled skill's primary name and raw aliases from frontmatter. */
+function parseSkillFrontmatterIdentifiers(content) {
+  const fmMatch = content.match(/^---[\r\n]+([\s\S]*?)[\r\n]+---/);
+  if (!fmMatch) return { aliases: [], primary: null };
+  const fm = fmMatch[1];
+  const nameMatch = fm.match(/^name:\s*(\S+)/m);
+  const primary = nameMatch ? nameMatch[1].trim().replace(/^["']|["']$/g, '') : null;
+  const aliasMatch = fm.match(/^aliases:\s*(.+)$/m);
+  const aliases = [];
+  if (aliasMatch) {
+    const raw = aliasMatch[1].trim();
+    const tokens = raw.startsWith('[')
+      ? raw.slice(1, raw.indexOf(']') === -1 ? raw.length : raw.indexOf(']')).split(',')
+      : [raw.split(/\s+/)[0]];
+    for (const token of tokens) {
+      const clean = token.trim().replace(/^["']|["']$/g, '');
+      if (clean) aliases.push(clean);
+    }
+  }
+  return { aliases, primary };
+}
+
+// Claude Code native command names are renamed when bundled as skills.
+const CC_NATIVE_SKILL_COMMANDS = new Set([
+  'review',
+  'plan',
+  'security-review',
+  'init',
+  'doctor',
+  'help',
+  'config',
+  'clear',
+  'compact',
+  'memory',
+]);
+
+function toSafeSkillName(name) {
+  const normalized = name.trim();
+  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omc-${normalized}` : normalized;
+}
+
+let cachedCanonicalSkillRegistry = null;
+
+/** Build the canonical bundled-skill registry with runtime loader ordering. */
+function buildCanonicalSkillRegistry() {
+  if (cachedCanonicalSkillRegistry) return cachedCanonicalSkillRegistry;
+  const registry = new Map();
+  for (const skillsDir of getPluginSkillsDirs()) {
+    let entries = [];
+    try {
+      entries = readdirSync(skillsDir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    entries.sort((a, b) => {
+      if (a.name === 'skillify') return -1;
+      if (b.name === 'skillify') return 1;
+      return a.name.localeCompare(b.name);
+    });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (!isSkillVisibleToUser(entry.name)) continue;
+      const skillPath = path.join(skillsDir, entry.name, 'SKILL.md');
+      if (!existsSync(skillPath)) continue;
+      let parsed;
+      try {
+        parsed = parseSkillFrontmatterIdentifiers(readFileSync(skillPath, 'utf-8'));
+      } catch {
+        continue;
+      }
+      const primary = toSafeSkillName(parsed.primary || entry.name);
+      const allNames = [primary, ...parsed.aliases.map(toSafeSkillName)];
+      for (const candidate of allNames) {
+        const key = candidate.toLowerCase();
+        if (registry.has(key)) continue;
+        registry.set(key, primary);
+      }
+    }
+  }
+  cachedCanonicalSkillRegistry = registry;
+  return registry;
+}
+
+/** Resolve a Task/Agent identifier to a bundled skill's canonical primary. */
+function resolveBundledSkill(subagentType, directory) {
+  const { name, namespaced } = splitAgentNamespace(subagentType);
+  if (!SKILL_IDENTIFIER_PATTERN.test(name)) return null;
+  const foldedName = name.toLowerCase();
+  if (agentDefinitionExists(foldedName, directory, namespaced)) return null;
+
+  const canonicalPrimary = buildCanonicalSkillRegistry().get(foldedName);
+  if (canonicalPrimary) return { primary: canonicalPrimary };
+  if (!namespaced) return null;
+  if (!isSkillVisibleToUser(foldedName)) return null;
+
+  for (const skillsDir of getPluginSkillsDirs()) {
+    const directPath = path.join(skillsDir, foldedName, 'SKILL.md');
+    if (existsSync(directPath)) {
+      let primary = foldedName;
+      try {
+        const parsed = parseSkillFrontmatterIdentifiers(readFileSync(directPath, 'utf-8'));
+        if (parsed.primary) primary = parsed.primary;
+      } catch {
+        // Keep the directory name when the file cannot be parsed.
+      }
+      return { primary: toSafeSkillName(primary) };
+    }
+  }
+  return null;
+}
+
+/** Deny Skill names passed as Task/Agent subagent_type identifiers. */
+function evaluateSkillAsAgentCall(toolName, toolInput, directory) {
+  if (!toolInput || typeof toolInput !== 'object') return null;
+  const rawSubagentType = toolInput.subagent_type;
+  if (typeof rawSubagentType !== 'string') return null;
+  const subagentType = rawSubagentType.trim();
+  if (subagentType.length === 0) return null;
+
+  const skill = resolveBundledSkill(subagentType, directory);
+  if (!skill) return null;
+
+  const { name } = splitAgentNamespace(subagentType);
+  const skillIdentifier = `oh-my-claudecode:${skill.primary}`;
+  const isPrimaryMatch = name.toLowerCase() === skill.primary.toLowerCase();
+  const queriedName = isPrimaryMatch
+    ? `"${subagentType}"`
+    : `"${subagentType}" (alias of "${skill.primary}")`;
+  const reason =
+    `[SKILL vs AGENT] ${queriedName} is a Skill, not an agent. ` +
+    `Do NOT call it via ${toolName}(subagent_type=...) — that subagent type does not exist, ` +
+    `and Claude Code will fail the call with a generic "Agent type not found". ` +
+    `Use the Skill tool instead: Skill(skill="${skillIdentifier}"). ` +
+    `Do NOT substitute a similarly-named agent as a "closest match".`;
+  return {
+    continue: true,
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Delegation enforcement
 // ---------------------------------------------------------------------------
 
 // Allowed path patterns (no warning)
 // Paths are normalized to forward slashes before matching
 const ALLOWED_PATH_PATTERNS = [
-  /^\.omc\//,          // .omq/** (anchored)
-  /^\.claude\//,       // .qoder/** (anchored)
-  /\/\.claude\//,      // any /.qoder/ path (intentionally unanchored for absolute paths)
+  /^\.omq\//,          // .omq/** (anchored)
+  /^\.claude\//,       // .claude/** (anchored)
+  /\/\.claude\//,      // any /.claude/ path (intentionally unanchored for absolute paths)
   /CLAUDE\.md$/,
   /AGENTS\.md$/,
 ];
@@ -233,17 +431,46 @@ function workerCommandViolation(command) {
   return null;
 }
 
-function checkBashCommand(command) {
-  // Check if command might modify files
-  const mayModify = FILE_MODIFY_PATTERNS.some(pattern => pattern.test(command));
-  if (!mayModify) return null;
+// Redirects to /dev/* are not writes. The generic `>` rule already excludes
+// them, but the cat/echo/printf rules use an unanchored `.*>`, so a trailing
+// `2>/dev/null` on a read-only command satisfies them.
+const DEV_REDIRECT_PATTERN = /\d*>&?\s*\d*\s*\/dev\/(null|stderr|stdout)\b/g;
+const FD_DUP_PATTERN = /\d+>&\d+/g;
 
-  // Check if it might affect source files
-  if (SOURCE_EXT_PATTERN.test(command)) {
-    return `[DELEGATION NOTICE] Bash command may modify source files: ${command}
+// A pipeline is a sequence of independent commands. Only the segment that
+// performs the write can be the one touching a source file.
+const PIPELINE_SPLIT_PATTERN = /(?:&&|\|\||;|\|)/;
+
+// The notice stays in the transcript and is re-sent on every later turn, so a
+// heredoc or generated command would keep paying for its whole body.
+const NOTICE_COMMAND_MAX = 200;
+
+function summarizeCommand(command) {
+  const text = String(command || '');
+  return text.length > NOTICE_COMMAND_MAX
+    ? `${text.slice(0, NOTICE_COMMAND_MAX)}… (${text.length} chars)`
+    : text;
+}
+
+function checkBashCommand(command) {
+  const probe = String(command || '')
+    .replace(DEV_REDIRECT_PATTERN, ' ')
+    .replace(FD_DUP_PATTERN, ' ');
+
+  // The write and the source-file mention must land in the SAME segment,
+  // otherwise `echo hi > notes.txt; grep x app.ts` reads as a source edit.
+  const offending = probe
+    .split(PIPELINE_SPLIT_PATTERN)
+    .find(segment =>
+      FILE_MODIFY_PATTERNS.some(pattern => pattern.test(segment)) &&
+      SOURCE_EXT_PATTERN.test(segment)
+    );
+
+  if (offending) {
+    return `[DELEGATION NOTICE] Bash command may modify source files: ${summarizeCommand(command)}
 
 Recommended: Delegate to executor agent instead:
-  Task(subagent_type="oh-my-qoder:executor", model="medium", prompt="...")
+  Task(subagent_type="oh-my-claudecode:executor", model="sonnet", prompt="...")
 
 This is a soft warning. Operation will proceed.`;
   }
@@ -315,6 +542,18 @@ async function main() {
     return;
   }
 
+  // Skill-vs-agent guard: deny bundled Skill identifiers before Claude Code's
+  // native Task/Agent boundary while leaving real agents untouched.
+  if (toolName === 'Task' || toolName === 'Agent') {
+    const directory = data.cwd || data.directory || process.cwd();
+    const toolInput = data.tool_input || data.toolInput || {};
+    const skillAgentDeny = evaluateSkillAsAgentCall(toolName, toolInput, directory);
+    if (skillAgentDeny) {
+      console.log(JSON.stringify(skillAgentDeny));
+      return;
+    }
+  }
+
   // Activate skill state when Skill tool is invoked (issue #1033)
   // Writes skill-active-state.json so the persistent-mode Stop hook can
   // prevent premature session termination while a skill is executing.
@@ -355,7 +594,7 @@ async function main() {
     const warning = `[DELEGATION NOTICE] Direct ${toolName} on source file: ${filePath}
 
 Recommended: Delegate to executor agent instead:
-  Task(subagent_type="oh-my-qoder:executor", model="medium", prompt="...")
+  Task(subagent_type="oh-my-claudecode:executor", model="sonnet", prompt="...")
 
 This is a soft warning. Operation will proceed.`;
 

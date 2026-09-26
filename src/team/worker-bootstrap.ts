@@ -1,7 +1,7 @@
 import { mkdir, writeFile, appendFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { sanitizePromptContent } from '../agents/prompt-helpers.js';
-import { formatOmqCliInvocation } from '../utils/omq-cli-rendering.js';
+import { formatOmcCliInvocation } from '../utils/omc-cli-rendering.js';
 import type { CliAgentType } from './model-contract.js';
 import { sanitizeName } from './tmux-session.js';
 import { validateResolvedPath } from './fs-utils.js';
@@ -76,10 +76,32 @@ export function generateMailboxTriggerMessage(
   return `${normalizedCount} new msg(s). Read ${mailboxPath}, act now, report concrete progress.`;
 }
 
+export interface RecoveryContinuationInstruction {
+  teamName: string;
+  workerName: string;
+  taskId: string;
+  claimToken: string;
+  taskVersion: number;
+  sequence: number;
+  resumePayload: unknown;
+}
+
+/** Render owner-adopted continuation data only after the activation gate opens. */
+export function renderRecoveryContinuationInstruction(instruction: RecoveryContinuationInstruction): string {
+  const checkpoint = formatOmcCliInvocation(`team api write-task-checkpoint --input "{\\"team_name\\":\\"${instruction.teamName}\\",\\"task_id\\":\\"${instruction.taskId}\\",\\"worker\\":\\"${instruction.workerName}\\",\\"claim_token\\":\\"${instruction.claimToken}\\",\\"task_version\\":${instruction.taskVersion},\\"sequence\\":<next_sequence>,\\"resume_payload\\":<safe_boundary_json>}" --json`);
+  return [
+    '## Recovery Continuation',
+    `You own adopted task ${instruction.taskId} at checkpoint sequence ${instruction.sequence}.`,
+    'Resume only from this owner-provided safe boundary; do not claim the task again or alter its lifecycle ownership.',
+    `Checkpoint payload: \`${JSON.stringify(instruction.resumePayload)}\``,
+    `Before a risky boundary and before yielding, publish the next authenticated checkpoint: \`${checkpoint}\`.`,
+  ].join('\n');
+}
+
 function agentTypeGuidance(agentType: CliAgentType): string {
-  const teamApiCommand = formatOmqCliInvocation('team api');
-  const claimTaskCommand = formatOmqCliInvocation('team api claim-task');
-  const transitionTaskStatusCommand = formatOmqCliInvocation('team api transition-task-status');
+  const teamApiCommand = formatOmcCliInvocation('team api');
+  const claimTaskCommand = formatOmcCliInvocation('team api claim-task');
+  const transitionTaskStatusCommand = formatOmcCliInvocation('team api transition-task-status');
   switch (agentType) {
     case 'codex':
       return [
@@ -109,7 +131,14 @@ function agentTypeGuidance(agentType: CliAgentType): string {
         '- If a command fails, report the exact stderr to leader-fixed before retrying.',
         `- You MUST run \`${claimTaskCommand}\` before starting work and \`${transitionTaskStatusCommand}\` when done.`,
       ].join('\n');
-    case 'qwen':
+    case 'antigravity':
+      return [
+        '### Agent-Type Guidance (antigravity)',
+        '- Execute task work in small, verifiable increments and report each milestone to leader-fixed.',
+        '- Keep commit-sized changes scoped to assigned files only; no broad refactors.',
+        `- CRITICAL: You MUST run \`${claimTaskCommand}\` before starting work and \`${transitionTaskStatusCommand}\` when done. Do not exit without transitioning the task status.`,
+      ].join('\n');
+    case 'claude':
     default:
       return [
         '### Agent-Type Guidance (claude)',
@@ -141,16 +170,17 @@ export function generateWorkerOverlay(params: WorkerBootstrapParams): string {
   const inboxPath = buildTeamStateInstructionPath(teamName, instructionStateRoot, 'workers', workerName, 'inbox.md');
   const statusPath = buildTeamStateInstructionPath(teamName, instructionStateRoot, 'workers', workerName, 'status.json');
   const shutdownAckPath = buildTeamStateInstructionPath(teamName, instructionStateRoot, 'workers', workerName, 'shutdown-ack.json');
-  const claimTaskCommand = formatOmqCliInvocation(`team api claim-task --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"worker\\":\\"${workerName}\\"}" --json`);
-  const sendAckCommand = formatOmqCliInvocation(`team api send-message --input "{\\"team_name\\":\\"${teamName}\\",\\"from_worker\\":\\"${workerName}\\",\\"to_worker\\":\\"leader-fixed\\",\\"body\\":\\"ACK: ${workerName} initialized\\"}" --json`);
-  const completeTaskCommand = formatOmqCliInvocation(`team api transition-task-status --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"from\\":\\"in_progress\\",\\"to\\":\\"completed\\",\\"claim_token\\":\\"<claim_token>\\",\\"result\\":\\"Summary: <what changed>\\\\nVerification: <tests/checks run>\\\\nSubagent skip reason: worker protocol forbids nested subagents; completed focused probe in-session\\"}" --json`);
-  const failTaskCommand = formatOmqCliInvocation(`team api transition-task-status --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"from\\":\\"in_progress\\",\\"to\\":\\"failed\\",\\"claim_token\\":\\"<claim_token>\\"}" --json`);
-  const readTaskCommand = formatOmqCliInvocation(`team api read-task --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\"}" --json`);
-  const releaseClaimCommand = formatOmqCliInvocation(`team api release-task-claim --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"claim_token\\":\\"<claim_token>\\",\\"worker\\":\\"${workerName}\\"}" --json`);
-  const mailboxListCommand = formatOmqCliInvocation(`team api mailbox-list --input "{\\"team_name\\":\\"${teamName}\\",\\"worker\\":\\"${workerName}\\"}" --json`);
-  const mailboxDeliveredCommand = formatOmqCliInvocation(`team api mailbox-mark-delivered --input "{\\"team_name\\":\\"${teamName}\\",\\"worker\\":\\"${workerName}\\",\\"message_id\\":\\"<id>\\"}" --json`);
-  const teamApiCommand = formatOmqCliInvocation('team api');
-  const teamCommand = formatOmqCliInvocation('team');
+  const claimTaskCommand = formatOmcCliInvocation(`team api claim-task --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"worker\\":\\"${workerName}\\"}" --json`);
+  const sendAckCommand = formatOmcCliInvocation(`team api send-message --input "{\\"team_name\\":\\"${teamName}\\",\\"from_worker\\":\\"${workerName}\\",\\"to_worker\\":\\"leader-fixed\\",\\"body\\":\\"ACK: ${workerName} initialized\\"}" --json`);
+  const completeTaskCommand = formatOmcCliInvocation(`team api transition-task-status --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"from\\":\\"in_progress\\",\\"to\\":\\"completed\\",\\"claim_token\\":\\"<claim_token>\\",\\"result\\":\\"Summary: <what changed>\\\\nVerification: <tests/checks run>\\\\nSubagent skip reason: worker protocol forbids nested subagents; completed focused probe in-session\\"}" --json`);
+  const failTaskCommand = formatOmcCliInvocation(`team api transition-task-status --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"from\\":\\"in_progress\\",\\"to\\":\\"failed\\",\\"claim_token\\":\\"<claim_token>\\"}" --json`);
+  const readTaskCommand = formatOmcCliInvocation(`team api read-task --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\"}" --json`);
+  const releaseClaimCommand = formatOmcCliInvocation(`team api release-task-claim --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"claim_token\\":\\"<claim_token>\\",\\"worker\\":\\"${workerName}\\"}" --json`);
+  const mailboxListCommand = formatOmcCliInvocation(`team api mailbox-list --input "{\\"team_name\\":\\"${teamName}\\",\\"worker\\":\\"${workerName}\\"}" --json`);
+  const mailboxDeliveredCommand = formatOmcCliInvocation(`team api mailbox-mark-delivered --input "{\\"team_name\\":\\"${teamName}\\",\\"worker\\":\\"${workerName}\\",\\"message_id\\":\\"<id>\\"}" --json`);
+  const checkpointTaskCommand = formatOmcCliInvocation(`team api write-task-checkpoint --input "{\\"team_name\\":\\"${teamName}\\",\\"task_id\\":\\"<id>\\",\\"worker\\":\\"${workerName}\\",\\"claim_token\\":\\"<claim_token>\\",\\"task_version\\":<current_task_version>,\\"sequence\\":<next_sequence>,\\"resume_payload\\":<safe_boundary_json>}" --json`);
+  const teamApiCommand = formatOmcCliInvocation('team api');
+  const teamCommand = formatOmcCliInvocation('team');
 
   const taskList = sanitizedTasks.length > 0
     ? sanitizedTasks.map(t => `- **Task ${t.id}**: ${t.subject}\n  Description: ${t.description}\n  Status: pending`).join('\n')
@@ -180,11 +210,17 @@ You MUST complete ALL of these steps. Do NOT skip any step. Do NOT exit without 
    - On failure: \`${failTaskCommand}\`
 5. **Keep going after replies**: ACK/progress messages are not a stop signal. Keep executing your assigned or next feasible work until the task is actually complete or failed, then transition and exit.
 
+## Recovery-safe Boundaries
+- While a task is claimed, publish an authenticated checkpoint before a risky operation, before handoff, and before stopping: \`${checkpointTaskCommand}\`.
+- The resume payload must describe a completed safe boundary and the exact next action; never include credentials or future recovery IDs.
+- Checkpoint publication is worker guidance only. Recovery activation is enforced by the runtime wrapper, not by prompt compliance.
+
 ## Identity
 - **Team**: ${teamName}
 - **Worker**: ${workerName}
 - **Agent Type**: ${agentType}
 - **Environment**: OMQ_TEAM_WORKER=${teamName}/${workerName}
+- **Launch Attempt**: read the exact value from \`OMQ_WORKER_LAUNCH_ATTEMPT_ID\` and preserve it in status updates and task claims.
 
 ## Your Tasks
 ${taskList}
@@ -213,9 +249,10 @@ Use the CLI API for all task lifecycle operations. Do NOT directly edit task fil
 - **Inbox**: Read ${inboxPath} for new instructions
 - **Status**: Write to ${statusPath}:
   \`\`\`json
-  {"state": "idle", "updated_at": "<ISO timestamp>"}
+  {"state": "idle", "launch_attempt_id": "<exact OMQ_WORKER_LAUNCH_ATTEMPT_ID>", "updated_at": "<ISO timestamp>"}
   \`\`\`
   States: "idle" | "working" | "blocked" | "done" | "failed"
+  Every startup status MUST include the exact current \`launch_attempt_id\`; evidence without it belongs to another attempt and is ignored.
 - **Heartbeat**: Update ${heartbeatPath} every few minutes:
   \`\`\`json
   {"pid":<pid>,"last_turn_at":"<ISO timestamp>","turn_count":<n>,"alive":true}
@@ -223,7 +260,7 @@ Use the CLI API for all task lifecycle operations. Do NOT directly edit task fil
 
 ## Message Protocol
 Send messages via CLI API:
-- To leader: \`${formatOmqCliInvocation(`team api send-message --input "{\\"team_name\\":\\"${teamName}\\",\\"from_worker\\":\\"${workerName}\\",\\"to_worker\\":\\"leader-fixed\\",\\"body\\":\\"<message>\\"}" --json`)}\`
+- To leader: \`${formatOmcCliInvocation(`team api send-message --input "{\\"team_name\\":\\"${teamName}\\",\\"from_worker\\":\\"${workerName}\\",\\"to_worker\\":\\"leader-fixed\\",\\"body\\":\\"<message>\\"}" --json`)}\`
 - Check mailbox: \`${mailboxListCommand}\`
 - Mark delivered: \`${mailboxDeliveredCommand}\`
 
@@ -252,7 +289,7 @@ When you see a shutdown request in your inbox:
 ${agentTypeGuidance(agentType)}
 
 ## BEFORE YOU EXIT
-You MUST call \`${formatOmqCliInvocation('team api transition-task-status')}\` to mark your task as "completed" or "failed" before exiting.
+You MUST call \`${formatOmcCliInvocation('team api transition-task-status')}\` to mark your task as "completed" or "failed" before exiting.
 If you skip this step, the leader cannot track your work and the task will appear stuck.
 
 ${bootstrapInstructions ? `## Role Context\n${bootstrapInstructions}\n` : ''}`;

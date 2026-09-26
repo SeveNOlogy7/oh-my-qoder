@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * OMQ Code Simplifier Stop Hook (Node.js)
+ * OMC Code Simplifier Stop Hook (Node.js)
  *
  * Intercepts Stop events to automatically delegate recently modified source files
  * to the code-simplifier agent for cleanup and simplification.
@@ -19,9 +19,10 @@ import {
 } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { readStdin } from './lib/stdin.mjs';
-import { resolveOmqStateRoot } from './lib/state-root.mjs';
+import { resolveOmcStateRoot } from './lib/state-root.mjs';
+import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
 
 const DEFAULT_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs'];
 const DEFAULT_MAX_FILES = 10;
@@ -46,11 +47,12 @@ function isEnabled(config) {
 
 function getModifiedFiles(cwd, extensions, maxFiles) {
   try {
-    const output = execSync('git diff HEAD --name-only', {
+    const output = execFileSync('git', ['diff', 'HEAD', '--name-only'], {
       cwd,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: 5000,
+      timeout: BOUNDED_GIT_TIMEOUT_MS,
+      windowsHide: true,
     });
 
     return output
@@ -72,7 +74,7 @@ function buildMessage(files) {
     `code-simplifier agent to simplify the following files for clarity, ` +
     `consistency, and maintainability (without changing behavior):\n\n` +
     `${fileList}\n\n` +
-    `Use: Task(subagent_type="oh-my-qoder:code-simplifier", ` +
+    `Use: Task(subagent_type="oh-my-claudecode:code-simplifier", ` +
     `prompt="Simplify the recently modified files:\\n${fileArgs}")`
   );
 }
@@ -89,7 +91,7 @@ async function main() {
     }
 
     const cwd = data.cwd || data.directory || process.cwd();
-    const stateDir = join(await resolveOmqStateRoot(cwd), 'state');
+    const stateDir = join(await resolveOmcStateRoot(cwd), 'state');
     const config = readOmcConfig();
 
     if (!isEnabled(config)) {

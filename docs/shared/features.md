@@ -10,11 +10,11 @@ Compaction-resilient memory system at `.omq/notepad.md` with three tiers:
 | **Working Memory** | Timestamped entries, auto-pruned after 7 days | Debugging breadcrumbs, temporary findings |
 | **MANUAL** | Never auto-pruned | Team contacts, deployment info, permanent notes |
 
-**User skill:** `/oh-my-qoder:note`
-- `/oh-my-qoder:note <content>` - Add to Working Memory
-- `/oh-my-qoder:note --priority <content>` - Add to Priority Context
-- `/oh-my-qoder:note --manual <content>` - Add to MANUAL section
-- `/oh-my-qoder:note --show` - Display notepad contents
+**User skill:** `/oh-my-claudecode:note`
+- `/oh-my-claudecode:note <content>` - Add to Working Memory
+- `/oh-my-claudecode:note --priority <content>` - Add to Priority Context
+- `/oh-my-claudecode:note --manual <content>` - Add to MANUAL section
+- `/oh-my-claudecode:note --show` - Display notepad contents
 
 **Automatic capture:** `<remember>` tags in Task agent output are automatically captured:
 - `<remember>content</remember>` → Working Memory with timestamp
@@ -88,7 +88,7 @@ Smart cancellation that auto-detects active mode.
 
 **Usage:** `/cancel` or just say "cancelomc", "stopomc"
 
-Auto-detects and cancels: autopilot, ralph, ultrawork, ultraqa, pipeline
+Auto-detects and cancels: autopilot, ralph, ultrawork, pipeline
 Use `--force` or `--all` to clear ALL states.
 
 ## Verification Module (v3.4)
@@ -115,9 +115,8 @@ Standardized state file locations.
 | autopilot | `autopilot-state.json` |
 | ultrawork | `ultrawork-state.json` |
 |  | `-state.json` |
-| ultraqa | `ultraqa-state.json` |
 | pipeline | `pipeline-state.json` |
 
-**Important:** Never store OMQ state in `~/.qoder/` - that directory is reserved for Qoder CLI itself.
+**Important:** Never store OMC state in `~/.claude/` - that directory is reserved for Claude Code itself.
 
 Legacy locations auto-migrated on read.

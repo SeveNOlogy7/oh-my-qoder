@@ -10,8 +10,8 @@ export type ExecutionMode =
   | 'team'
   | 'ralph'
   | 'ultrawork'
-  | 'ultraqa'
   | 'deep-interview'
+  | 'merge-readiness'
   | 'self-improve';
 
 export interface ModeConfig {
@@ -25,6 +25,8 @@ export interface ModeConfig {
   activeProperty?: string;
   /** Whether state is SQLite-based (requires marker file) */
   isSqlite?: boolean;
+  /** Whether mode has global state in ~/.claude/ */
+  hasGlobalState?: boolean;
 }
 
 export interface ModeStatus {

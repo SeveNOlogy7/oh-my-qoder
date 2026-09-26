@@ -88,3 +88,28 @@ describe('CLI runtime boot', () => {
     }
   });
 });
+
+// Patch-layer guard for src/cli/index.ts: `omq doctor check` was added so an
+// installed copy can be diagnosed, and the inert `--skip-hooks` flag was removed
+// because it never did anything. Reverting this file brings both back, and no
+// other suite inspects either.
+describe('command surface', () => {
+  it('registers `doctor check` and no longer accepts --skip-hooks', async () => {
+    const previous = process.env.OMQ_CLI_SKIP_PARSE;
+    process.env.OMQ_CLI_SKIP_PARSE = '1';
+    const { buildProgram } = await import('../index.js');
+    if (previous === undefined) delete process.env.OMQ_CLI_SKIP_PARSE;
+    else process.env.OMQ_CLI_SKIP_PARSE = previous;
+
+    const program = buildProgram();
+    const names = program.commands.map((cmd) => cmd.name());
+    expect(names).toContain('doctor');
+
+    const doctor = program.commands.find((cmd) => cmd.name() === 'doctor');
+    expect(doctor?.commands.map((sub) => sub.name())).toContain('check');
+
+    const setup = program.commands.find((cmd) => cmd.name() === 'setup');
+    const setupFlags = setup?.options.map((opt) => opt.long) ?? [];
+    expect(setupFlags).not.toContain('--skip-hooks');
+  });
+});

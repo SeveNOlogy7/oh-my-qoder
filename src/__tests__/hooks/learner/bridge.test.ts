@@ -15,6 +15,7 @@ import {
   rmSync,
   existsSync,
   readFileSync,
+  readdirSync,
   symlinkSync,
 } from "fs";
 import { join } from "path";
@@ -39,7 +40,7 @@ describe("Skill Bridge Module", () => {
     clearSkillSession("emitted-learner-session");
     contextCollector.clear("emitted-learner-session");
     originalCwd = process.cwd();
-    testProjectRoot = join(tmpdir(), `omq-bridge-test-${Date.now()}`);
+    testProjectRoot = join(tmpdir(), `omc-bridge-test-${Date.now()}`);
     mkdirSync(testProjectRoot, { recursive: true });
     process.chdir(testProjectRoot);
   });
@@ -143,7 +144,7 @@ describe("Skill Bridge Module", () => {
 
       const linkedProjectRoot = join(
         tmpdir(),
-        `omq-bridge-link-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        `omc-bridge-link-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       );
 
       try {
@@ -171,7 +172,7 @@ triggers:
 tags:
   - tag1
 matching: fuzzy
-model: high
+model: opus
 agent: architect
 ---
 
@@ -188,7 +189,7 @@ This is the skill body.`;
       expect(result?.metadata.triggers).toEqual(["trigger1", "trigger2"]);
       expect(result?.metadata.tags).toEqual(["tag1"]);
       expect(result?.metadata.matching).toBe("fuzzy");
-      expect(result?.metadata.model).toBe("high");
+      expect(result?.metadata.model).toBe("opus");
       expect(result?.metadata.agent).toBe("architect");
       expect(result?.content).toContain("# Skill Content");
     });
@@ -513,6 +514,36 @@ Mixed trigger instructions`,
       expect(state.sessions["persist-test"].injectedPaths).toContain(
         "/path/to/persist.md",
       );
+    });
+
+    it("does not write project-local .omq when OMQ_STATE_DIR is set", () => {
+      const centralizedDir = join(tmpdir(), `omc-state-dir-${Date.now()}`);
+      mkdirSync(centralizedDir, { recursive: true });
+      const previousOmcStateDir = process.env.OMQ_STATE_DIR;
+      process.env.OMQ_STATE_DIR = centralizedDir;
+      try {
+        markSkillsInjected(
+          "omc-state-dir-test",
+          ["/path/to/centralized.md"],
+          testProjectRoot,
+        );
+
+        // State must NOT land in the project-local .omq/
+        expect(existsSync(join(testProjectRoot, ".omq"))).toBe(false);
+
+        // State must land somewhere under the centralized dir
+        const found = readdirSync(centralizedDir, { recursive: true })
+          .map((f) => String(f))
+          .filter((f) => f.endsWith("skill-sessions.json"));
+        expect(found).toHaveLength(1);
+      } finally {
+        if (previousOmcStateDir === undefined) {
+          delete process.env.OMQ_STATE_DIR;
+        } else {
+          process.env.OMQ_STATE_DIR = previousOmcStateDir;
+        }
+        rmSync(centralizedDir, { recursive: true, force: true });
+      }
     });
 
     it("should not re-inject already injected skills", () => {

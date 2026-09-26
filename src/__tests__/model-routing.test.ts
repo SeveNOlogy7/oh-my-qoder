@@ -62,6 +62,18 @@ describe('Signal Extraction', () => {
       expect(signals.codeBlockCount).toBe(2);
     });
 
+    it('should count a single indented code block', () => {
+      const prompt = 'Here is code:\n    const x = 1;\n    return x;\ndone';
+      const signals = extractLexicalSignals(prompt);
+      expect(signals.codeBlockCount).toBe(1);
+    });
+
+    it('should count two separate indented code blocks', () => {
+      const prompt = 'First:\n    const a = 1;\n\nSecond:\n    const b = 2;';
+      const signals = extractLexicalSignals(prompt);
+      expect(signals.codeBlockCount).toBe(2);
+    });
+
     it('should detect architecture keywords', () => {
       const signals = extractLexicalSignals('We need to refactor the architecture');
       expect(signals.hasArchitectureKeywords).toBe(true);
@@ -486,7 +498,7 @@ describe('Routing Rules', () => {
     it('should evaluate explicit model rule', () => {
       const context: RoutingContext = {
         taskPrompt: 'test',
-        explicitModel: 'high',
+        explicitModel: 'opus',
       };
       const signals = extractAllSignals(context.taskPrompt, context);
       const result = evaluateRules(context, signals);
@@ -556,7 +568,7 @@ describe('Routing Rules', () => {
     it('should respect rule priority order', () => {
       const context: RoutingContext = {
         taskPrompt: 'test',
-        explicitModel: 'low',
+        explicitModel: 'haiku',
         agentType: 'architect',
       };
       const signals = extractAllSignals(context.taskPrompt, context);
@@ -649,7 +661,7 @@ describe('Router', () => {
       const decision = routeTask(context);
 
       expect(decision.tier).toBe('LOW');
-      expect(decision.modelType).toBe('low');
+      expect(decision.modelType).toBe('haiku');
       expect(decision.model).toBe(getDefaultModelLow());
     });
 
@@ -660,18 +672,30 @@ describe('Router', () => {
       const decision = routeTask(context);
 
       expect(decision.tier).toBe('HIGH');
-      expect(decision.modelType).toBe('high');
+      expect(decision.modelType).toBe('opus');
       expect(decision.model).toBe(getDefaultModelHigh());
     });
 
     it('should respect explicit model override', () => {
       const context: RoutingContext = {
         taskPrompt: 'Complex architectural task',
-        explicitModel: 'low',
+        explicitModel: 'haiku',
       };
       const decision = routeTask(context);
 
       expect(decision.tier).toBe('LOW');
+      expect(decision.reasons[0]).toContain('Explicit model');
+    });
+
+    it('should route explicit fable model to HIGH tier (issue #3726)', () => {
+      const context: RoutingContext = {
+        taskPrompt: 'Complex architectural task',
+        explicitModel: 'fable',
+      };
+      const decision = routeTask(context);
+
+      expect(decision.tier).toBe('HIGH');
+      expect(decision.modelType).toBe('fable');
       expect(decision.reasons[0]).toContain('Explicit model');
     });
 
@@ -725,7 +749,7 @@ describe('Router', () => {
       const decision = routeTask(context, { minTier: 'MEDIUM' });
 
       expect(decision.tier).toBe('MEDIUM');
-      expect(decision.modelType).toBe('medium');
+      expect(decision.modelType).toBe('sonnet');
       expect(decision.reasons.join(' ')).toContain('Min tier enforced');
     });
 
@@ -785,19 +809,19 @@ describe('Router', () => {
   describe('getModelForTask', () => {
     it('should return adaptive model for architect with simple task', () => {
       const result = getModelForTask('architect', 'find the file');
-      expect(result.model).toBe('low');
+      expect(result.model).toBe('haiku');
       expect(result.tier).toBe('LOW');
     });
 
     it('should return adaptive model for architect with complex task', () => {
       const result = getModelForTask('architect', 'debug the root cause of this architecture issue');
-      expect(result.model).toBe('high');
+      expect(result.model).toBe('opus');
       expect(result.tier).toBe('HIGH');
     });
 
     it('should return haiku for explore', () => {
       const result = getModelForTask('explore', 'search for files');
-      expect(result.model).toBe('low');
+      expect(result.model).toBe('haiku');
       expect(result.tier).toBe('LOW');
     });
 
@@ -923,7 +947,7 @@ describe('Integration Scenarios', () => {
     const decision = routeTask(context);
 
     expect(decision.tier).toBe('LOW');
-    expect(decision.modelType).toBe('low');
+    expect(decision.modelType).toBe('haiku');
   });
 
   it('should handle real-world debugging task', () => {
@@ -934,7 +958,7 @@ describe('Integration Scenarios', () => {
     const decision = routeTask(context);
 
     expect(decision.tier).toBe('HIGH');
-    expect(decision.modelType).toBe('high');
+    expect(decision.modelType).toBe('opus');
   });
 
   it('should handle real-world refactoring task', () => {

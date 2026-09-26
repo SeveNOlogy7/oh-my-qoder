@@ -1,5 +1,5 @@
 /**
- * OMQ HUD - Agents Element Tests
+ * OMC HUD - Agents Element Tests
  *
  * Tests for agent visualization with different formats.
  */
@@ -67,7 +67,7 @@ describe('Agents Element', () => {
 
     it('should show single-character codes for known agents', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:architect', 'high'),
+        createAgent('oh-my-claudecode:architect', 'opus'),
       ];
       const result = renderAgentsCoded(agents);
       // Architect with opus should be uppercase A in magenta
@@ -77,7 +77,7 @@ describe('Agents Element', () => {
 
     it('should use lowercase for sonnet/haiku tiers', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:explore', 'low'),
+        createAgent('oh-my-claudecode:explore', 'haiku'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain('e');
@@ -86,9 +86,9 @@ describe('Agents Element', () => {
     it('should handle multiple agents', () => {
       const now = Date.now();
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:architect', 'high', new Date(now - 2000)),
-        createAgent('oh-my-qoder:explore', 'low', new Date(now - 1000)),
-        createAgent('oh-my-qoder:executor', 'medium', new Date(now)),
+        createAgent('oh-my-claudecode:architect', 'opus', new Date(now - 2000)),
+        createAgent('oh-my-claudecode:explore', 'haiku', new Date(now - 1000)),
+        createAgent('oh-my-claudecode:executor', 'sonnet', new Date(now)),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toBeDefined();
@@ -97,14 +97,14 @@ describe('Agents Element', () => {
     });
 
     it('should handle agents without model info', () => {
-      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect')];
+      const agents: ActiveAgent[] = [createAgent('oh-my-claudecode:architect')];
       const result = renderAgentsCoded(agents);
       expect(result).toContain('A');
     });
 
     it('should use first letter for unknown agent types', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:unknown-agent', 'medium'),
+        createAgent('oh-my-claudecode:unknown-agent', 'sonnet'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:u');
@@ -118,7 +118,7 @@ describe('Agents Element', () => {
 
     it('should not show duration for very recent agents', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:architect', 'high', new Date()),
+        createAgent('oh-my-claudecode:architect', 'opus', new Date()),
       ];
       const result = renderAgentsCodedWithDuration(agents);
       // No duration suffix for <10s
@@ -128,8 +128,8 @@ describe('Agents Element', () => {
     it('should show seconds for agents running 10-59s', () => {
       const agents: ActiveAgent[] = [
         createAgent(
-          'oh-my-qoder:architect',
-          'high',
+          'oh-my-claudecode:architect',
+          'opus',
           new Date(Date.now() - 30000)
         ), // 30 seconds ago
       ];
@@ -141,8 +141,8 @@ describe('Agents Element', () => {
     it('should show minutes for agents running 1-9 min', () => {
       const agents: ActiveAgent[] = [
         createAgent(
-          'oh-my-qoder:architect',
-          'high',
+          'oh-my-claudecode:architect',
+          'opus',
           new Date(Date.now() - 180000)
         ), // 3 minutes ago
       ];
@@ -154,8 +154,8 @@ describe('Agents Element', () => {
     it('should show alert for agents running 10+ min', () => {
       const agents: ActiveAgent[] = [
         createAgent(
-          'oh-my-qoder:architect',
-          'high',
+          'oh-my-claudecode:architect',
+          'opus',
           new Date(Date.now() - 600000)
         ), // 10 minutes ago
       ];
@@ -171,14 +171,14 @@ describe('Agents Element', () => {
     });
 
     it('should show full agent names', () => {
-      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect')];
+      const agents: ActiveAgent[] = [createAgent('oh-my-claudecode:architect')];
       const result = renderAgentsDetailed(agents);
       expect(result).toContain('architect');
     });
 
     it('should abbreviate common long names', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:executor', 'medium'),
+        createAgent('oh-my-claudecode:executor', 'sonnet'),
       ];
       const result = renderAgentsDetailed(agents);
       expect(result).toContain('exec');
@@ -187,8 +187,8 @@ describe('Agents Element', () => {
     it('should include duration for long-running agents', () => {
       const agents: ActiveAgent[] = [
         createAgent(
-          'oh-my-qoder:architect',
-          'high',
+          'oh-my-claudecode:architect',
+          'opus',
           new Date(Date.now() - 120000)
         ), // 2 minutes
       ];
@@ -200,8 +200,8 @@ describe('Agents Element', () => {
   describe('renderAgentsByFormat (format router)', () => {
     const now = Date.now();
     const agents: ActiveAgent[] = [
-      createAgent('oh-my-qoder:architect', 'high', new Date(now - 1000)),
-      createAgent('oh-my-qoder:explore', 'low', new Date(now)),
+      createAgent('oh-my-claudecode:architect', 'opus', new Date(now - 1000)),
+      createAgent('oh-my-claudecode:explore', 'haiku', new Date(now)),
     ];
 
     it('should route to count format', () => {
@@ -229,25 +229,45 @@ describe('Agents Element', () => {
     it('should route to descriptions format', () => {
       const agentsWithDesc: ActiveAgent[] = [
         {
-          ...createAgent('oh-my-qoder:architect', 'high'),
+          ...createAgent('oh-my-claudecode:architect', 'opus'),
+          id: 'ae1e2be26cb41fc74',
           description: 'Analyzing code',
         },
       ];
       const result = renderAgentsByFormat(agentsWithDesc, 'descriptions');
       expect(result).toContain('A');
-      expect(result).toContain('Analyzing code');
+      expect(result).toContain('Anal');
+      // Unnamed agents get the short id appended so the row is discoverable (#3665).
+      expect(result).toContain('(ae1e2be)');
+    });
+
+    it('should render named teammates distinctly from anonymous subagents', () => {
+      const teammate: ActiveAgent = {
+        ...createAgent('oh-my-claudecode:executor', 'sonnet'),
+        name: 'worker-1',
+        description: 'Implementing fix',
+      };
+      const result = renderAgentsByFormat([teammate], 'descriptions');
+
+      expect(result).toContain('◆');
+      expect(result).not.toContain('x:');
+      expect(result).toContain('tm:worker-1');
+      expect(result).toContain('Implementing fix');
     });
 
     it('should route to tasks format', () => {
       const agentsWithDesc: ActiveAgent[] = [
         {
-          ...createAgent('oh-my-qoder:architect', 'high'),
+          ...createAgent('oh-my-claudecode:architect', 'opus'),
+          id: 'ae1e2be26cb41fc74',
           description: 'Analyzing code',
         },
       ];
       const result = renderAgentsByFormat(agentsWithDesc, 'tasks');
       expect(result).toContain('[');
-      expect(result).toContain('Analyzing code');
+      expect(result).toContain('Anal');
+      // Unnamed agents get the short id appended so the row is discoverable (#3665).
+      expect(result).toContain('(ae1e2be)');
       expect(result).not.toContain('A:'); // tasks format doesn't show codes
     });
 
@@ -262,54 +282,54 @@ describe('Agents Element', () => {
   describe('Agent type codes', () => {
     const testCases = [
       // Build/Analysis Lane
-      { type: 'architect', model: 'high', expected: 'A' },
-      { type: 'explore', model: 'low', expected: 'e' },
-      { type: 'executor', model: 'medium', expected: 'x' },
-      { type: 'deep-executor', model: 'high', expected: 'D' }, // deprecated: falls back to first char
-      { type: 'debugger', model: 'medium', expected: 'g' },
-      { type: 'verifier', model: 'medium', expected: 'v' },
+      { type: 'architect', model: 'opus', expected: 'A' },
+      { type: 'explore', model: 'haiku', expected: 'e' },
+      { type: 'executor', model: 'sonnet', expected: 'x' },
+      { type: 'deep-executor', model: 'opus', expected: 'D' }, // deprecated: falls back to first char
+      { type: 'debugger', model: 'sonnet', expected: 'g' },
+      { type: 'verifier', model: 'sonnet', expected: 'v' },
       // Review Lane
-      { type: 'style-reviewer', model: 'low', expected: 'y' },
-      { type: 'quality-reviewer', model: 'medium', expected: 'q' }, // deprecated: falls back to first char
-      { type: 'api-reviewer', model: 'medium', expected: 'i' },
-      { type: 'security-reviewer', model: 'medium', expected: 'k' },
-      { type: 'performance-reviewer', model: 'medium', expected: 'o' },
-      { type: 'code-reviewer', model: 'high', expected: 'R' },
+      { type: 'style-reviewer', model: 'haiku', expected: 'y' },
+      { type: 'quality-reviewer', model: 'sonnet', expected: 'q' }, // deprecated: falls back to first char
+      { type: 'api-reviewer', model: 'sonnet', expected: 'i' },
+      { type: 'security-reviewer', model: 'sonnet', expected: 'k' },
+      { type: 'performance-reviewer', model: 'sonnet', expected: 'o' },
+      { type: 'code-reviewer', model: 'opus', expected: 'R' },
       // Domain Specialists
-      { type: 'dependency-expert', model: 'medium', expected: 'l' },
-      { type: 'test-engineer', model: 'medium', expected: 't' },
-      { type: 'build-fixer', model: 'medium', expected: 'b' }, // deprecated: falls back to first char
-      { type: 'designer', model: 'medium', expected: 'd' },
-      { type: 'writer', model: 'low', expected: 'w' },
-      { type: 'qa-tester', model: 'medium', expected: 'q' },
-      { type: 'scientist', model: 'medium', expected: 's' },
-      { type: 'git-master', model: 'medium', expected: 'm' },
+      { type: 'dependency-expert', model: 'sonnet', expected: 'l' },
+      { type: 'test-engineer', model: 'sonnet', expected: 't' },
+      { type: 'build-fixer', model: 'sonnet', expected: 'b' }, // deprecated: falls back to first char
+      { type: 'designer', model: 'sonnet', expected: 'd' },
+      { type: 'writer', model: 'haiku', expected: 'w' },
+      { type: 'qa-tester', model: 'sonnet', expected: 'q' },
+      { type: 'scientist', model: 'sonnet', expected: 's' },
+      { type: 'git-master', model: 'sonnet', expected: 'm' },
       // Product Lane
-      { type: 'product-manager', model: 'medium', expected: 'pm' },
-      { type: 'ux-researcher', model: 'medium', expected: 'u' },
-      { type: 'information-architect', model: 'medium', expected: 'ia' },
-      { type: 'product-analyst', model: 'medium', expected: 'a' },
-      { type: 'quality-strategist', model: 'medium', expected: 'qs' },
+      { type: 'product-manager', model: 'sonnet', expected: 'pm' },
+      { type: 'ux-researcher', model: 'sonnet', expected: 'u' },
+      { type: 'information-architect', model: 'sonnet', expected: 'ia' },
+      { type: 'product-analyst', model: 'sonnet', expected: 'a' },
+      { type: 'quality-strategist', model: 'sonnet', expected: 'qs' },
       // Coordination
-      { type: 'critic', model: 'high', expected: 'C' },
-      { type: 'analyst', model: 'high', expected: 'T' },
-      { type: 'planner', model: 'high', expected: 'P' },
-      { type: 'vision', model: 'medium', expected: 'v' },
+      { type: 'critic', model: 'opus', expected: 'C' },
+      { type: 'analyst', model: 'opus', expected: 'T' },
+      { type: 'planner', model: 'opus', expected: 'P' },
+      { type: 'vision', model: 'sonnet', expected: 'v' },
       // Multi-char codes with opus tier (first char uppercase)
-      { type: 'quality-reviewer', model: 'high', expected: 'Q' }, // deprecated: falls back to first char uppercase
-      { type: 'quality-strategist', model: 'high', expected: 'Qs' },
-      { type: 'product-manager', model: 'high', expected: 'Pm' },
-      { type: 'information-architect', model: 'high', expected: 'Ia' },
+      { type: 'quality-reviewer', model: 'opus', expected: 'Q' }, // deprecated: falls back to first char uppercase
+      { type: 'quality-strategist', model: 'opus', expected: 'Qs' },
+      { type: 'product-manager', model: 'opus', expected: 'Pm' },
+      { type: 'information-architect', model: 'opus', expected: 'Ia' },
       // Domain Specialists
-      { type: 'document-specialist', model: 'medium', expected: 'd' },
+      { type: 'document-specialist', model: 'sonnet', expected: 'd' },
       // Backward Compatibility
-      { type: 'researcher', model: 'medium', expected: 'r' },
+      { type: 'researcher', model: 'sonnet', expected: 'r' },
     ];
 
     testCases.forEach(({ type, model, expected }) => {
       it(`should render ${type} (${model}) as '${expected}'`, () => {
         const agents: ActiveAgent[] = [
-          createAgent(`oh-my-qoder:${type}`, model),
+          createAgent(`oh-my-claudecode:${type}`, model),
         ];
         const result = renderAgentsCoded(agents);
         const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
@@ -321,7 +341,7 @@ describe('Agents Element', () => {
   describe('Model tier color coding', () => {
     it('should use magenta for opus tier', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:architect', 'high'),
+        createAgent('oh-my-claudecode:architect', 'opus'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain(MAGENTA);
@@ -329,7 +349,7 @@ describe('Agents Element', () => {
 
     it('should use yellow for sonnet tier', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:executor', 'medium'),
+        createAgent('oh-my-claudecode:executor', 'sonnet'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain(YELLOW);
@@ -337,7 +357,7 @@ describe('Agents Element', () => {
 
     it('should use green for haiku tier', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:explore', 'low'),
+        createAgent('oh-my-claudecode:explore', 'haiku'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain(GREEN);
@@ -345,7 +365,7 @@ describe('Agents Element', () => {
 
     it('should use cyan for unknown model', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:architect'),
+        createAgent('oh-my-claudecode:architect'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain(CYAN);
@@ -361,7 +381,7 @@ describe('Agents Element', () => {
 
     it('should return empty for completed agents only', () => {
       const agents: ActiveAgent[] = [
-        { ...createAgent('oh-my-qoder:architect'), status: 'completed' },
+        { ...createAgent('oh-my-claudecode:architect'), status: 'completed' },
       ];
       const result = renderAgentsMultiLine(agents);
       expect(result.headerPart).toBeNull();
@@ -371,7 +391,7 @@ describe('Agents Element', () => {
     it('should render single agent with tree character (last)', () => {
       const agents: ActiveAgent[] = [
         {
-          ...createAgent('oh-my-qoder:architect', 'high'),
+          ...createAgent('oh-my-claudecode:architect', 'opus'),
           description: 'analyzing code',
         },
       ];
@@ -385,15 +405,32 @@ describe('Agents Element', () => {
       expect(result.detailLines[0]).toContain('analyzing code');
     });
 
+    it('should show named teammate identity in solid multiline view', () => {
+      const agents: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-claudecode:executor', 'sonnet'),
+          name: 'worker-1',
+          description: 'implementing teammate task',
+        },
+      ];
+      const result = renderAgentsMultiLine(agents);
+
+      expect(result.detailLines).toHaveLength(1);
+      expect(result.detailLines[0]).toContain('◆');
+      expect(result.detailLines[0]).toContain('tm:worker-1');
+      expect(result.detailLines[0]).not.toContain('exec');
+      expect(result.detailLines[0]).toContain('implementing teammate task');
+    });
+
     it('should render multiple agents with correct tree characters', () => {
       const now = Date.now();
       const agents: ActiveAgent[] = [
         {
-          ...createAgent('oh-my-qoder:architect', 'high', new Date(now - 1000)),
+          ...createAgent('oh-my-claudecode:architect', 'opus', new Date(now - 1000)),
           description: 'analyzing code',
         },
         {
-          ...createAgent('oh-my-qoder:explore', 'low', new Date(now)),
+          ...createAgent('oh-my-claudecode:explore', 'haiku', new Date(now)),
           description: 'searching files',
         },
       ];
@@ -411,10 +448,10 @@ describe('Agents Element', () => {
 
     it('should limit to maxLines and show overflow indicator', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-qoder:architect', 'high'),
-        createAgent('oh-my-qoder:explore', 'low'),
-        createAgent('oh-my-qoder:executor', 'medium'),
-        createAgent('oh-my-qoder:document-specialist', 'low'),
+        createAgent('oh-my-claudecode:architect', 'opus'),
+        createAgent('oh-my-claudecode:explore', 'haiku'),
+        createAgent('oh-my-claudecode:executor', 'sonnet'),
+        createAgent('oh-my-claudecode:document-specialist', 'haiku'),
       ];
       const result = renderAgentsMultiLine(agents, 2);
       // 2 agents + 1 overflow indicator
@@ -425,8 +462,8 @@ describe('Agents Element', () => {
     it('should include duration for long-running agents', () => {
       const agents: ActiveAgent[] = [
         createAgent(
-          'oh-my-qoder:architect',
-          'high',
+          'oh-my-claudecode:architect',
+          'opus',
           new Date(Date.now() - 120000) // 2 minutes ago
         ),
       ];
@@ -438,7 +475,7 @@ describe('Agents Element', () => {
     it('should truncate long descriptions', () => {
       const agents: ActiveAgent[] = [
         {
-          ...createAgent('oh-my-qoder:architect', 'high'),
+          ...createAgent('oh-my-claudecode:architect', 'opus'),
           description:
             'This is a very long description that should be truncated to fit in the display',
         },
@@ -452,14 +489,43 @@ describe('Agents Element', () => {
     });
 
     it('should handle agents without descriptions', () => {
-      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect', 'high')];
+      const agents: ActiveAgent[] = [createAgent('oh-my-claudecode:architect', 'opus')];
       const result = renderAgentsMultiLine(agents);
       expect(result.detailLines).toHaveLength(1);
       expect(result.detailLines[0]).toContain('...');
     });
+    it('should append the short id for unnamed agents so the row is addressable (#3665)', () => {
+      const agents: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-claudecode:architect', 'opus'),
+          id: 'ae1e2be26cb41fc74',
+          description: 'S2 nspin4 A/B vehicle',
+        },
+      ];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.detailLines).toHaveLength(1);
+      expect(result.detailLines[0]).toContain('S2 nspin4 A/B vehicle');
+      expect(result.detailLines[0]).toContain('(ae1e2be)');
+    });
+
+    it('should not add an id suffix to explicitly named agents (#3665 backward compat)', () => {
+      const agents: ActiveAgent[] = [
+        {
+          ...createAgent('oh-my-claudecode:executor', 'sonnet'),
+          id: 'ae1e2be26cb41fc74',
+          name: 'worker-1',
+          description: 'implementing teammate task',
+        },
+      ];
+      const result = renderAgentsMultiLine(agents);
+      expect(result.detailLines).toHaveLength(1);
+      expect(result.detailLines[0]).toContain('tm:worker-1');
+      expect(result.detailLines[0]).toContain('implementing teammate task');
+      expect(result.detailLines[0]).not.toContain('(ae1e2be)');
+    });
 
     it('should route to multiline from renderAgentsByFormat', () => {
-      const agents: ActiveAgent[] = [createAgent('oh-my-qoder:architect', 'high')];
+      const agents: ActiveAgent[] = [createAgent('oh-my-claudecode:architect', 'opus')];
       const result = renderAgentsByFormat(agents, 'multiline');
       // Should return the header part only (backward compatibility)
       expect(result).toContain('agents:');

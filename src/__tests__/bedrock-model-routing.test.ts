@@ -1,19 +1,19 @@
 /**
  * Repro test for Bedrock model routing bug
  *
- * Bug: On Bedrock, workers get model ID "qwen-plus" (bare builtin default)
+ * Bug: On Bedrock, workers get model ID "claude-sonnet-5" (bare builtin default)
  * instead of inheriting the parent model. On Bedrock, this bare ID is invalid
- * — Bedrock requires full IDs like "dashscope/qwen-plus-v1:0".
+ * — Bedrock requires full IDs like "us.anthropic.claude-sonnet-4-6-v1:0".
  *
  * Root cause chain:
- * 1. buildDefaultConfig() → config.agents.executor.model = 'qwen-plus'
- *    (from QWEN_FAMILY_DEFAULTS.PLUS, because no Bedrock env vars found)
- * 2. getAgentDefinitions() resolves executor.model = 'qwen-plus'
+ * 1. buildDefaultConfig() → config.agents.executor.model = 'claude-sonnet-5'
+ *    (from CLAUDE_FAMILY_DEFAULTS.SONNET, because no Bedrock env vars found)
+ * 2. getAgentDefinitions() resolves executor.model = 'claude-sonnet-5'
  *    (configuredModel from config takes precedence over agent's defaultModel)
- * 3. enforceModel() injects 'qwen-plus' into Task calls
- * 4. Qoder CLI passes it to Bedrock API → 400 invalid model
+ * 3. enforceModel() injects 'claude-sonnet-5' into Task calls
+ * 4. Claude Code passes it to Bedrock API → 400 invalid model
  *
- * The defense (forceInherit) works IF OMQ_ROUTING_FORCE_INHERIT=1 is in the env.
+ * The defense (forceInherit) works IF CLAUDE_CODE_USE_BEDROCK=1 is in the env.
  * But if that env var doesn't propagate to the MCP server / hook process,
  * forceInherit is never auto-enabled, and bare model IDs leak through.
  */
@@ -23,17 +23,17 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 // ── Env helpers ──────────────────────────────────────────────────────────────
 
 const BEDROCK_ENV_KEYS = [
-  'OMQ_ROUTING_FORCE_INHERIT',
-  'OMQ_ROUTING_FORCE_INHERIT',
-  'QODER_MODEL',
-  'DASHSCOPE_MODEL',
-  'DASHSCOPE_BASE_URL',
-  'DASHSCOPE_DEFAULT_PLUS_MODEL',
-  'DASHSCOPE_DEFAULT_MAX_MODEL',
-  'DASHSCOPE_DEFAULT_TURBO_MODEL',
-  'DASHSCOPE_DEFAULT_PLUS_MODEL',
-  'DASHSCOPE_DEFAULT_MAX_MODEL',
-  'DASHSCOPE_DEFAULT_TURBO_MODEL',
+  'CLAUDE_CODE_USE_BEDROCK',
+  'CLAUDE_CODE_USE_VERTEX',
+  'CLAUDE_MODEL',
+  'ANTHROPIC_MODEL',
+  'ANTHROPIC_BASE_URL',
+  'ANTHROPIC_DEFAULT_SONNET_MODEL',
+  'ANTHROPIC_DEFAULT_OPUS_MODEL',
+  'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+  'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
+  'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
+  'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
   'OMQ_MODEL_HIGH',
   'OMQ_MODEL_MEDIUM',
   'OMQ_MODEL_LOW',
@@ -71,58 +71,58 @@ describe('Bedrock model routing repro', () => {
 
   // ── Unit tests: building blocks ────────────────────────────────────────────
 
-  describe('detection: isNonDefaultProvider()', () => {
-    it('detects OMQ_ROUTING_FORCE_INHERIT=true', async () => {
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
-      const { isNonDefaultProvider } = await import('../config/models.js');
-      expect(isNonDefaultProvider()).toBe(true);
+  describe('detection: isBedrock()', () => {
+    it('detects CLAUDE_CODE_USE_BEDROCK=1', async () => {
+      process.env.CLAUDE_CODE_USE_BEDROCK = '1';
+      const { isBedrock } = await import('../config/models.js');
+      expect(isBedrock()).toBe(true);
     });
 
-    it('detects Bedrock model ID in QODER_MODEL', async () => {
-      process.env.QODER_MODEL = 'dashscope/qwen-plus-v1:0';
-      const { isNonDefaultProvider } = await import('../config/models.js');
-      expect(isNonDefaultProvider()).toBe(true);
+    it('detects Bedrock model ID in CLAUDE_MODEL', async () => {
+      process.env.CLAUDE_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
+      const { isBedrock } = await import('../config/models.js');
+      expect(isBedrock()).toBe(true);
     });
 
-    it('detects Bedrock model ID in DASHSCOPE_MODEL', async () => {
-      process.env.DASHSCOPE_MODEL = 'dashscope/qwen-plus-v1:0';
-      const { isNonDefaultProvider } = await import('../config/models.js');
-      expect(isNonDefaultProvider()).toBe(true);
+    it('detects Bedrock model ID in ANTHROPIC_MODEL', async () => {
+      process.env.ANTHROPIC_MODEL = 'global.anthropic.claude-sonnet-4-6-v1:0';
+      const { isBedrock } = await import('../config/models.js');
+      expect(isBedrock()).toBe(true);
     });
 
     it('returns false when no Bedrock signals present', async () => {
-      const { isNonDefaultProvider } = await import('../config/models.js');
-      expect(isNonDefaultProvider()).toBe(false);
+      const { isBedrock } = await import('../config/models.js');
+      expect(isBedrock()).toBe(false);
     });
   });
 
   describe('tier resolution: getDefaultModelMedium()', () => {
-    it('reads DASHSCOPE_DEFAULT_PLUS_MODEL', async () => {
-      process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'dashscope/qwen-plus-v1:0';
+    it('reads ANTHROPIC_DEFAULT_SONNET_MODEL', async () => {
+      process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'global.anthropic.claude-sonnet-4-6-v1:0';
       const { getDefaultModelMedium } = await import('../config/models.js');
-      expect(getDefaultModelMedium()).toBe('dashscope/qwen-plus-v1:0');
+      expect(getDefaultModelMedium()).toBe('global.anthropic.claude-sonnet-4-6-v1:0');
     });
 
-    it('falls back to bare "qwen-plus" without env vars', async () => {
+    it('falls back to bare "claude-sonnet-5" without env vars', async () => {
       const { getDefaultModelMedium } = await import('../config/models.js');
       // getDefaultModelMedium returns the raw config value (not normalized)
-      expect(getDefaultModelMedium()).toBe('qwen-plus');
+      expect(getDefaultModelMedium()).toBe('claude-sonnet-5');
     });
   });
 
   // ── E2E Repro Scenario A ──────────────────────────────────────────────────
-  // OMQ_ROUTING_FORCE_INHERIT=1 not propagated to MCP/hook process
+  // CLAUDE_CODE_USE_BEDROCK=1 not propagated to MCP/hook process
 
-  describe('SCENARIO A: OMQ_ROUTING_FORCE_INHERIT not propagated to hook process', () => {
+  describe('SCENARIO A: CLAUDE_CODE_USE_BEDROCK not propagated to hook process', () => {
     it('full chain: Task call injects invalid model for Bedrock', async () => {
       // ── Setup: simulate MCP server process that did NOT inherit
-      //    OMQ_ROUTING_FORCE_INHERIT from parent Qoder CLI process ──
+      //    CLAUDE_CODE_USE_BEDROCK from parent Claude Code process ──
       // (all Bedrock env vars already cleared by beforeEach)
 
       // 1. Bedrock detection fails
-      const { isNonDefaultProvider } = await import('../config/models.js');
-      expect(isNonDefaultProvider()).toBe(false);
-      expect(isNonDefaultProvider()).toBe(false);
+      const { isBedrock, isNonClaudeProvider } = await import('../config/models.js');
+      expect(isBedrock()).toBe(false);
+      expect(isNonClaudeProvider()).toBe(false);
 
       // 2. loadConfig does NOT auto-enable forceInherit
       const { loadConfig } = await import('../config/loader.js');
@@ -132,52 +132,52 @@ describe('Bedrock model routing repro', () => {
       // 3. Agent definitions use full builtin model IDs from config
       const { getAgentDefinitions } = await import('../agents/definitions.js');
       const defs = getAgentDefinitions({ config });
-      expect(defs['executor'].model).toBe('qwen-plus');
-      expect(defs['explore'].model).toBe('qwen-turbo');
-      expect(defs['architect'].model).toBe('qwen-max');
+      expect(defs['executor'].model).toBe('claude-sonnet-5');
+      expect(defs['explore'].model).toBe('claude-haiku-4-5');
+      expect(defs['architect'].model).toBe('claude-opus-4-8');
 
       // 4. enforceModel normalizes to bare CC-supported aliases (FIX)
       const { enforceModel } = await import('../features/delegation-enforcer.js');
 
-      // 4a. executor → 'medium' (normalized from config's full model ID)
+      // 4a. executor → 'sonnet' (normalized from config's full model ID)
       const executorResult = enforceModel({
         description: 'Implement feature',
         prompt: 'Write the code',
-        subagent_type: 'oh-my-qoder:executor',
+        subagent_type: 'oh-my-claudecode:executor',
       });
       expect(executorResult.injected).toBe(true);
-      expect(executorResult.modifiedInput.model).toBe('medium');
+      expect(executorResult.modifiedInput.model).toBe('sonnet');
 
-      // 4b. explore → 'low'
+      // 4b. explore → 'haiku'
       const exploreResult = enforceModel({
         description: 'Find files',
         prompt: 'Search codebase',
-        subagent_type: 'oh-my-qoder:explore',
+        subagent_type: 'oh-my-claudecode:explore',
       });
       expect(exploreResult.injected).toBe(true);
-      expect(exploreResult.modifiedInput.model).toBe('low');
+      expect(exploreResult.modifiedInput.model).toBe('haiku');
 
-      // 4c. architect → 'high'
+      // 4c. architect → 'opus'
       const architectResult = enforceModel({
         description: 'Design system',
         prompt: 'Analyze architecture',
-        subagent_type: 'oh-my-qoder:architect',
+        subagent_type: 'oh-my-claudecode:architect',
       });
       expect(architectResult.injected).toBe(true);
-      expect(architectResult.modifiedInput.model).toBe('high');
+      expect(architectResult.modifiedInput.model).toBe('opus');
 
       // 5. After fix: these are valid CC aliases that CC resolves on any provider
-      expect(['medium', 'high', 'low'].includes(executorResult.modifiedInput.model!)).toBe(true);
-      expect(['medium', 'high', 'low'].includes(exploreResult.modifiedInput.model!)).toBe(true);
-      expect(['medium', 'high', 'low'].includes(architectResult.modifiedInput.model!)).toBe(true);
+      expect(['sonnet', 'opus', 'haiku'].includes(executorResult.modifiedInput.model!)).toBe(true);
+      expect(['sonnet', 'opus', 'haiku'].includes(exploreResult.modifiedInput.model!)).toBe(true);
+      expect(['sonnet', 'opus', 'haiku'].includes(architectResult.modifiedInput.model!)).toBe(true);
     });
 
-    it('the defense works when OMQ_ROUTING_FORCE_INHERIT IS propagated', async () => {
+    it('the defense works when CLAUDE_CODE_USE_BEDROCK IS propagated', async () => {
       // Same scenario but with the env var properly set
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+      process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
-      const { isNonDefaultProvider } = await import('../config/models.js');
-      expect(isNonDefaultProvider()).toBe(true);
+      const { isBedrock } = await import('../config/models.js');
+      expect(isBedrock()).toBe(true);
 
       const { loadConfig } = await import('../config/loader.js');
       const config = loadConfig();
@@ -190,7 +190,7 @@ describe('Bedrock model routing repro', () => {
         const result = enforceModel({
           description: 'test',
           prompt: 'test',
-          subagent_type: `oh-my-qoder:${agent}`,
+          subagent_type: `oh-my-claudecode:${agent}`,
         });
         expect(result.model).toBe('inherit');
         expect(result.modifiedInput.model).toBeUndefined();
@@ -199,21 +199,21 @@ describe('Bedrock model routing repro', () => {
   });
 
   // ── E2E Repro Scenario B ──────────────────────────────────────────────────
-  // User has DASHSCOPE_DEFAULT_PLUS_MODEL in Bedrock format,
-  // but OMQ_ROUTING_FORCE_INHERIT and QODER_MODEL/DASHSCOPE_MODEL are missing
+  // User has ANTHROPIC_DEFAULT_SONNET_MODEL in Bedrock format,
+  // but CLAUDE_CODE_USE_BEDROCK and CLAUDE_MODEL/ANTHROPIC_MODEL are missing
 
   describe('SCENARIO B: Bedrock tier env vars set without session model env vars', () => {
     it('full chain: tier env Bedrock models do not globally force inherit', async () => {
-      // ── Setup: user has Bedrock-format models in DASHSCOPE_DEFAULT_*_MODEL
-      //    (as shown in their settings) but OMQ_ROUTING_FORCE_INHERIT is not set ──
-      process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'dashscope/qwen-plus-v1:0';
-      process.env.DASHSCOPE_DEFAULT_MAX_MODEL = 'dashscope/qwen-max-v1:0';
-      process.env.DASHSCOPE_DEFAULT_TURBO_MODEL = 'dashscope/qwen-turbo-v1:0';
+      // ── Setup: user has Bedrock-format models in ANTHROPIC_DEFAULT_*_MODEL
+      //    (as shown in their settings) but CLAUDE_CODE_USE_BEDROCK is not set ──
+      process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'global.anthropic.claude-sonnet-4-6-v1:0';
+      process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = 'global.anthropic.claude-opus-4-6-v1:0';
+      process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = 'global.anthropic.claude-haiku-4-5-v1:0';
 
-      // 1. isNonDefaultProvider now checks tier model env vars too.
-      const { isNonDefaultProvider } = await import('../config/models.js');
-      expect(isNonDefaultProvider()).toBe(true);
-      expect(isNonDefaultProvider()).toBe(true);
+      // 1. isBedrock now checks tier model env vars too.
+      const { isBedrock, isNonClaudeProvider } = await import('../config/models.js');
+      expect(isBedrock()).toBe(true);
+      expect(isNonClaudeProvider()).toBe(true);
 
       // 2. tier-only provider IDs do not globally force all spawned agents to inherit.
       const { loadConfig } = await import('../config/loader.js');
@@ -223,14 +223,14 @@ describe('Bedrock model routing repro', () => {
       // 3. BUT tier model resolution DOES read the Bedrock IDs
       const { getDefaultModelMedium, getDefaultModelHigh, getDefaultModelLow } =
         await import('../config/models.js');
-      expect(getDefaultModelMedium()).toBe('dashscope/qwen-plus-v1:0');
-      expect(getDefaultModelHigh()).toBe('dashscope/qwen-max-v1:0');
-      expect(getDefaultModelLow()).toBe('dashscope/qwen-turbo-v1:0');
+      expect(getDefaultModelMedium()).toBe('global.anthropic.claude-sonnet-4-6-v1:0');
+      expect(getDefaultModelHigh()).toBe('global.anthropic.claude-opus-4-6-v1:0');
+      expect(getDefaultModelLow()).toBe('global.anthropic.claude-haiku-4-5-v1:0');
 
       // 4. config.agents get the Bedrock-format model IDs
-      expect(config.agents?.executor?.model).toBe('dashscope/qwen-plus-v1:0');
-      expect(config.agents?.architect?.model).toBe('dashscope/qwen-max-v1:0');
-      expect(config.agents?.explore?.model).toBe('dashscope/qwen-turbo-v1:0');
+      expect(config.agents?.executor?.model).toBe('global.anthropic.claude-sonnet-4-6-v1:0');
+      expect(config.agents?.architect?.model).toBe('global.anthropic.claude-opus-4-6-v1:0');
+      expect(config.agents?.explore?.model).toBe('global.anthropic.claude-haiku-4-5-v1:0');
 
       // 5. enforceModel injects the configured tier provider ID for that agent,
       // instead of collapsing every agent call into inheritance mode.
@@ -238,25 +238,25 @@ describe('Bedrock model routing repro', () => {
       const result = enforceModel({
         description: 'Implement feature',
         prompt: 'Write the code',
-        subagent_type: 'oh-my-qoder:executor',
+        subagent_type: 'oh-my-claudecode:executor',
       });
       expect(result.injected).toBe(true);
-      expect(result.model).toBe('dashscope/qwen-plus-v1:0');
-      expect(result.modifiedInput.model).toBe('dashscope/qwen-plus-v1:0');
+      expect(result.model).toBe('global.anthropic.claude-sonnet-4-6-v1:0');
+      expect(result.modifiedInput.model).toBe('global.anthropic.claude-sonnet-4-6-v1:0');
     });
 
-    it('isNonDefaultProvider detects Bedrock patterns in tier env vars', async () => {
+    it('isBedrock detects Bedrock patterns in tier env vars', async () => {
       // ANTHROPIC_DEFAULT_*_MODEL values can be the only Bedrock signal
-      // when QODER_MODEL/DASHSCOPE_MODEL are unset.
-      process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'dashscope/qwen-plus-v1:0';
+      // when CLAUDE_MODEL/ANTHROPIC_MODEL are unset.
+      process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'global.anthropic.claude-sonnet-4-6-v1:0';
 
-      const { isNonDefaultProvider, hasTierModelEnvOverrides } = await import('../config/models.js');
+      const { isBedrock, hasTierModelEnvOverrides } = await import('../config/models.js');
 
       // The env var IS detected by hasTierModelEnvOverrides
       expect(hasTierModelEnvOverrides()).toBe(true);
 
-      // isNonDefaultProvider now scans tier env vars for Bedrock patterns.
-      expect(isNonDefaultProvider()).toBe(true);
+      // isBedrock now scans tier env vars for Bedrock patterns.
+      expect(isBedrock()).toBe(true);
     });
   });
 
@@ -267,7 +267,7 @@ describe('Bedrock model routing repro', () => {
       // When forceInherit IS enabled, the bridge pre-tool-use hook at
       // bridge.ts:1082-1093 strips the model param from Task calls.
       // This works correctly.
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+      process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const { loadConfig } = await import('../config/loader.js');
       const config = loadConfig();
@@ -277,8 +277,8 @@ describe('Bedrock model routing repro', () => {
       const taskInput: Record<string, unknown> = {
         description: 'Implement feature',
         prompt: 'Write the code',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'medium', // LLM passes this based on CLAUDE.md instructions
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'sonnet', // LLM passes this based on CLAUDE.md instructions
       };
 
       // Bridge logic (bridge.ts:1082-1093):
@@ -303,8 +303,8 @@ describe('Bedrock model routing repro', () => {
       const taskInput: Record<string, unknown> = {
         description: 'Implement feature',
         prompt: 'Write the code',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'medium', // LLM passes this based on CLAUDE.md instructions
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'sonnet', // LLM passes this based on CLAUDE.md instructions
       };
 
       const nextTaskInput = { ...taskInput };
@@ -312,13 +312,13 @@ describe('Bedrock model routing repro', () => {
         delete nextTaskInput.model;
       }
 
-      // Model NOT stripped → 'medium' passes through to Qoder CLI
-      expect(nextTaskInput.model).toBe('medium');
-      // Qoder CLI resolves 'medium' → 'qwen-plus' → Bedrock 400
+      // Model NOT stripped → 'sonnet' passes through to Claude Code
+      expect(nextTaskInput.model).toBe('sonnet');
+      // Claude Code resolves 'sonnet' → 'claude-sonnet-4-6' → Bedrock 400
     });
 
     it('even when enforceModel strips, LLM can still pass model directly', async () => {
-      // The LLM can pass model: "medium" in the Task call because the
+      // The LLM can pass model: "sonnet" in the Task call because the
       // CLAUDE.md instructions say: "Pass model on Task calls: haiku, sonnet, opus"
       //
       // enforceModel only runs when model is NOT specified (it injects default).
@@ -330,30 +330,30 @@ describe('Bedrock model routing repro', () => {
       const result = enforceModel({
         description: 'Implement feature',
         prompt: 'Write the code',
-        subagent_type: 'oh-my-qoder:executor',
-        model: 'medium', // LLM passes this explicitly
+        subagent_type: 'oh-my-claudecode:executor',
+        model: 'sonnet', // LLM passes this explicitly
       });
 
       // enforceModel preserves explicit model (doesn't override it)
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('medium');
-      // → Qoder CLI resolves 'medium' → Bedrock can't handle it → 400
+      expect(result.modifiedInput.model).toBe('sonnet');
+      // → Claude Code resolves 'sonnet' → Bedrock can't handle it → 400
     });
   });
 
   // ── Summary: which scenario matches the reported error? ────────────────────
 
   describe('DIAGNOSIS: matching error to scenario', () => {
-    it('reported error uses "qwen-plus" → matches enforceModel injection path', async () => {
+    it('reported error uses "claude-sonnet-4-6" → matches enforceModel injection path', async () => {
       const { enforceModel } = await import('../features/delegation-enforcer.js');
       const result = enforceModel({
         description: 'test',
         prompt: 'test',
-        subagent_type: 'oh-my-qoder:executor',
+        subagent_type: 'oh-my-claudecode:executor',
       });
 
       // This is exactly the model ID from the error report
-      expect(result.modifiedInput.model).toBe('medium');
+      expect(result.modifiedInput.model).toBe('sonnet');
     });
   });
 
@@ -361,7 +361,7 @@ describe('Bedrock model routing repro', () => {
 
   describe('FIX: PreToolUse hook denies Task calls with model on Bedrock', () => {
     it('returns permissionDecision:deny when Task has model and forceInherit is enabled', async () => {
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+      process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       // Import the bridge processPreToolUse indirectly by calling processHookBridge
       const bridge = await import('../hooks/bridge.js');
@@ -373,8 +373,8 @@ describe('Bedrock model routing repro', () => {
         toolInput: {
           description: 'Implement feature',
           prompt: 'Write the code',
-          subagent_type: 'oh-my-qoder:executor',
-          model: 'qwen-plus',
+          subagent_type: 'oh-my-claudecode:executor',
+          model: 'claude-sonnet-4-6',
         },
         directory: process.cwd(),
       };
@@ -384,12 +384,12 @@ describe('Bedrock model routing repro', () => {
 
       // Should deny with permissionDecision
       expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny');
-      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('qwen-plus');
+      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('claude-sonnet-4-6');
       expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('model');
     });
 
     it('allows Task calls without model even on Bedrock', async () => {
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+      process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const bridge = await import('../hooks/bridge.js');
 
@@ -399,7 +399,7 @@ describe('Bedrock model routing repro', () => {
         toolInput: {
           description: 'Implement feature',
           prompt: 'Write the code',
-          subagent_type: 'oh-my-qoder:executor',
+          subagent_type: 'oh-my-claudecode:executor',
           // No model param — this is the correct behavior
         },
         directory: process.cwd(),
@@ -422,8 +422,8 @@ describe('Bedrock model routing repro', () => {
         toolInput: {
           description: 'Implement feature',
           prompt: 'Write the code',
-          subagent_type: 'oh-my-qoder:executor',
-          model: 'medium',
+          subagent_type: 'oh-my-claudecode:executor',
+          model: 'sonnet',
         },
         directory: process.cwd(),
       };
@@ -438,7 +438,7 @@ describe('Bedrock model routing repro', () => {
 
   describe('FIX: SessionStart injects Bedrock model routing override', () => {
     it('injects override message when forceInherit is enabled', async () => {
-      process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+      process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const bridge = await import('../hooks/bridge.js');
 
@@ -453,7 +453,7 @@ describe('Bedrock model routing repro', () => {
       // Should contain Bedrock override instruction
       expect(parsed.message).toContain('MODEL ROUTING OVERRIDE');
       expect(parsed.message).toContain('tier alias');
-      expect(parsed.message).toMatch(/\b(medium|high|low)\b/);
+      expect(parsed.message).toMatch(/\b(sonnet|opus|haiku)\b/);
       expect(parsed.message).not.toContain('Do NOT pass the `model` parameter');
       expect(parsed.message).not.toContain('Omit it entirely');
     });

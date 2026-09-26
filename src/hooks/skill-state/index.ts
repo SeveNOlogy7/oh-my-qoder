@@ -62,7 +62,6 @@ export const CANONICAL_WORKFLOW_SKILLS = [
   'ralph',
   'team',
   'ultrawork',
-  'ultraqa',
   'deep-interview',
   'ralplan',
   'self-improve',
@@ -70,7 +69,7 @@ export const CANONICAL_WORKFLOW_SKILLS = [
 export type CanonicalWorkflowSkill = typeof CANONICAL_WORKFLOW_SKILLS[number];
 
 export function isCanonicalWorkflowSkill(skillName: string): skillName is CanonicalWorkflowSkill {
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
   return (CANONICAL_WORKFLOW_SKILLS as readonly string[]).includes(normalized);
 }
 
@@ -97,7 +96,7 @@ const PROTECTION_CONFIGS: Record<SkillProtectionLevel, SkillStateConfig> = {
 /**
  * Maps each skill name to its support-skill protection level.
  *
- * Workflow skills (autopilot, ralph, ultrawork, team, ultraqa, ralplan,
+ * Workflow skills (autopilot, ralph, ultrawork, team, ralplan,
  * deep-interview, self-improve) have dedicated mode state and workflow slots,
  * so their support-skill protection is 'none'. They flow through the
  * `active_skills` branch instead.
@@ -109,8 +108,7 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   ralph: 'none',
   ultrawork: 'none',
   team: 'none',
-  'omq-teams': 'none',
-  ultraqa: 'none',
+  'omc-teams': 'none',
   ralplan: 'none',
   'self-improve': 'none',
   cancel: 'none',
@@ -118,9 +116,9 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   // === Instant / read-only → no protection needed ===
   trace: 'none',
   hud: 'none',
-  'omq-doctor': 'none',
-  'omq-help': 'none',
-  'learn-about-omq': 'none',
+  'omc-doctor': 'none',
+  'omc-help': 'none',
+  'learn-about-omc': 'none',
   note: 'none',
 
   // === Light protection (simple shortcuts, 3 reinforcements) ===
@@ -129,16 +127,16 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   'configure-notifications': 'light',
 
   // === Medium protection (review/planning, 5 reinforcements) ===
-  'omq-plan': 'medium',
+  'omc-plan': 'medium',
   plan: 'medium',
   'deep-interview': 'heavy',
   review: 'medium',
   'external-context': 'medium',
   'ai-slop-cleaner': 'medium',
-  sciomq: 'medium',
+  sciomc: 'medium',
   skillify: 'medium',
   learner: 'medium',
-  'omq-setup': 'medium',
+  'omc-setup': 'medium',
   setup: 'medium',
   'mcp-setup': 'medium',
   'project-session-manager': 'medium',
@@ -153,10 +151,10 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
 };
 
 export function getSkillProtection(skillName: string, rawSkillName?: string): SkillProtectionLevel {
-  if (rawSkillName != null && !rawSkillName.toLowerCase().startsWith('oh-my-qoder:')) {
+  if (rawSkillName != null && !rawSkillName.toLowerCase().startsWith('oh-my-claudecode:')) {
     return 'none';
   }
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
   return SKILL_PROTECTION[normalized] ?? 'none';
 }
 
@@ -297,7 +295,7 @@ export function upsertWorkflowSkillSlot(
   skillName: string,
   slotData: Partial<ActiveSkillSlot> = {},
 ): SkillActiveStateV2 {
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
   const existing = state.active_skills[normalized];
   const now = new Date().toISOString();
 
@@ -341,7 +339,7 @@ export function markWorkflowSkillCompleted(
   skillName: string,
   now: string = new Date().toISOString(),
 ): SkillActiveStateV2 {
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
   const existing = state.active_skills[normalized];
   if (!existing) return state;
   const updated: ActiveSkillSlot = { ...existing, completed_at: now };
@@ -356,7 +354,7 @@ export function clearWorkflowSkillSlot(
   state: SkillActiveStateV2,
   skillName: string,
 ): SkillActiveStateV2 {
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
   if (!(normalized in state.active_skills)) return state;
   const next: Record<string, ActiveSkillSlot> = { ...state.active_skills };
   delete next[normalized];
@@ -436,7 +434,7 @@ export function isWorkflowSkillLive(
   state: SkillActiveStateV2,
   skillName: string,
 ): boolean {
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
   const slot = state.active_skills[normalized];
   return !!slot && !slot.completed_at;
 }
@@ -452,7 +450,7 @@ export function isWorkflowSkillTombstoned(
   ttlMs: number = WORKFLOW_TOMBSTONE_TTL_MS,
   now: number = Date.now(),
 ): boolean {
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
   const slot = state.active_skills[normalized];
   if (!slot || !slot.completed_at) return false;
   const tombstonedAt = new Date(slot.completed_at).getTime();
@@ -613,7 +611,7 @@ export function readSkillActiveState(
  * copies together via `writeSkillActiveStateCopies()`.
  *
  * @param rawSkillName - Original skill name as invoked. When provided without
- *   the `oh-my-qoder:` prefix, protection returns 'none' to avoid
+ *   the `oh-my-claudecode:` prefix, protection returns 'none' to avoid
  *   confusion with user-defined project skills of the same name (#1581).
  */
 export function writeSkillActiveState(
@@ -627,7 +625,7 @@ export function writeSkillActiveState(
 
   const config = PROTECTION_CONFIGS[protection];
   const now = new Date().toISOString();
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, '');
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, '');
 
   const existingV2 = readSkillActiveStateNormalized(directory, sessionId);
   const existing = existingV2.support_skill;

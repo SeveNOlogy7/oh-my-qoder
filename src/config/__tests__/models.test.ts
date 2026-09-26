@@ -314,3 +314,30 @@ describe('isSubagentSafeModelId()', () => {
     expect(isSubagentSafeModelId('low')).toBe(true);
   });
 });
+
+// An unrecognised Qwen variant must resolve to null rather than picking a
+// family default: a silent fallback would hand the Agent tool a model id the
+// account does not have.
+describe('resolveQwenFamily()', () => {
+  it('maps the three known families case-insensitively', () => {
+    expect(resolveQwenFamily('qwen-turbo')).toBe('TURBO');
+    expect(resolveQwenFamily('dashscope/qwen-plus')).toBe('PLUS');
+    expect(resolveQwenFamily('QWEN-MAX')).toBe('MAX');
+  });
+
+  it('returns null for an unknown Qwen variant instead of defaulting', () => {
+    expect(resolveQwenFamily('qwen-ultra')).toBeNull();
+    expect(resolveQwenFamily('qwen')).toBeNull();
+  });
+
+  it('returns null for non-Qwen model ids', () => {
+    expect(resolveQwenFamily('deepseek-v3')).toBeNull();
+    expect(resolveQwenFamily('glm-5.1:cloud')).toBeNull();
+  });
+
+  it('exposes a default model id for every family it can return', () => {
+    for (const family of ['TURBO', 'PLUS', 'MAX'] as const) {
+      expect(QWEN_FAMILY_DEFAULTS[family]).toBeTruthy();
+    }
+  });
+});

@@ -58,7 +58,7 @@ describe('risk-assess false-positive controls', () => {
     expect(result.level).toBe('critical');
   });
 
-  it('ignores .omc harness state and log files for classification', () => {
+  it('ignores .omq harness state and log files for classification', () => {
     expect(isNoisePath('.omq/harness-state/session.json')).toBe(true);
     expect(isNoisePath('runs/output.log')).toBe(true);
     const result = classifyChangedFiles(['.omq/harness-state/session.json', 'runs/output.log'], 500);

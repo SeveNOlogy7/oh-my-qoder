@@ -14,12 +14,13 @@ import { join, dirname, basename, resolve, relative, isAbsolute, win32 } from 'p
 import { fileURLToPath } from 'url';
 import type { BuiltinSkill } from './types.js';
 import { parseFrontmatter, parseFrontmatterAliases } from '../../utils/frontmatter.js';
-import { rewriteOmqCliInvocations } from '../../utils/omq-cli-rendering.js';
+import { rewriteOmcCliInvocations } from '../../utils/omc-cli-rendering.js';
 import { parseSkillPipelineMetadata, renderSkillPipelineGuidance } from '../../utils/skill-pipeline.js';
 import { renderSkillResourcesGuidance } from '../../utils/skill-resources.js';
 import { renderSkillRuntimeGuidance } from './runtime-guidance.js';
 import { isSkininthegamebrosUser } from '../../utils/skininthegamebros-user.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
+import entitlementManifest from '../../config/builtin-skill-entitlements.json' with { type: 'json' };
 
 function getPackageDir(): string {
   if (typeof __dirname !== 'undefined' && __dirname) {
@@ -52,8 +53,8 @@ function getPackageDir(): string {
 const SKILLS_DIR = join(getPackageDir(), 'skills');
 
 /**
- * Qoder CLI native commands that must not be shadowed by OMQ skill short names.
- * Skills with these names will still load but their name will be prefixed with 'omq-'
+ * Claude Code native commands that must not be shadowed by OMC skill short names.
+ * Skills with these names will still load but their name will be prefixed with 'omc-'
  * to avoid overriding built-in /review, /plan, /security-review etc.
  */
 const CC_NATIVE_COMMANDS = new Set([
@@ -69,18 +70,16 @@ const CC_NATIVE_COMMANDS = new Set([
   'memory',
 ]);
 
-const SKININTHEGAMEBROS_ONLY_SKILLS = new Set([
-  'remember',
-  'verify',
-  'debug',
-]);
+const SKININTHEGAMEBROS_ONLY_SKILLS = new Set<string>(
+  entitlementManifest.skininthegamebrosOnlySkills.map((skill: string) => skill.trim().toLowerCase()),
+);
 
 const DEFAULT_DEEP_INTERVIEW_AMBIGUITY_THRESHOLD = 0.2;
 
 function toSafeSkillName(name: string): string {
   const normalized = name.trim();
   return CC_NATIVE_COMMANDS.has(normalized.toLowerCase())
-    ? `omq-${normalized}`
+    ? `omc-${normalized}`
     : normalized;
 }
 
@@ -101,12 +100,12 @@ function readJsonObject(path: string): Record<string, unknown> | null {
 
 function readDeepInterviewThresholdFromSettings(path: string): number | null {
   const settings = readJsonObject(path);
-  const omq = settings?.omq;
-  if (!omq || typeof omq !== 'object' || Array.isArray(omq)) {
+  const omc = settings?.omc;
+  if (!omc || typeof omc !== 'object' || Array.isArray(omc)) {
     return null;
   }
 
-  const deepInterview = (omq as Record<string, unknown>).deepInterview;
+  const deepInterview = (omc as Record<string, unknown>).deepInterview;
   if (!deepInterview || typeof deepInterview !== 'object' || Array.isArray(deepInterview)) {
     return null;
   }
@@ -123,17 +122,17 @@ type DeepInterviewThresholdResolution = {
 };
 
 function getDeepInterviewAmbiguityThresholdResolution(): DeepInterviewThresholdResolution {
-  const profileSettingsPath = join(getQoderConfigDir(), 'settings.json');
+  const profileSettingsPath = join(getClaudeConfigDir(), 'settings.json');
   const projectSettingsPath = join(process.cwd(), '.claude', 'settings.json');
   const profileThreshold = readDeepInterviewThresholdFromSettings(profileSettingsPath);
   const projectThreshold = readDeepInterviewThresholdFromSettings(projectSettingsPath);
 
   if (projectThreshold !== null) {
-    return { threshold: projectThreshold, source: './.qoder/settings.json' };
+    return { threshold: projectThreshold, source: './.claude/settings.json' };
   }
 
   if (profileThreshold !== null) {
-    return { threshold: profileThreshold, source: '[$QODER_CONFIG_DIR|~/.qoder]/settings.json' };
+    return { threshold: profileThreshold, source: '[$QODER_CONFIG_DIR|~/.claude]/settings.json' };
   }
 
   return { threshold: DEFAULT_DEEP_INTERVIEW_AMBIGUITY_THRESHOLD, source: 'default' };
@@ -159,7 +158,7 @@ function getFrontmatterString(metadata: Record<string, unknown>, key: string): s
 }
 
 function readSkillBodyOverride(skillPath: string, metadata: Record<string, unknown>, fallbackBody: string): string {
-  const bodyPath = getFrontmatterString(metadata, 'omq-full-body');
+  const bodyPath = getFrontmatterString(metadata, 'omc-full-body');
   if (!bodyPath) {
     return fallbackBody;
   }
@@ -196,7 +195,7 @@ function applyDeepInterviewRuntimeSettings(template: string): string {
     : withResolvedPlaceholders.replace(
       '4. **Initialize state** via `state_write(mode="deep-interview")`:',
       [
-        `3.5. **Load runtime settings** from \`~/.qoder/settings.json\` and \`./.qoder/settings.json\` before state init (project overrides profile). For this run, use \`ambiguityThreshold = ${threshold}\`.`,
+        `3.5. **Load runtime settings** from \`~/.claude/settings.json\` and \`./.claude/settings.json\` before state init (project overrides profile). For this run, use \`ambiguityThreshold = ${threshold}\`.`,
         '4. **Initialize state** via `state_write(mode="deep-interview")`:',
       ].join('\n'),
     );
@@ -217,12 +216,12 @@ function applyDeepInterviewRuntimeSettings(template: string): string {
 }
 
 function normalizeSkillNameForRuntimeRendering(skillName: string): string {
-  return skillName.trim().toLowerCase().replace(/^oh-my-qoder:/, '').replace(/^omq:/, '');
+  return skillName.trim().toLowerCase().replace(/^oh-my-claudecode:/, '').replace(/^omc:/, '');
 }
 
 export function renderBundledSkillBody(skillName: string, body: string): string {
   const normalizedSkillName = normalizeSkillNameForRuntimeRendering(skillName);
-  const rewrittenBody = rewriteOmqCliInvocations(body.trim());
+  const rewrittenBody = rewriteOmcCliInvocations(body.trim());
   return normalizedSkillName === 'deep-interview' || normalizedSkillName === 'deep-dive'
     ? applyDeepInterviewRuntimeSettings(rewrittenBody)
     : rewrittenBody;
@@ -311,7 +310,7 @@ function loadSkillsFromDirectory(): BuiltinSkill[] {
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      if (SKININTHEGAMEBROS_ONLY_SKILLS.has(entry.name) && !isSkininthegamebrosUser()) {
+      if (SKININTHEGAMEBROS_ONLY_SKILLS.has(entry.name.toLowerCase()) && !isSkininthegamebrosUser()) {
         continue;
       }
 

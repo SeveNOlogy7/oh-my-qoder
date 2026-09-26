@@ -31,6 +31,7 @@ export type KeywordType =
   | 'codex'       // Priority 15
   | 'gemini'      // Priority 16
   | 'cursor'      // Priority 17
+  | 'antigravity' // Priority 18
   | 'ccg';        // Priority 8.5 (Claude-Codex-Gemini orchestration)
 
 export interface DetectedKeyword {
@@ -43,9 +44,9 @@ export interface DetectedKeyword {
  * Keyword patterns for each mode
  */
 const KEYWORD_PATTERNS: Record<KeywordType, RegExp> = {
-  cancel: /\b(cancelomq|stopomq)\b/i,
+  cancel: /\b(cancelomc|stopomc)\b/i,
   ralph: /\b(ralph)\b(?!-)|(랄프)(?!로렌)|(ラルフ)(?!・?ローレン)/i,
-  autopilot: /\b(autopilot|auto[\s-]?pilot|fullsend|full\s+auto)\b|(오토파일럿)|(オートパイロット)/i,
+  autopilot: /\b(autopilot|auto[\s-]?pilot|fullsend|full\s+auto)\b|\b(?:build|create|make)\s+me\s+(?:an?\s+)?(?:app|feature|project|tool|plugin|website|api|server|cli|script|system|service|dashboard|bot|extension)\b|\bi\s+want\s+an?\s+(?:app|feature|project|tool|plugin|website|api|server|cli|script|system|service|dashboard|bot|extension)\b|(오토파일럿)|(オートパイロット)/i,
   ultrawork: /\b(ultrawork|ulw)\b|(울트라워크)|(ウルトラワーク)/i,
   // Team keyword detection disabled — team mode is now explicit-only via /team skill.
   // This prevents infinite spawning when Claude workers receive prompts containing "team".
@@ -61,14 +62,15 @@ const KEYWORD_PATTERNS: Record<KeywordType, RegExp> = {
   ccg: /\b(ccg|claude-codex-gemini)\b|(씨씨지)|(シーシージー)/i,
   codex: /\b(ask|use|delegate\s+to)\s+(codex|gpt)\b/i,
   gemini: /\b(ask|use|delegate\s+to)\s+gemini\b/i,
-  cursor: /\b(ask|use|delegate\s+to)\s+cursor\b/i
+  cursor: /\b(ask|use|delegate\s+to)\s+cursor\b/i,
+  antigravity: /\b(ask|use|delegate\s+to)\s+(antigravity|agy)\b/i
 };
 
 /**
  * Matches the upstream Ouroboros CLI invocation form at the start of the
  * prompt: `ouroboros <sub>`, `ooo <sub>`, or `/ouroboros:<sub>`. Used as a
  * skip predicate for the deep-interview trigger so direct CLI calls are
- * not rerouted into the OMQ skill.
+ * not rerouted into the OMC skill.
  */
 const OUROBOROS_BRAND_AT_START = /^\s*\/?(?:ouroboros|ooo)\b/i;
 
@@ -92,7 +94,7 @@ const KEYWORD_SKIP_PREDICATES: Partial<Record<KeywordType, (text: string) => boo
 const KEYWORD_PRIORITY: KeywordType[] = [
   'cancel', 'ralph', 'autopilot', 'team', 'ultrawork',
   'ccg', 'ralplan', 'tdd', 'code-review', 'security-review',
-  'ultrathink', 'deepsearch', 'analyze', 'deep-interview', 'codex', 'gemini', 'cursor'
+  'ultrathink', 'deepsearch', 'analyze', 'deep-interview', 'codex', 'gemini', 'cursor', 'antigravity'
 ];
 
 /**
@@ -106,7 +108,6 @@ const CANONICAL_WORKFLOW_SLASH_SKILLS = [
   'ralph',
   'team',
   'ultrawork',
-  'ultraqa',
   'deep-interview',
   'ralplan',
   'self-improve',
@@ -118,7 +119,7 @@ export type CanonicalWorkflowSlashSkill =
 /**
  * Map workflow slash skills to keyword types so explicit slash invocations
  * surface alongside ordinary keyword detection. Skills with no dedicated
- * KeywordType (`ultraqa`, `self-improve`) are intentionally absent — the
+ * KeywordType (`self-improve`) is intentionally absent — the
  * bridge handles their seeding via the parser result instead of through the
  * keyword-priority loop.
  */
@@ -134,7 +135,7 @@ const SLASH_SKILL_TO_KEYWORD_TYPE: Partial<
 };
 
 const WORKFLOW_SLASH_PATTERN = new RegExp(
-  '^\\s*/(?:oh-my-qoder:|omq:)?(' +
+  '^\\s*/(?:oh-my-claudecode:|omc:)?(' +
     CANONICAL_WORKFLOW_SLASH_SKILLS
       .map((skill) => skill.replace(/-/g, '\\-'))
       .join('|') +
@@ -143,7 +144,7 @@ const WORKFLOW_SLASH_PATTERN = new RegExp(
 );
 
 export interface ExplicitWorkflowSlashInvocation {
-  /** Canonical workflow skill name (lowercase, no `oh-my-qoder:` prefix). */
+  /** Canonical workflow skill name (lowercase, no `oh-my-claudecode:` prefix). */
   skill: CanonicalWorkflowSlashSkill;
   /** Trailing arguments after the slash command. */
   args: string;
@@ -154,7 +155,7 @@ export interface ExplicitWorkflowSlashInvocation {
 /**
  * Parse an explicit workflow slash invocation at the start of a prompt.
  *
- * Recognizes `/<skill>`, `/omq:<skill>`, and `/oh-my-qoder:<skill>` for
+ * Recognizes `/<skill>`, `/omc:<skill>`, and `/oh-my-claudecode:<skill>` for
  * the canonical workflow skill list. Code fences and inline backticks are
  * stripped first so quoted commands do not match. The trailing lookahead
  * (whitespace, end-of-text, or punctuation) prevents file paths like
@@ -194,7 +195,7 @@ const PASTED_MAGIC_KEYWORD_HEADER_PATTERN =
 const ROLE_BOUNDARY_PATTERN =
   /^<\s*\/?\s*(system|human|assistant|user|tool_use|tool_result)\b[^>]*>/i;
 const SKILL_TRANSCRIPT_LINE_PATTERN =
-  /^\s*Skill:\s+oh-my-(qoder|claudecode|codex):/i;
+  /^\s*Skill:\s+oh-my-(?:claudecode|codex):/i;
 const USER_REQUEST_LINE_PATTERN = /^\s*User request(?:\s*\([^)]*\))?:\s*$/i;
 const SHELL_TRANSCRIPT_LINE_PATTERN = /^\s*[$%❯]\s+/;
 const GIT_DIFF_START_PATTERNS: RegExp[] = [
@@ -391,6 +392,7 @@ const INFORMATIONAL_INTENT_PATTERNS: RegExp[] = [
   /(?:뭐야|뭔데|무엇(?:이야|인가요)?|어떻게|설명(?!서\s*(?:작성|만들|생성|추가|업데이트|수정|편집|쓰))|사용법|알려\s?줘|알려줄래|소개해?\s?줘|소개\s*부탁|설명해\s?줘|뭐가\s*달라|어떤\s*기능|기능\s*(?:알려|설명|뭐)|방법\s*(?:알려|설명|뭐))/u,
   /(?:とは|って何|使い方|説明|(?:について|に関して|違い)[^\n]{0,24}(?:教えて|説明|知りたい)|(?:どう|何が|どこが)違う)/u,
   /(?:什么是|怎(?:么|樣)用|如何使用|解释|說明|说明)/u,
+  /(?:ทำไม|อะไร|ยังไง|อย่างไร|คืออะไร|หมายถึง|แปลว่า|อธิบาย|มั้ย|ไหม|เหรอ|หรอ|หรือไม่|หรือเปล่า|ใช่ไหม|ถูกมั้ย|เกี่ยวกับ|เหมือน)/u,
 ];
 const INFORMATIONAL_CONTEXT_WINDOW = 80;
 const QUOTED_SPAN_PATTERN =
@@ -399,6 +401,7 @@ const REFERENCE_META_PATTERNS: RegExp[] = [
   /\b(?:vs\.?|versus|compared\s+to|comparison|compare|article|blog\s+post|documentation|docs?|reference)\b/i,
   /(?:비교|차이|설명|정리|문서|자료|가이드|이\s*(?:글|비교|문서)는|블로그)/u,
   /\b(?:this\s+(?:article|comparison|guide|documentation|doc)|quoted|quote(?:d)?)\b/i,
+  /(?:เปรียบเทียบ|ต่างกัน|ความต่าง|เอกสาร|บทความ|ไกด์|คู่มือ|เกี่ยวกับ|เหมือน)/u,
 ];
 const REFERENCE_EXPLANATION_PATTERNS: RegExp[] = [
   /(?:^|\n)\s*(?:결론|특징|예시|요약|장점|단점|설명)\s*[:：]/u,
@@ -409,6 +412,7 @@ const REFERENCE_EXPLANATION_PATTERNS: RegExp[] = [
 const QUESTION_FOLLOWUP_PATTERNS: RegExp[] = [
   /\b(?:how\s+many|how\s+much|why|what\s+happened|what\s+went\s+wrong|token\s+budget|cost|pricing)\b/i,
   /(?:왜|얼마|몇\s*번|몇번|토큰|가격|비용|질문)/u,
+  /(?:ทำไม|อะไร|ยังไง|อย่างไร|เท่าไหร่|กี่|มั้ย|ไหม|เหรอ|หรอ|หรือไม่|หรือเปล่า|ใช่ไหม|ถูกมั้ย)/u,
 ];
 const MODE_REFERENCE_PATTERN =
   /\b(?:ralph|autopilot|auto[\s-]?pilot|ultrawork|ulw|ralplan|ultrathink|deepsearch|deep[\s-]?analyze|deepanalyze|deep[\s-]interview|ouroboros|ccg|claude-codex-gemini|deerflow)\b/gi;
@@ -434,6 +438,27 @@ function isWithinQuotedSpan(text: string, position: number): boolean {
     }
   }
   return false;
+}
+
+/**
+ * Bounds of the specific quoted span containing `position`, or null if none.
+ * Used to scope the execution-directive check for the quote exemption to
+ * this keyword's own quote — not the generic ±80-char context window, which
+ * can otherwise pick up an unrelated genuine command elsewhere in the same
+ * message (e.g. a second keyword issued as a real directive) and wrongly
+ * neutralize the exemption for a keyword that is purely quoted as an
+ * example.
+ */
+function findQuotedSpanBounds(text: string, position: number): { start: number; end: number } | null {
+  for (const match of text.matchAll(QUOTED_SPAN_PATTERN)) {
+    if (match.index === undefined) continue;
+    const start = match.index;
+    const end = start + match[0].length;
+    if (position >= start && position < end) {
+      return { start, end };
+    }
+  }
+  return null;
 }
 
 function stripQuotedSpans(text: string): string {
@@ -489,7 +514,29 @@ function hasActivationIntentNearKeyword(context: string, keyword: string): boole
 
 function hasDirectInvocationPrefix(text: string, position: number): boolean {
   const prefix = text.slice(0, position);
-  return /^\s*(?:[$/!]\s*|force:\s*|oh-my-(qoder|claudecode|codex):\s*)?$/i.test(prefix);
+  return /^\s*(?:[$/!]\s*|force:\s*|oh-my-(?:claudecode|codex):\s*)?$/i.test(prefix);
+}
+
+function hasConversationalInvocationNearKeyword(
+  text: string,
+  position: number,
+  _keywordLength: number,
+  _keywordText: string,
+): boolean {
+  if (isWithinQuotedSpan(text, position)) {
+    return false;
+  }
+
+  const start = Math.max(0, position - INFORMATIONAL_CONTEXT_WINDOW);
+  const prefix = stripQuotedSpans(text.slice(start, position));
+  const conversationalInvocationPatterns = [
+    /\bplease\s+$/i,
+    /\blet['’]?s\s+$/i,
+    /\bi\s+(?:want|need|would\s+like)\s+(?:a|an)\s+$/i,
+    /\b(?:can|could|would|will)\s+you\s+$/i,
+  ];
+
+  return conversationalInvocationPatterns.some((pattern) => pattern.test(prefix));
 }
 
 function hasExplicitInvocationContext(
@@ -509,19 +556,7 @@ function hasExplicitInvocationContext(
     return true;
   }
 
-  const escaped = escapeRegExp(keywordText.trim());
-  if (!escaped) {
-    return false;
-  }
-
-  const conversationalInvocationPatterns = [
-    new RegExp(`\\bplease\\s+${escaped}\\b`, 'i'),
-    new RegExp(`\\blet['’]?s\\s+${escaped}\\b`, 'i'),
-    new RegExp(`\\bi\\s+(?:want|need|would\\s+like)\\s+(?:a|an)\\s+${escaped}\\b`, 'i'),
-    new RegExp(`\\b(?:can|could|would|will)\\s+you\\s+${escaped}\\b`, 'i'),
-  ];
-
-  return conversationalInvocationPatterns.some((pattern) => pattern.test(context));
+  return hasConversationalInvocationNearKeyword(text, position, keywordLength, keywordText);
 }
 
 function hasDiagnosticIntentNearKeyword(context: string, keyword: string): boolean {
@@ -570,6 +605,19 @@ function isRalphUltraworkMetaOrBanterContext(context: string, keywordText: strin
   return metaOrBanterPatterns.some((pattern) => pattern.test(context));
 }
 
+function isAutopilotCreationAlias(keywordText: string): boolean {
+  const normalized = keywordText.toLowerCase().trim();
+  return /^(?:build|create|make)\s+me\b/.test(normalized) || /^i\s+want\s+an?(?:\s+(?:app|feature|project|tool|plugin|website|api|server|cli|script|system|service|dashboard|bot|extension))?\s*$/.test(normalized);
+}
+
+function hasActionableCommandAfterSeparator(text: string, position: number, keywordLength: number): boolean {
+  const suffix = text.slice(position + keywordLength).match(/^\s*[:：]\s*([^\n]{0,80})/u)?.[1] ?? '';
+  if (/\?|？|\b(?:what(?:'s|\s+is)|how\s+(?:to|do\s+i)\s+use|explain|describe|tell\s+me\s+about)\b/iu.test(suffix)) {
+    return false;
+  }
+  return /\b(?:fix|debug|investigate|resolve|handle|patch|address|implement|build|create|make|run|start|enable|activate|invoke|trigger|launch)\b|(?:ทำ|ทํา|สร้าง|แก้|เปิด|รัน|เรียก|เริ่ม)/iu.test(suffix);
+}
+
 function isInformationalKeywordContext(text: string, position: number, keywordLength: number, keywordText?: string): boolean {
   const start = Math.max(0, position - INFORMATIONAL_CONTEXT_WINDOW);
   const end = Math.min(text.length, position + keywordLength + INFORMATIONAL_CONTEXT_WINDOW);
@@ -580,10 +628,64 @@ function isInformationalKeywordContext(text: string, position: number, keywordLe
   const line = text.slice(lineBounds.start, lineBounds.end);
   const questionOutsideQuotes = stripQuotedSpans(text);
   const keywordInsideQuotes = isWithinQuotedSpan(text, position);
+  const hasExecutionDirective = /\b(?:fix|debug|investigate|resolve|handle|patch|address|implement|build)\b/i.test(context);
+  const hasCommandSeparatorInvocation =
+    hasDirectInvocationPrefix(text, position) && /^\s*[:：]/.test(text.slice(position + keywordLength));
+  const hasActionableCommandSeparatorInvocation =
+    hasCommandSeparatorInvocation && hasActionableCommandAfterSeparator(text, position, keywordLength);
+
+  // A keyword occurrence inside a quoted span is usually reported/example
+  // text, not a command directed at the assistant — e.g. an example sentence
+  // like `"use autopilot"` inside a paragraph discussing that exact phrasing.
+  // But a quoted keyword paired with a nearby execution directive OR
+  // activation verb (e.g. `"ralph" fix the auth bug`, or `run "ralph" on
+  // this issue`) is still a genuine request stylistically wrapped in quotes,
+  // so the exemption only applies when neither is present — checked before
+  // any other activation-intent logic so quoting wins for reported speech
+  // but not for real commands.
+  //
+  // This check is scoped to text immediately OUTSIDE this keyword's own
+  // quoted span (±28 chars before/after the span's bounds), not the generic
+  // ±80-char context window used elsewhere in this function, and NOT the
+  // quote's own interior. Three failure modes this avoids:
+  // - Scoping to the wide window: an unrelated genuine command elsewhere in
+  //   the same message (e.g. a second keyword issued as a real directive)
+  //   could sit inside it and wrongly neutralize the exemption for a keyword
+  //   that is purely quoted as an example.
+  // - Scoping to (or including) the quote's own interior: a directive or
+  //   activation word used INSIDE the quoted text itself — extremely common
+  //   in narrated examples and bug reports, e.g. `"please fix autopilot"
+  //   they said` or `"...told it to use autopilot..."` — would make the
+  //   quote self-report as command-bearing and defeat the exemption for
+  //   exactly the reported-speech case it exists to catch.
+  // - Checking only execution-directive verbs (fix/debug/...) and not
+  //   activation verbs (use/run/start/...): genuine commands stylistically
+  //   quoting just the mode name, e.g. `run "ralph" on this issue` or
+  //   `use "autopilot" on this task`, would be wrongly suppressed even
+  //   though they activated before this exemption existed.
+  if (keywordInsideQuotes) {
+    const span = findQuotedSpanBounds(text, position);
+    const hasGenuineCommandNearQuote = span
+      ? /\b(?:fix|debug|investigate|resolve|handle|patch|address|implement|build|use|run|start|enable|activate|invoke|trigger|launch)\b/i.test(
+          text.slice(Math.max(0, span.start - 28), span.start) +
+            ' ' +
+            text.slice(span.end, Math.min(text.length, span.end + 28)),
+        )
+      : hasExecutionDirective;
+    if (!hasGenuineCommandNearQuote) {
+      return true;
+    }
+  }
 
   if (keywordText) {
     const hasActivationIntent = hasActivationIntentNearKeyword(context, keywordText);
-    const hasExecutionDirective = /\b(?:fix|debug|investigate|resolve|handle|patch|address|implement|build)\b/i.test(context);
+    if (hasActionableCommandSeparatorInvocation) {
+      return false;
+    }
+
+    if (isAutopilotCreationAlias(keywordText)) {
+      return false;
+    }
 
     // Explicit command + execution intent should remain actionable even if the
     // surrounding message also contains a help question.
@@ -598,6 +700,10 @@ function isInformationalKeywordContext(text: string, position: number, keywordLe
     }
 
     if (hasActivationIntent) {
+      return false;
+    }
+
+    if (hasConversationalInvocationNearKeyword(text, position, keywordLength, keywordText)) {
       return false;
     }
 
@@ -705,8 +811,8 @@ export function detectKeywordsWithType(
   // Check for an explicit canonical workflow slash invocation BEFORE sanitization.
   // The general sanitizer strips bare `/word` tokens as file paths, so bare
   // commands like `/ralph fix auth` would otherwise never match. This must be
-  // robust to surrounding whitespace, namespace prefixes (`/omq:`,
-  // `/oh-my-qoder:`), and code-fence/backtick wrapping (handled inside
+  // robust to surrounding whitespace, namespace prefixes (`/omc:`,
+  // `/oh-my-claudecode:`), and code-fence/backtick wrapping (handled inside
   // the parser via removeCodeBlocks).
   const explicitSlash = parseExplicitWorkflowSlashInvocation(text);
   const explicitSlashType = explicitSlash

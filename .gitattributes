@@ -2,3 +2,10 @@
 # `#!/bin/sh` interpreter line. Everything else keeps core.autocrlf defaults.
 bin/omq text eol=lf
 package-lock.json text eol=lf
+
+# The projection fixtures are compared byte-for-byte against the body of
+# docs/CLAUDE.md, and root CLAUDE.md must stay identical to it; a CRLF checkout
+# breaks both contracts on Windows alone.
+CLAUDE.md text eol=lf
+docs/CLAUDE.md text eol=lf
+tests/fixtures/prompt-projection/** text eol=lf

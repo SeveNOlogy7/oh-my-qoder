@@ -12,7 +12,7 @@
  * are intentionally allowed: they record where behaviour came from, they are not a
  * source that anything installs or executes.
  *
- * Usage: node scripts/check-canonical-identity.mjs [dir] [--json]
+ * Usage: node scripts/check-canonical-identity.mjs [dir] [--json] [--require-attribution]
  * Exit 0 = clean, 1 = violations found, 2 = the check itself could not run.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -20,11 +20,12 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const args = process.argv.slice(2).filter(a => a !== '--json');
+const args = process.argv.slice(2).filter(a => a !== '--json' && a !== '--require-attribution');
 const json = process.argv.includes('--json');
+const requireAttribution = process.argv.includes('--require-attribution');
 const target = resolve(args[0] ?? repoRoot);
 
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'coverage', '.omq', '.omc', '.qoder']);
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'coverage', '.omq', '.omq', '.qoder']);
 const TEXT_EXT = /\.(ts|mjs|cjs|js|md|json|sh|txt|yml|yaml)$/i;
 
 function readPkg(dir) {
@@ -68,6 +69,114 @@ function isProvenance(line) {
   return /(issues|pull)\/\d+/.test(line);
 }
 
+/* ------------------------------------------------------------------
+ * Ancestor provenance rule (path-level coverage).
+ *
+ * The identity rule above guards OMQ's own URLs. A separate concern is
+ * whether files derived from the ancestor project (Yeachan-Heo/oh-my-claudecode)
+ * carry proper attribution. ATTRIBUTION.json, when present, must classify
+ * EVERY scanned path under the target with a valid class.
+ *
+ * Contract: { schemaVersion: 1, entries: [{ path, class, ancestorBlobSha?,
+ *            patchId?, lineageSha? }] }
+ * Valid classes: "ancestor-derived" | "omq-patched-ancestor" |
+ *                "omq-original" | "generated"
+ * "omq-patched-ancestor" entries MUST include ancestorBlobSha and patchId.
+ *
+ * This rule does NOT reuse isFixturePath or isProvenance. Ancestor
+ * attribution most often appears on lines that mention issue/PR numbers
+ * (which isProvenance would silence) and can appear in test fixtures
+ * (which isFixturePath would skip). Skipping those would defeat the gate.
+ *
+ * --require-attribution: fail closed when ATTRIBUTION.json is missing.
+ *   CI and release builds use this to guarantee every shipped path is
+ *   accounted for before publishing.
+ * Without the flag: lenient — a bare local checkout (before the attribution
+ *   generator has run) still passes the gate. This split exists so that
+ *   developers cloning the repo for the first time are not blocked by a
+ *   manifest that is generated as part of the release pipeline.
+ * ------------------------------------------------------------------ */
+const VALID_ATTRIBUTION_CLASSES = new Set([
+  'ancestor-derived',
+  'omq-patched-ancestor',
+  'omq-original',
+  'generated',
+]);
+const PROVENANCE_LIST_CAP = 20;
+
+function checkAncestorProvenance(target, allFiles, requireAttribution) {
+  let attribution;
+  try {
+    attribution = JSON.parse(readFileSync(join(target, 'ATTRIBUTION.json'), 'utf8'));
+  } catch {
+    // ATTRIBUTION.json not yet generated.
+    // Without --require-attribution we stay lenient so a bare local checkout
+    // still passes. With --require-attribution CI/release builds fail closed.
+    if (requireAttribution) {
+      return [{ file: '(ATTRIBUTION.json)', reason: 'ATTRIBUTION.json is missing and --require-attribution is set' }];
+    }
+    return [];
+  }
+
+  const violations = [];
+
+  // Validate contract shape exactly.
+  if (attribution.schemaVersion !== 1) {
+    return [{ file: '(ATTRIBUTION.json)', reason: `schemaVersion must be 1, got ${JSON.stringify(attribution.schemaVersion)}` }];
+  }
+  if (!Array.isArray(attribution.entries)) {
+    return [{ file: '(ATTRIBUTION.json)', reason: 'entries must be an array' }];
+  }
+
+  // Build set of known paths from entries, normalising backslashes.
+  const knownPaths = new Set();
+  for (const entry of attribution.entries) {
+    if (!entry.path || typeof entry.path !== 'string') {
+      violations.push({ file: '(ATTRIBUTION.json)', reason: `entry with invalid/missing path: ${JSON.stringify(entry)}` });
+      continue;
+    }
+    const normPath = entry.path.replace(/[\\/]/g, '/');
+    knownPaths.add(normPath);
+
+    if (!VALID_ATTRIBUTION_CLASSES.has(entry.class)) {
+      violations.push({ file: normPath, reason: `invalid class "${entry.class}"` });
+      continue;
+    }
+
+    // omq-patched-ancestor must carry ancestorBlobSha and patchId.
+    if (entry.class === 'omq-patched-ancestor') {
+      if (!entry.ancestorBlobSha || !entry.patchId) {
+        violations.push({
+          file: normPath,
+          reason: 'omq-patched-ancestor entry missing ancestorBlobSha or patchId',
+        });
+      }
+    }
+  }
+
+  // Path coverage: every scanned file must appear in ATTRIBUTION.json.
+  const unlisted = [];
+  for (const file of allFiles) {
+    const relPath = relative(target, file).split(sep).join('/');
+    if (relPath === 'ATTRIBUTION.json') continue;
+    if (!knownPaths.has(relPath)) {
+      unlisted.push(relPath);
+    }
+  }
+
+  for (let i = 0; i < Math.min(unlisted.length, PROVENANCE_LIST_CAP); i++) {
+    violations.push({ file: unlisted[i], reason: 'not listed in ATTRIBUTION.json' });
+  }
+  if (unlisted.length > PROVENANCE_LIST_CAP) {
+    violations.push({
+      file: `... and ${unlisted.length - PROVENANCE_LIST_CAP} more`,
+      reason: 'not listed in ATTRIBUTION.json',
+    });
+  }
+
+  return violations;
+}
+
 function main() {
   let pkg;
   try {
@@ -90,7 +199,8 @@ function main() {
   );
 
   const violations = [];
-  for (const file of walk(target)) {
+  const allFiles = walk(target);
+  for (const file of allFiles) {
     if (isFixturePath(file)) continue;
     const lines = readFileSync(file, 'utf8').split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
@@ -110,18 +220,29 @@ function main() {
     }
   }
 
+  // Ancestor provenance: path-level coverage, NOT silenced by isFixturePath/isProvenance.
+  const provenanceViolations = checkAncestorProvenance(target, allFiles, requireAttribution);
+
   if (json) {
-    console.log(JSON.stringify({ canonical, checked_root: target, violations }, null, 2));
-  } else if (violations.length === 0) {
-    console.log(`canonical identity ok: ${canonical} (${walk(target).length} files scanned)`);
+    console.log(JSON.stringify({ canonical, checked_root: target, violations, provenance: provenanceViolations }, null, 2));
+  } else if (violations.length === 0 && provenanceViolations.length === 0) {
+    console.log(`canonical identity ok: ${canonical} (${allFiles.length} files scanned)`);
   } else {
-    console.error(`${violations.length} URL(s) name an owner other than "${canonicalOwner}":`);
-    for (const v of violations) {
-      console.error(`  ${v.file}:${v.line} -> ${v.owner} :: ${v.text}`);
+    if (violations.length > 0) {
+      console.error(`${violations.length} URL(s) name an owner other than "${canonicalOwner}":`);
+      for (const v of violations) {
+        console.error(`  ${v.file}:${v.line} -> ${v.owner} :: ${v.text}`);
+      }
+    }
+    if (provenanceViolations.length > 0) {
+      console.error(`${provenanceViolations.length} provenance violation(s):`);
+      for (const v of provenanceViolations) {
+        console.error(`  ${v.file}: ${v.reason}`);
+      }
     }
   }
 
-  return violations.length === 0 ? 0 : 1;
+  return (violations.length === 0 && provenanceViolations.length === 0) ? 0 : 1;
 }
 
 process.exit(main());

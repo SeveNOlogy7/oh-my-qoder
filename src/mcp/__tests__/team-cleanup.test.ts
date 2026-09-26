@@ -48,6 +48,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
 
 // ─── killWorkerPanes ─────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ describe('killWorkerPanes', () => {
   });
 
   it('writes shutdown sentinel before force-killing', async () => {
-    const cwd = join(tmpdir(), `omq-cleanup-test-${process.pid}`);
+    const cwd = join(tmpdir(), `omc-cleanup-test-${process.pid}`);
     const stateDir = join(cwd, '.omq', 'state', 'team', 'myteam');
     mkdirSync(stateDir, { recursive: true });
 
@@ -109,7 +110,7 @@ describe('killWorkerPanes', () => {
       killWorkerPanes({
         paneIds: ['%2'],
         teamName: 'nonexistent-team',
-        cwd: '/tmp/does-not-exist-omq-test',
+        cwd: '/tmp/does-not-exist-omc-test',
         graceMs: 0,
       })
     ).resolves.toBeUndefined();
@@ -125,16 +126,15 @@ describe('killTeamSession', () => {
     expect(killedSessions).toHaveLength(0);
   });
 
-  it('kills worker panes in split-pane mode', async () => {
+  it('preserves worker panes when split-pane membership cannot be proven', async () => {
     await killTeamSession('mysession:1', ['%2', '%3'], '%1');
-    expect(killedPanes).toContain('%2');
-    expect(killedPanes).toContain('%3');
+    expect(killedPanes).toEqual([]);
   });
 
-  it('skips leaderPaneId in split-pane mode', async () => {
+  it('still skips the leader when split-pane membership is unavailable', async () => {
     await killTeamSession('mysession:1', ['%1', '%2'], '%1');
     expect(killedPanes).not.toContain('%1');
-    expect(killedPanes).toContain('%2');
+    expect(killedPanes).toEqual([]);
   });
 
   it('is a no-op in split-pane mode when paneIds is empty', async () => {
@@ -150,45 +150,46 @@ describe('killTeamSession', () => {
   });
 
   it('calls kill-session for session-mode sessions (no ":" in name)', async () => {
-    await killTeamSession('omq-team-myteam-worker1');
-    expect(killedSessions).toContain('omq-team-myteam-worker1');
+    vi.stubEnv('TMUX', '');
+    await killTeamSession('omc-team-myteam-worker1');
+    expect(killedSessions).toContain('omc-team-myteam-worker1');
   });
 });
 
 // ─── validateJobId regex ──────────────────────────────────────────────────────
 
-// Re-test the regex rule from team-server.ts (spec: /^omq-[a-z0-9]{1,16}$/)
-const JOB_ID_RE = /^omq-[a-z0-9]{1,16}$/;
+// Re-test the regex rule from team-server.ts (spec: /^omc-[a-z0-9]{1,16}$/)
+const JOB_ID_RE = /^omc-[a-z0-9]{1,16}$/;
 
-describe('validateJobId regex (/^omq-[a-z0-9]{1,16}$/)', () => {
+describe('validateJobId regex (/^omc-[a-z0-9]{1,16}$/)', () => {
   it('accepts valid job IDs', () => {
-    expect(JOB_ID_RE.test('omq-abc123')).toBe(true);
-    expect(JOB_ID_RE.test('omq-a')).toBe(true);
-    expect(JOB_ID_RE.test('omq-mlytzz5w')).toBe(true);
+    expect(JOB_ID_RE.test('omc-abc123')).toBe(true);
+    expect(JOB_ID_RE.test('omc-a')).toBe(true);
+    expect(JOB_ID_RE.test('omc-mlytzz5w')).toBe(true);
   });
 
   it('rejects path traversal attempts', () => {
-    expect(JOB_ID_RE.test('omq-../../etc/passwd')).toBe(false);
-    expect(JOB_ID_RE.test('../omq-abc')).toBe(false);
-    expect(JOB_ID_RE.test('omq-abc/../../x')).toBe(false);
+    expect(JOB_ID_RE.test('omc-../../etc/passwd')).toBe(false);
+    expect(JOB_ID_RE.test('../omc-abc')).toBe(false);
+    expect(JOB_ID_RE.test('omc-abc/../../x')).toBe(false);
   });
 
-  it('rejects IDs without the omq- prefix', () => {
+  it('rejects IDs without the omc- prefix', () => {
     expect(JOB_ID_RE.test('abc123')).toBe(false);
     expect(JOB_ID_RE.test('job-abc123')).toBe(false);
   });
 
   it('rejects IDs longer than 16 chars after prefix', () => {
-    expect(JOB_ID_RE.test('omq-' + 'a'.repeat(17))).toBe(false);
+    expect(JOB_ID_RE.test('omc-' + 'a'.repeat(17))).toBe(false);
   });
 
   it('rejects empty suffix', () => {
-    expect(JOB_ID_RE.test('omq-')).toBe(false);
+    expect(JOB_ID_RE.test('omc-')).toBe(false);
   });
 });
 
 describe('team start validation wiring', () => {
-  it('validates teamName at omq_run_team_start API boundary', () => {
+  it('validates teamName at omc_run_team_start API boundary', () => {
     const source = readFileSync(join(__dirname, '..', 'team-server.ts'), 'utf-8');
     expect(source).toContain("import { validateTeamName } from '../team/team-name.js'");
     expect(source).toContain('validateTeamName(input.teamName);');
@@ -200,7 +201,7 @@ describe('team start validation wiring', () => {
     expect(source).not.toContain("spawn('node', [runtimeCliPath]");
   });
 
-  it('contains timeoutSeconds deprecation guard in omq_run_team_start', () => {
+  it('contains timeoutSeconds deprecation guard in omc_run_team_start', () => {
     const source = readFileSync(join(__dirname, '..', 'team-server.ts'), 'utf-8');
     expect(source).toContain("hasOwnProperty.call(args, 'timeoutSeconds')");
     expect(source).toContain('no longer accepts timeoutSeconds');
@@ -219,37 +220,37 @@ function handleStartGuard(args: unknown): void {
     && Object.prototype.hasOwnProperty.call(args, 'timeoutSeconds')
   ) {
     throw new Error(
-      'omq_run_team_start no longer accepts timeoutSeconds. Remove timeoutSeconds and use omq_run_team_wait timeout_ms to limit the wait call only (workers keep running until completion or explicit omq_run_team_cleanup).',
+      'omc_run_team_start no longer accepts timeoutSeconds. Remove timeoutSeconds and use omc_run_team_wait timeout_ms to limit the wait call only (workers keep running until completion or explicit omc_run_team_cleanup).',
     );
   }
 }
 
-describe('omq_run_team_start timeoutSeconds rejection', () => {
+describe('omc_run_team_start timeoutSeconds rejection', () => {
   it('throws when timeoutSeconds is present', () => {
     expect(() => handleStartGuard({
       teamName: 'test',
-      agentTypes: ['qwen'],
+      agentTypes: ['claude'],
       tasks: [{ subject: 'x', description: 'y' }],
       cwd: '/tmp',
       timeoutSeconds: 60,
     })).toThrow('no longer accepts timeoutSeconds');
   });
 
-  it('error message includes migration guidance (omq_run_team_wait + omq_run_team_cleanup)', () => {
+  it('error message includes migration guidance (omc_run_team_wait + omc_run_team_cleanup)', () => {
     expect(() => handleStartGuard({
       teamName: 'test',
-      agentTypes: ['qwen'],
+      agentTypes: ['claude'],
       tasks: [],
       cwd: '/tmp',
       timeoutSeconds: 30,
-    })).toThrow('omq_run_team_wait timeout_ms');
+    })).toThrow('omc_run_team_wait timeout_ms');
   });
 
   it('does not throw when timeoutSeconds is absent', () => {
     // Should not throw — the guard passes for well-formed input
     expect(() => handleStartGuard({
       teamName: 'test',
-      agentTypes: ['qwen'],
+      agentTypes: ['claude'],
       tasks: [],
       cwd: '/tmp',
     })).not.toThrow();

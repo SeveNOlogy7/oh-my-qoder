@@ -1,6 +1,6 @@
 /**
- * tmux utility functions for omq native shell launch
- * Adapted from oh-my-codex patterns for omq
+ * tmux utility functions for omc native shell launch
+ * Adapted from oh-my-codex patterns for omc
  */
 
 import {
@@ -15,16 +15,32 @@ import {
   type SpawnSyncReturns,
 } from 'child_process';
 import { basename, isAbsolute, win32 as win32Path } from 'path';
-import { promisify } from 'util';
 import { qoderCliBinary } from '../lib/qoder-cli.js';
+import { promisify } from 'util';
 
 // ── tmux environment & execution wrappers ────────────────────────────────────
 
 export interface TmuxExecOptions {
   /** Strip TMUX env var so the command targets the default tmux server.
    *  Default: false — preserves TMUX (targets the current server).
-   *  Set to true for OMQ-owned background sessions and cross-session scans. */
+   *  Set to true for OMC-owned background sessions and cross-session scans. */
   stripTmux?: boolean;
+}
+
+
+/**
+ * Check whether the Qoder CLI binary is callable from this process.
+ */
+export function isQoderCliAvailable(): boolean {
+  try {
+    execFileSync(qoderCliBinary(), ['--version'], {
+      stdio: 'ignore',
+      shell: process.platform === 'win32',
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function tmuxEnv(): NodeJS.ProcessEnv {
@@ -134,7 +150,7 @@ export async function tmuxCmdAsync(
   args: string[],
   opts?: TmuxExecOptions & { timeout?: number },
 ): Promise<{ stdout: string; stderr: string }> {
-  if (args.some(a => a.includes('#{'))) {
+  if (args.some(a => a.includes('#{')) && !isNativeWindowsShell()) {
     const escaped = args.map(a => "'" + a.replace(/'/g, "'\\''") + "'").join(' ');
     return tmuxShellAsync(escaped, opts);
   }
@@ -201,11 +217,11 @@ export function isTmuxAvailable(): boolean {
 }
 
 /**
- * Check if the host Qoder CLI is available on the system.
+ * Check if claude CLI is available on the system
  */
-export function isQoderCliAvailable(): boolean {
+export function isClaudeAvailable(): boolean {
   try {
-    execFileSync(qoderCliBinary(), ['--version'], {
+    execFileSync('claude', ['--version'], {
       stdio: 'ignore',
       shell: process.platform === 'win32',
     });
@@ -254,8 +270,8 @@ export function resolveLaunchPolicy(
 
 /**
  * Build tmux session name from directory, git branch, and UTC timestamp
- * Format: omq-{dir}-{branch}-{utctimestamp}
- * e.g.  omq-myproject-dev-20260221143052
+ * Format: omc-{dir}-{branch}-{utctimestamp}
+ * e.g.  omc-myproject-dev-20260221143052
  */
 export function buildTmuxSessionName(cwd: string): string {
   const dirToken = sanitizeTmuxToken(basename(cwd));
@@ -266,6 +282,7 @@ export function buildTmuxSessionName(cwd: string): string {
       cwd,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      windowsHide: true,
     }).trim();
     if (branch) {
       branchToken = sanitizeTmuxToken(branch);
@@ -284,7 +301,7 @@ export function buildTmuxSessionName(cwd: string): string {
     `${pad(now.getUTCMinutes())}` +
     `${pad(now.getUTCSeconds())}`;
 
-  const name = `omq-${dirToken}-${branchToken}-${utcTimestamp}`;
+  const name = `omc-${dirToken}-${branchToken}-${utcTimestamp}`;
   return name.length > 120 ? name.slice(0, 120) : name;
 }
 
@@ -391,7 +408,7 @@ export function isHudWatchPane(pane: TmuxPaneSnapshot): boolean {
   const command = `${pane.startCommand} ${pane.currentCommand}`.toLowerCase();
   return /\bhud\b/.test(command)
     && /--watch\b/.test(command)
-    && (/\bomq(?:\.js)?\b/.test(command) || /\bnode\b/.test(command));
+    && (/\bomc(?:\.js)?\b/.test(command) || /\bnode\b/.test(command));
 }
 
 /**

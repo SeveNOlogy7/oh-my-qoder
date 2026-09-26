@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies
 vi.mock('../../../features/auto-update.js', () => ({
-  getOMQConfig: vi.fn(() => ({ silentAutoUpdate: false })),
+  getOMCConfig: vi.fn(() => ({ silentAutoUpdate: false })),
 }));
 
 vi.mock('../../../features/context-injector/index.js', () => ({
@@ -20,17 +20,17 @@ import {
   BEADS_INSTRUCTIONS,
   BEADS_RUST_INSTRUCTIONS,
 } from '../index.js';
-import { getOMQConfig } from '../../../features/auto-update.js';
+import { getOMCConfig } from '../../../features/auto-update.js';
 import { contextCollector } from '../../../features/context-injector/index.js';
 
-const mockGetOMQConfig = vi.mocked(getOMQConfig);
+const mockGetOMCConfig = vi.mocked(getOMCConfig);
 const mockRegister = vi.mocked(contextCollector.register);
 const mockRemoveEntry = vi.mocked(contextCollector.removeEntry);
 
 describe('beads-context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetOMQConfig.mockReturnValue({ silentAutoUpdate: false });
+    mockGetOMCConfig.mockReturnValue({ silentAutoUpdate: false });
   });
 
   describe('getBeadsInstructions', () => {
@@ -51,7 +51,7 @@ describe('beads-context', () => {
 
   describe('getBeadsContextConfig', () => {
     it('should return defaults when no config', () => {
-      mockGetOMQConfig.mockReturnValue({ silentAutoUpdate: false });
+      mockGetOMCConfig.mockReturnValue({ silentAutoUpdate: false });
       const config = getBeadsContextConfig();
       expect(config).toEqual({
         taskTool: 'builtin',
@@ -61,7 +61,7 @@ describe('beads-context', () => {
     });
 
     it('should read taskTool from config', () => {
-      mockGetOMQConfig.mockReturnValue({
+      mockGetOMCConfig.mockReturnValue({
         silentAutoUpdate: false,
         taskTool: 'beads',
       });
@@ -70,7 +70,7 @@ describe('beads-context', () => {
     });
 
     it('should read taskToolConfig from config', () => {
-      mockGetOMQConfig.mockReturnValue({
+      mockGetOMCConfig.mockReturnValue({
         silentAutoUpdate: false,
         taskTool: 'beads-rust',
         taskToolConfig: {
@@ -89,14 +89,14 @@ describe('beads-context', () => {
 
   describe('registerBeadsContext', () => {
     it('should return false when taskTool is builtin', () => {
-      mockGetOMQConfig.mockReturnValue({ silentAutoUpdate: false });
+      mockGetOMCConfig.mockReturnValue({ silentAutoUpdate: false });
       const result = registerBeadsContext('session-1');
       expect(result).toBe(false);
       expect(mockRegister).not.toHaveBeenCalled();
     });
 
     it('should return false when injectInstructions is false', () => {
-      mockGetOMQConfig.mockReturnValue({
+      mockGetOMCConfig.mockReturnValue({
         silentAutoUpdate: false,
         taskTool: 'beads',
         taskToolConfig: { injectInstructions: false },
@@ -107,7 +107,7 @@ describe('beads-context', () => {
     });
 
     it('should register context for beads tool', () => {
-      mockGetOMQConfig.mockReturnValue({
+      mockGetOMCConfig.mockReturnValue({
         silentAutoUpdate: false,
         taskTool: 'beads',
       });
@@ -122,7 +122,7 @@ describe('beads-context', () => {
     });
 
     it('should register context for beads-rust tool', () => {
-      mockGetOMQConfig.mockReturnValue({
+      mockGetOMCConfig.mockReturnValue({
         silentAutoUpdate: false,
         taskTool: 'beads-rust',
       });
@@ -137,7 +137,7 @@ describe('beads-context', () => {
     });
 
     it('should return false for invalid taskTool value', () => {
-      mockGetOMQConfig.mockReturnValue({
+      mockGetOMCConfig.mockReturnValue({
         silentAutoUpdate: false,
         taskTool: 'invalid-tool' as any,
       });
@@ -155,20 +155,55 @@ describe('beads-context', () => {
   });
 
   describe('constants', () => {
-    it('BEADS_INSTRUCTIONS should contain beads CLI commands', () => {
-      expect(BEADS_INSTRUCTIONS).toContain('bd create');
-      expect(BEADS_INSTRUCTIONS).toContain('bd list');
-      expect(BEADS_INSTRUCTIONS).toContain('bd show');
-      expect(BEADS_INSTRUCTIONS).toContain('bd update');
-      expect(BEADS_INSTRUCTIONS).toContain('bd deps');
-    });
+    const instructionContracts = [
+      {
+        instructions: BEADS_INSTRUCTIONS,
+        commands: [
+          'bd create "title"',
+          'bd list',
+          'bd show <id>',
+          'bd close <id>',
+          'bd dep add <id> <depends-on-id>',
+          'Add a dependency: <id> depends on <depends-on-id>',
+          'bd update abc123 --status in_progress',
+          'bd close abc123',
+        ],
+        invalidCommands: [
+          /`bd\s+update\s+[^`\n]*\s--status\s+done`/,
+          /`bd\s+deps\b[^`\n]*`/,
+          /`bd\s+dep(?:s)?\b[^`\n]*\s--add\b[^`\n]*`/,
+        ],
+      },
+      {
+        instructions: BEADS_RUST_INSTRUCTIONS,
+        commands: [
+          'br create "title"',
+          'br list',
+          'br show <id>',
+          'br close <id>',
+          'br dep add <id> <depends-on-id>',
+          'Add a dependency: <id> depends on <depends-on-id>',
+          'br update abc123 --status in_progress',
+          'br close abc123',
+        ],
+        invalidCommands: [
+          /`br\s+update\s+[^`\n]*\s--status\s+done`/,
+          /`br\s+deps\b[^`\n]*`/,
+          /`br\s+dep(?:s)?\b[^`\n]*\s--add\b[^`\n]*`/,
+        ],
+      },
+    ];
 
-    it('BEADS_RUST_INSTRUCTIONS should contain beads-rust CLI commands', () => {
-      expect(BEADS_RUST_INSTRUCTIONS).toContain('br create');
-      expect(BEADS_RUST_INSTRUCTIONS).toContain('br list');
-      expect(BEADS_RUST_INSTRUCTIONS).toContain('br show');
-      expect(BEADS_RUST_INSTRUCTIONS).toContain('br update');
-      expect(BEADS_RUST_INSTRUCTIONS).toContain('br deps');
-    });
+    it.each(instructionContracts)(
+      'contains valid exact commands and rejects obsolete syntax',
+      ({ instructions, commands, invalidCommands }) => {
+        for (const command of commands) {
+          expect(instructions).toContain(command);
+        }
+        for (const invalidCommand of invalidCommands) {
+          expect(instructions).not.toMatch(invalidCommand);
+        }
+      },
+    );
   });
 });

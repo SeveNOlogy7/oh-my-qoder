@@ -72,7 +72,7 @@ describe('session-replay', () => {
 
   describe('event helpers', () => {
     it('recordAgentStart should record start event', () => {
-      recordAgentStart(testDir, 'sess3', 'agent-123', 'oh-my-qoder:executor', 'Fix the bug', 'ultrawork', 'medium');
+      recordAgentStart(testDir, 'sess3', 'agent-123', 'oh-my-claudecode:executor', 'Fix the bug', 'ultrawork', 'sonnet');
 
       const events = readReplayEvents(testDir, 'sess3');
       expect(events).toHaveLength(1);
@@ -83,7 +83,7 @@ describe('session-replay', () => {
     });
 
     it('recordAgentStop should record stop event', () => {
-      recordAgentStop(testDir, 'sess4', 'agent-456', 'oh-my-qoder:architect', true, 5000);
+      recordAgentStop(testDir, 'sess4', 'agent-456', 'oh-my-claudecode:architect', true, 5000);
 
       const events = readReplayEvents(testDir, 'sess4');
       expect(events).toHaveLength(1);
@@ -138,6 +138,27 @@ describe('session-replay', () => {
       expect(summary.tool_summary['Read'].avg_ms).toBe(150);
       expect(summary.tool_summary['Edit'].count).toBe(1);
       expect(summary.files_touched).toContain('src/test.ts');
+    });
+
+    it('counts dirty worktrees for synthetic/unmatched stops too (issue #3663 B3)', () => {
+      // B3: a synthetic native-fork stop that carried dirty-worktree evidence
+      // must increment the dirty counter even though it is excluded from
+      // completed/failed counters.
+      appendReplayEvent(testDir, 'synthetic-dirty', {
+        agent: 'native-',
+        event: 'agent_stop',
+        agent_type: 'untracked-native-fork',
+        success: true,
+        synthetic: true,
+        telemetry_status: 'unmatched_stop',
+        dirty_worktree: { tracked: 2, untracked: 1, ignored: 0, worktree_root: '/tmp/wt', truncated: false },
+      });
+
+      const summary = getReplaySummary(testDir, 'synthetic-dirty');
+      expect(summary.agents_untracked_stops).toBe(1);
+      expect(summary.agents_completed).toBe(0);
+      expect(summary.agents_failed).toBe(0);
+      expect(summary.dirty_worktrees).toBe(1);
     });
 
     it('should detect bottlenecks', () => {

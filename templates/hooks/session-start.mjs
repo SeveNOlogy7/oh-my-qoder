@@ -10,9 +10,10 @@ import { fileURLToPath, pathToFileURL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const { getQoderConfigDir, getUpdateCheckCachePath } = await import(pathToFileURL(join(__dirname, 'lib', 'config-dir.mjs')).href);
-const configDir = getQoderConfigDir();
-const { resolveSessionStatePathsForHook, resolveOmqStateRoot } = await import(pathToFileURL(join(__dirname, 'lib', 'state-root.mjs')).href);
+const { getClaudeConfigDir, getUpdateCheckCachePath } = await import(pathToFileURL(join(__dirname, 'lib', 'config-dir.mjs')).href);
+const configDir = getClaudeConfigDir();
+const { resolveSessionStatePathsForHook, resolveOmcStateRoot } = await import(pathToFileURL(join(__dirname, 'lib', 'state-root.mjs')).href);
+const { publishCacheOccupancy } = await import(pathToFileURL(join(__dirname, 'lib', 'cache-occupancy.mjs')).href);
 
 // Import timeout-protected stdin reader (prevents hangs on Linux/Windows, see issue #240, #524)
 let readStdin;
@@ -90,11 +91,11 @@ async function checkForUpdates(currentVersion) {
     return cached.updateAvailable ? cached : null;
   }
 
-  // Fetch package.json from the GitHub repo (git-based, publish-free)
+  // Fetch latest version from npm
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 2000);
   try {
-    const response = await fetch('https://raw.githubusercontent.com/qoder-plugins/oh-my-qoder/main/package.json', {
+    const response = await fetch('https://registry.npmjs.org/oh-my-claude-sisyphus/latest', {
       signal: controller.signal
     });
 
@@ -134,23 +135,48 @@ function compareVersions(v1, v2) {
   return 0;
 }
 
-const OMC_STARTUP_COMPACTABLE_SECTIONS = [
+const OMQ_STARTUP_COMPACTABLE_SECTIONS = [
   'agent_catalog',
   'skills',
   'team_compositions',
 ];
-const OMC_STARTUP_GUIDANCE_MAX_CHARS = 8000;
+const OMQ_STARTUP_GUIDANCE_MAX_CHARS = 8000;
 const SESSION_START_CONTEXT_BUDGET = 6000;
 const SESSION_START_OMISSION_NOTICE = '[Additional SessionStart context omitted to preserve the 6000-character aggregate budget.]';
 
 const { MODEL_ROUTING_OVERRIDE_MESSAGE } = await import(pathToFileURL(join(__dirname, 'lib', 'model-routing-override-message.mjs')).href);
 
+function isTruthyProviderFlag(value) {
+  return value === '1' || value === 'true';
+}
+
 function getSessionModelId() {
-  return process.env.QODER_MODEL || process.env.DASHSCOPE_MODEL || '';
+  return process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || '';
+}
+
+function isBedrockSession() {
+  if (isTruthyProviderFlag(process.env.CLAUDE_CODE_USE_BEDROCK)) return true;
+  const modelId = getSessionModelId();
+  return Boolean(
+    modelId && (
+      /^((us|eu|ap|global)\.anthropic\.|anthropic\.claude)/i.test(modelId) ||
+      (
+        /^arn:aws(-[^:]+)?:bedrock:/i.test(modelId) &&
+        /:(inference-profile|application-inference-profile)\//i.test(modelId) &&
+        modelId.toLowerCase().includes('claude')
+      )
+    )
+  );
+}
+
+function isVertexSession() {
+  if (isTruthyProviderFlag(process.env.CLAUDE_CODE_USE_VERTEX)) return true;
+  const modelId = getSessionModelId();
+  return Boolean(modelId && modelId.toLowerCase().startsWith('vertex_ai/'));
 }
 
 async function readRoutingForceInheritFromConfig(directory) {
-  const omcRoot = await resolveOmqStateRoot(directory);
+  const omcRoot = await resolveOmcStateRoot(directory);
   const configPaths = [
     join(configDir, '.omq-config.json'),
     join(omcRoot, 'config.json'),
@@ -169,11 +195,13 @@ async function shouldEmitModelRoutingOverride(directory) {
   if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'false') return false;
   if (await readRoutingForceInheritFromConfig(directory)) return true;
 
-  const modelId = getSessionModelId();
-  if (modelId && !modelId.toLowerCase().includes('qwen')) return true;
+  if (isBedrockSession() || isVertexSession()) return true;
 
-  const baseUrl = process.env.DASHSCOPE_BASE_URL || '';
-  if (baseUrl && !baseUrl.includes('dashscope.aliyuncs.com')) return true;
+  const modelId = getSessionModelId();
+  if (modelId && !modelId.toLowerCase().includes('claude')) return true;
+
+  const baseUrl = process.env.ANTHROPIC_BASE_URL || '';
+  if (baseUrl && !baseUrl.includes('anthropic.com')) return true;
 
   return false;
 }
@@ -190,8 +218,8 @@ function looksLikeOmcGuidance(content) {
   return (
     typeof content === 'string' &&
     content.includes('<guidance_schema_contract>') &&
-    /oh-my-(qoder|claudecode|codex)/i.test(content) &&
-    OMC_STARTUP_COMPACTABLE_SECTIONS.some(
+    /oh-my-(claudecode|codex)/i.test(content) &&
+    OMQ_STARTUP_COMPACTABLE_SECTIONS.some(
       section => content.includes(`<${section}>`) && content.includes(`</${section}>`),
     )
   );
@@ -203,7 +231,7 @@ function compactOmcStartupGuidance(content) {
   let compacted = content;
   let removedAny = false;
 
-  for (const section of OMC_STARTUP_COMPACTABLE_SECTIONS) {
+  for (const section of OMQ_STARTUP_COMPACTABLE_SECTIONS) {
     const pattern = new RegExp(`\n*<${section}>[\\s\\S]*?</${section}>\n*`, 'g');
     const next = compacted.replace(pattern, '\n\n');
     removedAny = removedAny || next !== compacted;
@@ -215,21 +243,21 @@ function compactOmcStartupGuidance(content) {
     .replace(/\n\n---\n\n---\n\n/g, '\n\n---\n\n')
     .trim();
 
-  if (normalized.length <= OMC_STARTUP_GUIDANCE_MAX_CHARS) {
+  if (normalized.length <= OMQ_STARTUP_GUIDANCE_MAX_CHARS) {
     return removedAny ? normalized : content;
   }
 
   const notice = '\n\n[OMC startup guidance truncated to preserve an 8000-character budget. Read the source file directly for the full document.]';
-  return `${normalized.slice(0, OMC_STARTUP_GUIDANCE_MAX_CHARS - notice.length).trimEnd()}${notice}`;
+  return `${normalized.slice(0, OMQ_STARTUP_GUIDANCE_MAX_CHARS - notice.length).trimEnd()}${notice}`;
 }
 
 function formatUpdateNoticeForUser(updateInfo, options = {}) {
   const latestVersion = updateInfo?.latestVersion || 'latest';
   const currentVersion = updateInfo?.currentVersion || 'unknown';
   const action = options.autoUpgradePrompt === false
-    ? 'To update later: git pull && npm run build, then /plugins reload'
-    : 'Update with: git pull && npm run build, then /plugins reload';
-  return `[OMQ UPDATE AVAILABLE] oh-my-qoder v${latestVersion} is available (current: v${currentVersion}). ${action}`;
+    ? 'To update later, run: omc update'
+    : 'Run /update to upgrade now, or use /plugin install oh-my-claudecode';
+  return `[OMC UPDATE AVAILABLE] oh-my-claudecode v${latestVersion} is available (current: v${currentVersion}). ${action}`;
 }
 
 function buildSessionStartAdditionalContext(messages) {
@@ -286,10 +314,10 @@ const PRIORITY_HEADER = '## Priority Context';
 const WORKING_MEMORY_HEADER = '## Working Memory';
 
 /**
- * Get notepad path in .omc directory
+ * Get notepad path in .omq directory
  */
 async function getNotepadPath(directory) {
-  const omcRoot = await resolveOmqStateRoot(directory);
+  const omcRoot = await resolveOmcStateRoot(directory);
   return join(omcRoot, NOTEPAD_FILENAME);
 }
 
@@ -356,7 +384,7 @@ ${priorityContext}
 const STALE_STATE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 /**
- * Validate that a candidate cwd is a real OMQ workspace anchor.
+ * Validate that a candidate cwd is a real OMC workspace anchor.
  * Returns the candidate unchanged if it is non-empty AND contains a
  * `.omq-workspace` marker OR a `.git` directory.
  * Otherwise emits a one-line warning to stderr and returns null,
@@ -365,7 +393,7 @@ const STALE_STATE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 function validateCwd(candidate) {
   if (!candidate || typeof candidate !== 'string') {
     process.stderr.write(
-      `[OMQ] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
+      `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
     );
     return null;
   }
@@ -373,7 +401,7 @@ function validateCwd(candidate) {
   // looking for a `.omq-workspace` marker or `.git` dir. Stop before scanning
   // $HOME (or above) so a stray marker/repo in $HOME cannot validate an
   // unrelated directory. Returns the original candidate so downstream root
-  // resolution (getOmqRoot/resolveOmqStateRoot) can anchor it.
+  // resolution (getOmcRoot/resolveOmcStateRoot) can anchor it.
   let home = null;
   try { home = homedir(); } catch { home = null; }
   let cursor = candidate;
@@ -387,7 +415,7 @@ function validateCwd(candidate) {
     cursor = parent;
   }
   process.stderr.write(
-    `[OMQ] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
+    `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
   );
   return null;
 }
@@ -454,7 +482,7 @@ function hasConflictingUltraworkRestore(state, sessionId, directory, source) {
 
 async function getUltraworkRestoreCandidate(directory, sessionId) {
   const { readPath: localPath } = await resolveSessionStatePathsForHook(directory, 'ultrawork', sessionId || undefined);
-  const globalPath = join(homedir(), '.omc', 'state', 'ultrawork-state.json');
+  const globalPath = join(homedir(), '.omq', 'state', 'ultrawork-state.json');
 
   const localState = readJsonFile(localPath);
   if (hasConflictingUltraworkRestore(localState, sessionId, directory, 'local')) {
@@ -509,16 +537,41 @@ async function main() {
       return;
     }
     const sessionId = data.sessionId || data.session_id || data.sessionid || '';
-    const messages = [];
+    if (process.env.CLAUDE_PLUGIN_ROOT) {
+      publishCacheOccupancy(process.env.CLAUDE_PLUGIN_ROOT, configDir);
+    }
+    let messages = [];
     const userMessages = [];
+    let pendingRestore = null;
+    let pendingRestoreMessage = null;
+
+    // Restore the newest PreCompact checkpoint after compaction (issue #3730).
+    // Only fires when Claude Code signals the session resumed from compaction
+    // (source === 'compact'); never on startup, resume, or clear.
+    if (data.source === 'compact' && sessionId) {
+      try {
+        const { preparePreCompactCheckpointRestore, claimPreCompactCheckpointRestore } = await import(
+          pathToFileURL(join(__dirname, 'lib', 'precompact-restore.mjs')).href
+        );
+        const restoreRoot = await resolveOmcStateRoot(directory);
+        const prepared = preparePreCompactCheckpointRestore(restoreRoot, sessionId);
+        if (prepared) {
+          pendingRestore = { ...prepared, restoreRoot, preparePreCompactCheckpointRestore, claimPreCompactCheckpointRestore };
+          pendingRestoreMessage = `<session-restore>\n\n${prepared.text}\n\n</session-restore>\n\n---\n`;
+          messages.push(pendingRestoreMessage);
+        }
+      } catch {
+        // Restore is advisory: never break session start on a checkpoint error.
+      }
+    }
 
     // Check for updates (non-blocking)
-    // Read version from OMQ's own package.json, not the project's (fixes #516)
+    // Read version from OMC's own package.json, not the project's (fixes #516)
     let currentVersion = null;
     for (let i = 1; i <= 4; i++) {
       const candidate = join(__dirname, ...Array(i).fill('..'), 'package.json');
       const pkg = readJsonFile(candidate);
-      if (pkg?.name === 'oh-my-qoder' && pkg?.version) {
+      if ((pkg?.name === 'oh-my-claude-sisyphus' || pkg?.name === 'oh-my-claudecode') && pkg?.version) {
         currentVersion = pkg.version;
         break;
       }
@@ -527,14 +580,14 @@ async function main() {
     // Template-version drift check: warn once per session if installed templates differ from plugin
     if (currentVersion) {
       try {
-        const omcRoot = await resolveOmqStateRoot(directory);
+        const omcRoot = await resolveOmcStateRoot(directory);
         const stampPath = join(omcRoot, 'template-version.json');
         const driftMarkerPath = join(omcRoot, 'state', `drift-warned-${sessionId || 'nosession'}.json`);
         if (existsSync(stampPath) && !existsSync(driftMarkerPath)) {
           const stamp = readJsonFile(stampPath);
           if (stamp?.version && stamp.version !== currentVersion) {
             process.stderr.write(
-              `[omc] template version drift: installed=${stamp.version}, plugin=${currentVersion} — run /oh-my-qoder:omc-setup to refresh\n`
+              `[omc] template version drift: installed=${stamp.version}, plugin=${currentVersion} — run /oh-my-claudecode:omc-setup to refresh\n`
             );
             mkdirSync(join(driftMarkerPath, '..'), { recursive: true });
             writeFileSync(driftMarkerPath, JSON.stringify({ warnedAt: new Date().toISOString() }));
@@ -545,7 +598,7 @@ async function main() {
 
     const updateInfo = currentVersion ? await checkForUpdates(currentVersion) : null;
     if (updateInfo) {
-      const configPath = join(getQoderConfigDir(), '.omq-config.json');
+      const configPath = join(getClaudeConfigDir(), '.omq-config.json');
       const omcConfig = readJsonFile(configPath) || {};
       userMessages.push(formatUpdateNoticeForUser(updateInfo, {
         autoUpgradePrompt: omcConfig.autoUpgradePrompt !== false,
@@ -583,12 +636,12 @@ Continue working in ultrawork mode until all tasks are complete.
     }
 
     // Check for incomplete todos (project-local only, not global
-    // [$QODER_CONFIG_DIR|~/.qoder]/todos/)
+    // [$CLAUDE_CONFIG_DIR|~/.claude]/todos/)
     // NOTE: We intentionally do NOT scan the global
-    // [$QODER_CONFIG_DIR|~/.qoder]/todos/ directory.
+    // [$CLAUDE_CONFIG_DIR|~/.claude]/todos/ directory.
     // That directory accumulates todo files from ALL past sessions across all
     // projects, causing phantom task counts in fresh sessions (see issue #354).
-    const omcRootForTodos = await resolveOmqStateRoot(directory);
+    const omcRootForTodos = await resolveOmcStateRoot(directory);
     const localTodoPaths = [
       join(omcRootForTodos, 'todos.json'),
       join(directory, '.claude', 'todos.json')
@@ -658,6 +711,62 @@ ${agentsContent}
       }
     }
 
+    let additionalContext = '';
+    if (pendingRestore && pendingRestoreMessage) {
+      additionalContext = buildSessionStartAdditionalContext(messages);
+      if (additionalContext.includes(pendingRestoreMessage)) {
+        let markerStatus = null;
+        const waitCell = new Int32Array(new SharedArrayBuffer(4));
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          const status = pendingRestore.claimPreCompactCheckpointRestore(
+            pendingRestore.restoreRoot,
+            sessionId,
+            pendingRestore.path,
+            pendingRestore.created_at,
+            pendingRestore.mtime_ms,
+            pendingRestore.checkpoint_sha256,
+          );
+          if (status === 'written') {
+            markerStatus = status;
+            break;
+          }
+          if (status !== 'contended') break;
+          Atomics.wait(waitCell, 0, 0, 10);
+          const refreshed = pendingRestore.preparePreCompactCheckpointRestore(
+            pendingRestore.restoreRoot,
+            sessionId,
+          );
+          if (!refreshed) break;
+          const refreshedMessage = `<session-restore>\n\n${refreshed.text}\n\n</session-restore>\n\n---\n`;
+          const refreshedMessages = messages.map((message) => (
+            message === pendingRestoreMessage ? refreshedMessage : message
+          ));
+          const refreshedContext = buildSessionStartAdditionalContext(refreshedMessages);
+          if (!refreshedContext.includes(refreshedMessage)) break;
+          pendingRestore = {
+            ...refreshed,
+            restoreRoot: pendingRestore.restoreRoot,
+            preparePreCompactCheckpointRestore: pendingRestore.preparePreCompactCheckpointRestore,
+            claimPreCompactCheckpointRestore: pendingRestore.claimPreCompactCheckpointRestore,
+          };
+          pendingRestoreMessage = refreshedMessage;
+          messages = refreshedMessages;
+          additionalContext = refreshedContext;
+        }
+        if (!markerStatus) {
+          messages = messages.filter((message) => message !== pendingRestoreMessage);
+          additionalContext = buildSessionStartAdditionalContext(messages);
+        }
+      } else {
+        // The complete restore sentinel did not fit the aggregate budget;
+        // do not commit a replay marker for context that was not delivered.
+        messages = messages.filter((message) => message !== pendingRestoreMessage);
+        additionalContext = buildSessionStartAdditionalContext(messages);
+      }
+    } else if (messages.length > 0) {
+      additionalContext = buildSessionStartAdditionalContext(messages);
+    }
+
     if (messages.length > 0 || userMessages.length > 0) {
       const output = {
         continue: true,
@@ -668,7 +777,7 @@ ${agentsContent}
       if (messages.length > 0) {
         output.hookSpecificOutput = {
           hookEventName: 'SessionStart',
-          additionalContext: buildSessionStartAdditionalContext(messages)
+          additionalContext,
         };
       }
       console.log(JSON.stringify(output));

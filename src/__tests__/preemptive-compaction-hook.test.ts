@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -11,7 +11,7 @@ const HOOKS_PATH = join(process.cwd(), 'hooks', 'hooks.json');
 const tempDirs: string[] = [];
 
 function makeTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'omq-preemptive-hook-'));
+  const dir = mkdtempSync(join(tmpdir(), 'omc-preemptive-hook-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -56,6 +56,24 @@ function writeTranscriptWithoutContextWindow(
   );
   return transcriptPath;
 }
+function writeHudCache(dir: string, sessionId: string, usedPercentage: number): string {
+  const cacheDir = join(dir, '.omq', 'state', 'sessions', sessionId);
+  mkdirSync(cacheDir, { recursive: true });
+  const cachePath = join(cacheDir, 'hud-stdin-cache.json');
+  writeFileSync(cachePath, JSON.stringify({
+    cwd: dir,
+    context_window: {
+      used_percentage: usedPercentage,
+      context_window_size: 1000,
+      current_usage: {
+        input_tokens: 10,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+      },
+    },
+  }), 'utf-8');
+  return cachePath;
+}
 
 function runPostToolVerifier(
   input: Record<string, unknown>,
@@ -92,18 +110,18 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
     );
 
     expect(commands).not.toContain(
-      'node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/preemptive-compaction.mjs',
+      'node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/preemptive-compaction.mjs',
     );
     expect(
       commands.some(
         command =>
-          command.includes('"$QODER_PLUGIN_ROOT"/scripts/run.cjs') &&
-          command.includes('"$QODER_PLUGIN_ROOT"/scripts/post-tool-verifier.mjs'),
+          command.includes('"$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs') &&
+          command.includes('"$CLAUDE_PLUGIN_ROOT"/scripts/post-tool-verifier.mjs'),
       ),
     ).toBe(true);
     expect(
       commands.some(command =>
-        command.includes('"$QODER_PLUGIN_ROOT"/scripts/preemptive-compaction.mjs'),
+        command.includes('"$CLAUDE_PLUGIN_ROOT"/scripts/preemptive-compaction.mjs'),
       ),
     ).toBe(false);
   });
@@ -132,7 +150,7 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
       hookSpecificOutput: {
         hookEventName: 'PostToolUse',
         additionalContext:
-          '[OMQ WARNING] Context at 72% (warning threshold: 70%). Plan a /compact soon to preserve room for the next large tool output.',
+          '[OMC WARNING] Context at 72% (warning threshold: 70%). Plan a /compact soon to preserve room for the next large tool output.',
       },
     });
   });
@@ -248,7 +266,7 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
       hookSpecificOutput: {
         hookEventName: 'PostToolUse',
         additionalContext:
-          '[OMQ CRITICAL] Context at 91% (critical threshold: 90%). Run /compact now before continuing with more tools or agent fan-out.',
+          '[OMC CRITICAL] Context at 91% (critical threshold: 90%). Run /compact now before continuing with more tools or agent fan-out.',
       },
     });
   });
@@ -280,7 +298,7 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
       hookSpecificOutput: {
         hookEventName: 'PostToolUse',
         additionalContext:
-          '[OMQ WARNING] Context at 72% (warning threshold: 70%). Plan a /compact soon to preserve room for the next large tool output.',
+          '[OMC WARNING] Context at 72% (warning threshold: 70%). Plan a /compact soon to preserve room for the next large tool output.',
       },
     });
   });
@@ -317,7 +335,39 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
       hookSpecificOutput: {
         hookEventName: 'PostToolUse',
         additionalContext:
-          '[OMQ WARNING] Context at 72% (warning threshold: 70%). Plan a /compact soon to preserve room for the next large tool output.',
+          '[OMC WARNING] Context at 72% (warning threshold: 70%). Plan a /compact soon to preserve room for the next large tool output.',
+      },
+    });
+  });
+
+  it('warns from HUD cache when transcript and hook payload omit context_window', () => {
+    const dir = makeTempDir();
+    const sessionId = `preemptive-hud-cache-${Date.now()}`;
+    const transcriptPath = writeTranscriptWithoutContextWindow(dir, 10);
+    writeHudCache(dir, sessionId, 72);
+
+    const result = runPostToolVerifier(
+      {
+        cwd: dir,
+        transcript_path: transcriptPath,
+        tool_name: 'Read',
+        session_id: sessionId,
+        tool_response: 'read output',
+      },
+      {
+        CLAUDE_PLUGIN_ROOT: process.cwd(),
+        OMQ_QUIET: '2',
+        OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT: '70',
+        OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT: '90',
+      },
+    );
+
+    expect(result).toEqual({
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+        additionalContext:
+          '[OMC WARNING] Context at 72% (warning threshold: 70%). Plan a /compact soon to preserve room for the next large tool output.',
       },
     });
   });

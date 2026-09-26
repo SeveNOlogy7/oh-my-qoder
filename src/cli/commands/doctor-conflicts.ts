@@ -3,10 +3,11 @@
  * Scans for and reports plugin coexistence issues.
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'fs';
 import { basename, dirname, join } from 'path';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
-import { isOmqHook } from '../../installer/index.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
+import { isOmcHook } from '../../installer/index.js';
+import { analyzeLegacyClaudeMd, decodeClaudeMdUtf8 } from '../../installer/claude-md-analysis.js';
 import { colors } from '../utils/formatting.js';
 import { getSkillsDir, listBuiltinSkillNames } from '../../features/builtin-skills/skills.js';
 import { inspectUnifiedMcpRegistrySync } from '../../installer/mcp-registry.js';
@@ -24,10 +25,19 @@ export interface WorkspaceMarkerStatus {
 }
 
 export interface ConflictReport {
-  hookConflicts: { event: string; command: string; isOmq: boolean }[];
-  claudeMdStatus: { hasMarkers: boolean; hasUserContent: boolean; path: string; companionFile?: string } | null;
+  hookConflicts: { event: string; command: string; isOmc: boolean }[];
+  claudeMdStatus: {
+    hasMarkers: boolean;
+    hasUserContent: boolean;
+    path: string;
+    companionFile?: string;
+    files: ClaudeMdFileStatus[];
+    dirtyFiles: string[];
+    exactLegacyPaths: string[];
+    manualReviewPaths: string[];
+  } | null;
   legacySkills: { name: string; path: string }[];
-  envFlags: { disableOmq: boolean; skipHooks: string[] };
+  envFlags: { disableOmc: boolean; skipHooks: string[] };
   configIssues: { unknownFields: string[] };
   windowsUnsafePluginHooks: { pluginRoot: string; event: string; command: string }[];
   mcpRegistrySync: ReturnType<typeof inspectUnifiedMcpRegistrySync>;
@@ -35,6 +45,14 @@ export interface ConflictReport {
   hasConflicts: boolean;
 }
 
+export interface ClaudeMdFileStatus {
+  path: string;
+  hasMarkers: boolean;
+  hasUserContent: boolean;
+  markerState: 'none' | 'complete' | 'corrupt' | 'symlink' | 'unreadable' | 'invalid-utf8';
+  exactLegacy: boolean;
+  manualReview: boolean;
+}
 /**
  * Collect hook entries from a single settings.json file.
  */
@@ -66,7 +84,7 @@ function collectHooksFromSettings(settingsPath: string): ConflictReport['hookCon
           if (!group.hooks || !Array.isArray(group.hooks)) continue;
           for (const hook of group.hooks) {
             if (hook.type === 'command' && hook.command) {
-              conflicts.push({ event, command: hook.command, isOmq: isOmqHook(hook.command) });
+              conflicts.push({ event, command: hook.command, isOmc: isOmcHook(hook.command) });
             }
           }
         }
@@ -80,14 +98,14 @@ function collectHooksFromSettings(settingsPath: string): ConflictReport['hookCon
 }
 
 /**
- * Check for hook conflicts in both profile-level (~/.qoder/settings.json)
- * and project-level (./.qoder/settings.json).
+ * Check for hook conflicts in both profile-level (~/.claude/settings.json)
+ * and project-level (./.claude/settings.json).
  *
- * Qoder CLI settings precedence: project > profile > defaults.
+ * Claude Code settings precedence: project > profile > defaults.
  * We check both levels so the diagnostic is complete.
  */
 export function checkHookConflicts(): ConflictReport['hookConflicts'] {
-  const profileSettingsPath = join(getQoderConfigDir(), 'settings.json');
+  const profileSettingsPath = join(getClaudeConfigDir(), 'settings.json');
   const projectSettingsPath = join(process.cwd(), '.claude', 'settings.json');
 
   const profileHooks = collectHooksFromSettings(profileSettingsPath);
@@ -124,7 +142,7 @@ export function checkWindowsUnsafePluginHooks(): ConflictReport['windowsUnsafePl
     return [];
   }
 
-  const roots = [process.env.QODER_PLUGIN_ROOT, ...readInstalledPluginRoots()]
+  const roots = [process.env.CLAUDE_PLUGIN_ROOT, ...readInstalledPluginRoots()]
     .filter((root): root is string => typeof root === 'string' && root.length > 0);
   const seenRoots = new Set<string>();
   const unsafe: ConflictReport['windowsUnsafePluginHooks'] = [];
@@ -159,128 +177,176 @@ export function checkWindowsUnsafePluginHooks(): ConflictReport['windowsUnsafePl
   return unsafe;
 }
 
-/**
- * Check a single file for OMQ markers.
- * Returns { hasMarkers, hasUserContent } or null on error.
- */
-function checkFileForOmqMarkers(filePath: string): { hasMarkers: boolean; hasUserContent: boolean } | null {
-  if (!existsSync(filePath)) return null;
-  try {
-    const content = readFileSync(filePath, 'utf-8');
-    const hasStartMarker = content.includes('<!-- OMQ:START -->');
-    const hasEndMarker = content.includes('<!-- OMQ:END -->');
-    const hasMarkers = hasStartMarker && hasEndMarker;
+interface ClaudeMdReadResult {
+  status: ClaudeMdFileStatus;
+  references: string[];
+}
 
-    let hasUserContent = false;
-    if (hasMarkers) {
-      const startIdx = content.indexOf('<!-- OMQ:START -->');
-      const endIdx = content.indexOf('<!-- OMQ:END -->');
-      const beforeMarker = content.substring(0, startIdx).trim();
-      const afterMarker = content.substring(endIdx + '<!-- OMQ:END -->'.length).trim();
-      hasUserContent = beforeMarker.length > 0 || afterMarker.length > 0;
-    } else {
-      hasUserContent = content.trim().length > 0;
+function hasOutsideUserContent(
+  content: string,
+  outsideRanges: readonly { start: number; end: number }[],
+  excludedRanges: readonly { start: number; end: number }[] = [],
+): boolean {
+  for (const outside of outsideRanges) {
+    let remaining = [outside];
+    for (const excluded of excludedRanges) {
+      const next: { start: number; end: number }[] = [];
+      for (const range of remaining) {
+        if (excluded.end <= range.start || excluded.start >= range.end) {
+          next.push(range);
+          continue;
+        }
+        if (range.start < excluded.start) next.push({ start: range.start, end: excluded.start });
+        if (excluded.end < range.end) next.push({ start: excluded.end, end: range.end });
+      }
+      remaining = next;
     }
-    return { hasMarkers, hasUserContent };
+    if (remaining.some(range => content.slice(range.start, range.end).trim().length > 0)) return true;
+  }
+  return false;
+}
+
+function directClaudeMdReferences(content: string, configDir: string): string[] {
+  const references = new Set<string>();
+  for (const line of content.split(/\r?\n/)) {
+    if (/^@CLAUDE-[A-Za-z0-9][A-Za-z0-9_-]*\.md$/i.test(line)) {
+      references.add(join(configDir, line.slice(1)));
+    }
+  }
+  return [...references].sort();
+}
+function pathExistsWithoutFollowingSymlinks(filePath: string): boolean {
+  try {
+    lstatSync(filePath);
+    return true;
   } catch {
-    return null;
+    return false;
   }
 }
 
-/**
- * Find companion AGENTS-*.md files in the config directory.
- * These are files like AGENTS-omq.md that users create as part of a
- * file-split pattern to keep OMQ config separate from their own AGENTS.md.
- */
-function findCompanionClaudeMdFiles(configDir: string): string[] {
+
+function inspectClaudeMdFile(filePath: string, configDir: string, isMain: boolean): ClaudeMdReadResult {
+  let stats;
+  try {
+    stats = lstatSync(filePath);
+  } catch {
+    return {
+      status: { path: filePath, hasMarkers: false, hasUserContent: false, markerState: 'unreadable', exactLegacy: false, manualReview: false },
+      references: []
+    };
+  }
+  if (stats.isSymbolicLink()) {
+    return {
+      status: { path: filePath, hasMarkers: false, hasUserContent: false, markerState: 'symlink', exactLegacy: false, manualReview: false },
+      references: []
+    };
+  }
+  if (!stats.isFile()) {
+    return {
+      status: { path: filePath, hasMarkers: false, hasUserContent: false, markerState: 'unreadable', exactLegacy: false, manualReview: false },
+      references: []
+    };
+  }
+
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(filePath);
+  } catch {
+    return {
+      status: { path: filePath, hasMarkers: false, hasUserContent: false, markerState: 'unreadable', exactLegacy: false, manualReview: false },
+      references: []
+    };
+  }
+
+  let content: string;
+  try {
+    content = decodeClaudeMdUtf8(bytes, filePath);
+  } catch {
+    return {
+      status: { path: filePath, hasMarkers: false, hasUserContent: false, markerState: 'invalid-utf8', exactLegacy: false, manualReview: false },
+      references: []
+    };
+  }
+
+  const analysis = analyzeLegacyClaudeMd(content);
+  const corrupt = analysis.markers.state === 'corrupt';
+  return {
+    status: {
+      path: filePath,
+      hasMarkers: analysis.markers.state === 'complete',
+      hasUserContent: corrupt
+        ? content.trim().length > 0
+        : hasOutsideUserContent(content, analysis.markers.outsideRanges, analysis.exactMatches),
+      markerState: analysis.markers.state,
+      exactLegacy: analysis.exactMatches.length > 0,
+      manualReview: corrupt || analysis.manualFindings.length > 0
+    },
+    references: isMain ? directClaudeMdReferences(content, configDir) : []
+  };
+}
+
+function genericClaudeMdFiles(configDir: string): string[] {
   try {
     return readdirSync(configDir)
-      .filter(f => /^AGENTS-.+\.md$/i.test(f))
-      .map(f => join(configDir, f));
+      .filter(name => /^CLAUDE-.+\.md$/i.test(name) && name.toLowerCase() !== 'claude-omc.md')
+      .sort()
+      .map(name => join(configDir, name));
   } catch {
     return [];
   }
 }
 
-/**
- * Check AGENTS.md for OMQ markers and user content.
- * Also checks companion files (AGENTS-omq.md, etc.) for the file-split pattern
- * where users keep OMQ config in a separate file.
- */
+/** Analyze main and companion CLAUDE files without following symlinks. */
 export function checkClaudeMdStatus(): ConflictReport['claudeMdStatus'] {
-  const configDir = getQoderConfigDir();
-  const claudeMdPath = join(configDir, 'AGENTS.md');
+  const configDir = getClaudeConfigDir();
+  const claudeMdPath = join(configDir, 'CLAUDE.md');
+  const activePath = join(configDir, 'CLAUDE-omc.md');
+  const genericPaths = genericClaudeMdFiles(configDir);
+  const mainExists = pathExistsWithoutFollowingSymlinks(claudeMdPath);
+  if (!mainExists && !pathExistsWithoutFollowingSymlinks(activePath) && genericPaths.length === 0) return null;
 
-  if (!existsSync(claudeMdPath)) {
-    return null;
+  const main = mainExists ? inspectClaudeMdFile(claudeMdPath, configDir, true) : null;
+  const candidatePaths: string[] = [...(mainExists ? [claudeMdPath] : []), activePath, ...(main?.references ?? []), ...genericPaths];
+  const seen = new Set<string>();
+  const files: ClaudeMdFileStatus[] = [];
+  for (const filePath of candidatePaths) {
+    if (seen.has(filePath)) continue;
+    seen.add(filePath);
+    if (filePath !== claudeMdPath && !pathExistsWithoutFollowingSymlinks(filePath)) continue;
+    files.push(filePath === claudeMdPath ? main!.status : inspectClaudeMdFile(filePath, configDir, false).status);
   }
 
-  try {
-    // Check the main AGENTS.md first
-    const mainResult = checkFileForOmqMarkers(claudeMdPath);
-    if (!mainResult) return null;
-
-    if (mainResult.hasMarkers) {
-      return {
-        hasMarkers: true,
-        hasUserContent: mainResult.hasUserContent,
-        path: claudeMdPath
-      };
-    }
-
-    // No markers in main file - check companion files (file-split pattern)
-    const companions = findCompanionClaudeMdFiles(configDir);
-    for (const companionPath of companions) {
-      const companionResult = checkFileForOmqMarkers(companionPath);
-      if (companionResult?.hasMarkers) {
-        return {
-          hasMarkers: true,
-          hasUserContent: mainResult.hasUserContent,
-          path: claudeMdPath,
-          companionFile: companionPath
-        };
-      }
-    }
-
-    // No markers in main or companions - check if AGENTS.md references a companion
-    const content = readFileSync(claudeMdPath, 'utf-8');
-    const companionRefPattern = /AGENTS-[^\s)]+\.md/i;
-    const refMatch = content.match(companionRefPattern);
-    if (refMatch) {
-      // AGENTS.md references a companion file but it doesn't have markers yet
-      return {
-        hasMarkers: false,
-        hasUserContent: mainResult.hasUserContent,
-        path: claudeMdPath,
-        companionFile: join(configDir, refMatch[0])
-      };
-    }
-
-    return {
-      hasMarkers: false,
-      hasUserContent: mainResult.hasUserContent,
-      path: claudeMdPath
-    };
-  } catch (_error) {
-    return null;
-  }
+  const markerFile = files.find(file => file.hasMarkers);
+  const companionFile = markerFile
+    ? markerFile.path === claudeMdPath ? undefined : markerFile.path
+    : main?.references[0];
+  return {
+    hasMarkers: markerFile !== undefined,
+    hasUserContent: files.some(file => file.hasUserContent),
+    path: claudeMdPath,
+    companionFile,
+    files,
+    dirtyFiles: files.filter(file => file.hasUserContent).map(file => file.path),
+    exactLegacyPaths: files.filter(file => file.exactLegacy).map(file => file.path),
+    manualReviewPaths: files.filter(file => file.manualReview || file.markerState === 'symlink' || file.markerState === 'unreadable' || file.markerState === 'invalid-utf8').map(file => file.path)
+  };
 }
 
 /**
- * Check environment flags that affect OMQ behavior
+ * Check environment flags that affect OMC behavior
  */
 export function checkEnvFlags(): ConflictReport['envFlags'] {
-  const disableOmq = process.env.DISABLE_OMQ === 'true' || process.env.DISABLE_OMQ === '1';
+  const disableOmc = process.env.DISABLE_OMQ === 'true' || process.env.DISABLE_OMQ === '1';
   const skipHooks: string[] = [];
 
   if (process.env.OMQ_SKIP_HOOKS) {
     skipHooks.push(...process.env.OMQ_SKIP_HOOKS.split(',').map(h => h.trim()));
   }
 
-  return { disableOmq, skipHooks };
+  return { disableOmc, skipHooks };
 }
 
-const SETUP_FALLBACK_SKILL_NAMES = new Set(['omq-reference']);
+const SETUP_FALLBACK_SKILL_NAMES = new Set(['omc-reference']);
 
 function parseSemverLikeVersion(version: string): number[] | null {
   if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
@@ -312,7 +378,7 @@ function isValidSetupPluginRoot(pluginRoot: string): boolean {
 }
 
 function readInstalledPluginRoots(): string[] {
-  const installedPluginsPath = join(getQoderConfigDir(), 'plugins', 'installed_plugins.json');
+  const installedPluginsPath = join(getClaudeConfigDir(), 'plugins', 'installed_plugins.json');
   if (!existsSync(installedPluginsPath)) {
     return [];
   }
@@ -331,7 +397,7 @@ function readInstalledPluginRoots(): string[] {
       : parsed as Record<string, unknown>;
 
     return Object.entries(plugins)
-      .filter(([key]) => key.startsWith('oh-my-qoder'))
+      .filter(([key]) => key.startsWith('oh-my-claudecode'))
       .flatMap(([, value]) => Array.isArray(value) ? value : [])
       .map(entry => entry && typeof entry === 'object' && 'installPath' in entry
         ? (entry as { installPath?: unknown }).installPath
@@ -364,7 +430,7 @@ function getSetupFallbackCanonicalSkillPaths(baseName: string): string[] {
   const currentPluginRoot = dirname(currentSkillsDir);
   const roots = [
     currentPluginRoot,
-    process.env.QODER_PLUGIN_ROOT,
+    process.env.CLAUDE_PLUGIN_ROOT,
     ...readInstalledPluginRoots(),
   ].filter((root): root is string => typeof root === 'string' && root.length > 0);
 
@@ -394,10 +460,10 @@ function isSupportedSetupFallbackSkill(legacySkillsDir: string, entry: string, b
     return false;
   }
 
-  // scripts/setup-agents-md.sh intentionally syncs the raw bundled
-  // skills/omq-reference/SKILL.md file into ~/.qoder/skills/omq-reference/SKILL.md
-  // as a Qoder CLI fallback. Suppress only that exact, unmodified sync so real
-  // legacy collisions and user-edited omq-reference copies still surface.
+  // scripts/setup-claude-md.sh intentionally syncs the raw bundled
+  // skills/omc-reference/SKILL.md file into ~/.claude/skills/omc-reference/SKILL.md
+  // as a Claude CLI fallback. Suppress only that exact, unmodified sync so real
+  // legacy collisions and user-edited omc-reference copies still surface.
   if (entry.toLowerCase() !== baseName) {
     return false;
   }
@@ -424,7 +490,7 @@ function isSupportedSetupFallbackSkill(legacySkillsDir: string, entry: string, b
  * false positives for user's custom skills.
  */
 export function checkLegacySkills(): ConflictReport['legacySkills'] {
-  const legacySkillsDir = join(getQoderConfigDir(), 'skills');
+  const legacySkillsDir = join(getClaudeConfigDir(), 'skills');
   if (!existsSync(legacySkillsDir)) return [];
 
   const collisions: ConflictReport['legacySkills'] = [];
@@ -454,7 +520,7 @@ export function checkLegacySkills(): ConflictReport['legacySkills'] {
  */
 export function checkConfigIssues(): ConflictReport['configIssues'] {
   const unknownFields: string[] = [];
-  const configPath = join(getQoderConfigDir(), '.omq-config.json');
+  const configPath = join(getClaudeConfigDir(), '.omq-config.json');
 
   if (!existsSync(configPath)) {
     return { unknownFields };
@@ -465,9 +531,9 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
 
     // Known top-level fields from the current config surfaces:
     // - PluginConfig (src/shared/types.ts)
-    // - OMQConfig (src/features/auto-update.ts)
+    // - OMCConfig (src/features/auto-update.ts)
     // - direct .omq-config.json readers/writers (notifications, auto-invoke,
-    //   delegation enforcement, omq-setup team config)
+    //   delegation enforcement, omc-setup team config)
     // - preserved legacy compatibility keys that still appear in user configs
     const knownFields = new Set([
       // PluginConfig fields
@@ -477,7 +543,7 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
       'permissions',
       'magicKeywords',
       'routing',
-      // OMQConfig fields (from auto-update.ts / omq-setup)
+      // OMCConfig fields (from auto-update.ts / omc-setup)
       'silentAutoUpdate',
       'configuredAt',
       'configVersion',
@@ -494,7 +560,7 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
       'hudEnabled',
       'autoUpgradePrompt',
       'nodeBinary',
-      // Direct config readers / writers outside OMQConfig
+      // Direct config readers / writers outside OMCConfig
       'customIntegrations',
       'delegationEnforcementLevel',
       'enforcementLevel',
@@ -549,17 +615,18 @@ export function runConflictCheck(): ConflictReport {
 
   // Determine if there are actual conflicts
   const hasConflicts =
-    hookConflicts.some(h => !h.isOmq) || // Non-OMQ hooks present
+    hookConflicts.some(h => !h.isOmc) || // Non-OMC hooks present
     legacySkills.length > 0 || // Legacy skills colliding with plugin
-    envFlags.disableOmq || // OMQ is disabled
+    envFlags.disableOmc || // OMC is disabled
     envFlags.skipHooks.length > 0 || // Hooks are being skipped
     configIssues.unknownFields.length > 0 || // Unknown config fields
     windowsUnsafePluginHooks.length > 0 || // Stale plugin hooks still use sh/find-node on Windows
     mcpRegistrySync.claudeMissing.length > 0 ||
     mcpRegistrySync.claudeMismatched.length > 0 ||
     mcpRegistrySync.codexMissing.length > 0 ||
-    mcpRegistrySync.codexMismatched.length > 0;
-    // Note: Missing OMQ markers is informational (normal for fresh install), not a conflict
+    mcpRegistrySync.codexMismatched.length > 0 ||
+    (claudeMdStatus !== null && (claudeMdStatus.exactLegacyPaths.length > 0 || claudeMdStatus.manualReviewPaths.length > 0));
+    // Note: Missing OMC markers is informational (normal for fresh install), not a conflict
     // Note: workspaceMarker.precedenceConflict is a WARN, not a hard conflict
 
   return {
@@ -587,7 +654,7 @@ export function formatReport(report: ConflictReport, json: boolean): string {
   const lines: string[] = [];
 
   lines.push('');
-  lines.push(colors.bold('🔍 Oh-My-Qoder Conflict Diagnostic'));
+  lines.push(colors.bold('🔍 Oh-My-ClaudeCode Conflict Diagnostic'));
   lines.push(colors.gray('━'.repeat(60)));
   lines.push('');
 
@@ -596,7 +663,7 @@ export function formatReport(report: ConflictReport, json: boolean): string {
     lines.push(colors.bold('📌 Hook Configuration'));
     lines.push('');
     for (const hook of report.hookConflicts) {
-      const status = hook.isOmq ? colors.green('✓ OMQ') : colors.yellow('⚠ Other');
+      const status = hook.isOmc ? colors.green('✓ OMC') : colors.yellow('⚠ Other');
       lines.push(`  ${hook.event.padEnd(20)} ${status}`);
       lines.push(`    ${colors.gray(hook.command)}`);
     }
@@ -607,41 +674,49 @@ export function formatReport(report: ConflictReport, json: boolean): string {
     lines.push('');
   }
 
-  // AGENTS.md status
+  // CLAUDE.md status
   if (report.claudeMdStatus) {
-    lines.push(colors.bold('📄 AGENTS.md Status'));
+    lines.push(colors.bold('📄 CLAUDE.md Status'));
     lines.push('');
 
     if (report.claudeMdStatus.hasMarkers) {
       if (report.claudeMdStatus.companionFile) {
-        lines.push(`  ${colors.green('✓')} OMQ markers found in companion file`);
+        lines.push(`  ${colors.green('✓')} OMC markers found in companion file`);
         lines.push(`    ${colors.gray(`Companion: ${report.claudeMdStatus.companionFile}`)}`);
       } else {
-        lines.push(`  ${colors.green('✓')} OMQ markers present`);
+        lines.push(`  ${colors.green('✓')} OMC markers present`);
       }
-      if (report.claudeMdStatus.hasUserContent) {
-        lines.push(`  ${colors.green('✓')} User content preserved outside markers`);
+      if (report.claudeMdStatus.dirtyFiles.length > 0) {
+        lines.push(`  ${colors.green('✓')} User content outside managed ranges: ${report.claudeMdStatus.dirtyFiles.join(', ')}`);
       }
     } else {
-      lines.push(`  ${colors.yellow('⚠')} No OMQ markers found`);
-      lines.push(`    ${colors.gray('Run /oh-my-qoder:omq-setup to add markers')}`);
-      if (report.claudeMdStatus.hasUserContent) {
-        lines.push(`  ${colors.blue('ℹ')} User content present - will be preserved`);
+      lines.push(`  ${colors.yellow('⚠')} No OMC markers found`);
+      lines.push(`    ${colors.gray('Run /oh-my-claudecode:omc-setup to add markers to the selected guide')}`);
+      if (report.claudeMdStatus.dirtyFiles.length > 0) {
+        lines.push(`  ${colors.blue('ℹ')} User content present: ${report.claudeMdStatus.dirtyFiles.join(', ')}`);
       }
     }
     lines.push(`  ${colors.gray(`Path: ${report.claudeMdStatus.path}`)}`);
+    if (report.claudeMdStatus.exactLegacyPaths.length > 0) {
+      lines.push(`  ${colors.yellow('⚠')} Exact legacy guide content: ${report.claudeMdStatus.exactLegacyPaths.join(', ')}`);
+      lines.push(`    ${colors.gray('Run /oh-my-claudecode:omc-setup for coordinator-backed cleanup with a verified backup.')}`);
+    }
+    if (report.claudeMdStatus.manualReviewPaths.length > 0) {
+      lines.push(`  ${colors.yellow('⚠')} Inspection-only review required: ${report.claudeMdStatus.manualReviewPaths.join(', ')}`);
+      lines.push(`    ${colors.gray('Manual, corrupt, symlinked, unreadable, or invalid UTF-8 files are never deleted automatically.')}`);
+    }
     lines.push('');
   } else {
-    lines.push(colors.bold('📄 AGENTS.md Status'));
-    lines.push(`  ${colors.gray('No AGENTS.md found')}`);
+    lines.push(colors.bold('📄 CLAUDE.md Status'));
+    lines.push(`  ${colors.gray('No CLAUDE.md found')}`);
     lines.push('');
   }
 
   // Environment flags
   lines.push(colors.bold('🔧 Environment Flags'));
   lines.push('');
-  if (report.envFlags.disableOmq) {
-    lines.push(`  ${colors.red('✗')} DISABLE_OMQ is set - OMQ is disabled`);
+  if (report.envFlags.disableOmc) {
+    lines.push(`  ${colors.red('✗')} DISABLE_OMQ is set - OMC is disabled`);
   } else {
     lines.push(`  ${colors.green('✓')} DISABLE_OMQ not set`);
   }
@@ -674,7 +749,7 @@ export function formatReport(report: ConflictReport, json: boolean): string {
       lines.push(`    - ${hook.event} ${colors.gray(`(${hook.pluginRoot})`)}`);
       lines.push(`      ${colors.gray(hook.command)}`);
     }
-    lines.push(`    ${colors.gray('Run /oh-my-qoder:omq-setup or update/reinstall the plugin to rewrite hooks to direct node run.cjs commands.')}`);
+    lines.push(`    ${colors.gray('Run /oh-my-claudecode:omc-setup or update/reinstall the plugin to rewrite hooks to direct node run.cjs commands.')}`);
     lines.push('');
   }
 
@@ -748,10 +823,10 @@ export function formatReport(report: ConflictReport, json: boolean): string {
   lines.push(colors.gray('━'.repeat(60)));
   if (report.hasConflicts) {
     lines.push(`${colors.yellow('⚠')} Potential conflicts detected`);
-    lines.push(`${colors.gray('Review the issues above and run /oh-my-qoder:omq-setup if needed')}`);
+    lines.push(`${colors.gray('Review the issues above and run /oh-my-claudecode:omc-setup if needed')}`);
   } else {
     lines.push(`${colors.green('✓')} No conflicts detected`);
-    lines.push(`${colors.gray('OMQ is properly configured')}`);
+    lines.push(`${colors.gray('OMC is properly configured')}`);
   }
   lines.push('');
 

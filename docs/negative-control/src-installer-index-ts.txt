@@ -1,0 +1,137 @@
+# Negative Control Carrier: src-installer-index-ts
+
+- **Lane**: src-installer-index-ts
+- **Fix commit**: b11884d
+- **Patched file**: src/installer/index.ts
+- **Named observation**: src/installer/__tests__/hud-wrapper-env.test.ts
+- **Verified observation**: src/__tests__/patch-layer-guards.test.ts
+- **Description**: fix(config): resolve the Qoder CN and international config roots -- reverting src/installer/index.ts should turn src/installer/__tests__/hud-wrapper-env.test.ts RED (observation found by rule "reference").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/installer/__tests__/hud-wrapper-env.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/plugin-dir-mode-e2e.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/plugin-dir-mode.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/auto-update.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/auto-upgrade-prompt.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/conflict-ledger.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-hooks-merge.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-hud-skip.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-mcp-config.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-omc-reference.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-plugin-agents.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer-version-guard.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/installer.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/patch-layer-guards.test.ts` | 0 | 1 | RED after revert |
+| `src/__tests__/plugin-skill-budget.test.ts` | 0 | 0 | still GREEN |
+| `src/cli/__tests__/setup-command-precedence.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+ynced = syncPersistedSetupVersion({
++         version: options.version ?? VERSION,
++         onlyIfConfigured: true,
++       });
++       if (setupVersionSynced) {
++         log('Updated persisted setupVersion');
++       }
++     } catch (error) {
++       const message = error instanceof Error ? error.message : String(error);
++       log(`  Warning: Could not refresh setupVersion metadata (non-fatal): ${message}`);
++     }
++
++     result.success = true;
++     result.message = `Successfully installed ${result.installedAgents.length} agents, ${result.installedCommands.length} commands, ${result.installedSkills.length} skills`; 
++
++   } catch (error) {
++     const errorMessage = error instanceof Error ? error.message : String(error);
++     result.errors.push(errorMessage);
++     result.message = `Installation failed: ${errorMessage}`;
++   }
++
++   return result;
++ }
++
++ /**
++  * Check if OMQ is already installed
++  */
++ export function isInstalled(): boolean {
++   return existsSync(VERSION_FILE) && (existsSync(AGENTS_DIR) || hasPluginProvidedAgentFiles());
++ }
++
++ /**
++  * Get installation info
++  */
++ export function getInstallInfo(): { version: string; installedAt: string; method: string } | null {
++   if (!existsSync(VERSION_FILE)) {
++     return null;
++   }
++   try {
++     const content = readFileSync(VERSION_FILE, 'utf-8');
++     const data = JSON.parse(content);
++     return {
++       version: data.version,
++       installedAt: data.installedAt,
++       method: data.installMethod
++     };
++   } catch {
++     return null;
++   }
++ }
+
+ ❯ src/__tests__/patch-layer-guards.test.ts:63:20
+     61|     // row for src/installer/index.ts (it searches for "installer/inde…
+     62|     const source = readFileSync(join(repoRoot, 'src/installer/index.ts…
+     63|     expect(source).toContain('getDefaultConfigDirShellPath(');
+       |                    ^
+     64|     expect(source).not.toMatch(/QODER_CONFIG_DIR:-\$HOME\/\.qoder\}/);
+     65|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+ILE) && (existsSync(AGENTS_DIR) || hasPluginProvidedAgentFiles());
++ }
++
++ /**
++  * Get installation info
++  */
++ export function getInstallInfo(): { version: string; installedAt: string; method: string } | null {
++   if (!existsSync(VERSION_FILE)) {
++     return null;
++   }
++   try {
++     const content = readFileSync(VERSION_FILE, 'utf-8');
++     const data = JSON.parse(content);
++     return {
++       version: data.version,
++       installedAt: data.installedAt,
++       method: data.installMethod
++     };
++   } catch {
++     return null;
++   }
++ }
+
+ ❯ src/__tests__/patch-layer-guards.test.ts:63:20
+     61|     // row for src/installer/index.ts (it searches for "installer/inde…
+     62|     const source = readFileSync(join(repoRoot, 'src/installer/index.ts…
+     63|     expect(source).toContain('getDefaultConfigDirShellPath(');
+       |                    ^
+     64|     expect(source).not.toMatch(/QODER_CONFIG_DIR:-\$HOME\/\.qoder\}/);
+     65|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```

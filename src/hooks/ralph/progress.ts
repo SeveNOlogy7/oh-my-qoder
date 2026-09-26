@@ -509,3 +509,6 @@ export function getProgressContext(directory: string): string {
 
   return [patterns, learnings, recent].filter(Boolean).join('\n');
 }
+
+// Ancestor-spelling alias -> OMQ-branded implementation (resolves .omq paths).
+export const getOmcProgressPath = getOmqProgressPath;

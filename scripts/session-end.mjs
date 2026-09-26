@@ -1,24 +1,22 @@
 #!/usr/bin/env node
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-import { readStdin } from './lib/stdin.mjs';
+import { readSessionEndFrame } from './lib/stdin.mjs';
+import { isMainThread } from 'node:worker_threads';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
-async function main() {
-  // Read stdin with reduced timeout for SessionEnd — the input payload is small
-  // and doesn't need the default 5s wait. This saves ~4s toward the hook timeout (#1700).
-  const input = await readStdin(1000);
+const fallback = { continue: true, suppressOutput: true };
 
-  const fallback = { continue: true, suppressOutput: true };
+export async function runSessionEndHook() {
+  const frame = await readSessionEndFrame();
 
-  if (input.trim().length === 0) {
+  if (frame.status !== 'ok') {
     console.log(JSON.stringify(fallback));
     return;
   }
 
   try {
-    const data = JSON.parse(input);
     const { processSessionEnd } = await import('../dist/hooks/session-end/index.js');
-    const result = await processSessionEnd(data);
+    const result = await processSessionEnd(frame.value);
     console.log(JSON.stringify(result));
   } catch (error) {
     console.error('[session-end] Error:', error.message);
@@ -26,4 +24,4 @@ async function main() {
   }
 }
 
-main();
+if (!isMainThread || (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))) void runSessionEndHook();

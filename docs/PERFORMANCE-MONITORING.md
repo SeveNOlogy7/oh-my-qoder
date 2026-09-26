@@ -1,6 +1,6 @@
 # Performance Monitoring Guide
 
-Comprehensive guide to monitoring, debugging, and optimizing Qoder CLI and oh-my-qoder performance.
+Comprehensive guide to monitoring, debugging, and optimizing Claude Code and oh-my-claudecode performance.
 
 ---
 
@@ -21,7 +21,7 @@ Comprehensive guide to monitoring, debugging, and optimizing Qoder CLI and oh-my
 
 ## Overview
 
-oh-my-qoder provides comprehensive monitoring capabilities for tracking agent performance, token usage, costs, and identifying bottlenecks in multi-agent workflows. This guide covers both built-in tools and external resources for monitoring Claude's performance.
+oh-my-claudecode provides comprehensive monitoring capabilities for tracking agent performance, token usage, costs, and identifying bottlenecks in multi-agent workflows. This guide covers both built-in tools and external resources for monitoring Claude's performance.
 
 ### What You Can Monitor
 
@@ -46,7 +46,7 @@ The Agent Observatory provides real-time visibility into all running agents, the
 The observatory is automatically displayed in the HUD when agents are running. You can also query it programmatically:
 
 ```typescript
-import { getAgentObservatory } from 'oh-my-qoder/hooks/subagent-tracker';
+import { getAgentObservatory } from 'oh-my-claudecode/hooks/subagent-tracker';
 
 const obs = getAgentObservatory(process.cwd());
 console.log(obs.header);  // "Agent Observatory (3 active, 85% efficiency)"
@@ -84,7 +84,7 @@ Agent Observatory (3 active, 85% efficiency)
 
 ### Session-End Summaries
 
-The legacy analytics workflow described in older docs (`omq-analytics`, `omq cost`, `omq backfill`, and the `analytics` HUD preset) is no longer part of current `dev`.
+The legacy analytics workflow described in older docs (`omc-analytics`, `omc cost`, `omc backfill`, and the `analytics` HUD preset) is no longer part of current `dev`.
 
 The supported monitoring surfaces on current builds are:
 
@@ -96,10 +96,7 @@ The supported monitoring surfaces on current builds are:
 #### Supported Inspection Commands
 
 ```bash
-# Inside Qoder CLI, use the HUD skill:
-/oh-my-qoder:hud
-
-# From a shell, inspect replay and session files directly:
+omc hud
 tail -20 .omq/state/agent-replay-*.jsonl
 ls .omq/sessions/*.json
 ```
@@ -110,7 +107,7 @@ Use a supported preset such as `focused` or `full` for agent and context visibil
 
 ```json
 {
-  "omqHud": {
+  "omcHud": {
     "preset": "focused"
   }
 }
@@ -151,7 +148,7 @@ Each line is a JSON event:
 #### Analyzing Replay Data
 
 ```typescript
-import { getReplaySummary } from 'oh-my-qoder/hooks/subagent-tracker/session-replay';
+import { getReplaySummary } from 'oh-my-claudecode/hooks/subagent-tracker/session-replay';
 
 const summary = getReplaySummary(process.cwd(), sessionId);
 
@@ -184,11 +181,11 @@ The replay system automatically identifies bottlenecks:
 
 ### Configuration
 
-Edit `~/.qoder/settings.json`:
+Edit `~/.claude/settings.json`:
 
 ```json
 {
-  "omqHud": {
+  "omcHud": {
     "preset": "focused",
     "elements": {
       "agents": true,
@@ -222,7 +219,7 @@ Edit `~/.qoder/settings.json`:
 3. **Review tool_usage** in agent state
 
 ```typescript
-import { getAgentPerformance } from 'oh-my-qoder/hooks/subagent-tracker';
+import { getAgentPerformance } from 'oh-my-claudecode/hooks/subagent-tracker';
 
 const perf = getAgentPerformance(process.cwd(), agentId);
 console.log('Tool timings:', perf.tool_timings);
@@ -234,7 +231,7 @@ console.log('Bottleneck:', perf.bottleneck);
 When multiple agents modify the same file:
 
 ```typescript
-import { detectFileConflicts } from 'oh-my-qoder/hooks/subagent-tracker';
+import { detectFileConflicts } from 'oh-my-claudecode/hooks/subagent-tracker';
 
 const conflicts = detectFileConflicts(process.cwd());
 conflicts.forEach(c => {
@@ -244,7 +241,7 @@ conflicts.forEach(c => {
 
 ### Intervention System
 
-OMQ automatically detects problematic agents:
+OMC automatically detects problematic agents:
 
 | Intervention | Trigger | Action |
 |--------------|---------|--------|
@@ -253,7 +250,7 @@ OMQ automatically detects problematic agents:
 | `file_conflict` | Multiple agents on file | Warning |
 
 ```typescript
-import { suggestInterventions } from 'oh-my-qoder/hooks/subagent-tracker';
+import { suggestInterventions } from 'oh-my-claudecode/hooks/subagent-tracker';
 
 const interventions = suggestInterventions(process.cwd());
 interventions.forEach(i => {
@@ -266,7 +263,7 @@ interventions.forEach(i => {
 Track how well your parallel agents are performing:
 
 ```typescript
-import { calculateParallelEfficiency } from 'oh-my-qoder/hooks/subagent-tracker';
+import { calculateParallelEfficiency } from 'oh-my-claudecode/hooks/subagent-tracker';
 
 const eff = calculateParallelEfficiency(process.cwd());
 console.log(`Efficiency: ${eff.score}%`);
@@ -277,12 +274,30 @@ console.log(`Active: ${eff.active}, Stale: ${eff.stale}, Total: ${eff.total}`);
 - **<80%**: Some agents stale or waiting
 - **<50%**: Significant parallelization issues
 
+This score is a live activity/health signal. It is not a benchmark of model quality, token cost, latency, or harness overhead.
+
+### Benchmark Efficiency Diagnostic
+
+The TypeScript agent benchmarks under `benchmarks/` report these dimensions separately:
+
+- **Run completion**: whether each agent/fixture run completed or failed.
+- **Scorer quality**: ground-truth-based benchmark scores for completed paired runs.
+- **Token cost proxy**: API-reported input, output, and combined tokens, shown as paired totals and per-fixture means; missing usage is `insufficient`/unavailable, never zero.
+- **API latency**: the retry-inclusive API-call span. It is not pure model compute time.
+- **Harness overhead**: measured non-API processing after the API response, including parsing, ground-truth loading, scoring, matching, and result construction.
+
+Comparison deltas use matching `(domain, fixtureId)` observations for each dimension. Unpaired fixtures, failed runs, or missing telemetry make the diagnostic `INCONCLUSIVE`; they are not treated as improvements or regressions. The report deliberately does not collapse these dimensions into one efficiency score.
+
+Prompt, fixture, and ground-truth I/O failures fail closed instead of silently changing the compared inputs. An absent per-fixture label is reported as a recoverable failed run, while a missing label root or malformed/invalid label is fatal configuration evidence. Recoverable per-fixture failures remain visible in the report, and the shared benchmark CLI exits nonzero after writing the diagnostic when any run failed.
+
+A diagnostic report alone cannot prove that a particular model, including Opus, regressed. A model claim requires controlled paired runs with the same fixtures, prompts, model identity, configuration, and complete measurements. Even then, the timing fields do not attribute differences to model compute, network conditions, provider queues, retries, or harness internals beyond their documented boundaries.
+
 ### Stale Agent Cleanup
 
 Clean up agents that exceed the timeout threshold:
 
 ```typescript
-import { cleanupStaleAgents } from 'oh-my-qoder/hooks/subagent-tracker';
+import { cleanupStaleAgents } from 'oh-my-claudecode/hooks/subagent-tracker';
 
 const cleaned = cleanupStaleAgents(process.cwd());
 console.log(`Cleaned ${cleaned} stale agents`);
@@ -315,8 +330,8 @@ Visit the platform to:
 
 | Resource | Description | Link |
 |----------|-------------|------|
-| Qoder CLI Discord | Community support and tips | [discord.gg/anthropic](https://discord.gg/anthropic) |
-| OMQ GitHub Issues | Bug reports and feature requests | [GitHub Issues](https://github.com/qoder-plugins/oh-my-qoder/issues) |
+| Claude Code Discord | Community support and tips | [discord.gg/anthropic](https://discord.gg/anthropic) |
+| OMC GitHub Issues | Bug reports and feature requests | [GitHub Issues](https://github.com/Yeachan-Heo/oh-my-claudecode/issues) |
 | Anthropic Documentation | Official Claude documentation | [docs.anthropic.com](https://docs.anthropic.com) |
 
 ### Model Performance Benchmarks
@@ -337,7 +352,7 @@ Track Claude's performance across standard benchmarks:
 
 ```bash
 # Set up budget warnings in HUD
-/oh-my-qoder:hud
+/oh-my-claudecode:hud
 # Select "focused" or "full"
 ```
 
@@ -381,7 +396,7 @@ if (summary.bottlenecks.length > 0) {
 Periodically clean up old replay files and stale agent state:
 
 ```typescript
-import { cleanupReplayFiles } from 'oh-my-qoder/hooks/subagent-tracker/session-replay';
+import { cleanupReplayFiles } from 'oh-my-claudecode/hooks/subagent-tracker/session-replay';
 
 cleanupReplayFiles(process.cwd()); // Keeps last 10 sessions
 ```
@@ -426,7 +441,7 @@ cleanupReplayFiles(process.cwd()); // Keeps last 10 sessions
 
 **Solutions**:
 1. End the session normally so the `session-end` hook runs
-2. Verify HUD / hooks are installed: `/oh-my-qoder:hud setup`
+2. Verify HUD / hooks are installed: `/oh-my-claudecode:hud setup`
 3. Check the current workspace `.omq/sessions/` directory
 4. Review `.omq/state/agent-replay-*.jsonl` if you need timing/activity evidence instead
 

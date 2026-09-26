@@ -2,12 +2,11 @@ import { execFileSync, spawnSync } from 'child_process';
 import { existsSync } from 'fs';
 import { mkdir, readFile, symlink, writeFile } from 'fs/promises';
 import { dirname, join, resolve } from 'path';
-import { getOmqRoot } from '../lib/worktree-paths.js';
+import { getOmcRoot } from '../lib/worktree-paths.js';
 import {
   readModeState,
   writeModeState,
 } from '../lib/mode-state-io.js';
-import { resolveSessionId } from '../lib/session-id.js';
 import { isModeActiveInAnySession } from '../hooks/mode-registry/index.js';
 import type { ExecutionMode } from '../hooks/mode-registry/types.js';
 import {
@@ -160,7 +159,7 @@ export function getAutoresearchMissionArtifactLayout(
   missionSlug: string,
   runId: string,
 ): AutoresearchMissionArtifactLayout {
-  const missionRoot = join(getOmqRoot(projectRoot), 'autoresearch', missionSlug);
+  const missionRoot = join(getOmcRoot(projectRoot), 'autoresearch', missionSlug);
   const runDir = join(missionRoot, 'runs', runId);
   return {
     missionRoot,
@@ -186,7 +185,7 @@ function buildRunId(missionSlug: string, runTag: string): string {
 }
 
 function activeRunStateFile(projectRoot: string): string {
-  return join(getOmqRoot(projectRoot), 'state', 'autoresearch-state.json');
+  return join(getOmcRoot(projectRoot), 'state', 'autoresearch-state.json');
 }
 
 function trimContent(value: string, max = 4000): string {
@@ -200,6 +199,7 @@ function readGit(repoPath: string, args: string[]): string {
       cwd: repoPath,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
     }).trim();
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { stderr?: string | Buffer };
@@ -216,6 +216,7 @@ function tryResolveGitCommit(worktreePath: string, ref: string): string | null {
   const result = spawnSync('git', ['rev-parse', '--verify', `${ref}^{commit}`], {
     cwd: worktreePath,
     encoding: 'utf-8',
+    windowsHide: true,
   });
   if (result.status !== 0) return null;
   const resolved = (result.stdout || '').trim();
@@ -302,6 +303,7 @@ function requireGitSuccess(worktreePath: string, args: string[]): void {
   const result = spawnSync('git', args, {
     cwd: worktreePath,
     encoding: 'utf-8',
+    windowsHide: true,
   });
   if (result.status === 0) return;
   throw new Error((result.stderr || '').trim() || `git ${args.join(' ')} failed`);
@@ -311,6 +313,7 @@ function gitStatusLines(worktreePath: string): string[] {
   const result = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
     cwd: worktreePath,
     encoding: 'utf-8',
+    windowsHide: true,
   });
   if (result.status !== 0) {
     throw new Error((result.stderr || '').trim() || `git status failed for ${worktreePath}`);
@@ -401,7 +404,7 @@ async function assertAutoresearchLockAvailable(projectRoot: string): Promise<voi
 
 /**
  * Assert no exclusive mode is already active (ralph, ultrawork, autopilot).
- * Mirrors OMX assertModeStartAllowed semantics using OMQ mode-state-io.
+ * Mirrors OMX assertModeStartAllowed semantics using OMC mode-state-io.
  */
 export async function assertModeStartAllowed(mode: ExecutionMode, projectRoot: string): Promise<void> {
   for (const other of EXCLUSIVE_MODES) {
@@ -440,34 +443,35 @@ async function deactivateAutoresearchRun(manifest: AutoresearchRunManifest): Pro
   });
 }
 
-function getAutoresearchSessionId(): string {
-  return resolveSessionId({ context: 'cli' });
-}
-
+/**
+ * Start autoresearch mode state using OMC's writeModeState.
+ */
 function startAutoresearchMode(taskDescription: string, projectRoot: string): void {
-  const sid = getAutoresearchSessionId();
   writeModeState('autoresearch', {
     active: true,
     mode: 'autoresearch',
     iteration: 0,
     current_phase: 'starting',
     task_description: taskDescription,
-    session_id: sid,
     started_at: nowIso(),
     updated_at: nowIso(),
-  }, projectRoot, sid);
+  }, projectRoot);
 }
 
+/**
+ * Update autoresearch mode state (merge semantics).
+ */
 function updateAutoresearchMode(updates: Record<string, unknown>, projectRoot: string): void {
-  const sid = getAutoresearchSessionId();
-  const current = readModeState<Record<string, unknown>>('autoresearch', projectRoot, sid);
+  const current = readModeState<Record<string, unknown>>('autoresearch', projectRoot);
   if (!current) return;
-  writeModeState('autoresearch', { ...current, ...updates, updated_at: nowIso() }, projectRoot, sid);
+  writeModeState('autoresearch', { ...current, ...updates, updated_at: nowIso() }, projectRoot);
 }
 
+/**
+ * Cancel autoresearch mode state.
+ */
 function cancelAutoresearchMode(projectRoot: string): void {
-  const sid = getAutoresearchSessionId();
-  const state = readModeState<Record<string, unknown>>('autoresearch', projectRoot, sid);
+  const state = readModeState<Record<string, unknown>>('autoresearch', projectRoot);
   if (state && state.active) {
     writeModeState('autoresearch', {
       ...state,
@@ -475,7 +479,7 @@ function cancelAutoresearchMode(projectRoot: string): void {
       current_phase: 'cancelled',
       completed_at: nowIso(),
       updated_at: nowIso(),
-    }, projectRoot, sid);
+    }, projectRoot);
   }
 }
 
@@ -779,7 +783,7 @@ export function buildAutoresearchInstructions(
   },
 ): string {
   return [
-    '# OMQ Autoresearch Supervisor Instructions',
+    '# OMC Autoresearch Supervisor Instructions',
     '',
     `Run ID: ${context.runId}`,
     `Mission directory: ${contract.missionDir}`,
@@ -866,7 +870,7 @@ export async function materializeAutoresearchMissionToWorktree(
 }
 
 export async function loadAutoresearchRunManifest(projectRoot: string, runId: string): Promise<AutoresearchRunManifest> {
-  const manifestFile = join(getOmqRoot(projectRoot), 'logs', 'autoresearch', runId, 'manifest.json');
+  const manifestFile = join(getOmcRoot(projectRoot), 'logs', 'autoresearch', runId, 'manifest.json');
   if (!existsSync(manifestFile)) {
     throw new Error(`autoresearch_resume_manifest_missing:${runId}`);
   }
@@ -958,7 +962,7 @@ export async function prepareAutoresearchRuntime(
   const runId = buildRunId(contract.missionSlug, runTag);
   const baselineCommit = readGitShortHead(worktreePath);
   const branchName = readGit(worktreePath, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
-  const runDir = join(getOmqRoot(projectRoot), 'logs', 'autoresearch', runId);
+  const runDir = join(getOmcRoot(projectRoot), 'logs', 'autoresearch', runId);
   const stateFile = activeRunStateFile(projectRoot);
   const instructionsFile = join(runDir, 'bootstrap-instructions.md');
   const manifestFile = join(runDir, 'manifest.json');
@@ -1039,7 +1043,7 @@ export async function prepareAutoresearchRuntime(
     updated_at: nowIso(),
   });
 
-  const existingModeState = readModeState<Record<string, unknown>>('autoresearch', projectRoot, getAutoresearchSessionId());
+  const existingModeState = readModeState<Record<string, unknown>>('autoresearch', projectRoot);
   if (existingModeState?.active) {
     throw new Error(`autoresearch_active_mode_exists:${String(existingModeState.run_id || 'unknown')}`);
   }
@@ -1529,7 +1533,7 @@ export async function finalizeAutoresearchRunState(
 }
 
 export async function stopAutoresearchRuntime(projectRoot: string): Promise<void> {
-  const state = readModeState<Record<string, unknown>>('autoresearch', projectRoot, getAutoresearchSessionId());
+  const state = readModeState<Record<string, unknown>>('autoresearch', projectRoot);
   if (!state?.active) {
     return;
   }

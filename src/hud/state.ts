@@ -7,7 +7,7 @@
 
 import { existsSync, readFileSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
-import { getQoderConfigDir } from "../utils/config-dir.js";
+import { getClaudeConfigDir } from "../utils/config-dir.js";
 import {
   validateWorkingDirectory,
   getOmqRoot,
@@ -68,17 +68,17 @@ function getStateFilePath(directory?: string, sessionId?: string): string {
 }
 
 /**
- * Get Qoder CLI settings.json path
+ * Get Claude Code settings.json path
  */
 function getSettingsFilePath(): string {
-  return join(getQoderConfigDir(), "settings.json");
+  return join(getClaudeConfigDir(), "settings.json");
 }
 
 /**
  * Get the HUD config file path (legacy)
  */
 function getConfigFilePath(): string {
-  return join(getQoderConfigDir(), ".omq", "hud-config.json");
+  return join(getClaudeConfigDir(), ".omq", "hud-config.json");
 }
 
 function readJsonFile<T>(filePath: string): T | null {
@@ -349,33 +349,34 @@ export function readHudConfig(): HudConfig {
   if (existsSync(settingsFile)) {
     try {
       const content = readFileSync(settingsFile, "utf-8");
-      const settings = JSON.parse(content) as { omqHud?: HudConfigInput };
-      if (settings.omqHud) {
+      const settings = JSON.parse(content) as { omqHud?: HudConfigInput; omcHud?: HudConfigInput };
+      const hudConfig = settings.omqHud ?? settings.omcHud;
+      if (hudConfig) {
         return mergeWithDefaults({
           ...legacyConfig,
-          ...settings.omqHud,
+          ...hudConfig,
           elements: mergeElements(
             legacyConfig?.elements,
-            settings.omqHud.elements,
+            hudConfig.elements,
           ),
           thresholds: mergeThresholds(
             legacyConfig?.thresholds,
-            settings.omqHud.thresholds,
+            hudConfig.thresholds,
           ),
           contextLimitWarning: mergeContextLimitWarning(
             legacyConfig?.contextLimitWarning,
-            settings.omqHud.contextLimitWarning,
+            hudConfig.contextLimitWarning,
           ),
           missionBoard: mergeMissionBoardConfig(
             legacyConfig?.missionBoard,
-            settings.omqHud.missionBoard,
+            hudConfig.missionBoard,
           ),
-          locale: isHudLocale(settings.omqHud.locale)
-            ? settings.omqHud.locale
+          locale: isHudLocale(hudConfig.locale)
+            ? hudConfig.locale
             : legacyConfig?.locale,
           labels: {
             ...sanitizeHudLabels(legacyConfig?.labels),
-            ...sanitizeHudLabels(settings.omqHud.labels),
+            ...sanitizeHudLabels(hudConfig.labels),
           },
         });
       }
@@ -391,7 +392,7 @@ export function readHudConfig(): HudConfig {
     return mergeWithDefaults(legacyConfig);
   }
 
-  return DEFAULT_HUD_CONFIG;
+  return mergeWithDefaults({});
 }
 
 /**
@@ -453,7 +454,7 @@ function mergeWithDefaults(config: HudConfigInput): HudConfig {
 }
 
 /**
- * Write HUD configuration to ~/.qoder/settings.json (omqHud key)
+ * Write HUD configuration to ~/.claude/settings.json (omqHud key)
  */
 export function writeHudConfig(config: HudConfig): boolean {
   try {

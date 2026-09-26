@@ -42,7 +42,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   let jobsDir: string;
 
   beforeEach(() => {
-    testRoot = join(tmpdir(), `omq-team-server-test-${process.pid}-${Date.now()}`);
+    testRoot = join(tmpdir(), `omc-team-server-test-${process.pid}-${Date.now()}`);
     jobsDir = join(testRoot, 'jobs');
     mkdirSync(jobsDir, { recursive: true });
   });
@@ -60,7 +60,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleStatus converges to terminal artifact before pid liveness', async () => {
     const { handleStatus } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art1';
+    const jobId = 'omc-art1';
     writeFileSync(
       join(jobsDir, `${jobId}.json`),
       JSON.stringify({
@@ -90,7 +90,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleWait deterministically fails on parse-failed artifact and persists failure', async () => {
     const { handleWait } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art2';
+    const jobId = 'omc-art2';
     writeFileSync(
       join(jobsDir, `${jobId}.json`),
       JSON.stringify({
@@ -118,7 +118,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleCleanup removes only scoped .omq/state/team/<teamName> directory', async () => {
     const { handleCleanup } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art3';
+    const jobId = 'omc-art3';
     const cwd = join(testRoot, 'workspace');
     const teamOneDir = join(cwd, '.omq', 'state', 'team', 'team-one');
     const teamTwoDir = join(cwd, '.omq', 'state', 'team', 'team-two');
@@ -149,7 +149,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleCleanup preserves state and does not mark cleaned when pane liveness remains true', async () => {
     const { handleCleanup } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art5';
+    const jobId = 'omc-art5';
     const cwd = join(testRoot, 'workspace-live-pane');
     const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
     mkdirSync(teamDir, { recursive: true });
@@ -180,7 +180,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleCleanup preserves state when pane liveness probe is unknown', async () => {
     const { handleCleanup } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art9';
+    const jobId = 'omc-art9';
     const cwd = join(testRoot, 'workspace-unknown-probe');
     const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
     mkdirSync(teamDir, { recursive: true });
@@ -208,7 +208,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleCleanup preserves team state when dirty worktree cleanup is preserved', async () => {
     const { handleCleanup } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art6';
+    const jobId = 'omc-art6';
     const cwd = join(testRoot, 'workspace-dirty-worktree');
     mkdirSync(cwd, { recursive: true });
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
@@ -249,20 +249,20 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleCleanup preserves state when pane evidence is missing and config still has workers', async () => {
     const { handleCleanup } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art7';
+    const jobId = 'omc-art7';
     const cwd = join(testRoot, 'workspace-unknown-liveness');
     const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
     mkdirSync(teamDir, { recursive: true });
     writeFileSync(join(teamDir, 'config.json'), JSON.stringify({
       name: 'team-one',
       task: 'demo',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_launch_mode: 'interactive',
       worker_count: 1,
       max_workers: 20,
       workers: [{ name: 'worker-1', index: 1, role: 'executor', assigned_tasks: [] }],
       created_at: new Date().toISOString(),
-      tmux_session: '',
+      tmux_session: 'team-one-session:0',
       leader_pane_id: null,
       hud_pane_id: null,
       resize_hook_name: null,
@@ -290,7 +290,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleCleanup preserves team state when only a worktree-root AGENTS backup remains', async () => {
     const { handleCleanup } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art8';
+    const jobId = 'omc-art8';
     const cwd = join(testRoot, 'workspace-backup-only');
     const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
     const backupPath = join(teamDir, 'workers', 'worker-1', 'worktree-root-agents.json');
@@ -322,7 +322,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
   it('handleCleanup also removes dormant scoped team worktrees when present', async () => {
     const { handleCleanup } = await importTeamServerWithJobsDir(jobsDir);
 
-    const jobId = 'omq-art4';
+    const jobId = 'omc-art4';
     const cwd = join(testRoot, 'workspace-worktree');
     mkdirSync(cwd, { recursive: true });
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });

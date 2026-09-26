@@ -3,18 +3,18 @@ import { formatModelName, renderModel } from '../../hud/elements/model.js';
 
 describe('model element', () => {
   describe('formatModelName', () => {
-    it('returns Max for max model IDs', () => {
-      expect(formatModelName('qwen-max-20260528')).toBe('Max');
-      expect(formatModelName('qwen_max')).toBe('Max');
+    it('returns Opus for opus model IDs', () => {
+      expect(formatModelName('claude-opus-4-8-20260528')).toBe('Opus');
+      expect(formatModelName('claude-3-opus-20240229')).toBe('Opus');
     });
 
-    it('returns Plus for plus model IDs', () => {
-      expect(formatModelName('qwen-plus0250514')).toBe('Plus');
-      expect(formatModelName('qwen-plus-20241022')).toBe('Plus');
+    it('returns Sonnet for sonnet model IDs', () => {
+      expect(formatModelName('claude-sonnet-4-20250514')).toBe('Sonnet');
+      expect(formatModelName('claude-3-5-sonnet-20241022')).toBe('Sonnet');
     });
 
-    it('returns Turbo for turbo model IDs', () => {
-      expect(formatModelName('qwen-turbo-20240307')).toBe('Turbo');
+    it('returns Haiku for haiku model IDs', () => {
+      expect(formatModelName('claude-3-haiku-20240307')).toBe('Haiku');
     });
 
     it('returns null for null/undefined', () => {
@@ -23,29 +23,32 @@ describe('model element', () => {
     });
 
     it('returns versioned name from model IDs', () => {
-      expect(formatModelName('qwen-max-20260528', 'versioned')).toBe('Max');
-      expect(formatModelName('qwen-plus-20260217', 'versioned')).toBe('Plus');
-      expect(formatModelName('qwen-turbo-20251001', 'versioned')).toBe('Turbo');
+      expect(formatModelName('claude-opus-4-8-20260528', 'versioned')).toBe('Opus 4.8');
+      expect(formatModelName('claude-sonnet-4-6-20260217', 'versioned')).toBe('Sonnet 4.6');
+      expect(formatModelName('claude-sonnet-5', 'versioned')).toBe('Sonnet 5');
+      expect(formatModelName('global.anthropic.claude-sonnet-5', 'versioned')).toBe('Sonnet 5');
+      expect(formatModelName('claude-haiku-4-5-20251001', 'versioned')).toBe('Haiku 4.5');
     });
 
     it('returns versioned name from display names', () => {
-      expect(formatModelName('Plus', 'versioned')).toBe('Plus');
-      expect(formatModelName('Max', 'versioned')).toBe('Max');
-      expect(formatModelName('Turbo', 'versioned')).toBe('Turbo');
+      expect(formatModelName('Sonnet 4.5', 'versioned')).toBe('Sonnet 4.5');
+      expect(formatModelName('Opus 4.8', 'versioned')).toBe('Opus 4.8');
+      expect(formatModelName('Haiku 4.5', 'versioned')).toBe('Haiku 4.5');
     });
 
-    it('returns versioned name from raw model IDs', () => {
-      expect(formatModelName('qwen-plus-20241022', 'versioned')).toBe('Plus');
-      expect(formatModelName('qwen-max-20260528', 'versioned')).toBe('Max');
-      expect(formatModelName('qwen-turbo-20240307', 'versioned')).toBe('Turbo');
+    it('returns versioned name from legacy raw model IDs', () => {
+      expect(formatModelName('claude-3-5-sonnet-20241022', 'versioned')).toBe('Sonnet 3.5');
+      expect(formatModelName('claude-3-opus-20240229', 'versioned')).toBe('Opus 3');
+      expect(formatModelName('claude-3-sonnet-20240229', 'versioned')).toBe('Sonnet 3');
+      expect(formatModelName('claude-3-haiku-20240307', 'versioned')).toBe('Haiku 3');
     });
 
     it('falls back to short name when no version found', () => {
-      expect(formatModelName('qwen-max', 'versioned')).toBe('Max');
+      expect(formatModelName('claude-opus-latest', 'versioned')).toBe('Opus');
     });
 
     it('returns full model ID in full format', () => {
-      expect(formatModelName('qwen-max-20260528', 'full')).toBe('qwen-max-20260528');
+      expect(formatModelName('claude-opus-4-8-20260528', 'full')).toBe('claude-opus-4-8-20260528');
     });
 
     it('truncates long unrecognized model names', () => {
@@ -56,27 +59,27 @@ describe('model element', () => {
 
   describe('renderModel', () => {
     it('renders formatted model name', () => {
-      const result = renderModel('qwen-max-20260528');
+      const result = renderModel('claude-opus-4-8-20260528');
       expect(result).not.toBeNull();
-      expect(result).toContain('Model: Max');
+      expect(result).toContain('Model: Opus 4.8');
     });
 
     it('renders versioned format', () => {
-      const result = renderModel('qwen-max-20260528', 'versioned');
+      const result = renderModel('claude-opus-4-8-20260528', 'versioned');
       expect(result).not.toBeNull();
-      expect(result).toContain('Model: Max');
+      expect(result).toContain('Model: Opus 4.8');
     });
 
     it('renders full format', () => {
-      const result = renderModel('qwen-max-20260528', 'full');
+      const result = renderModel('claude-opus-4-8-20260528', 'full');
       expect(result).not.toBeNull();
-      expect(result).toContain('Model: qwen-max');
+      expect(result).toContain('Model: claude-opus-4-8');
     });
 
     it('renders configured model label', () => {
-      const result = renderModel('qwen-plus', 'versioned', { model: '模型' });
+      const result = renderModel('Claude Sonnet 4.5', 'versioned', { model: '模型' });
       expect(result).not.toBeNull();
-      expect(result).toContain('模型: Plus');
+      expect(result).toContain('模型: Sonnet 4.5');
     });
 
     it('returns null for null input', () => {

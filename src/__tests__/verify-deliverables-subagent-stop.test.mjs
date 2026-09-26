@@ -21,7 +21,7 @@ const SCRIPT_PATH = join(process.cwd(), 'scripts', 'verify-deliverables.mjs');
 
 function runHook(input) {
   // Strip QODER_PLUGIN_ROOT / OMQ_STATE_DIR so resolveOmqStateRoot uses the
-  // inline fallback (<cwd>/.omc) and reads the fixtures written below.
+  // inline fallback (<cwd>/.omq) and reads the fixtures written below.
   const env = { ...process.env, NODE_ENV: 'test' };
   delete env.QODER_PLUGIN_ROOT;
   delete env.OMQ_STATE_DIR;
@@ -44,7 +44,7 @@ function withTempDir(fn) {
 }
 
 function writeFixtures(dir, sessionId, { stage = 'team-plan', files = ['DESIGN.md'], minSize = 10 } = {}) {
-  const omcRoot = join(dir, '.omc');
+  const omcRoot = join(dir, '.omq');
   mkdirSync(omcRoot, { recursive: true });
   writeFileSync(
     join(omcRoot, 'deliverables.json'),

@@ -16,7 +16,7 @@ describe('session-start template guard for same-root parallel sessions (#1744)',
     tempDir = mkdtempSync(join(tmpdir(), 'omq-session-start-template-'));
     fakeHome = join(tempDir, 'home');
     fakeProject = join(tempDir, 'project');
-    mkdirSync(join(fakeProject, '.omc', 'state'), { recursive: true });
+    mkdirSync(join(fakeProject, '.omq', 'state'), { recursive: true });
     // Add .git so validateCwd accepts this directory as a valid workspace anchor
     mkdirSync(join(fakeProject, '.git'), { recursive: true });
   });
@@ -48,7 +48,7 @@ describe('session-start template guard for same-root parallel sessions (#1744)',
   it('warns and suppresses conflicting same-root restore for a different active session', () => {
     const now = new Date().toISOString();
     writeFileSync(
-      join(fakeProject, '.omc', 'state', 'ultrawork-state.json'),
+      join(fakeProject, '.omq', 'state', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'session-a',
@@ -74,7 +74,7 @@ describe('session-start template guard for same-root parallel sessions (#1744)',
 
   it('keeps template session-start under budget when only a tiny omission remainder remains', () => {
     writeFileSync(
-      join(fakeProject, '.omc', 'state', 'ultrawork-state.json'),
+      join(fakeProject, '.omq', 'state', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'session-budget-owner',
@@ -136,7 +136,7 @@ ${'- preserve this startup guidance\n'.repeat(400)}
 
   it('still restores ultrawork for the owning session', () => {
     writeFileSync(
-      join(fakeProject, '.omc', 'state', 'ultrawork-state.json'),
+      join(fakeProject, '.omq', 'state', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'session-owner',
@@ -160,9 +160,9 @@ ${'- preserve this startup guidance\n'.repeat(400)}
   });
 
   it('does not warn for global fallback state from a different normalized project path', () => {
-    mkdirSync(join(fakeHome, '.omc', 'state'), { recursive: true });
+    mkdirSync(join(fakeHome, '.omq', 'state'), { recursive: true });
     writeFileSync(
-      join(fakeHome, '.omc', 'state', 'ultrawork-state.json'),
+      join(fakeHome, '.omq', 'state', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'session-a',
@@ -216,7 +216,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('surfaces update notices through systemMessage without injecting them into additionalContext', () => {
-    const omqDir = join(fakeHome, '.qoder', '.omc');
+    const omqDir = join(fakeHome, '.qoder', '.omq');
     mkdirSync(omqDir, { recursive: true });
     writeFileSync(
       join(omqDir, 'update-check.json'),
@@ -259,7 +259,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('honors autoUpgradePrompt=false with passive systemMessage wording', () => {
-    const omqDir = join(fakeHome, '.qoder', '.omc');
+    const omqDir = join(fakeHome, '.qoder', '.omq');
     mkdirSync(omqDir, { recursive: true });
     writeFileSync(join(fakeHome, '.qoder', '.omq-config.json'), JSON.stringify({ autoUpgradePrompt: false }));
     writeFileSync(
@@ -313,7 +313,7 @@ describe('session-start PID-aware liveness (#E2)', () => {
     fakeProject = join(tempDir, 'project');
     // validateCwd in session-start.mjs requires .git or .omq-workspace
     mkdirSync(join(fakeProject, '.git'), { recursive: true });
-    mkdirSync(join(fakeProject, '.omc', 'state'), { recursive: true });
+    mkdirSync(join(fakeProject, '.omq', 'state'), { recursive: true });
   });
 
   afterEach(() => {
@@ -342,7 +342,7 @@ describe('session-start PID-aware liveness (#E2)', () => {
   it('PID-dead-reclaim: dead owner PID allows new session to reclaim without PARALLEL SESSION WARNING', () => {
     // PID 999999 is virtually guaranteed to not exist
     writeFileSync(
-      join(fakeProject, '.omc', 'state', 'ultrawork-state.json'),
+      join(fakeProject, '.omq', 'state', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'old-sid',
@@ -370,7 +370,7 @@ describe('session-start PID-aware liveness (#E2)', () => {
   it('owner PID alive: same-root different session emits PARALLEL SESSION WARNING', () => {
     // process.pid is definitely alive
     writeFileSync(
-      join(fakeProject, '.omc', 'state', 'ultrawork-state.json'),
+      join(fakeProject, '.omq', 'state', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'owner-session',
@@ -395,7 +395,7 @@ describe('session-start PID-aware liveness (#E2)', () => {
   it('missing PID field: backward-compat assumes alive and emits PARALLEL SESSION WARNING', () => {
     // No owner_pid field — backward-compat path
     writeFileSync(
-      join(fakeProject, '.omc', 'state', 'ultrawork-state.json'),
+      join(fakeProject, '.omq', 'state', 'ultrawork-state.json'),
       JSON.stringify({
         active: true,
         session_id: 'legacy-session',

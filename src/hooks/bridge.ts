@@ -9,7 +9,7 @@
  * ```bash
  * #!/bin/bash
  * INPUT=$(cat)
- * echo "$INPUT" | node ~/.qoder/omq/hook-bridge.mjs --hook=keyword-detector
+ * echo "$INPUT" | node ~/.claude/omc/hook-bridge.mjs --hook=keyword-detector
  * ```
  */
 
@@ -25,10 +25,10 @@ import {
   writeFileSync,
 } from "fs";
 import { dirname, join } from "path";
-import { resolveToWorktreeRoot, getOmqRoot } from "../lib/worktree-paths.js";
+import { resolveToWorktreeRoot, getOmcRoot } from "../lib/worktree-paths.js";
 import { readModeState, writeModeState } from "../lib/mode-state-io.js";
 import { SESSION_END_MODE_STATE_FILES } from "../lib/mode-names.js";
-import { formatOmqCliInvocation } from "../utils/omq-cli-rendering.js";
+import { formatOmcCliInvocation } from "../utils/omc-cli-rendering.js";
 import { createSwallowedErrorLogger } from "../lib/swallowed-error.js";
 import { dispatchNotificationInBackground } from "./background-notifications.js";
 import { readCanonicalTeamStateCandidate } from "./team-canonical-state.js";
@@ -44,7 +44,7 @@ import {
 import {
   processOrchestratorPreTool,
   processOrchestratorPostTool,
-} from "./omq-orchestrator/index.js";
+} from "./omc-orchestrator/index.js";
 import { normalizeHookInput } from "./bridge-normalize.js";
 import {
   addBackgroundTask,
@@ -55,7 +55,7 @@ import {
   remapMostRecentMatchingBackgroundTaskId,
 } from "../hud/background-tasks.js";
 import { readHudState, writeHudState } from "../hud/state.js";
-import { compactOmqStartupGuidance, loadConfig } from "../config/loader.js";
+import { compactOmcStartupGuidance, loadConfig } from "../config/loader.js";
 import {
   activatePromptPrerequisiteState,
   buildPromptPrerequisiteDenyReason,
@@ -73,6 +73,7 @@ import {
   resolveOpenQuestionsPlanPath,
 } from "../config/plan-output.js";
 import { formatAutopilotRuntimeInsight } from "./autopilot/runtime-insight.js";
+import type { AutopilotState } from "./autopilot/types.js";
 import {
   writeSkillActiveState,
   isCanonicalWorkflowSkill,
@@ -84,6 +85,7 @@ import {
   type ActiveSkillSlot,
 } from "./skill-state/index.js";
 import { parseExplicitWorkflowSlashInvocation } from "./keyword-detector/index.js";
+import { resolveWorkflowInputWithWarning } from "../workflow/alias-resolver.js";
 import {
   ULTRATHINK_MESSAGE,
   SEARCH_MESSAGE,
@@ -115,6 +117,16 @@ import type { SessionEndInput } from "./session-end/index.js";
 import type { StopContext } from "./todo-continuation/index.js";
 // Security: wrap untrusted file content to prevent prompt injection
 import { wrapUntrustedFileContent } from "../agents/prompt-helpers.js";
+import {
+  isHookShadowEnabled,
+  runShadowObservation,
+} from "./registry/index.js";
+import {
+  isFamilyCutoverEnabled,
+  hasHookProtocolDeny,
+  recordDispatchTelemetry,
+  shouldLoosenOrdinaryEnforcement,
+} from "./registry/cutover.js";
 
 const PKILL_F_FLAG_PATTERN = /\bpkill\b.*\s-f\b/;
 const PKILL_FULL_FLAG_PATTERN = /\bpkill\b.*--full\b/;
@@ -242,7 +254,7 @@ function readLinuxBootId(): string | undefined {
 }
 
 function sessionStateDir(directory: string, sessionId: string): string {
-  return join(getOmqRoot(directory), "state", "sessions", sessionId);
+  return join(getOmcRoot(directory), "state", "sessions", sessionId);
 }
 
 function sessionStartedMarkerPath(directory: string, sessionId: string): string {
@@ -301,7 +313,7 @@ function removeSessionStartedMarker(directory: string, sessionId?: string): void
 }
 
 function hasSessionEndSummary(directory: string, sessionId: string): boolean {
-  return existsSync(join(getOmqRoot(directory), "sessions", `${sessionId}.json`));
+  return existsSync(join(getOmcRoot(directory), "sessions", `${sessionId}.json`));
 }
 
 function cleanupSessionModeStateFiles(directory: string, sessionId: string): void {
@@ -325,7 +337,7 @@ function cleanupSessionModeStateFiles(directory: string, sessionId: string): voi
 }
 
 function cleanupMissionStateForSession(directory: string, sessionId: string): void {
-  const missionStatePath = join(getOmqRoot(directory), "state", "mission-state.json");
+  const missionStatePath = join(getOmcRoot(directory), "state", "mission-state.json");
   const parsed = readJsonObject(missionStatePath) as {
     updatedAt?: string;
     missions?: Array<Record<string, unknown>>;
@@ -353,9 +365,9 @@ function cleanupMissionStateForSession(directory: string, sessionId: string): vo
 /**
  * Return true only when SessionStart has durable abandonment evidence.
  *
- * Qoder CLI SessionStart input currently provides session metadata such as
+ * Claude Code SessionStart input currently provides session metadata such as
  * session_id, transcript_path, cwd, source, model, and agent_type, but no
- * stable owner process for the interactive session. In installed OMQ hooks the
+ * stable owner process for the interactive session. In installed OMC hooks the
  * immediate hook parent belongs to scripts/run.cjs and is intentionally
  * short-lived, so same-boot PID liveness checks are not reliable here. SessionEnd
  * remains the primary same-boot cleanup path; SessionStart only reconciles
@@ -368,14 +380,14 @@ function hasDurableAbandonmentEvidence(marker: SessionStartedMarker): boolean {
     return true;
   }
 
-  // Same-boot hard-kill cleanup requires a durable owner signal. Qoder CLI
+  // Same-boot hard-kill cleanup requires a durable owner signal. Claude Code
   // does not currently provide one to hooks, so keep active state rather than
   // guessing from hook-runner process ancestry or transcript metadata.
   return false;
 }
 
 async function reconcileAbandonedSessionStarts(directory: string, currentSessionId?: string): Promise<void> {
-  const sessionsDir = join(getOmqRoot(directory), "state", "sessions");
+  const sessionsDir = join(getOmcRoot(directory), "state", "sessions");
   if (!existsSync(sessionsDir)) return;
 
   let entries: string[];
@@ -403,7 +415,7 @@ async function reconcileAbandonedSessionStarts(directory: string, currentSession
 
     if (!hasDurableAbandonmentEvidence(marker)) continue;
 
-    // Deliberately narrow: clear only OMQ session-scoped mode/mission state.
+    // Deliberately narrow: clear only OMC session-scoped mode/mission state.
     // Do not call team runtime shutdown here; SessionStart must not kill tmux PIDs.
     cleanupSessionModeStateFiles(directory, sessionId);
     cleanupMissionStateForSession(directory, sessionId);
@@ -495,7 +507,7 @@ function taskLaunchDidFail(toolOutput: unknown): boolean {
 }
 
 function getSessionStateDir(directory: string, sessionId?: string): string {
-  const stateDir = join(getOmqRoot(directory), "state");
+  const stateDir = join(getOmcRoot(directory), "state");
   if (sessionId && SAFE_SESSION_ID_PATTERN.test(sessionId)) {
     return join(stateDir, "sessions", sessionId);
   }
@@ -561,7 +573,7 @@ function recordScheduledWakeup(directory: string, sessionId: string | undefined,
 }
 
 function getModeStatePaths(directory: string, modeName: string, sessionId?: string): string[] {
-  const stateDir = join(getOmqRoot(directory), "state");
+  const stateDir = join(getOmcRoot(directory), "state");
   const safeSessionId = typeof sessionId === "string" && SAFE_SESSION_ID_PATTERN.test(sessionId)
     ? sessionId
     : undefined;
@@ -653,7 +665,7 @@ function isConsensusPlanningSkillInvocation(skillName: string | null, toolInput:
     return true;
   }
 
-  if (skillName !== "omq-plan" && skillName !== "plan") {
+  if (skillName !== "omc-plan" && skillName !== "plan") {
     return false;
   }
 
@@ -732,7 +744,13 @@ async function seedAutopilotStartupState(
   prompt: string,
   sessionId?: string,
 ): Promise<void> {
-  const { readAutopilotState, writeAutopilotState, DEFAULT_CONFIG } = await import("./autopilot/index.js");
+  const {
+    readAutopilotState,
+    writeAutopilotState,
+    DEFAULT_CONFIG,
+    resolvePipelineConfig,
+    buildPipelineTracking,
+  } = await import("./autopilot/index.js");
   const existingState = readAutopilotState(directory, sessionId);
   const existingAutopilotRecord = existingState as unknown as Record<string, unknown> | null;
 
@@ -743,58 +761,64 @@ async function seedAutopilotStartupState(
     return;
   }
 
+  const config = loadConfig();
   const now = new Date().toISOString();
-  const wrote = writeAutopilotState(
-    directory,
-    {
-      active: true,
-      phase: "expansion",
-      current_phase: "expansion",
-      iteration: 1,
-      max_iterations: DEFAULT_CONFIG.maxIterations ?? 10,
-      originalIdea: prompt,
-      expansion: {
-        analyst_complete: false,
-        architect_complete: false,
-        spec_path: null,
-        requirements_summary: "",
-        tech_stack: [],
-      },
-      planning: {
-        plan_path: null,
-        architect_iterations: 0,
-        approved: false,
-      },
-      execution: {
-        ralph_iterations: 0,
-        ultrawork_active: false,
-        tasks_completed: 0,
-        tasks_total: 0,
-        files_created: [],
-        files_modified: [],
-      },
-      qa: {
-        ultraqa_cycles: 0,
-        build_status: "pending",
-        lint_status: "pending",
-        test_status: "pending",
-      },
-      validation: {
-        architects_spawned: 0,
-        verdicts: [],
-        all_approved: false,
-        validation_rounds: 0,
-      },
-      started_at: now,
-      completed_at: null,
-      phase_durations: {},
-      total_agents_spawned: 0,
-      wisdom_entries: 0,
-      session_id: sessionId,
-      project_path: directory,
+  const state: AutopilotState = {
+    active: true,
+    phase: "expansion",
+    current_phase: "expansion",
+    iteration: 1,
+    max_iterations: DEFAULT_CONFIG.maxIterations ?? 10,
+    originalIdea: prompt,
+    expansion: {
+      analyst_complete: false,
+      architect_complete: false,
+      spec_path: null,
+      requirements_summary: "",
+      tech_stack: [],
     },
-    sessionId,
-  );
+    planning: {
+      plan_path: null,
+      architect_iterations: 0,
+      approved: false,
+    },
+    execution: {
+      ralph_iterations: 0,
+      ultrawork_active: false,
+      tasks_completed: 0,
+      tasks_total: 0,
+      files_created: [],
+      files_modified: [],
+    },
+    qa: {
+      build_status: "pending",
+      lint_status: "pending",
+      test_status: "pending",
+    },
+    validation: {
+      architects_spawned: 0,
+      verdicts: [],
+      all_approved: false,
+      validation_rounds: 0,
+    },
+    started_at: now,
+    completed_at: null,
+    phase_durations: {},
+    total_agents_spawned: 0,
+    wisdom_entries: 0,
+    session_id: sessionId,
+    project_path: directory,
+  };
+
+  const autopilotConfig = config.autopilot;
+  const shouldUsePipeline = autopilotConfig?.execution === "team";
+  if (shouldUsePipeline) {
+    const pipelineConfig = resolvePipelineConfig(autopilotConfig);
+    (state as unknown as Record<string, unknown>).pipeline =
+      buildPipelineTracking(pipelineConfig);
+  }
+
+  const wrote = writeAutopilotState(directory, state, sessionId);
   if (wrote) {
     markModeAwaitingConfirmation(directory, sessionId, "autopilot");
   }
@@ -827,7 +851,7 @@ function readTeamStagedState(
   directory: string,
   sessionId?: string,
 ): TeamStagedState | null {
-  const stateDir = join(getOmqRoot(directory), "state");
+  const stateDir = join(getOmcRoot(directory), "state");
   const statePaths = sessionId
     ? [
         join(stateDir, "sessions", sessionId, "team-state.json"),
@@ -920,7 +944,7 @@ function readTeamStopBreakerCount(
   directory: string,
   sessionId?: string,
 ): number {
-  const stateDir = join(getOmqRoot(directory), "state");
+  const stateDir = join(getOmcRoot(directory), "state");
   const breakerPath = sessionId
     ? join(stateDir, "sessions", sessionId, "team-stop-breaker.json")
     : join(stateDir, "team-stop-breaker.json");
@@ -954,7 +978,7 @@ function writeTeamStopBreakerCount(
   sessionId: string | undefined,
   count: number,
 ): void {
-  const stateDir = join(getOmqRoot(directory), "state");
+  const stateDir = join(getOmcRoot(directory), "state");
   const breakerPath = sessionId
     ? join(stateDir, "sessions", sessionId, "team-stop-breaker.json")
     : join(stateDir, "team-stop-breaker.json");
@@ -1023,9 +1047,9 @@ function getTeamStagePrompt(stage: string): string {
 function teamWorkerIdentityFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const omq =
+  const omc =
     typeof env.OMQ_TEAM_WORKER === "string" ? env.OMQ_TEAM_WORKER.trim() : "";
-  if (omq) return omq;
+  if (omc) return omc;
   const omx =
     typeof env.OMX_TEAM_WORKER === "string" ? env.OMX_TEAM_WORKER.trim() : "";
   return omx;
@@ -1037,7 +1061,7 @@ function workerBashBlockReason(command: string): string | null {
     return "Team worker cannot run tmux pane/session orchestration commands.";
   }
   if (WORKER_BLOCKED_TEAM_CLI_PATTERN.test(command)) {
-    return `Team worker cannot run team orchestration commands. Use only \`${formatOmqCliInvocation("team api ... --json")}\`.`;
+    return `Team worker cannot run team orchestration commands. Use only \`${formatOmcCliInvocation("team api ... --json")}\`.`;
   }
   if (WORKER_BLOCKED_SKILL_PATTERN.test(command)) {
     return "Team worker cannot invoke orchestration skills (`$team`, `$ultrawork`, `$autopilot`, `$ralph`).";
@@ -1090,7 +1114,7 @@ function validateHookInput<T>(
 }
 
 /**
- * Input format from Qoder CLI hooks (via stdin)
+ * Input format from Claude Code hooks (via stdin)
  */
 export interface HookInput {
   /** Session identifier */
@@ -1121,7 +1145,7 @@ export interface HookInput {
 }
 
 /**
- * Output format for Qoder CLI hooks (to stdout)
+ * Output format for Claude Code hooks (to stdout)
  */
 export interface HookOutput {
   /** Whether to continue with the operation */
@@ -1145,7 +1169,7 @@ function hasInjectableText(value: unknown): value is string {
 }
 
 /**
- * Strip empty hook text fields before serializing to Qoder CLI.
+ * Strip empty hook text fields before serializing to Claude Code.
  *
  * Some hook handlers use empty strings as internal sentinels. Passing those
  * through to the shell hook protocol can create empty system-message/context
@@ -1232,7 +1256,7 @@ function getPromptText(input: HookInput): string {
 }
 
 function isExplicitAskSlashInvocation(promptText: string): boolean {
-  return /^\s*\/(?:oh-my-qoder:)?ask\s+(?:qwen|codex|gemini|grok|cursor)\b/i.test(promptText);
+  return /^\s*\/(?:oh-my-claudecode:)?ask\s+(?:qwen|claude|codex|gemini|antigravity|agy|grok|cursor)\b/i.test(promptText);
 }
 
 function activateRalplanStartupState(directory: string, sessionId?: string): void {
@@ -1281,7 +1305,7 @@ function seedWorkflowSlotForSkill(
   parentSkill?: string | null,
 ): boolean {
   if (!isCanonicalWorkflowSkill(skillName)) return false;
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, "");
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, "");
 
   try {
     const current = readSkillActiveStateNormalized(directory, sessionId);
@@ -1328,7 +1352,7 @@ function confirmWorkflowSlot(
   sessionId?: string,
 ): boolean {
   if (!isCanonicalWorkflowSkill(skillName)) return false;
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, "");
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, "");
 
   try {
     const current = readSkillActiveStateNormalized(directory, sessionId);
@@ -1354,7 +1378,7 @@ function tombstoneWorkflowSlot(
   sessionId?: string,
 ): boolean {
   if (!isCanonicalWorkflowSkill(skillName)) return false;
-  const normalized = skillName.toLowerCase().replace(/^oh-my-qoder:/, "");
+  const normalized = skillName.toLowerCase().replace(/^oh-my-claudecode:/, "");
   try {
     const current = readSkillActiveStateNormalized(directory, sessionId);
     if (!current.active_skills[normalized]) return false;
@@ -1369,7 +1393,7 @@ function resolveStatePathSafe(stateName: string, directory: string): string {
   try {
     // Lazy resolve to avoid a circular import; same module is imported in
     // skill-state via the mode-paths registry.
-    return join(getOmqRoot(directory), "state", `${stateName}-state.json`);
+    return join(getOmcRoot(directory), "state", `${stateName}-state.json`);
   } catch {
     return "";
   }
@@ -1382,7 +1406,7 @@ function resolveSessionStatePathSafe(
 ): string {
   try {
     return join(
-      getOmqRoot(directory),
+      getOmcRoot(directory),
       "state",
       "sessions",
       sessionId,
@@ -1413,7 +1437,7 @@ async function seedModeStateForExplicitWorkflowSlash(
       await seedAutopilotStartupState(directory, promptText, sessionId);
       return;
     default:
-      // ralph / ultrawork / team / ultraqa / deep-interview / self-improve
+      // ralph / ultrawork / team / deep-interview / self-improve
       // own their state activation inside their own Skill PostToolUse handlers.
       // Pre-Skill seeding for these would clobber existing in-flight state
       // (e.g. nested `autopilot → ralph`); the workflow slot alone is enough
@@ -1441,7 +1465,7 @@ async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
 
   // `/ask <provider> ...` delegates the remainder of the prompt to an
   // external advisor. Do not interpret magic keywords inside that payload as
-  // instructions for the current Qoder CLI session.
+  // instructions for the current Claude Code session.
   if (isExplicitAskSlashInvocation(promptText)) {
     return { continue: true };
   }
@@ -1453,15 +1477,40 @@ async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
   const directory = resolveToWorktreeRoot(input.directory);
   const messages: string[] = [];
 
-  // Unified explicit slash invocation handler — covers all 8 canonical
-  // workflow skills (autopilot, ralph, team, ultrawork, ultraqa,
+  // Unified explicit slash invocation handler — covers the canonical
+  // workflow skills (autopilot, ralph, team, ultrawork,
   // deep-interview, ralplan, self-improve). Seeds the workflow slot via the
   // sanctioned dual-copy helper BEFORE the Skill tool fires, and seeds the
   // mode-specific state file when the mode requires pre-Skill state. The
   // ralplan path additionally returns the legacy [RALPLAN INIT] context
   // injection so existing routing tests remain green.
   const explicitSlash = parseExplicitWorkflowSlashInvocation(promptText);
+  // Named autopilot workflows are activated atomically by the installed
+  // plugin/template hook runtime. This bridge has no equivalent authenticated
+  // activation API, so reject every explicit --workflow form before the
+  // generic slash and keyword paths can seed legacy autopilot state.
+  if (
+    explicitSlash?.skill === "autopilot" &&
+    /^--workflow(?:\s|$|=)/.test(explicitSlash.args)
+  ) {
+    return {
+      continue: true,
+      message:
+        "[AUTOPILOT NAMED WORKFLOW UNSUPPORTED] Named workflow activation is unavailable through the TypeScript bridge. State was left unchanged; use the installed keyword-detector hook.",
+    };
+  }
   if (explicitSlash) {
+    // Alias resolver: route slash invocations through Tier-0 mapping, emit once/session warning, retain diagnostics/telemetry.
+    // For explicit slash, we record alias telemetry and optionally emit a concise actionable warning.
+    // The underlying skill name remains the alias for compatibility (no breaking invocation), but telemetry maps it.
+    try {
+      const aliasRes = resolveWorkflowInputWithWarning(explicitSlash.skill, sessionId ?? undefined, directory);
+      if (aliasRes.warningToEmit && aliasRes.canonical && aliasRes.canonical !== explicitSlash.skill.toLowerCase()) {
+        messages.push(aliasRes.warningToEmit);
+      }
+    } catch {
+      // never break slash flow on alias resolver failure
+    }
     seedWorkflowSlotForSkill(
       directory,
       explicitSlash.skill,
@@ -1586,6 +1635,25 @@ async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
     messages.push(PROMPT_TRANSLATION_MESSAGE);
   }
 
+  // Alias resolver: concise actionable warning once/session, diagnostics retain full mapping.
+  // Telemetry/receipts are recorded inside resolveWorkflowInputWithWarning; explicit slash
+  // invocations are also covered via the invocation path below. For keyword-detected paths,
+  // emit at most one alias warning per detected keyword (deduped per session).
+  {
+    const aliasWarnings: string[] = [];
+    for (const kw of keywords) {
+      // normalize to resolver input form (keyword detector already lowercases)
+      const res = resolveWorkflowInputWithWarning(kw, sessionId ?? undefined, directory);
+      if (res.warningToEmit) aliasWarnings.push(res.warningToEmit);
+      // also handle explicit release via keyword-like "release" if ever surfaced as keyword — defensive
+    }
+    // Dedupe alias warnings across multiple keywords that map to same canonical
+    const uniqueAliasWarnings = [...new Set(aliasWarnings)];
+    for (const w of uniqueAliasWarnings) {
+      messages.push(w);
+    }
+  }
+
   // Wake OpenClaw gateway for keyword-detector (non-blocking, fires for all prompts)
   if (input.sessionId) {
     _openclaw.wake("keyword-detector", {
@@ -1692,11 +1760,12 @@ async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
 
       case "codex":
       case "gemini":
-      case "cursor": {
-        const teamStartCommand = formatOmqCliInvocation(`team start --agent ${keywordType} --count N --task "<task from user message>"`);
+      case "cursor":
+      case "antigravity": {
+        const teamStartCommand = formatOmcCliInvocation(`team start --agent ${keywordType} --count N --task "<task from user message>"`);
         messages.push(
           `[MAGIC KEYWORD: team]\n` +
-            `User intent: delegate to ${keywordType} CLI workers via ${formatOmqCliInvocation('team')}.\n` +
+            `User intent: delegate to ${keywordType} CLI workers via ${formatOmcCliInvocation('team')}.\n` +
             `Agent type: ${keywordType}. Parse N from user message (default 1).\n` +
             `Invoke: ${teamStartCommand}`,
         );
@@ -1822,7 +1891,7 @@ async function processPersistentMode(input: HookInput): Promise<HookOutput> {
       if (!isAbort && !isContextLimit) {
         // Per-session cooldown: prevent notification spam when the session idles repeatedly.
         // Uses session-scoped state so one session does not suppress another.
-        const stateDir = join(getOmqRoot(directory), "state");
+        const stateDir = join(getOmcRoot(directory), "state");
         const { getIdleNotificationRepoState } = await import("./persistent-mode/idle-repo-state.js");
         const idleRepoState = getIdleNotificationRepoState(directory);
         if (shouldWakeOpenClawOnStop(stateDir, sessionId, idleRepoState)) {
@@ -1908,6 +1977,9 @@ async function processSessionStart(input: HookInput): Promise<HookOutput> {
 
   writeSessionStartedMarker(directory, sessionId);
   await reconcileAbandonedSessionStarts(directory, sessionId);
+  void import('./session-end/worker.js')
+    .then(({ reconcileSessionEndJobs }) => reconcileSessionEndJobs(directory))
+    .catch(() => undefined);
 
   // Lazy-load session-start dependencies
   const { initSilentAutoUpdate } = await import("../features/auto-update.js");
@@ -2082,7 +2154,7 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
   const agentsMdPath = join(directory, "AGENTS.md");
   if (existsSync(agentsMdPath)) {
     try {
-      let agentsContent = compactOmqStartupGuidance(
+      let agentsContent = compactOmcStartupGuidance(
         readFileSync(agentsMdPath, "utf-8"),
       ).trim();
       if (agentsContent) {
@@ -2132,10 +2204,10 @@ Please continue working on these tasks.
 `);
   }
 
-  // Non-default provider override: tell the LLM not to pass model on Task calls.
-  // This prevents the LLM from following the static QODER.md instruction
-  // "Pass model on Task calls: high, medium, low" which produces invalid
-  // model IDs on non-standard providers.
+  // Bedrock/Vertex/proxy override: tell the LLM not to pass model on Task calls.
+  // This prevents the LLM from following the static CLAUDE.md instruction
+  // "Pass model on Task calls: haiku, sonnet, opus" which produces invalid
+  // model IDs on non-standard providers. (issues #1135, #1201)
   try {
     const sessionConfig = loadConfig();
     if (sessionConfig.routing?.forceInherit) {
@@ -2143,18 +2215,18 @@ Please continue working on these tasks.
 
 [MODEL ROUTING OVERRIDE — NON-STANDARD PROVIDER DETECTED]
 
-This environment uses a non-standard model provider or a proxy.
+This environment uses a non-standard model provider (AWS Bedrock, Google Vertex AI, or a proxy such as CC Switch / LiteLLM).
 
 How to pass \`model\` on Task/Agent calls:
-- Prefer a tier alias: \`model: "high"\`, \`model: "medium"\`, or \`model: "low"\`. OMQ's pre-tool enforcer resolves these to provider-safe IDs when one of these env vars is set: \`DASHSCOPE_DEFAULT_MAX_MODEL\` (and siblings \`DASHSCOPE_DEFAULT_PLUS_MODEL\` / \`DASHSCOPE_DEFAULT_TURBO_MODEL\`), or \`OMQ_SUBAGENT_MODEL\`.
+- Prefer a tier alias: \`model: "sonnet"\`, \`model: "opus"\`, \`model: "haiku"\`, or \`model: "fable"\` (Claude Fable 5, above Opus). OMC's pre-tool enforcer resolves these to provider-safe IDs when one of these env vars is set: \`ANTHROPIC_DEFAULT_SONNET_MODEL\` (and siblings \`ANTHROPIC_DEFAULT_OPUS_MODEL\` / \`ANTHROPIC_DEFAULT_HAIKU_MODEL\` / \`ANTHROPIC_DEFAULT_FABLE_MODEL\`), \`CLAUDE_CODE_BEDROCK_SONNET_MODEL\` (and siblings \`CLAUDE_CODE_BEDROCK_OPUS_MODEL\` / \`CLAUDE_CODE_BEDROCK_HAIKU_MODEL\` / \`CLAUDE_CODE_BEDROCK_FABLE_MODEL\`), or \`OMQ_SUBAGENT_MODEL\`.
 - If none of those env vars are configured, the enforcer will deny the tier alias with an env-var configuration hint — set one of them in your \`settings.json\` env or shell profile.
 - The enforcer denies tier aliases it cannot resolve. It also denies provider-specific IDs that carry a \`[1m]\` context-window suffix or otherwise fail subagent-safe validation (sub-agents cannot inherit \`[1m]\`). Valid provider-specific IDs without extended-context suffixes are allowed.
 
-When the session model carries a \`[1m]\` suffix, passing an explicit \`model\` is REQUIRED — omitting it will be denied (sub-agents cannot inherit the \`[1m]\` suffix). Use a tier alias (requires resolver env vars above).
+When the session model carries a \`[1m]\` suffix, passing an explicit \`model\` is REQUIRED — omitting it will be denied (sub-agents cannot inherit the \`[1m]\` suffix). Use a tier alias (requires resolver env vars above); the Agent tool schema does not accept provider-specific IDs, so tier aliases are the only valid option.
 
-When the session model has no \`[1m]\` suffix, omitting \`model\` is safe UNLESS a custom sub-agent definition pins a bare model ID (e.g. \`model: qwen-plus\` in agent frontmatter). Custom sub-agents should pin tier aliases (not bare model IDs) in their frontmatter. Shipped OMQ agents already do this and are unaffected.
+When the session model has no \`[1m]\` suffix, omitting \`model\` is safe UNLESS a custom sub-agent definition pins a bare Anthropic model ID (e.g. \`model: claude-sonnet-4-6\` in agent frontmatter). When resolver env vars are configured, the enforcer will deny that call with tier-alias guidance; when they are absent, the call is not denied by the enforcer but will fail at the provider. Either way, custom sub-agents should pin tier aliases (not bare Anthropic IDs) in their frontmatter. Shipped OMC agents already do this and are unaffected.
 
-The AGENTS.md instruction "Pass model on Task calls: high, medium, low" applies here — subject to the resolution prerequisites above.
+The CLAUDE.md instruction "Pass model on Task calls: haiku, sonnet, opus" applies here — subject to the resolution prerequisites above.
 
 </system-reminder>`);
     }
@@ -2331,7 +2403,11 @@ function processPreToolUse(input: HookInput): HookOutput {
     }
   }
 
-  // Check delegation enforcement FIRST
+  // Check delegation enforcement FIRST — material delegation/security
+  // boundaries remain hard per owner direction; only duplicated
+  // injection/procedure (prompt prerequisites) collapses to advisory
+  // behind the dispatcher. Routing/instrumentation exceptions fail open,
+  // handler-produced block/deny results propagate unchanged.
   const enforcementResult = processOrchestratorPreTool({
     toolName: input.toolName || "",
     toolInput: (input.toolInput as Record<string, unknown>) || {},
@@ -2339,7 +2415,6 @@ function processPreToolUse(input: HookInput): HookOutput {
     directory,
   });
 
-  // If enforcement blocks, return immediately
   if (!enforcementResult.continue) {
     return {
       continue: false,
@@ -2347,6 +2422,7 @@ function processPreToolUse(input: HookInput): HookOutput {
       message: enforcementResult.message,
     };
   }
+
 
   const preToolMessages = enforcementResult.message
     ? [enforcementResult.message]
@@ -2356,20 +2432,43 @@ function processPreToolUse(input: HookInput): HookOutput {
   // Check blocking BEFORE recording progress — otherwise a denied tool
   // (e.g. Edit) that also matches a prerequisite would have its progress
   // persisted even though the tool never actually executed.
+  // Under dispatcher cutover (#3708) ordinary prompt prerequisites are
+  // advisory — collapsed behind the dispatcher per owner direction; only
+  // material-risk families stay hard. Preserve hookSpecificOutput deny only
+  // when PreToolUse is not in cutover (rollback) so hard permission/security
+  // semantics remain; otherwise demote to an advisory warning.
   const promptPrerequisiteState = readPromptPrerequisiteState(directory, input.sessionId);
   if (
     promptPrerequisiteState?.active
     && isPromptPrerequisiteBlockingTool(input.toolName, promptPrerequisiteConfig)
   ) {
-    return {
-      continue: true,
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: buildPromptPrerequisiteDenyReason(promptPrerequisiteState, input.toolName),
-      },
-    } as HookOutput & { hookSpecificOutput: Record<string, unknown> };
+    if (shouldLoosenOrdinaryEnforcement('PreToolUse')) {
+      const advisoryReason = buildPromptPrerequisiteDenyReason(promptPrerequisiteState, input.toolName);
+      preToolMessages.push(`[ADVISORY] ${advisoryReason}`);
+      recordDispatchTelemetry({
+        schemaVersion: 1,
+        event: 'PreToolUse',
+        hookType: 'pre-tool-use',
+        hookId: 'PreToolUse:*:prompt-prerequisites',
+        riskClass: 'advisory',
+        failMode: 'fail-open',
+        appliedDecision: 'advisory',
+        durationMs: 0,
+        verdict: 'advisory-demoted',
+        recordedAt: new Date().toISOString(),
+      }, directory);
+    } else {
+      return {
+        continue: true,
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason: buildPromptPrerequisiteDenyReason(promptPrerequisiteState, input.toolName),
+        },
+      } as HookOutput & { hookSpecificOutput: Record<string, unknown> };
+    }
   }
+
 
   const promptPrerequisiteProgress = recordPromptPrerequisiteProgress(
     directory,
@@ -2394,7 +2493,7 @@ function processPreToolUse(input: HookInput): HookOutput {
   // at `.omq/plans/open-questions.md` under the model-routing alignment section.
   // Force-inherit: deny Task/Agent calls that carry a `model` parameter when
   // forceInherit is enabled (Bedrock, Vertex, CC Switch, etc.).
-  // Qoder CLI's hook protocol does not support modifiedInput, so we cannot
+  // Claude Code's hook protocol does not support modifiedInput, so we cannot
   // silently strip the model. Instead, deny the call so Claude retries without
   // the model param, letting agents inherit the parent session's model.
   // (issues #1135, #1201, #1415)
@@ -2408,7 +2507,7 @@ function processPreToolUse(input: HookInput): HookOutput {
       const config = loadConfig();
       if (config.routing?.forceInherit) {
         // Use permissionDecision:"deny" — the only PreToolUse mechanism
-        // Qoder CLI supports for blocking a specific tool call with
+        // Claude Code supports for blocking a specific tool call with
         // feedback. modifiedInput is NOT supported by the hook protocol.
         const denyReason = `[MODEL ROUTING] This environment uses a non-standard provider (Bedrock/Vertex/proxy). Omit the \`model\` parameter on ${input.toolName} calls so agents inherit the parent session's model. The model "${inputModel}" was rejected.`;
         return {
@@ -2439,7 +2538,7 @@ function processPreToolUse(input: HookInput): HookOutput {
       );
 
       if (permissionFallback.shouldFallback) {
-        const reason = `[BACKGROUND PERMISSIONS] ${subagentType || "This background agent"} may need ${permissionFallback.missingTools.join(", ")} permissions, but background agents cannot request interactive approval. Re-run without \`run_in_background=true\` or pre-approve ${permissionFallback.missingTools.join(", ")} in Qoder CLI settings.`;
+        const reason = `[BACKGROUND PERMISSIONS] ${subagentType || "This background agent"} may need ${permissionFallback.missingTools.join(", ")} permissions, but background agents cannot request interactive approval. Re-run without \`run_in_background=true\` or pre-approve ${permissionFallback.missingTools.join(", ")} in Claude Code settings.`;
         return {
           continue: false,
           reason,
@@ -2467,7 +2566,7 @@ function processPreToolUse(input: HookInput): HookOutput {
 
       if (permissionFallback.shouldFallback) {
         const reason =
-          "[BACKGROUND PERMISSIONS] This Bash command is not auto-approved for background execution. Re-run without `run_in_background=true` or pre-approve the command in Qoder CLI settings.";
+          "[BACKGROUND PERMISSIONS] This Bash command is not auto-approved for background execution. Re-run without `run_in_background=true` or pre-approve the command in Claude Code settings.";
         return {
           continue: false,
           reason,
@@ -2502,7 +2601,7 @@ function processPreToolUse(input: HookInput): HookOutput {
   // Activate skill state when Skill tool is invoked (issue #1033)
   // This writes skill-active-state.json so the Stop hook can prevent premature
   // session termination while a skill is executing.
-  // Pass rawSkillName so writeSkillActiveState can distinguish OMQ built-in
+  // Pass rawSkillName so writeSkillActiveState can distinguish OMC built-in
   // skills from project custom skills with the same name (issue #1581).
   if (input.toolName === "Skill") {
     const skillName = getInvokedSkillName(input.toolInput);
@@ -2639,7 +2738,7 @@ function processPreToolUse(input: HookInput): HookOutput {
   }
 
   // Track background Bash invocations too. Ralph's Stop hook uses this
-  // session-owned pending-work signal to avoid reinforcing while Qoder CLI is
+  // session-owned pending-work signal to avoid reinforcing while Claude Code is
   // expected to notify when the background command finishes.
   if (input.toolName === "Bash") {
     const toolInput = (modifiedToolInput ?? input.toolInput) as
@@ -2742,9 +2841,9 @@ function getInvokedSkillName(toolInput: unknown): string | null {
 
 /**
  * Extract the raw (un-normalized) skill name from Skill tool input.
- * Used to distinguish OMQ built-in skills (prefixed with 'oh-my-qoder:')
+ * Used to distinguish OMC built-in skills (prefixed with 'oh-my-claudecode:')
  * from project custom skills or other plugin skills with the same bare name.
- * See: https://github.com/spring-ai-alibaba/oh-my-qoder/issues/1581
+ * See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/1581
  */
 function getRawSkillName(toolInput: unknown): string | undefined {
   if (!toolInput || typeof toolInput !== "object") return undefined;
@@ -2758,7 +2857,7 @@ async function processPostToolUse(input: HookInput): Promise<HookOutput> {
   const messages: string[] = [];
 
   // Ensure mode state activation also works when execution starts via Skill tool
-  // (e.g., ralplan consensus handoff into Skill("oh-my-qoder:ralph")).
+  // (e.g., ralplan consensus handoff into Skill("oh-my-claudecode:ralph")).
   const toolName = (input.toolName || "").toLowerCase();
   if (toolName === "skill") {
     const skillName = getInvokedSkillName(input.toolInput);
@@ -2789,13 +2888,13 @@ async function processPostToolUse(input: HookInput): Promise<HookOutput> {
     // Clear skill-active state on skill completion to prevent false-blocking.
     // Without this, every non-'none' skill falsely blocks stops until TTL expires.
     // Guard: only clear if the completing skill owns the active state.
-    // When a parent skill (e.g. omq-setup) invokes a child skill (e.g. mcp-setup),
+    // When a parent skill (e.g. omc-setup) invokes a child skill (e.g. mcp-setup),
     // the child's PostToolUse fires first — we must not delete the parent's state.
     const { clearSkillActiveState, readSkillActiveState } = await import("./skill-state/index.js");
     const currentState = readSkillActiveState(directory, input.sessionId);
     const completingSkill = (getInvokedSkillName(input.toolInput) ?? "")
       .toLowerCase()
-      .replace(/^oh-my-qoder:/, "");
+      .replace(/^oh-my-claudecode:/, "");
     if (!currentState || !currentState.active || currentState.skill_name === completingSkill) {
       clearSkillActiveState(directory, input.sessionId);
     }
@@ -2961,8 +3060,12 @@ async function processAutopilot(input: HookInput): Promise<HookOutput> {
   const directory = resolveToWorktreeRoot(input.directory);
 
   // Lazy-load autopilot module
-  const { readAutopilotState, getPhasePrompt } =
-    await import("./autopilot/index.js");
+  const {
+    readAutopilotState,
+    getPhasePrompt,
+    hasPipelineTracking,
+    generatePipelinePrompt,
+  } = await import("./autopilot/index.js");
 
   const state = readAutopilotState(directory, input.sessionId);
 
@@ -2970,8 +3073,22 @@ async function processAutopilot(input: HookInput): Promise<HookOutput> {
     return { continue: true };
   }
 
-  // Check phase and inject appropriate prompt
   const config = loadConfig();
+
+  if (hasPipelineTracking(state)) {
+    const pipelinePrompt = generatePipelinePrompt(directory, input.sessionId);
+    const runtimeInsight = formatAutopilotRuntimeInsight(directory, input.sessionId);
+    if (pipelinePrompt || runtimeInsight) {
+      const detailParts = [runtimeInsight, pipelinePrompt].filter(Boolean);
+      return {
+        continue: true,
+        message: `[AUTOPILOT - Pipeline]\n\n${detailParts.join("\n\n")}`,
+      };
+    }
+    return { continue: true };
+  }
+
+  // Check phase and inject appropriate prompt
   const context = {
     idea: state.originalIdea,
     specPath: state.expansion.spec_path || ".omq/autopilot/spec.md",
@@ -3018,7 +3135,7 @@ export function resetSkipHooksCache(): void {
  * Main hook processor
  * Routes to specific hook handler based on type
  */
-export async function processHook(
+async function processHookImpl(
   hookType: HookType,
   rawInput: HookInput,
 ): Promise<HookOutput> {
@@ -3031,7 +3148,7 @@ export async function processHook(
     return { continue: true };
   }
 
-  // Normalize snake_case fields from Qoder CLI to camelCase
+  // Normalize snake_case fields from Claude Code to camelCase
   const input = normalizeHookInput(rawInput, hookType) as HookInput;
 
   try {
@@ -3086,11 +3203,6 @@ export async function processHook(
           reason: (rawSE.reason as SessionEndInput["reason"]) ?? "other",
         };
         const result = await handleSessionEnd(sessionEndInput);
-        _openclaw.wake("session-end", {
-          sessionId: sessionEndInput.session_id,
-          projectPath: sessionEndInput.cwd,
-          reason: sessionEndInput.reason,
-        });
         return result;
       }
 
@@ -3120,6 +3232,8 @@ export async function processHook(
           hook_event_name: "SubagentStart",
           prompt: normalized.prompt as string | undefined,
           model: normalized.model as string | undefined,
+          name: normalized.name as string | undefined,
+          description: normalized.description as string | undefined,
         };
         // recordAgentStart is already called inside processSubagentStart,
         // so we don't call it here to avoid duplicate session replay entries.
@@ -3239,7 +3353,7 @@ export async function processHook(
 
       case "code-simplifier": {
         const directory = input.directory ?? process.cwd();
-        const stateDir = join(getOmqRoot(directory), "state");
+        const stateDir = join(getOmcRoot(directory), "state");
         const { processCodeSimplifier } =
           await import("./code-simplifier/index.js");
         const result = processCodeSimplifier(directory, stateDir);
@@ -3257,6 +3371,79 @@ export async function processHook(
     console.error(`[hook-bridge] Error in ${hookType}:`, error);
     return { continue: true };
   }
+}
+
+/**
+ * Main hook processor (epic #3698, issues #3707 + #3708).
+ *
+ * Thin wrapper over the legacy dispatcher: runs the legacy path unchanged,
+ * then records shadow and cutover observations. Shadow mode is gated behind
+ * OMQ_HOOK_SHADOW; cutover dispatch telemetry is recorded boundedly per
+ * event family (with advisory fail-open by default, hard only for approved
+ * risk classes) and per-family rollback via OMQ_HOOK_ROLLBACK /
+ * OMQ_HOOK_DISPATCHER_ROLLBACK. Unknown failures remain advisory.
+ */
+export async function processHook(
+  hookType: HookType,
+  rawInput: HookInput,
+): Promise<HookOutput> {
+  const legacyStarted = performance.now();
+  const rawRecord =
+    rawInput && typeof rawInput === "object"
+      ? rawInput as unknown as Record<string, unknown>
+      : {};
+  const inputDirectory =
+    typeof rawRecord.cwd === "string"
+      ? rawRecord.cwd
+      : typeof rawRecord.directory === "string"
+        ? rawRecord.directory
+        : undefined;
+  const projectDirectory = resolveToWorktreeRoot(inputDirectory);
+  const output = await processHookImpl(hookType, rawInput);
+  // Cutover telemetry: one bounded privacy-preserving record per invocation
+  // when the hook's family is cut over (event-family cutover, advisory default).
+  try {
+    const evt = (
+      hookType === 'keyword-detector' ? 'UserPromptSubmit'
+      : hookType === 'session-start' || hookType === 'setup-init' || hookType === 'setup-maintenance' ? 'SessionStart'
+      : hookType === 'pre-tool-use' ? 'PreToolUse'
+      : hookType === 'permission-request' ? 'PermissionRequest'
+      : hookType === 'post-tool-use' ? 'PostToolUse'
+      : hookType === 'subagent-start' ? 'SubagentStart'
+      : hookType === 'subagent-stop' ? 'SubagentStop'
+      : hookType === 'pre-compact' ? 'PreCompact'
+      : hookType === 'stop-continuation' || hookType === 'persistent-mode' || hookType === 'ralph' || hookType === 'code-simplifier' ? 'Stop'
+      : hookType === 'session-end' ? 'SessionEnd'
+      : null
+    ) as unknown as string | null;
+    if (evt && isFamilyCutoverEnabled(evt as never)) {
+      const hard = evt === 'PermissionRequest' || evt === 'PreToolUse';
+      const hasHardDecision = output.continue === false || hasHookProtocolDeny(output);
+      const applied = hasHardDecision ? (hard ? 'hard' : 'advisory') : 'none';
+      recordDispatchTelemetry({
+        schemaVersion: 1,
+        event: evt as never,
+        hookType,
+        appliedDecision: applied as never,
+        durationMs: performance.now() - legacyStarted,
+        recordedAt: new Date().toISOString(),
+      }, projectDirectory);
+    }
+  } catch {
+    // telemetry is bounded and advisory-only
+  }
+  if (isHookShadowEnabled()) {
+    try {
+      await runShadowObservation(
+        hookType,
+        output,
+        performance.now() - legacyStarted,
+      );
+    } catch {
+      // Shadow observation is advisory and must never change hook behavior.
+    }
+  }
+  return output;
 }
 
 /**
