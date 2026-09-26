@@ -341,27 +341,32 @@ export function isHudEnabledInConfig(): boolean {
  * @param statusLine - The statusLine setting object from settings.json
  * @returns true if the statusLine was set by OMC
  */
-export function isOmcStatusLine(statusLine: unknown): boolean {
+/**
+ * Does this statusLine entry belong to OMQ?
+ *
+ * Matches our own HUD (`omq-hud.mjs`) plus the ancestor's (`omc-hud.mjs`): an
+ * install upgraded from the ancestor still carries the old filename, and treating
+ * it as foreign would leave two statuslines configured at once.
+ */
+export function isOmqStatusLine(statusLine: unknown): boolean {
   if (!statusLine) return false;
-  // Legacy string format (pre-v4.5): "~/.claude/hud/omc-hud.mjs"
-  if (typeof statusLine === 'string') {
-    return statusLine.includes('omc-hud');
-  }
-  // Current object format: { type: "command", command: "node ...omc-hud.mjs" }
-  if (typeof statusLine === 'object') {
-    const sl = statusLine as Record<string, unknown>;
-    if (typeof sl.command === 'string') {
-      return sl.command.includes('omc-hud');
-    }
-  }
-  return false;
+  const command = typeof statusLine === 'string'
+    ? statusLine
+    : typeof statusLine === 'object'
+      ? (statusLine as Record<string, unknown>).command
+      : undefined;
+  if (typeof command !== 'string') return false;
+  return /(?:omq|omc)-hud/.test(command.toLowerCase());
 }
+
+/** @deprecated ancestor spelling kept for vendored call sites; use isOmqStatusLine. */
+export const isOmcStatusLine = isOmqStatusLine;
 
 /**
  * Known OMC hook script filenames installed into .claude/hooks/.
  * Must be kept in sync with HOOKS_SETTINGS_CONFIG_NODE command entries.
  */
-const OMC_HOOK_FILENAMES = new Set([
+const OMQ_HOOK_FILENAMES = new Set([
   'keyword-detector.mjs',
   'session-start.mjs',
   'pre-tool-use.mjs',
@@ -411,7 +416,7 @@ function hashFileContents(path: string): string | null {
 function getShippedStandaloneHookPayloadPath(filename: string, location: 'hooks' | 'hooks/lib'): string | null {
   const packageDir = getPackageDir();
   if (location === 'hooks') {
-    if (OMC_HOOK_FILENAMES.has(filename)) {
+    if (OMQ_HOOK_FILENAMES.has(filename)) {
       return join(packageDir, 'templates', 'hooks', filename);
     }
     if (filename === 'find-node.sh') {
@@ -451,30 +456,43 @@ function isShippedStandaloneHookPayload(targetPath: string, filename: string, lo
  * @param command - The hook command string
  * @returns true if the command belongs to OMC
  */
-export function isOmcHook(command: string): boolean {
+/**
+ * Does this hook command belong to OMQ?
+ *
+ * Both brands are accepted on purpose: `omq`/`oh-my-qoder` is what a fresh
+ * install writes, while an upgraded install keeps `omc`/`oh-my-claudecode`
+ * paths and its hook entries must still be recognised as ours so the merge
+ * logic does not treat them as a third party's hooks. A command that matches
+ * neither brand (and whose filename is not one of our hook scripts) stays
+ * foreign -- that is the case this predicate exists to get right.
+ */
+export function isOmqHook(command: string): boolean {
   const lowerCommand = command.toLowerCase();
-  // Match "omc" as a path segment or word boundary
-  // Matches: /omc/, /omc-, omc/, -omc, _omc, omc_
-  const omcPattern = /(?:^|[\/\\_-])omc(?:$|[\/\\_-])/;
-  const fullNamePattern = /oh-my-claudecode/;
-  if (omcPattern.test(lowerCommand) || fullNamePattern.test(lowerCommand)) {
+  // Match "omq"/"omc" as a path segment or word boundary
+  // Matches: /omq/, /omq-, omq/, -omq, _omq, omq_ (and the ancestor spellings)
+  const brandPattern = /(?:^|[\/\\_-])(?:omq|omc)(?:$|[\/\\_-])/;
+  const fullNamePattern = /oh-my-(?:qoder|claudecode)/;
+  if (brandPattern.test(lowerCommand) || fullNamePattern.test(lowerCommand)) {
     return true;
   }
-  // Check for known OMC hook filenames in .claude/hooks/ path.
-  // Handles both Unix (.claude/hooks/) and Windows (.claude\hooks\) paths.
+  // Check for known OMQ hook filenames in the hooks directory.
+  // Handles both Unix (.qoder/hooks/) and Windows (.qoder\hooks\) paths.
   const containsHooksDir = /hooks[/\\]/.test(lowerCommand);
   const hookFilenameMatch = lowerCommand.match(/([a-z0-9-]+\.mjs)(?:$|["'\s])/);
-  if (containsHooksDir && hookFilenameMatch && OMC_HOOK_FILENAMES.has(hookFilenameMatch[1])) {
+  if (containsHooksDir && hookFilenameMatch && OMQ_HOOK_FILENAMES.has(hookFilenameMatch[1])) {
     return true;
   }
   return false;
 }
 
+/** @deprecated ancestor spelling kept for vendored call sites; use isOmqHook. */
+export const isOmcHook = isOmqHook;
+
 function isStandaloneOmcHookCommand(command: string): boolean {
   const lowerCommand = command.toLowerCase();
   const containsHooksDir = /hooks[/\\]/.test(lowerCommand);
   const hookFilenameMatch = lowerCommand.match(/([a-z0-9-]+\.mjs)(?:$|["'\s])/);
-  return !!(containsHooksDir && hookFilenameMatch && OMC_HOOK_FILENAMES.has(hookFilenameMatch[1]));
+  return !!(containsHooksDir && hookFilenameMatch && OMQ_HOOK_FILENAMES.has(hookFilenameMatch[1]));
 }
 
 function getStandaloneOmcHookFilename(command: string): string | null {
@@ -659,7 +677,7 @@ function pruneLegacyStandaloneHookScripts(log: (msg: string) => void, activeStan
   let removed = 0;
 
   for (const filename of readdirSync(HOOKS_DIR)) {
-    if (!OMC_HOOK_FILENAMES.has(filename) && !OMC_HOOK_EXTRA_FILENAMES.has(filename)) {
+    if (!OMQ_HOOK_FILENAMES.has(filename) && !OMC_HOOK_EXTRA_FILENAMES.has(filename)) {
       continue;
     }
 
