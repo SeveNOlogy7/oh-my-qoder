@@ -129,7 +129,7 @@ function isWorkerInfo(value: unknown): boolean {
   if (!isRecord(value) || typeof value.name !== 'string' || !WORKER_NAME_SAFE_PATTERN.test(value.name) || !isSafeCounter(value.index) || value.index < 1) return false;
   return (value.role === undefined || typeof value.role === 'string')
     && (value.assigned_tasks === undefined || isStringArray(value.assigned_tasks))
-    && (value.worker_cli === undefined || ['claude', 'codex', 'gemini', 'cursor', 'grok', 'antigravity'].includes(value.worker_cli as string))
+    && (value.worker_cli === undefined || ['qwen', 'claude', 'codex', 'gemini', 'cursor', 'grok', 'antigravity'].includes(value.worker_cli as string))
     && (value.pid === undefined || (isSafeCounter(value.pid) && value.pid > 0))
     && (value.pane_id === undefined || typeof value.pane_id === 'string')
     && (value.working_dir === undefined || typeof value.working_dir === 'string')
@@ -287,7 +287,7 @@ function isResolvedRoleRoute(value: unknown): value is { primary: RoleAssignment
 
 function isRoleAssignment(value: unknown): value is RoleAssignment {
   return isRecord(value)
-    && ['claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity'].includes(value.provider as string)
+    && ['qwen', 'claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity'].includes(value.provider as string)
     && isNonEmptyString(value.model)
     && KNOWN_AGENT_NAMES.some(agent => agent === value.agent);
 }

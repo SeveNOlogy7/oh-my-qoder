@@ -45,7 +45,7 @@ export interface PromptSection {
   body: string;
 }
 
-export type ProviderId = 'claude' | 'codex' | 'gemini' | 'antigravity';
+export type ProviderId = 'qwen' | 'claude' | 'codex' | 'gemini' | 'antigravity';
 export type ModelTier = 'low' | 'medium' | 'high';
 
 export interface ComposeOverlay {

@@ -19,6 +19,7 @@ export interface AgentConfig {
 export type AutopilotExecutionBackend = "team" | "solo";
 export type AutopilotPlanningMode = "ralplan" | "direct" | false;
 export type AutopilotTeamAgentType =
+  | "qwen"
   | "claude"
   | "codex"
   | "gemini"
@@ -400,6 +401,7 @@ export interface ResolveOptions {
  */
 export type DelegationProvider =
   | "claude"
+  | "qwen"
   /** Use /team to coordinate Codex CLI workers in tmux panes. */
   | "codex"
   /** Use /team to coordinate Gemini CLI workers in tmux panes. */
@@ -479,7 +481,7 @@ export type CanonicalTeamRole = typeof CANONICAL_TEAM_ROLES[number];
 export const CURSOR_EXECUTOR_TEAM_ROLES = ["executor"] as const;
 
 /** Provider for /team role routing. */
-export type TeamRoleProvider = 'claude' | 'codex' | 'gemini' | 'grok' | 'cursor' | 'antigravity';
+export type TeamRoleProvider = 'qwen' | 'claude' | 'codex' | 'gemini' | 'grok' | 'cursor' | 'antigravity';
 
 /** Tier name accepted in role-assignment `model` field. */
 export type TeamRoleTier = 'HIGH' | 'MEDIUM' | 'LOW';

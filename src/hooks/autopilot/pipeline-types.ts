@@ -110,6 +110,7 @@ export type ExecutionBackend = "team" | "solo";
 
 /** CLI-backed worker types supported by the tmux team runtime. */
 export type AutopilotTeamAgentType =
+  | "qwen"
   | "claude"
   | "codex"
   | "gemini"

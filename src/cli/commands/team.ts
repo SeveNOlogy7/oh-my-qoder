@@ -26,7 +26,7 @@ import { getOmcRoot } from '../../lib/worktree-paths.js';
 const HELP_TOKENS = new Set(['--help', '-h', 'help']);
 const MIN_WORKER_COUNT = 1;
 const MAX_WORKER_COUNT = 20;
-const VALID_TEAM_CLI_AGENT_TYPES = new Set(['claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity']);
+const VALID_TEAM_CLI_AGENT_TYPES = new Set(['qwen', 'claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity']);
 const CURSOR_ALLOWED_TEAM_ROLES = new Set(['executor']);
 const DEFAULT_TEAM_CLI_AGENT_TYPE: CliAgentType = 'claude';
 

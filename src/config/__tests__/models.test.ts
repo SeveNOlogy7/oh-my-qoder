@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  isBedrock,
-  isVertexAI,
-  isNonClaudeProvider,
+  isNonDefaultProvider,
   isProviderSpecificModelId,
-  resolveClaudeFamily,
-  CLAUDE_FAMILY_DEFAULTS,
+  resolveQwenFamily,
+  QWEN_FAMILY_DEFAULTS,
   hasExtendedContextSuffix,
   isSubagentSafeModelId,
   resolveInheritedModelFromEnv,
@@ -14,239 +12,140 @@ import {
 import { saveAndClear, restore } from './test-helpers.js';
 
 const TIER_MODEL_ENV_KEYS = [
-  'OMC_MODEL_HIGH',
-  'OMC_MODEL_MEDIUM',
-  'OMC_MODEL_LOW',
-  'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
-  'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
-  'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
-  'ANTHROPIC_DEFAULT_OPUS_MODEL',
-  'ANTHROPIC_DEFAULT_SONNET_MODEL',
-  'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+  'OMQ_MODEL_HIGH',
+  'OMQ_MODEL_MEDIUM',
+  'OMQ_MODEL_LOW',
+  'DASHSCOPE_DEFAULT_MAX_MODEL',
+  'DASHSCOPE_DEFAULT_PLUS_MODEL',
+  'DASHSCOPE_DEFAULT_TURBO_MODEL',
 ] as const;
-const BEDROCK_KEYS = ['CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', ...TIER_MODEL_ENV_KEYS] as const;
-const VERTEX_KEYS = ['CLAUDE_CODE_USE_VERTEX', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', ...TIER_MODEL_ENV_KEYS] as const;
+
 const ALL_KEYS = [
-  'CLAUDE_CODE_USE_BEDROCK',
-  'CLAUDE_CODE_USE_VERTEX',
-  'CLAUDE_MODEL',
-  'ANTHROPIC_MODEL',
-  'ANTHROPIC_BASE_URL',
-  'OMC_ROUTING_FORCE_INHERIT',
+  'OMQ_ROUTING_FORCE_INHERIT',
+  'QODER_MODEL',
+  'DASHSCOPE_MODEL',
+  'DASHSCOPE_BASE_URL',
   ...TIER_MODEL_ENV_KEYS,
 ] as const;
 
 // ---------------------------------------------------------------------------
-// isBedrock()
+// isNonDefaultProvider()
 // ---------------------------------------------------------------------------
-describe('isBedrock()', () => {
-  let saved: Record<string, string | undefined>;
-
-  beforeEach(() => { saved = saveAndClear(BEDROCK_KEYS); });
-  afterEach(() => { restore(saved); });
-
-  it('returns true when CLAUDE_CODE_USE_BEDROCK=1', () => {
-    process.env.CLAUDE_CODE_USE_BEDROCK = '1';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('returns false when CLAUDE_CODE_USE_BEDROCK=0', () => {
-    process.env.CLAUDE_CODE_USE_BEDROCK = '0';
-    expect(isBedrock()).toBe(false);
-  });
-
-  // --- ANTHROPIC_MODEL pattern detection ---
-
-  it('detects global. inference profile — the [1m] 1M-context case', () => {
-    process.env.ANTHROPIC_MODEL = 'global.anthropic.claude-sonnet-4-6[1m]';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects global. inference profile without suffix', () => {
-    process.env.ANTHROPIC_MODEL = 'global.anthropic.claude-sonnet-4-6-v1:0';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects us. region prefix', () => {
-    process.env.ANTHROPIC_MODEL = 'us.anthropic.claude-opus-4-6-v1';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects eu. region prefix', () => {
-    process.env.ANTHROPIC_MODEL = 'eu.anthropic.claude-haiku-4-5-v1:0';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects ap. region prefix', () => {
-    process.env.ANTHROPIC_MODEL = 'ap.anthropic.claude-sonnet-4-6-v1:0';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects bare anthropic.claude prefix (legacy Bedrock IDs)', () => {
-    process.env.ANTHROPIC_MODEL = 'anthropic.claude-3-haiku-20240307-v1:0';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects Bedrock inference-profile ARNs', () => {
-    process.env.ANTHROPIC_MODEL = 'arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects Bedrock application-inference-profile ARNs', () => {
-    process.env.CLAUDE_MODEL = 'arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123/global.anthropic.claude-sonnet-4-6-v1:0';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('also checks CLAUDE_MODEL', () => {
-    process.env.CLAUDE_MODEL = 'global.anthropic.claude-sonnet-4-6[1m]';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('detects Bedrock model IDs from tier model env vars', () => {
-    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'global.anthropic.claude-sonnet-4-6-v1:0';
-    expect(isBedrock()).toBe(true);
-  });
-
-  it('returns false for bare Anthropic model IDs', () => {
-    process.env.ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-    expect(isBedrock()).toBe(false);
-  });
-
-  it('returns false when no relevant env var is set', () => {
-    expect(isBedrock()).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// isVertexAI()
-// ---------------------------------------------------------------------------
-describe('isVertexAI()', () => {
-  let saved: Record<string, string | undefined>;
-
-  beforeEach(() => { saved = saveAndClear(VERTEX_KEYS); });
-  afterEach(() => { restore(saved); });
-
-  it('returns true when CLAUDE_CODE_USE_VERTEX=1', () => {
-    process.env.CLAUDE_CODE_USE_VERTEX = '1';
-    expect(isVertexAI()).toBe(true);
-  });
-
-  it('detects vertex_ai/ prefix in ANTHROPIC_MODEL', () => {
-    process.env.ANTHROPIC_MODEL = 'vertex_ai/claude-sonnet-4-6@20250301';
-    expect(isVertexAI()).toBe(true);
-  });
-
-  it('detects Vertex model IDs from tier model env vars', () => {
-    process.env.OMC_MODEL_MEDIUM = 'vertex_ai/claude-sonnet-4-6@20250301';
-    expect(isVertexAI()).toBe(true);
-  });
-
-  it('returns false for Bedrock or bare model IDs', () => {
-    process.env.ANTHROPIC_MODEL = 'global.anthropic.claude-sonnet-4-6[1m]';
-    expect(isVertexAI()).toBe(false);
-  });
-
-  it('returns false when CLAUDE_CODE_USE_VERTEX=0', () => {
-    process.env.CLAUDE_CODE_USE_VERTEX = '0';
-    expect(isVertexAI()).toBe(false);
-  });
-
-  it('returns false when no relevant env var is set', () => {
-    expect(isVertexAI()).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// isNonClaudeProvider()
-// ---------------------------------------------------------------------------
-describe('isNonClaudeProvider()', () => {
+describe('isNonDefaultProvider()', () => {
   let saved: Record<string, string | undefined>;
 
   beforeEach(() => { saved = saveAndClear(ALL_KEYS); });
   afterEach(() => { restore(saved); });
 
-  it('returns true for global. Bedrock inference profile (the [1m] case)', () => {
-    process.env.ANTHROPIC_MODEL = 'global.anthropic.claude-sonnet-4-6[1m]';
-    expect(isNonClaudeProvider()).toBe(true);
+  it('returns true when OMQ_ROUTING_FORCE_INHERIT=true', () => {
+    process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+    expect(isNonDefaultProvider()).toBe(true);
   });
 
-  it('returns true for Bedrock inference-profile ARNs', () => {
-    process.env.ANTHROPIC_MODEL = 'arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0';
-    expect(isNonClaudeProvider()).toBe(true);
+  it('returns false when OMQ_ROUTING_FORCE_INHERIT=1 (only "true" triggers)', () => {
+    process.env.OMQ_ROUTING_FORCE_INHERIT = '1';
+    expect(isNonDefaultProvider()).toBe(false);
   });
 
-  it('returns true when CLAUDE_CODE_USE_BEDROCK=1', () => {
-    process.env.CLAUDE_CODE_USE_BEDROCK = '1';
-    expect(isNonClaudeProvider()).toBe(true);
+  it('returns false when OMQ_ROUTING_FORCE_INHERIT=0', () => {
+    process.env.OMQ_ROUTING_FORCE_INHERIT = '0';
+    expect(isNonDefaultProvider()).toBe(false);
   });
 
-  it('returns true when CLAUDE_CODE_USE_VERTEX=1', () => {
-    process.env.CLAUDE_CODE_USE_VERTEX = '1';
-    expect(isNonClaudeProvider()).toBe(true);
+  // --- Non-Qwen model detection ---
+
+  it('detects non-Qwen model in DASHSCOPE_MODEL', () => {
+    process.env.DASHSCOPE_MODEL = 'deepseek-v3';
+    expect(isNonDefaultProvider()).toBe(true);
   });
 
-  it('returns true when OMC_ROUTING_FORCE_INHERIT=true', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
-    expect(isNonClaudeProvider()).toBe(true);
+  it('detects non-Qwen model in QODER_MODEL', () => {
+    process.env.QODER_MODEL = 'glm-4';
+    expect(isNonDefaultProvider()).toBe(true);
   });
 
-  it('returns true when Anthropic tier defaults target a non-Claude provider', () => {
-    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'kimi-k2.6:cloud';
-    expect(isNonClaudeProvider()).toBe(true);
+  it('returns false for Qwen model in DASHSCOPE_MODEL', () => {
+    process.env.DASHSCOPE_MODEL = 'qwen-max';
+    expect(isNonDefaultProvider()).toBe(false);
   });
 
-  it('returns true when OMC tier defaults target a non-Claude provider', () => {
-    process.env.OMC_MODEL_MEDIUM = 'glm-5.1:cloud';
-    expect(isNonClaudeProvider()).toBe(true);
+  it('returns false for Qwen model in QODER_MODEL', () => {
+    process.env.QODER_MODEL = 'qwen-plus';
+    expect(isNonDefaultProvider()).toBe(false);
   });
 
-  it('does not globally force inheritance for tier-only non-Claude defaults', () => {
-    process.env.OMC_MODEL_HIGH = 'glm-5.1:cloud';
+  it('is case-insensitive for Qwen detection', () => {
+    process.env.DASHSCOPE_MODEL = 'Qwen-Max';
+    expect(isNonDefaultProvider()).toBe(false);
+  });
 
-    expect(isNonClaudeProvider()).toBe(true);
+  // --- DASHSCOPE_BASE_URL detection ---
+
+  it('returns true when DASHSCOPE_BASE_URL is a non-DashScope endpoint', () => {
+    process.env.DASHSCOPE_BASE_URL = 'https://api.deepseek.com/v1';
+    expect(isNonDefaultProvider()).toBe(true);
+  });
+
+  it('returns false when DASHSCOPE_BASE_URL contains dashscope.aliyuncs.com', () => {
+    process.env.DASHSCOPE_BASE_URL = 'https://dashscope.aliyuncs.com/v1';
+    expect(isNonDefaultProvider()).toBe(false);
+  });
+
+  // --- Tier model env vars ---
+
+  it('returns true when tier model env var targets a non-Qwen provider', () => {
+    process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'kimi-k2.6:cloud';
+    expect(isNonDefaultProvider()).toBe(true);
+  });
+
+  it('returns true when OMQ tier defaults target a non-Qwen provider', () => {
+    process.env.OMQ_MODEL_MEDIUM = 'glm-5.1:cloud';
+    expect(isNonDefaultProvider()).toBe(true);
+  });
+
+  it('does not treat bare tier aliases as non-Qwen provider IDs', () => {
+    process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'medium';
+    expect(isNonDefaultProvider()).toBe(false);
+  });
+
+  // --- Direct model priority ---
+
+  it('lets a direct Qwen QODER_MODEL beat stale non-Qwen tier defaults', () => {
+    process.env.QODER_MODEL = 'qwen-plus';
+    process.env.OMQ_MODEL_MEDIUM = 'glm-5.1:cloud';
+    expect(isNonDefaultProvider()).toBe(false);
+  });
+
+  it('lets a direct Qwen DASHSCOPE_MODEL beat stale non-Qwen tier defaults', () => {
+    process.env.DASHSCOPE_MODEL = 'qwen-plus';
+    process.env.OMQ_MODEL_MEDIUM = 'glm-5.1:cloud';
+    expect(isNonDefaultProvider()).toBe(false);
+  });
+
+  it('lets a direct Qwen QODER_MODEL beat a stale non-Qwen DASHSCOPE_MODEL', () => {
+    process.env.QODER_MODEL = 'qwen-plus';
+    process.env.DASHSCOPE_MODEL = 'kimi-k2.6:cloud';
+    expect(isNonDefaultProvider()).toBe(false);
+  });
+
+  // --- shouldAutoForceInherit interaction ---
+
+  it('does not globally force inheritance for tier-only non-Qwen defaults', () => {
+    process.env.OMQ_MODEL_HIGH = 'glm-5.1:cloud';
+    expect(isNonDefaultProvider()).toBe(true);
     expect(shouldAutoForceInherit()).toBe(false);
   });
 
-  it('does globally force inheritance for direct non-Claude session models', () => {
-    process.env.CLAUDE_MODEL = 'glm-5.1:cloud';
-
-    expect(isNonClaudeProvider()).toBe(true);
+  it('does globally force inheritance for direct non-Qwen session models', () => {
+    process.env.QODER_MODEL = 'glm-5.1:cloud';
+    expect(isNonDefaultProvider()).toBe(true);
     expect(shouldAutoForceInherit()).toBe(true);
   });
 
-  it('lets a direct Claude CLAUDE_MODEL beat a stale non-Claude ANTHROPIC_MODEL', () => {
-    process.env.CLAUDE_MODEL = 'claude-sonnet-4-6';
-    process.env.ANTHROPIC_MODEL = 'kimi-k2.6:cloud';
-
-    expect(isNonClaudeProvider()).toBe(false);
-  });
-
-  it('lets a direct Claude CLAUDE_MODEL beat stale non-Claude tier defaults', () => {
-    process.env.CLAUDE_MODEL = 'claude-sonnet-4-6';
-    process.env.OMC_MODEL_MEDIUM = 'glm-5.1:cloud';
-
-    expect(isNonClaudeProvider()).toBe(false);
-  });
-
-  it('lets a direct Claude ANTHROPIC_MODEL beat stale non-Claude tier defaults', () => {
-    process.env.ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-    process.env.OMC_MODEL_MEDIUM = 'glm-5.1:cloud';
-
-    expect(isNonClaudeProvider()).toBe(false);
-  });
-
-  it('does not treat bare tier aliases as non-Claude provider IDs', () => {
-    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'sonnet';
-    expect(isNonClaudeProvider()).toBe(false);
-  });
-
-  it('returns false for standard Anthropic API bare model IDs', () => {
-    process.env.ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-    expect(isNonClaudeProvider()).toBe(false);
-  });
+  // --- Default ---
 
   it('returns false when no env vars are set', () => {
-    expect(isNonClaudeProvider()).toBe(false);
+    expect(isNonDefaultProvider()).toBe(false);
   });
 });
 
@@ -261,190 +160,157 @@ describe('resolveInheritedModelFromEnv()', () => {
   afterEach(() => { restore(saved); });
 
   it('prefers explicit session model env vars over tier defaults', () => {
-    process.env.CLAUDE_MODEL = 'claude-session-parent';
-    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'kimi-k2.6:cloud';
+    process.env.QODER_MODEL = 'qwen-session-parent';
+    process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'kimi-k2.6:cloud';
 
-    expect(resolveInheritedModelFromEnv()).toBe('claude-session-parent');
+    expect(resolveInheritedModelFromEnv()).toBe('qwen-session-parent');
   });
 
   it('falls back to the medium tier env model for forceInherit without session model vars', () => {
-    process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = 'glm-5.1:cloud';
-    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'kimi-k2.6:cloud';
+    process.env.DASHSCOPE_DEFAULT_MAX_MODEL = 'glm-5.1:cloud';
+    process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'kimi-k2.6:cloud';
 
     expect(resolveInheritedModelFromEnv()).toBe('kimi-k2.6:cloud');
   });
 
-  it('uses OMC tier model env vars as inherit fallback when provider envs are absent', () => {
-    process.env.OMC_MODEL_MEDIUM = 'gpt-5.3:proxy';
+  it('uses OMQ tier model env vars as inherit fallback when provider envs are absent', () => {
+    process.env.OMQ_MODEL_MEDIUM = 'gpt-5.3:proxy';
 
     expect(resolveInheritedModelFromEnv()).toBe('gpt-5.3:proxy');
   });
 
-  it('returns undefined instead of a built-in Claude fallback when no model env is configured', () => {
+  it('returns undefined when no model env is configured', () => {
     expect(resolveInheritedModelFromEnv()).toBeUndefined();
   });
 });
 
 // ---------------------------------------------------------------------------
-// isProviderSpecificModelId() — issue #1695
+// isProviderSpecificModelId()
 // ---------------------------------------------------------------------------
 describe('isProviderSpecificModelId()', () => {
-  it('detects Bedrock region-prefixed model IDs', () => {
-    expect(isProviderSpecificModelId('us.anthropic.claude-sonnet-4-5-20250929-v1:0')).toBe(true);
-    expect(isProviderSpecificModelId('global.anthropic.claude-opus-4-6-v1:0')).toBe(true);
-    expect(isProviderSpecificModelId('eu.anthropic.claude-haiku-4-5-v1:0')).toBe(true);
-    expect(isProviderSpecificModelId('ap.anthropic.claude-sonnet-4-6-v1:0')).toBe(true);
+  it('detects dashscope/ prefix', () => {
+    expect(isProviderSpecificModelId('dashscope/qwen-max')).toBe(true);
+    expect(isProviderSpecificModelId('DashScope/qwen-plus')).toBe(true);
   });
 
-  it('detects Bedrock bare anthropic.claude prefix (legacy)', () => {
-    expect(isProviderSpecificModelId('anthropic.claude-3-haiku-20240307-v1:0')).toBe(true);
-  });
-
-  it('detects Bedrock ARN formats', () => {
-    expect(isProviderSpecificModelId('arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0')).toBe(true);
-    expect(isProviderSpecificModelId('arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123/global.anthropic.claude-sonnet-4-6-v1:0')).toBe(true);
-  });
-
-  it('detects Vertex AI model IDs', () => {
-    expect(isProviderSpecificModelId('vertex_ai/claude-sonnet-4-6@20250514')).toBe(true);
-  });
-
-  it('returns false for bare Anthropic API model IDs', () => {
-    expect(isProviderSpecificModelId('claude-sonnet-4-6')).toBe(false);
-    expect(isProviderSpecificModelId('claude-opus-4-6')).toBe(false);
-    expect(isProviderSpecificModelId('claude-haiku-4-5')).toBe(false);
+  it('returns false for bare Qwen model IDs', () => {
+    expect(isProviderSpecificModelId('qwen-plus')).toBe(false);
+    expect(isProviderSpecificModelId('qwen-max')).toBe(false);
+    expect(isProviderSpecificModelId('qwen-turbo')).toBe(false);
   });
 
   it('returns false for aliases', () => {
-    expect(isProviderSpecificModelId('sonnet')).toBe(false);
-    expect(isProviderSpecificModelId('opus')).toBe(false);
-    expect(isProviderSpecificModelId('haiku')).toBe(false);
+    expect(isProviderSpecificModelId('medium')).toBe(false);
+    expect(isProviderSpecificModelId('high')).toBe(false);
+    expect(isProviderSpecificModelId('low')).toBe(false);
   });
 
-  it('returns false for non-Claude model IDs', () => {
+  it('returns false for non-Qwen model IDs', () => {
     expect(isProviderSpecificModelId('gpt-4o')).toBe(false);
     expect(isProviderSpecificModelId('gemini-1.5-pro')).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// resolveClaudeFamily() — ensure Bedrock profile IDs map to correct families
+// resolveQwenFamily()
 // ---------------------------------------------------------------------------
-describe('resolveClaudeFamily() — Bedrock inference profile IDs', () => {
-  it('resolves global. sonnet [1m] profile to SONNET', () => {
-    expect(resolveClaudeFamily('global.anthropic.claude-sonnet-4-6[1m]')).toBe('SONNET');
+describe('resolveQwenFamily()', () => {
+  it('resolves qwen-turbo to TURBO', () => {
+    expect(resolveQwenFamily('qwen-turbo')).toBe('TURBO');
   });
 
-  it('resolves us. opus profile to OPUS', () => {
-    expect(resolveClaudeFamily('us.anthropic.claude-opus-4-6-v1')).toBe('OPUS');
+  it('resolves qwen-plus to PLUS', () => {
+    expect(resolveQwenFamily('qwen-plus')).toBe('PLUS');
   });
 
-  it('resolves eu. haiku profile to HAIKU', () => {
-    expect(resolveClaudeFamily('eu.anthropic.claude-haiku-4-5-v1:0')).toBe('HAIKU');
+  it('resolves qwen-max to MAX', () => {
+    expect(resolveQwenFamily('qwen-max')).toBe('MAX');
   });
 
-  it('resolves bare Anthropic model IDs', () => {
-    expect(resolveClaudeFamily('claude-sonnet-5')).toBe('SONNET');
-    expect(resolveClaudeFamily('claude-opus-4-6')).toBe('OPUS');
-    expect(resolveClaudeFamily('claude-haiku-4-5')).toBe('HAIKU');
-    expect(resolveClaudeFamily('claude-fable-5')).toBe('FABLE');
+  it('is case-insensitive for Qwen family detection', () => {
+    expect(resolveQwenFamily('Qwen-Turbo')).toBe('TURBO');
+    expect(resolveQwenFamily('QWEN-PLUS')).toBe('PLUS');
+    expect(resolveQwenFamily('QWEN-MAX')).toBe('MAX');
   });
 
-  it('resolves fable provider profile IDs to FABLE (issue #3246)', () => {
-    expect(resolveClaudeFamily('us.anthropic.claude-fable-5-v1:0')).toBe('FABLE');
-    expect(resolveClaudeFamily('global.anthropic.claude-fable-5[1m]')).toBe('FABLE');
+  it('returns null for non-Qwen model IDs', () => {
+    expect(resolveQwenFamily('deepseek-v3')).toBeNull();
+    expect(resolveQwenFamily('gpt-4')).toBeNull();
+    expect(resolveQwenFamily('glm-4')).toBeNull();
   });
 
-  it('maps the FABLE family default to claude-fable-5 (issue #3246)', () => {
-    expect(CLAUDE_FAMILY_DEFAULTS.FABLE).toBe('claude-fable-5');
-  });
-
-  it('returns null for non-Claude model IDs', () => {
-    expect(resolveClaudeFamily('gpt-4o')).toBeNull();
-    expect(resolveClaudeFamily('gemini-1.5-pro')).toBeNull();
+  it('returns null for qwen model without family suffix', () => {
+    expect(resolveQwenFamily('qwen-72b')).toBeNull();
   });
 });
 
 // ---------------------------------------------------------------------------
-// hasExtendedContextSuffix() — issue: [1m] suffix breaks Bedrock sub-agents
+// QWEN_FAMILY_DEFAULTS
 // ---------------------------------------------------------------------------
-describe('hasExtendedContextSuffix()', () => {
-  it('detects [1m] suffix (1M context window annotation)', () => {
-    expect(hasExtendedContextSuffix('global.anthropic.claude-sonnet-4-6[1m]')).toBe(true);
+describe('QWEN_FAMILY_DEFAULTS', () => {
+  it('maps TURBO to qwen-turbo', () => {
+    expect(QWEN_FAMILY_DEFAULTS.TURBO).toBe('qwen-turbo');
   });
 
-  it('detects [200k] suffix (200k context window annotation)', () => {
-    expect(hasExtendedContextSuffix('global.anthropic.claude-sonnet-4-6[200k]')).toBe(true);
+  it('maps PLUS to qwen-plus', () => {
+    expect(QWEN_FAMILY_DEFAULTS.PLUS).toBe('qwen-plus');
+  });
+
+  it('maps MAX to qwen-max', () => {
+    expect(QWEN_FAMILY_DEFAULTS.MAX).toBe('qwen-max');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hasExtendedContextSuffix()
+// ---------------------------------------------------------------------------
+describe('hasExtendedContextSuffix()', () => {
+  it('detects [1m] suffix', () => {
+    expect(hasExtendedContextSuffix('qwen-plus[1m]')).toBe(true);
+  });
+
+  it('detects [200k] suffix', () => {
+    expect(hasExtendedContextSuffix('qwen-max[200k]')).toBe(true);
   });
 
   it('detects [100k] suffix', () => {
-    expect(hasExtendedContextSuffix('us.anthropic.claude-opus-4-6[100k]')).toBe(true);
+    expect(hasExtendedContextSuffix('qwen-turbo[100k]')).toBe(true);
   });
 
-  it('returns false for standard Bedrock cross-region profile ID', () => {
-    expect(hasExtendedContextSuffix('global.anthropic.claude-sonnet-4-6-v1:0')).toBe(false);
-  });
-
-  it('returns false for versioned Bedrock ID without suffix', () => {
-    expect(hasExtendedContextSuffix('global.anthropic.claude-opus-4-6-v1')).toBe(false);
-  });
-
-  it('returns false for bare Anthropic model ID', () => {
-    expect(hasExtendedContextSuffix('claude-sonnet-4-6')).toBe(false);
+  it('returns false for model ID without suffix', () => {
+    expect(hasExtendedContextSuffix('qwen-plus')).toBe(false);
   });
 
   it('returns false for tier aliases', () => {
-    expect(hasExtendedContextSuffix('sonnet')).toBe(false);
-    expect(hasExtendedContextSuffix('opus')).toBe(false);
-    expect(hasExtendedContextSuffix('haiku')).toBe(false);
+    expect(hasExtendedContextSuffix('medium')).toBe(false);
+    expect(hasExtendedContextSuffix('high')).toBe(false);
+    expect(hasExtendedContextSuffix('low')).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// isSubagentSafeModelId() — safe to pass as `model` param on Bedrock/Vertex
+// isSubagentSafeModelId()
 // ---------------------------------------------------------------------------
 describe('isSubagentSafeModelId()', () => {
-  it('accepts global. cross-region Bedrock profile without suffix', () => {
-    expect(isSubagentSafeModelId('global.anthropic.claude-sonnet-4-6-v1:0')).toBe(true);
+  it('accepts bare Qwen model IDs', () => {
+    expect(isSubagentSafeModelId('qwen-plus')).toBe(true);
   });
 
-  it('accepts us. regional Bedrock profile', () => {
-    expect(isSubagentSafeModelId('us.anthropic.claude-sonnet-4-5-20250929-v1:0')).toBe(true);
+  it('accepts DashScope-prefixed model IDs', () => {
+    expect(isSubagentSafeModelId('dashscope/qwen-max')).toBe(true);
   });
 
-  it('accepts eu. regional Bedrock profile', () => {
-    expect(isSubagentSafeModelId('eu.anthropic.claude-haiku-4-5-v1:0')).toBe(true);
-  });
-
-  it('accepts Bedrock ARN format', () => {
-    expect(isSubagentSafeModelId('arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0')).toBe(true);
-  });
-
-  it('accepts Vertex AI model ID', () => {
-    expect(isSubagentSafeModelId('vertex_ai/claude-sonnet-4-6@20250514')).toBe(true);
-  });
-
-  it('rejects [1m]-suffixed model ID — the core bug case', () => {
-    expect(isSubagentSafeModelId('global.anthropic.claude-sonnet-4-6[1m]')).toBe(false);
+  it('rejects [1m]-suffixed model ID', () => {
+    expect(isSubagentSafeModelId('qwen-plus[1m]')).toBe(false);
   });
 
   it('rejects [200k]-suffixed model ID', () => {
-    expect(isSubagentSafeModelId('global.anthropic.claude-sonnet-4-6[200k]')).toBe(false);
+    expect(isSubagentSafeModelId('qwen-max[200k]')).toBe(false);
   });
 
-  it('rejects bare Anthropic model ID (not provider-specific)', () => {
-    expect(isSubagentSafeModelId('claude-sonnet-4-6')).toBe(false);
-  });
-
-  it('rejects tier alias "sonnet"', () => {
-    expect(isSubagentSafeModelId('sonnet')).toBe(false);
-  });
-
-  it('rejects tier alias "opus"', () => {
-    expect(isSubagentSafeModelId('opus')).toBe(false);
-  });
-
-  it('rejects tier alias "haiku"', () => {
-    expect(isSubagentSafeModelId('haiku')).toBe(false);
+  it('accepts tier aliases (no extended context suffix)', () => {
+    expect(isSubagentSafeModelId('medium')).toBe(true);
+    expect(isSubagentSafeModelId('high')).toBe(true);
+    expect(isSubagentSafeModelId('low')).toBe(true);
   });
 });

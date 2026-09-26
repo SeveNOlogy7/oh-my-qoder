@@ -21,6 +21,7 @@ interface ProviderProbe {
 }
 
 const PROVIDER_BINARY: Record<TeamRoleProvider, string> = {
+  qwen: 'qwen',
   claude: 'claude',
   codex: 'codex',
   gemini: 'gemini',
@@ -47,7 +48,7 @@ function collectConfiguredProviders(): Set<TeamRoleProvider> {
   const roleRouting = cfg.team?.roleRouting ?? {};
   for (const spec of Object.values(roleRouting)) {
     const provider = spec?.provider as TeamRoleProvider | undefined;
-    if (provider === 'claude' || provider === 'codex' || provider === 'gemini' || provider === 'grok' || provider === 'cursor' || provider === 'antigravity') {
+    if (provider === 'qwen' || provider === 'claude' || provider === 'codex' || provider === 'gemini' || provider === 'grok' || provider === 'cursor' || provider === 'antigravity') {
       providers.add(provider);
     }
   }

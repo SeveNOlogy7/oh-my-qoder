@@ -1,11 +1,14 @@
-import { validateAnthropicBaseUrl } from '../utils/ssrf-guard.js';
+import { validateAnthropicBaseUrl, validateDashScopeBaseUrl } from '../utils/ssrf-guard.js';
 
 export type ModelTier = 'LOW' | 'MEDIUM' | 'HIGH';
 export type ClaudeModelFamily = 'HAIKU' | 'SONNET' | 'OPUS' | 'FABLE';
+export type QwenModelFamily = 'TURBO' | 'PLUS' | 'MAX';
 
 const DIRECT_MODEL_ENV_KEYS = ['CLAUDE_MODEL', 'ANTHROPIC_MODEL'] as const;
+const DIRECT_QWEN_ENV_KEYS = ['QODER_MODEL', 'DASHSCOPE_MODEL'] as const;
 const INHERIT_TIER_PRIORITY: readonly ModelTier[] = ['MEDIUM', 'HIGH', 'LOW'];
 const CLAUDE_TIER_ALIASES = new Set(['sonnet', 'opus', 'haiku', 'fable']);
+const QODER_TIER_ALIASES = new Set(['high', 'medium', 'low']);
 
 const TIER_ENV_KEYS: Record<ModelTier, readonly string[]> = {
   LOW: [
@@ -57,6 +60,13 @@ export const BUILTIN_EXTERNAL_MODEL_DEFAULTS = {
   geminiModel: 'gemini-3.1-pro-preview',
   antigravityModel: 'Gemini 3.1 Pro (High)',
 } as const;
+
+/** Qwen model family defaults for CN-market DashScope provider */
+export const QWEN_FAMILY_DEFAULTS: Record<QwenModelFamily, string> = {
+  TURBO: 'qwen-turbo',
+  PLUS: 'qwen-plus',
+  MAX: 'qwen-max',
+};
 
 /**
  * Centralized Model ID Constants
@@ -199,6 +209,21 @@ export function resolveClaudeFamily(modelId: string): ClaudeModelFamily | null {
 }
 
 /**
+ * Resolve a Qwen family from an arbitrary model ID.
+ * Supports DashScope IDs and provider-prefixed forms (e.g. dashscope/...).
+ */
+export function resolveQwenFamily(modelId: string): QwenModelFamily | null {
+  const lower = modelId.toLowerCase();
+  if (!lower.includes('qwen')) return null;
+
+  if (lower.includes('turbo')) return 'TURBO';
+  if (lower.includes('plus')) return 'PLUS';
+  if (lower.includes('max')) return 'MAX';
+
+  return null;
+}
+
+/**
  * Resolve a canonical Claude high variant from a Claude model ID.
  * Returns null for non-Claude model IDs.
  */
@@ -272,6 +297,10 @@ export function isBedrock(): boolean {
  * model names (e.g. claude-sonnet-5) which are invalid on Bedrock/Vertex.
  */
 export function isProviderSpecificModelId(modelId: string): boolean {
+  // DashScope prefixed format (CN fork)
+  if (modelId.toLowerCase().startsWith('dashscope/')) {
+    return true;
+  }
   // Bedrock prefixed formats (region.anthropic.claude-*, anthropic.claude-*)
   if (/^((us|eu|ap|global)\.anthropic\.|anthropic\.claude)/i.test(modelId)) {
     return true;
@@ -410,6 +439,11 @@ export function shouldAutoForceInherit(): boolean {
     return true;
   }
 
+  // CN fork: Qwen routing force-inherit
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'true') {
+    return true;
+  }
+
   if (process.env.CLAUDE_CODE_USE_BEDROCK === '1') {
     return true;
   }
@@ -427,6 +461,12 @@ export function shouldAutoForceInherit(): boolean {
     return true;
   }
 
+  // CN fork: direct Qwen model env detection
+  const directQwenModelValues = getDirectQwenProviderDetectionModelEnvValues();
+  if (hasNonQwenModelId(directQwenModelValues)) {
+    return true;
+  }
+
   const baseUrl = process.env.ANTHROPIC_BASE_URL || '';
   if (baseUrl) {
     const validation = validateAnthropicBaseUrl(baseUrl);
@@ -439,5 +479,106 @@ export function shouldAutoForceInherit(): boolean {
     }
   }
 
+  // CN fork: DashScope base URL detection
+  const dashscopeBaseUrl = process.env.DASHSCOPE_BASE_URL || '';
+  if (dashscopeBaseUrl) {
+    const validation = validateDashScopeBaseUrl(dashscopeBaseUrl);
+    if (!validation.allowed) {
+      console.error(`[SSRF Guard] Rejecting DASHSCOPE_BASE_URL: ${validation.reason}`);
+      return true;
+    }
+    if (!dashscopeBaseUrl.includes('dashscope.aliyuncs.com')) {
+      return true;
+    }
+  }
+
   return false;
 }
+
+// ---------------------------------------------------------------------------
+// CN fork: Qwen / DashScope provider detection
+// ---------------------------------------------------------------------------
+
+function getDirectQwenProviderDetectionModelEnvValues(): string[] {
+  for (const key of DIRECT_QWEN_ENV_KEYS) {
+    const value = readEnvValue(key);
+    if (value) {
+      return [value];
+    }
+  }
+  return [];
+}
+
+function hasNonQwenModelId(modelIds: readonly string[]): boolean {
+  for (const modelId of modelIds) {
+    const lower = modelId.toLowerCase();
+    // Provider-specific model IDs (Bedrock, Vertex, DashScope, ARN) are always non-default
+    if (isProviderSpecificModelId(modelId)) {
+      return true;
+    }
+    if (!lower.includes('qwen') && !QODER_TIER_ALIASES.has(lower)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Detect whether OMQ should avoid passing Qwen-specific model tier
+ * names (turbo/plus/max) to the Agent tool.
+ *
+ * Returns true when:
+ * - User explicitly set OMQ_ROUTING_FORCE_INHERIT=true
+ * - A non-Qwen model ID is detected (e.g. DeepSeek, GLM, etc.)
+ * - A custom DASHSCOPE_BASE_URL points to a non-DashScope endpoint
+ */
+export function isNonDefaultProvider(): boolean {
+  if (process.env.OMQ_ROUTING_FORCE_INHERIT === 'true') {
+    return true;
+  }
+
+  if (hasNonQwenModelId(getQwenProviderDetectionModelEnvValues())) {
+    return true;
+  }
+
+  const baseUrl = process.env.DASHSCOPE_BASE_URL || '';
+  if (baseUrl) {
+    const validation = validateDashScopeBaseUrl(baseUrl);
+    if (!validation.allowed) {
+      console.error(`[SSRF Guard] Rejecting DASHSCOPE_BASE_URL: ${validation.reason}`);
+      return true;
+    }
+    if (!baseUrl.includes('dashscope.aliyuncs.com')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getQwenProviderDetectionModelEnvValues(): string[] {
+  // Check direct Qwen env keys first
+  for (const key of DIRECT_QWEN_ENV_KEYS) {
+    const value = readEnvValue(key);
+    if (value) {
+      return [value];
+    }
+  }
+  // Fall back to tier env keys
+  const values = new Set<string>();
+  for (const tier of INHERIT_TIER_PRIORITY) {
+    for (const key of QWEN_TIER_ENV_KEYS[tier]) {
+      const value = readEnvValue(key);
+      if (value) {
+        values.add(value);
+      }
+    }
+  }
+  return [...values];
+}
+
+const QWEN_TIER_ENV_KEYS: Record<ModelTier, readonly string[]> = {
+  LOW: ['OMQ_MODEL_LOW', 'DASHSCOPE_DEFAULT_TURBO_MODEL'],
+  MEDIUM: ['OMQ_MODEL_MEDIUM', 'DASHSCOPE_DEFAULT_PLUS_MODEL'],
+  HIGH: ['OMQ_MODEL_HIGH', 'DASHSCOPE_DEFAULT_MAX_MODEL'],
+};
