@@ -1,0 +1,130 @@
+# Negative Control Carrier: provenance-path-coverage
+
+- **Lane**: provenance-path-coverage
+- **Fix commit**: 94df71a
+- **Patched file**: scripts/check-canonical-identity.mjs
+- **Named observation**: src/__tests__/canonical-identity-provenance.test.ts
+- **Verified observation**: src/__tests__/canonical-identity-provenance.test.ts
+- **Description**: fix(identity): make the provenance rule a path-coverage gate -- reverting should cause provenance tests to fail because unlisted files are no longer detected as violations.
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/canonical-identity-provenance.test.ts` | 0 | 1 | RED after revert |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+fixtureDir);
+    201|     expect(result.code).toBe(1);
+       |                         ^
+    202|     const parsed = JSON.parse(result.stdout);
+    203|     expect(parsed.provenance[0].reason).toContain('schemaVersion');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > rejects ATTRIBUTION.json with invalid class name
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:221:25
+    219|
+    220|     const result = runCheck(fixtureDir);
+    221|     expect(result.code).toBe(1);
+       |                         ^
+    222|     const parsed = JSON.parse(result.stdout);
+    223|     const invalid = parsed.provenance.find((v: any) => v.file === 'src…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > normalises backslashes in entry paths to forward slashes
+AssertionError: expected undefined to deeply equal []
+
+- Expected:
+[]
+
++ Received:
+undefined
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:247:31
+    245|     expect(result.code).toBe(0);
+    246|     const parsed = JSON.parse(result.stdout);
+    247|     expect(parsed.provenance).toEqual([]);
+       |                               ^
+    248|   });
+    249|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > does NOT reuse isFixturePath: test files are subject to provenance
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:263:25
+    261|
+    262|     const result = runCheck(fixtureDir);
+    263|     expect(result.code).toBe(1);
+       |                         ^
+    264|     const parsed = JSON.parse(result.stdout);
+    265|     const files = parsed.provenance.map((v: any) => v.file);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+tionError: expected undefined to deeply equal []
+
+- Expected:
+[]
+
++ Received:
+undefined
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:247:31
+    245|     expect(result.code).toBe(0);
+    246|     const parsed = JSON.parse(result.stdout);
+    247|     expect(parsed.provenance).toEqual([]);
+       |                               ^
+    248|   });
+    249|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > does NOT reuse isFixturePath: test files are subject to provenance
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:263:25
+    261|
+    262|     const result = runCheck(fixtureDir);
+    263|     expect(result.code).toBe(1);
+       |                         ^
+    264|     const parsed = JSON.parse(result.stdout);
+    265|     const files = parsed.provenance.map((v: any) => v.file);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+```

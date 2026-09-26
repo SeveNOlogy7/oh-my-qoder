@@ -1,0 +1,112 @@
+# Negative Control Carrier: src-cli-launch-ts
+
+- **Lane**: src-cli-launch-ts
+- **Fix commit**: b11884d
+- **Patched file**: src/cli/launch.ts
+- **Named observation**: src/cli/__tests__/launch.test.ts
+- **Verified observation**: src/cli/__tests__/launch.test.ts
+- **Description**: fix(config): resolve the Qoder CN and international config roots -- reverting src/cli/launch.ts should turn src/cli/__tests__/launch.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/cli/__tests__/launch.test.ts` | 0 | 1 | RED after revert |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+                   ^
+    1298|   });
+    1299|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  src/cli/__tests__/launch.test.ts > runClaude outside-tmux — env forwarding > passes a cmd-friendly raw command string into login-shell wrapping on native Windows
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'qoderclicn', …(2) ]
+
+Received:
+
+  1st vi.fn() call:
+
+@@ -1,7 +1,7 @@
+  [
+-   "qoderclicn",
++   "qodercli",
+    [
+      "--print-system-<tmp>",
+      "hello world",
+    ],
+    {
+
+
+Number of calls: 1
+
+ ❯ src/cli/__tests__/launch.test.ts:1470:53
+    1468|     runClaude('/tmp', ['--print-system-<tmp>', 'hello world'], 'sid');
+    1469|
+    1470|     expect(vi.mocked(buildTmuxShellCommandWithEnv)).toHaveBeenCalledWi…
+       |                                                     ^
+    1471|       'qoderclicn',
+    1472|       ['--print-system-<tmp>', 'hello world'],
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+ FAIL  src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > still bypasses tmux for --print even with --madmax on darwin
+AssertionError: expected undefined to be defined
+ ❯ src/cli/__tests__/launch.test.ts:1658:24
+    1656|     expect(resolveLaunchPolicy).not.toHaveBeenCalled();
+    1657|     const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd])…
+    1658|     expect(claudeCall).toBeDefined();
+       |                        ^
+    1659|   });
+    1660|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+ FAIL  src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > preserves the existing direct fallback when tmux new-session fails WITHOUT --madmax
+AssertionError: expected undefined to be defined
+ ❯ src/cli/__tests__/launch.test.ts:1740:24
+    1738|     expect(processExitSpy).not.toHaveBeenCalledWith(1);
+    1739|     const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd])…
+    1740|     expect(claudeCall).toBeDefined();
+       |                        ^
+    1741|   });
+    1742| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+ still bypasses tmux for --print even with --madmax on darwin
+AssertionError: expected undefined to be defined
+ ❯ src/cli/__tests__/launch.test.ts:1658:24
+    1656|     expect(resolveLaunchPolicy).not.toHaveBeenCalled();
+    1657|     const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd])…
+    1658|     expect(claudeCall).toBeDefined();
+       |                        ^
+    1659|   });
+    1660|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+ FAIL  src/cli/__tests__/launch.test.ts > runClaude — --madmax on macOS forces tmux > preserves the existing direct fallback when tmux new-session fails WITHOUT --madmax
+AssertionError: expected undefined to be defined
+ ❯ src/cli/__tests__/launch.test.ts:1740:24
+    1738|     expect(processExitSpy).not.toHaveBeenCalledWith(1);
+    1739|     const claudeCall = vi.mocked(execFileSync).mock.calls.find(([cmd])…
+    1740|     expect(claudeCall).toBeDefined();
+       |                        ^
+    1741|   });
+    1742| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯
+
+
+```

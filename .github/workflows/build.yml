@@ -3,8 +3,17 @@ name: build
 # Build-only pipeline: it produces and checks the artifacts that a plugin install
 # cannot generate itself (`dist/` and `bridge/` are gitignored, and Qoder's plugin
 # installer runs no build step). No platform matrix here on purpose - native
-# dependencies are resolved by `npm ci` on the runner's platform. The suite runs
-# as a sibling job so its result never gates the published tarball.
+# dependencies are resolved by `npm ci` on the runner's platform.
+#
+# Job dependency chain:
+#   provenance -> build  (lint, typecheck, identity, pack)
+#   provenance -> windows-test (win32 suite, gated on its own baseline)
+#   provenance -> test   (build + suite)
+# The provenance job assembles the plugin payload, runs ancestor attribution
+# (generate then verify), and gates identity with attribution before build/test.
+#
+# TODO: Hosting the oh-my-qoder-plugin.zip at a public HTTPS URL is still
+#       outstanding before issue #3 can cite a zip-based claim.
 
 on:
   push:
@@ -16,7 +25,105 @@ permissions:
   contents: read
 
 jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Assemble the plugin payload in a temp directory that mirrors what Qoder
+      # would install on a user's machine.  Method: copy the entire source tree
+      # excluding node_modules and .git (the build step above already produced
+      # dist/ and bridge/ in-tree, so they are included automatically).  This
+      # matches the "files" list in package.json minus node_modules/.git.
+      - name: Assemble plugin payload
+        run: |
+          set -euo pipefail
+          payload=$(mktemp -d)
+          rsync -a \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            --exclude='.github' \
+            ./ "$payload/"
+          echo "PAYLOAD_DIR=$payload" >> "$GITHUB_ENV"
+          echo "Payload assembled at $payload"
+          ls -la "$payload"
+
+      - name: Create plugin zip
+        run: |
+          set -euo pipefail
+          cd "$PAYLOAD_DIR"
+          zip -r "$GITHUB_WORKSPACE/oh-my-qoder-plugin.zip" .
+          cd "$GITHUB_WORKSPACE"
+          echo "Zip size: $(du -h oh-my-qoder-plugin.zip | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oh-my-qoder-plugin-zip
+          path: oh-my-qoder-plugin.zip
+          if-no-files-found: error
+
+      - name: Assert required payload files
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in LICENSE NOTICE README.md .qoder-plugin/plugin.json bin/omq.cmd bridge/cli.cjs; do
+            if [ ! -f "$PAYLOAD_DIR/$f" ]; then
+              echo "MISSING: $f"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Payload is missing required files (see above)"
+            exit 1
+          fi
+          echo "All required payload files present."
+
+      # The ancestor blob trees live under .omq/, which is gitignored, so a fresh
+      # checkout has no cache and every attribution step would die on "Tree cache
+      # not found". Fetch them by the pinned content-addressed treeSha.
+      - name: Fetch ancestor blob trees
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/fetch-ancestor-trees.mjs
+
+      - name: Generate ancestor attribution
+        run: |
+          set -euo pipefail
+          node scripts/ancestor-attribution.mjs "$PAYLOAD_DIR" \
+            --output "$PAYLOAD_DIR/ATTRIBUTION.json"
+
+      - name: Verify ancestor attribution
+        run: |
+          set -euo pipefail
+          node scripts/ancestor-attribution.mjs "$PAYLOAD_DIR" --check-only
+
+      - name: Canonical identity gate (with attribution)
+        # --require-attribution is being added by a parallel worker in
+        # scripts/check-canonical-identity.mjs.  If the flag is not yet merged
+        # this step will fail; report the state to the team rather than
+        # weakening the check.
+        run: |
+          set -euo pipefail
+          node scripts/check-canonical-identity.mjs --require-attribution "$PAYLOAD_DIR"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oh-my-qoder-attribution
+          path: ${{ env.PAYLOAD_DIR }}/ATTRIBUTION.json
+          if-no-files-found: error
+
   build:
+    needs: [provenance]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,9 +168,15 @@ jobs:
   # built bridge artifacts, and the extra minute is cheaper than a shared
   # artifact contract between the two jobs.
   test:
+    needs: [provenance]
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth 0 because the negative-control harness resolves commits by
+      # SHA (`git show <fix>^:<file>`); the default shallow checkout has no
+      # history for that and every lane would error out as "harness error".
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -75,5 +188,51 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test
-        run: npm run test:run
+      # The suite is knowingly red (upstream debt), so the step itself may not
+      # gate the job - but swallowing it would also swallow a crash-to-nothing.
+      # The verdict comes from the delta check below, which fails on a failure
+      # that is not in tests/known-failures-linux.json AND on a baseline entry
+      # that stops failing.
+      - name: Test (captured)
+        run: mkdir -p .omq && npm run test:run 2>&1 | tee .omq/vitest-out.txt || true
+
+      - name: Known-failure delta gate
+        run: node scripts/known-failures.mjs --check < .omq/vitest-out.txt
+
+  # Windows is where the CN distribution actually runs, and the behaviours it
+  # exercises are invisible to the Linux jobs -- measuring the same 13 patch-layer
+  # lanes on win32 flipped seven of them to "already red before revert" purely on
+  # path separators, and one real defect (isDefaultQoderConfigDir not recognising
+  # the default root) only shows up here. Same mechanism as the Linux job: the
+  # gate is the delta against a win32 baseline, not absolute green.
+  windows-test:
+    needs: [provenance]
+    runs-on: windows-latest
+    steps:
+      # Full history so the captured log matches the machine-generated baseline:
+      # several suites shell out to git and behave differently in a shallow clone.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Node 24, not 20: better-sqlite3 ships no win32 prebuild for the node 20
+      # ABI, so `npm ci` on the runner falls through to a node-gyp rebuild and
+      # dies. The win32 baseline was produced on node 24, which is what installs
+      # cleanly here.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (captured)
+        shell: bash
+        run: mkdir -p .omq && npm run test:run 2>&1 | tee .omq/vitest-out-win.txt || true
+
+      - name: Known-failure delta gate (win32)
+        shell: bash
+        run: node scripts/known-failures.mjs --check --baseline=tests/known-failures-win32.json < .omq/vitest-out-win.txt

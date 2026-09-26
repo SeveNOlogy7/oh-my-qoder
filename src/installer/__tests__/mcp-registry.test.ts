@@ -47,6 +47,28 @@ describe('unified MCP registry sync', () => {
     }
   });
 
+  // Patch-layer guard for src/installer/mcp-registry.ts: the root config file is
+  // named after the distribution (`~/.qoder-cn.json` on CN, `~/.qoder.json`
+  // otherwise). The cases below always pin CLAUDE_MCP_CONFIG_PATH, which bypasses
+  // that derivation entirely, so this one deliberately does not.
+  it('derives the root config path from a CN config dir', () => {
+    delete process.env.CLAUDE_MCP_CONFIG_PATH;
+    const cnRoot = join(testRoot, '.qoder-cn');
+    mkdirSync(cnRoot, { recursive: true });
+    process.env.QODER_CONFIG_DIR = cnRoot;
+
+    expect(getClaudeMcpConfigPath()).toBe(join(testRoot, '.qoder-cn.json'));
+  });
+
+  it('derives the root config path from an international config dir', () => {
+    delete process.env.CLAUDE_MCP_CONFIG_PATH;
+    const intlRoot = join(testRoot, '.qoder');
+    mkdirSync(intlRoot, { recursive: true });
+    process.env.QODER_CONFIG_DIR = intlRoot;
+
+    expect(getClaudeMcpConfigPath()).toBe(join(testRoot, '.qoder.json'));
+  });
+
   it('bootstraps the registry from legacy Claude settings, migrates to .qwen.json, and syncs Codex config.toml', () => {
     const settings = {
       theme: 'dark',

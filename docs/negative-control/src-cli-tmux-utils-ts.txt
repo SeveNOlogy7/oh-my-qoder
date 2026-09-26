@@ -1,0 +1,178 @@
+# Negative Control Carrier: src-cli-tmux-utils-ts
+
+- **Lane**: src-cli-tmux-utils-ts
+- **Fix commit**: b73da86
+- **Patched file**: src/cli/tmux-utils.ts
+- **Named observation**: src/cli/__tests__/tmux-utils.test.ts
+- **Verified observation**: src/cli/__tests__/tmux-utils.test.ts
+- **Description**: fix(cli): resolve the qodercli / qoderclicn flavor per distribution -- reverting src/cli/tmux-utils.ts should turn src/cli/__tests__/tmux-utils.test.ts RED (observation found by rule "conventional").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/cli/__tests__/tmux-utils.test.ts` | 0 | 1 | RED after revert |
+| `src/cli/__tests__/tmux-no-raw-calls.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/rate-limit-wait/pane-fresh-capture.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/rate-limit-wait/tmux-detector.test.ts` | 0 | 0 | still GREEN |
+| `src/__tests__/runtime-task-orphan.test.ts` | 0 | 0 | still GREEN |
+| `src/notifications/__tests__/tmux.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/idle-nudge.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/runtime-v2-role-routing.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/runtime-v2.dispatch.test.ts` | 143 | - | red before revert |
+| `src/team/__tests__/runtime-v2.gemini-preflight.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/runtime-v2.monitor.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/scaling-launch-config.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/scaling.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/tmux-session-liveness.test.ts` | 0 | 0 | still GREEN |
+| `src/team/__tests__/tmux-session.spawn.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+": {
++       "BASE_URL": "/",
++       "DEV": "1",
++       "FORCE_TTY": "",
++       "HOME": "/root",
++       "HOSTNAME": "adf0454d4c51",
++       "MODE": "test",
++       "NODE_ENV": "test",
++       "NODE_VERSION": "20.20.2",
++       "OLDPWD": "/",
++       "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
++       "PROD": "",
++       "PWD": "/work/omq",
++       "SHLVL": "1",
++       "SSR": "1",
++       "TEST": "true",
++       "VITEST": "true",
++       "VITEST_MODE": "RUN",
++       "VITEST_POOL_ID": "1",
++       "VITEST_WORKER_ID": "0",
++       "YARN_VERSION": "1.22.22",
++       "_": "/usr/local/bin/node",
++     },
+      "stdio": "ignore",
+    },
+  ]
+
+  4th vi.fn() call:
+
+  [
+-   "qoderclicn",
++   "tmux",
+    [
+-     "--version",
++     "-V",
+    ],
+    {
+-     "shell": true,
++     "encoding": "utf-8",
++     "env": {
++       "BASE_URL": "/",
++       "DEV": "1",
++       "FORCE_TTY": "",
++       "HOME": "/root",
++       "HOSTNAME": "adf0454d4c51",
++       "MODE": "test",
++       "NODE_ENV": "test",
++       "NODE_VERSION": "20.20.2",
++       "OLDPWD": "/",
++       "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
++       "PROD": "",
++       "PWD": "/work/omq",
++       "SHLVL": "1",
++       "SSR": "1",
++       "TEST": "true",
++       "VITEST": "true",
++       "VITEST_MODE": "RUN",
++       "VITEST_POOL_ID": "1",
++       "VITEST_WORKER_ID": "0",
++       "YARN_VERSION": "1.22.22",
++       "_": "/usr/local/bin/node",
++     },
+      "stdio": "ignore",
+    },
+  ]
+
+  5th vi.fn() call:
+
+@@ -1,7 +1,7 @@
+  [
+-   "qoderclicn",
++   "qodercli",
+    [
+      "--version",
+    ],
+    {
+      "shell": true,
+
+
+Number of calls: 5
+
+ ❯ src/cli/__tests__/tmux-utils.test.ts:186:32
+    184|
+    185|     expect(isQoderCliAvailable()).toBe(true);
+    186|     expect(mockedExecFileSync).toHaveBeenCalledWith('qoderclicn', ['--…
+       |                                ^
+    187|       stdio: 'ignore',
+    188|       shell: true,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
++       "NODE_ENV": "test",
++       "NODE_VERSION": "20.20.2",
++       "OLDPWD": "/",
++       "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
++       "PROD": "",
++       "PWD": "/work/omq",
++       "SHLVL": "1",
++       "SSR": "1",
++       "TEST": "true",
++       "VITEST": "true",
++       "VITEST_MODE": "RUN",
++       "VITEST_POOL_ID": "1",
++       "VITEST_WORKER_ID": "0",
++       "YARN_VERSION": "1.22.22",
++       "_": "/usr/local/bin/node",
++     },
+      "stdio": "ignore",
+    },
+  ]
+
+  5th vi.fn() call:
+
+@@ -1,7 +1,7 @@
+  [
+-   "qoderclicn",
++   "qodercli",
+    [
+      "--version",
+    ],
+    {
+      "shell": true,
+
+
+Number of calls: 5
+
+ ❯ src/cli/__tests__/tmux-utils.test.ts:186:32
+    184|
+    185|     expect(isQoderCliAvailable()).toBe(true);
+    186|     expect(mockedExecFileSync).toHaveBeenCalledWith('qoderclicn', ['--…
+       |                                ^
+    187|       stdio: 'ignore',
+    188|       shell: true,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```

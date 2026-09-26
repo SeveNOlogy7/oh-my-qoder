@@ -1,0 +1,76 @@
+# Negative Control Carrier: src-cli-index-ts
+
+- **Lane**: src-cli-index-ts
+- **Fix commit**: 5fac66e
+- **Patched file**: src/cli/index.ts
+- **Named observation**: src/cli/__tests__/cli-boot.test.ts
+- **Verified observation**: src/cli/__tests__/cli-boot.test.ts
+- **Description**: fix(cli): drop the inert --skip-hooks flag -- reverting src/cli/index.ts should turn src/cli/__tests__/cli-boot.test.ts RED (observation found by rule "reference").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/cli/__tests__/cli-boot.test.ts` | 0 | 1 | RED after revert |
+| `src/cli/__tests__/setup-command-precedence.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/plugin-dir-mode-e2e.test.ts` | 0 | 0 | still GREEN |
+| `src/installer/__tests__/plugin-dir-mode.test.ts` | 0 | 0 | still GREEN |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+
+ RUN  v4.1.11 <worktree>
+
+ ✓ src/cli/__tests__/cli-boot.test.ts > CLI command registration — no duplicates > has no duplicate .command() names in src/cli/index.ts
+ ✓ src/cli/__tests__/cli-boot.test.ts > CLI runtime boot > omq --help exits cleanly (no duplicate command error)
+ ✓ src/cli/__tests__/cli-boot.test.ts > CLI runtime boot > omq --version exits cleanly
+ ✓ src/cli/__tests__/cli-boot.test.ts > CLI runtime boot > omq --madmax does not throw duplicate command error
+ × src/cli/__tests__/cli-boot.test.ts > command surface > registers `doctor check` and no longer accepts --skip-hooks
+   → expected [ 'team-routing', 'conflicts' ] to include 'check'
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/cli/__tests__/cli-boot.test.ts > command surface > registers `doctor check` and no longer accepts --skip-hooks
+AssertionError: expected [ 'team-routing', 'conflicts' ] to include 'check'
+ ❯ src/cli/__tests__/cli-boot.test.ts:109:55
+    107|
+    108|     const doctor = program.commands.find((cmd) => cmd.name() === 'doct…
+    109|     expect(doctor?.commands.map((sub) => sub.name())).toContain('check…
+       |                                                       ^
+    110|
+    111|     const setup = program.commands.find((cmd) => cmd.name() === 'setup…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/cli/__tests__/cli-boot.test.ts > command surface > registers `doctor check` and no longer accepts --skip-hooks
+AssertionError: expected [ 'team-routing', 'conflicts' ] to include 'check'
+ ❯ src/cli/__tests__/cli-boot.test.ts:109:55
+    107|
+    108|     const doctor = program.commands.find((cmd) => cmd.name() === 'doct…
+    109|     expect(doctor?.commands.map((sub) => sub.name())).toContain('check…
+       |                                                       ^
+    110|
+    111|     const setup = program.commands.find((cmd) => cmd.name() === 'setup…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
