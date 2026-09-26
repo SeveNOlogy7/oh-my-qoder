@@ -42,11 +42,17 @@ export const CLAUDE_FAMILY_DEFAULTS: Record<ClaudeModelFamily, string> = {
   FABLE: 'claude-fable-5',
 };
 
+export const QWEN_FAMILY_DEFAULTS: Record<QwenModelFamily, string> = {
+  TURBO: 'qwen-turbo',
+  PLUS: 'qwen-plus',
+  MAX: 'qwen-max',
+};
+
 /** Canonical tier->model mapping used as built-in defaults */
 export const BUILTIN_TIER_MODEL_DEFAULTS: Record<ModelTier, string> = {
-  LOW: CLAUDE_FAMILY_DEFAULTS.HAIKU,
-  MEDIUM: CLAUDE_FAMILY_DEFAULTS.SONNET,
-  HIGH: CLAUDE_FAMILY_DEFAULTS.OPUS,
+  LOW: QWEN_FAMILY_DEFAULTS.TURBO,
+  MEDIUM: QWEN_FAMILY_DEFAULTS.PLUS,
+  HIGH: QWEN_FAMILY_DEFAULTS.MAX,
 };
 
 /** Canonical Claude high-reasoning variants by family */
@@ -65,11 +71,6 @@ export const BUILTIN_EXTERNAL_MODEL_DEFAULTS = {
 } as const;
 
 /** Qwen model family defaults for CN-market DashScope provider */
-export const QWEN_FAMILY_DEFAULTS: Record<QwenModelFamily, string> = {
-  TURBO: 'qwen-turbo',
-  PLUS: 'qwen-plus',
-  MAX: 'qwen-max',
-};
 
 /**
  * Centralized Model ID Constants
