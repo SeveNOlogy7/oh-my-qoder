@@ -426,3 +426,6 @@ export function getOmcSystemPrompt(options?: {
 
   return prompt;
 }
+
+// Ancestor-spelling alias for the same prompt text.
+export const omcSystemPrompt = omqSystemPrompt;

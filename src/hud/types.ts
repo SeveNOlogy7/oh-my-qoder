@@ -1008,3 +1008,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     safeMode: true,
   },
 };
+
+// Ancestor-spelling alias for the state type. Field names inside are still
+// omc-branded; the branding lane renames them, this only stops the import churn.
+export type OmqHudState = OmcHudState;

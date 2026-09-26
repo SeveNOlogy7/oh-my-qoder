@@ -11,3 +11,6 @@ export const OMQ_HUD_DIST_REL = "dist/hud/index.js";
 export const OMQ_HUD_WRAPPER_REL = "hud/omq-hud.mjs";
 export const OMQ_HUD_WRAPPER_LIB_REL = "hud/lib/config-dir.mjs";
 export const OMQ_CONFIG_FILE_REL = ".omq-config.json";
+
+// Ancestor-spelling alias for the same value (".omq-config.json").
+export const OMC_CONFIG_FILE_REL = OMQ_CONFIG_FILE_REL;

@@ -1554,3 +1554,6 @@ export function initSilentAutoUpdate(config: SilentUpdateConfig = {}): void {
     // Silently ignore any errors - they're already logged
   });
 }
+
+// Ancestor-spelling alias; the function reads no brand-specific path itself.
+export const getOMQConfig = getOMCConfig;
