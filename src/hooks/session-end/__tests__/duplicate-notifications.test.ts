@@ -71,7 +71,7 @@ describe('processSessionEnd notification deduplication (issue #1440)', () => {
   let transcriptPath: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-session-end-dedupe-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-session-end-dedupe-'));
     transcriptPath = path.join(tmpDir, 'transcript.jsonl');
     fs.writeFileSync(
       transcriptPath,

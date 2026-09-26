@@ -1,7 +1,7 @@
 /**
  * Rules Finder
  *
- * Finds rule files in project directories and [$CLAUDE_CONFIG_DIR|~/.claude].
+ * Finds rule files in project directories and [$QODER_CONFIG_DIR|~/.claude].
  *
  * Ported from oh-my-opencode's rules-injector hook.
  */
@@ -153,7 +153,7 @@ export function calculateDistance(
 /**
  * Find all rule files for a given context.
  * Searches from currentFile upward to projectRoot for rule directories,
- * then [$CLAUDE_CONFIG_DIR|~/.claude]/rules.
+ * then [$QODER_CONFIG_DIR|~/.claude]/rules.
  */
 export function findRuleFiles(
   projectRoot: string | null,

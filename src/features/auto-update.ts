@@ -524,10 +524,10 @@ export function syncPluginCache(verbose: boolean = false): { synced: boolean; sk
   }
 }
 
-/** Installation paths (respects CLAUDE_CONFIG_DIR env var) */
-export const CLAUDE_CONFIG_DIR = getClaudeConfigDir();
-export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omq-version.json');
-export const CONFIG_FILE = join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
+/** Installation paths (respects QODER_CONFIG_DIR env var) */
+export const QODER_CONFIG_DIR = getClaudeConfigDir();
+export const VERSION_FILE = join(QODER_CONFIG_DIR, '.omq-version.json');
+export const CONFIG_FILE = join(QODER_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
 
 /**
  * Stop hook callback configuration for file logging
@@ -680,7 +680,7 @@ export function isAutoUpgradePromptEnabled(): boolean {
  */
 export function isTeamEnabled(): boolean {
   try {
-    const settingsPath = join(CLAUDE_CONFIG_DIR, 'settings.json');
+    const settingsPath = join(QODER_CONFIG_DIR, 'settings.json');
     if (existsSync(settingsPath)) {
       const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
       const val = settings.env?.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS;
@@ -997,7 +997,7 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
     const installResult = installOmc({
       force: true,
       verbose: options?.verbose ?? false,
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       forceHooks: shouldRefreshPluginHooks,
       refreshHooksInPlugin: shouldRefreshPluginHooks,
     });
@@ -1352,7 +1352,7 @@ export interface SilentUpdateConfig {
 }
 
 /** State file for tracking silent update status */
-const SILENT_UPDATE_STATE_FILE = join(CLAUDE_CONFIG_DIR, '.omq-silent-update.json');
+const SILENT_UPDATE_STATE_FILE = join(QODER_CONFIG_DIR, '.omq-silent-update.json');
 
 interface SilentUpdateState {
   lastAttempt?: string;
@@ -1427,7 +1427,7 @@ export async function silentAutoUpdate(config: SilentUpdateConfig = {}): Promise
   const {
     checkIntervalHours = 24,
     autoApply = true,
-    logFile = join(CLAUDE_CONFIG_DIR, '.omq-update.log'),
+    logFile = join(QODER_CONFIG_DIR, '.omq-update.log'),
     maxRetries = 3
   } = config;
 

@@ -75,7 +75,7 @@ import { cleanupSessionOwnedTeams } from '../index.js';
 describe('processSessionEnd team cleanup (#1632)', () => {
   let tmpDir: string;
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-session-end-team-cleanup-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-session-end-team-cleanup-'));
   });
 
   afterEach(() => {

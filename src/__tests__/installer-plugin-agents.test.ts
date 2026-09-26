@@ -62,7 +62,7 @@ vi.mock('fs', async () => {
 
 async function loadInstallerWithEnv(claudeConfigDir: string, homeDir: string) {
   vi.resetModules();
-  process.env.CLAUDE_CONFIG_DIR = claudeConfigDir;
+  process.env.QODER_CONFIG_DIR = claudeConfigDir;
   process.env.HOME = homeDir;
   return import('../installer/index.js');
 }
@@ -127,7 +127,7 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
     mkdirSync(homeDir, { recursive: true });
     mkdirSync(claudeConfigDir, { recursive: true });
 
-    originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
     originalHome = process.env.HOME;
     originalOmcPluginRoot = process.env.OMQ_PLUGIN_ROOT;
     originalClaudePluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
@@ -138,9 +138,9 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
 
   afterEach(() => {
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     } else {
-      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
     }
 
     if (originalHome === undefined) {
@@ -207,7 +207,7 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
       errors: [],
     });
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
     });
 
@@ -258,7 +258,7 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
     expect(installer.getInstalledOmcPluginRoots()).toEqual([pluginInstallPath]);
     expect(installer.hasPluginProvidedAgentFiles()).toBe(true);
 
-    const result = installer.install({ skipClaudeCheck: true, skipHud: true });
+    const result = installer.install({ skipQoderCheck: true, skipHud: true });
     expect(result.success).toBe(true);
     expect(result.installedAgents).toEqual([]);
     expect(existsSync(join(claudeConfigDir, 'agents'))).toBe(false);
@@ -286,7 +286,7 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
     expect(installer.getInstalledOmcPluginRoots()).toEqual([exactRoot]);
     expect(installer.hasPluginProvidedAgentFiles()).toBe(true);
 
-    const result = installer.install({ skipClaudeCheck: true, skipHud: true });
+    const result = installer.install({ skipQoderCheck: true, skipHud: true });
     expect(result.success).toBe(true);
     expect(result.installedAgents).toEqual([]);
     expect(existsSync(join(claudeConfigDir, 'agents'))).toBe(false);
@@ -302,7 +302,7 @@ describe('installer legacy agent sync gating (issue #1502)', () => {
   it('still installs legacy agent files when no plugin-provided agent files are available', async () => {
     const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
     });
 

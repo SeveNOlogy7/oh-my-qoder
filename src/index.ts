@@ -14,9 +14,9 @@
  */
 
 import { loadConfig, findContextFiles, loadContextFromFiles } from './config/loader.js';
-import { getAgentDefinitions, omcSystemPrompt } from './agents/definitions.js';
+import { getAgentDefinitions, omqSystemPrompt } from './agents/definitions.js';
 import { getDefaultMcpServers, toSdkMcpFormat } from './mcp/servers.js';
-import { omcToolsServer, getOmcToolNames } from './mcp/omc-tools-server.js';
+import { omqToolsServer, getOmqToolNames } from './mcp/omq-tools-server.js';
 import { createMagicKeywordProcessor, detectMagicKeywords } from './features/magic-keywords.js';
 import { continuationSystemPromptAddition } from './features/continuation-enforcement.js';
 import { appendSkininthegamebrosGuidance } from './agents/skininthegamebros-guidance.js';
@@ -28,10 +28,10 @@ import {
 } from './features/background-tasks.js';
 import type { PluginConfig, SessionState } from './shared/types.js';
 
-export { loadConfig, getAgentDefinitions, omcSystemPrompt };
+export { loadConfig, getAgentDefinitions, omqSystemPrompt };
 export { getDefaultMcpServers, toSdkMcpFormat } from './mcp/servers.js';
 export { lspTools, astTools, allCustomTools } from './tools/index.js';
-export { omcToolsServer, omcToolNames, getOmcToolNames } from './mcp/omc-tools-server.js';
+export { omqToolsServer, omqToolNames, getOmqToolNames } from './mcp/omq-tools-server.js';
 export { createMagicKeywordProcessor, detectMagicKeywords } from './features/magic-keywords.js';
 export {
   createBackgroundTaskManager,
@@ -53,7 +53,7 @@ export {
   REPO_OWNER,
   REPO_NAME,
   GITHUB_API_URL,
-  CLAUDE_CONFIG_DIR,
+  QODER_CONFIG_DIR,
   VERSION_FILE,
   // Auto-update functions
   getInstalledVersion,
@@ -150,7 +150,6 @@ export {
   type AgentFactory,
   type AvailableAgent,
   isGptModel,
-  isClaudeModel,
   getDefaultModelForCategory,
   // Utilities
   createAgentToolRestrictions,
@@ -208,7 +207,7 @@ export {
   isInstalled,
   getInstallInfo,
   isClaudeInstalled,
-  CLAUDE_CONFIG_DIR as INSTALLER_CLAUDE_CONFIG_DIR,
+  QODER_CONFIG_DIR as INSTALLER_QODER_CONFIG_DIR,
   AGENTS_DIR,
   COMMANDS_DIR,
   VERSION as INSTALLER_VERSION,
@@ -303,7 +302,7 @@ export function createOmcSession(options?: OmcOptions): OmcSession {
   }
 
   // Build system prompt
-  let systemPrompt = appendSkininthegamebrosGuidance(omcSystemPrompt, 'system');
+  let systemPrompt = appendSkininthegamebrosGuidance(omqSystemPrompt, 'system');
 
   // Add continuation enforcement
   if (config.features?.continuationEnforcement !== false) {
@@ -353,7 +352,7 @@ export function createOmcSession(options?: OmcOptions): OmcSession {
   }
 
   // Add OMC custom tools in MCP format (LSP, AST, python_repl)
-  const omcTools = getOmcToolNames({
+  const omcTools = getOmqToolNames({
     includeLsp: config.features?.lspTools !== false,
     includeAst: config.features?.astTools !== false,
     includePython: true
@@ -380,7 +379,7 @@ export function createOmcSession(options?: OmcOptions): OmcSession {
         agents,
         mcpServers: {
           ...toSdkMcpFormat(externalMcpServers),
-          't': omcToolsServer as any
+          't': omqToolsServer as any
         },
         allowedTools,
         permissionMode: 'acceptEdits'
@@ -410,11 +409,11 @@ export function enhancePrompt(prompt: string, config?: PluginConfig): string {
 /**
  * Get the system prompt for the orchestrator (for direct use)
  */
-export function getOmcSystemPrompt(options?: {
+export function getOmqSystemPrompt(options?: {
   includeContinuation?: boolean;
   customAddition?: string;
 }): string {
-  let prompt = appendSkininthegamebrosGuidance(omcSystemPrompt, 'system');
+  let prompt = appendSkininthegamebrosGuidance(omqSystemPrompt, 'system');
 
   if (options?.includeContinuation !== false) {
     prompt += continuationSystemPromptAddition;
@@ -428,4 +427,3 @@ export function getOmcSystemPrompt(options?: {
 }
 
 // Ancestor-spelling alias for the same prompt text.
-export const omcSystemPrompt = omqSystemPrompt;

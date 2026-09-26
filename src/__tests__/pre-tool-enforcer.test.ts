@@ -31,7 +31,7 @@ function runPreToolEnforcerWithEnv(
     env: {
       ...process.env,
       HOME: homeDir,
-      CLAUDE_CONFIG_DIR: join(homeDir, '.claude'),
+      QODER_CONFIG_DIR: join(homeDir, '.claude'),
       NODE_ENV: 'test',
       DISABLE_OMQ: '',
       OMQ_SKIP_HOOKS: '',

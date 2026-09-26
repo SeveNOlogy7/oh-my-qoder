@@ -378,7 +378,7 @@ export interface TeamRecoveryAttempt {
 
 export interface WorkerLaunchDescriptor {
   schema_version: 1;
-  provider: 'claude' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
+  provider: 'claude' | 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
   model: string | null;
   binary: string;
   args: string[];
@@ -464,7 +464,7 @@ export interface WorkerInfo {
   name: string;
   index: number;
   role: string;
-  worker_cli?: 'codex' | 'claude' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
+  worker_cli?: 'codex' | 'claude' | 'qwen' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
   assigned_tasks: string[];
   pid?: number;
   pane_id?: string;

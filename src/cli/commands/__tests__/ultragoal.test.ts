@@ -131,12 +131,12 @@ describe('omc ultragoal CLI', () => {
         '--goal', 'First::Complete first milestone.',
         '--goal', 'Second::Complete second milestone.',
       ]);
-      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { claudeObjective: string };
+      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { qoderObjective: string };
 
       await ultragoalCommand(['complete-goals']);
       captured.out.length = 0;
 
-      const snapshot = JSON.stringify({ goal: { objective: plan.claudeObjective, status: 'active' } });
+      const snapshot = JSON.stringify({ goal: { objective: plan.qoderObjective, status: 'active' } });
       await ultragoalCommand([
         'checkpoint',
         '--goal-id', 'G001-first',
@@ -159,11 +159,11 @@ describe('omc ultragoal CLI', () => {
         '--brief', 'brief',
         '--goal', 'First::Complete first milestone.',
       ]);
-      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { claudeObjective: string };
+      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { qoderObjective: string };
       await ultragoalCommand(['complete-goals']);
 
       const snapshotPath = join(cwd, 'goal-snapshot.json');
-      await writeFile(snapshotPath, JSON.stringify({ goal: { objective: plan.claudeObjective, status: 'complete' } }));
+      await writeFile(snapshotPath, JSON.stringify({ goal: { objective: plan.qoderObjective, status: 'complete' } }));
       const qualityGate = {
         aiSlopCleaner: { status: 'passed', evidence: 'cleaner ran' },
         verification: { status: 'passed', commands: ['npm test'], evidence: 'tests passed' },

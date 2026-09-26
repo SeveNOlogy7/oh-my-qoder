@@ -9,7 +9,8 @@
 import { join, dirname } from 'path';
 import { existsSync, readFileSync, readdirSync, statSync, lstatSync, unlinkSync, rmSync, renameSync, symlinkSync } from 'fs';
 import { homedir } from 'os';
-import { getClaudeConfigDir } from './config-dir.js';
+import { getClaudeConfigDir, getQoderConfigDir } from './config-dir.js';
+import { OMQ_PLUGIN_MARKETPLACE_SLUG, OMQ_PLUGIN_PACKAGE_NAME } from '../lib/paths.js';
 import { pathIdentity, readOccupiedPluginRoots } from './cache-occupancy.js';
 
 /**
@@ -168,14 +169,81 @@ export function getGlobalOmcStateCandidates(...segments: string[]): string[] {
 }
 
 /**
- * Get the plugin cache base directory for oh-my-claudecode.
+ * Get the plugin cache base directory for oh-my-qoder.
  * This is the directory containing version subdirectories.
  *
- * Structure: <configDir>/plugins/cache/omc/oh-my-claudecode/
+ * Structure: <configDir>/plugins/cache/<marketplace>/oh-my-qoder/
+ *
+ * The marketplace segment is not fixed: a marketplace install lands in `omq`
+ * while `qoderclicn plugins install <dir>` lands in `local`, so the tree is
+ * scanned instead of assuming one slug. Ties go to the canonical `omq` slug.
  */
 export function getPluginCacheBase(): string {
-  return join(getClaudeConfigDir(), 'plugins', 'cache', 'omc', 'oh-my-claudecode');
+  return resolvePluginCacheBase(getQoderConfigDir());
 }
+
+const CACHE_VERSION_DIR = /^\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.-]+)?$/;
+
+function compareCacheVersions(a: string, b: string): number {
+  const [coreA, preA] = a.split(/[-+]/);
+  const [coreB, preB] = b.split(/[-+]/);
+  const partsA = coreA.split('.').map(Number);
+  const partsB = coreB.split('.').map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  // A release outranks its own pre-release, matching semver precedence.
+  if (preA && !preB) return -1;
+  if (!preA && preB) return 1;
+  return 0;
+}
+
+export function resolvePluginCacheBase(configDir: string): string {
+  const cacheParent = join(configDir, 'plugins', 'cache');
+  const fallback = join(cacheParent, OMQ_PLUGIN_MARKETPLACE_SLUG, OMQ_PLUGIN_PACKAGE_NAME);
+
+  let slugs: string[];
+  try {
+    slugs = readdirSync(cacheParent).sort();
+  } catch {
+    return fallback;
+  }
+
+  let best: { base: string; version: string; canonical: boolean } | undefined;
+  for (const slug of slugs) {
+    const base = join(cacheParent, slug, OMQ_PLUGIN_PACKAGE_NAME);
+    let versions: string[];
+    try {
+      versions = readdirSync(base).filter(name => {
+        if (!CACHE_VERSION_DIR.test(name)) return false;
+        try {
+          return statSync(join(base, name)).isDirectory();
+        } catch {
+          return false;
+        }
+      });
+    } catch {
+      continue;
+    }
+    if (versions.length === 0) continue;
+
+    const latest = versions.sort(compareCacheVersions)[versions.length - 1];
+    const canonical = slug === OMQ_PLUGIN_MARKETPLACE_SLUG;
+    if (
+      !best
+      || compareCacheVersions(latest, best.version) > 0
+      || (compareCacheVersions(latest, best.version) === 0 && canonical && !best.canonical)
+    ) {
+      best = { base, version: latest, canonical };
+    }
+  }
+
+  return best?.base ?? fallback;
+}
+
+/**
+ * Safely delete a file, ignoring ENOENT errors.
 
 /**
  * Safely delete a file, ignoring ENOENT errors.

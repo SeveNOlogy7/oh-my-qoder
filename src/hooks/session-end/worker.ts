@@ -6,13 +6,13 @@ import { runSessionEndAction } from './action-runner.js';
 import { armSessionEndActionWatchdog } from './action-watchdog.js';
 import { getProcessStartIdentity, isProcessIdentityLive } from '../../platform/process-utils.js';
 
-const WORKER_ARG = '--omc-session-end-worker';
+const WORKER_ARG = '--omq-session-end-worker';
 const MAX_WORKER_MS = 10_000;
 export interface SessionEndWorkerPayload { directory: string; sessionId: string; }
 
 /** Durable OpenClaw routing is supplied from the manifest to the action runner, never from worker ambient state. */
 export function workerEnvironment(): NodeJS.ProcessEnv {
-  const keys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'CLAUDE_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'OMQ_DISCORD_MENTION', 'OMQ_DISCORD_NOTIFIER_BOT_TOKEN', 'OMQ_DISCORD_NOTIFIER_CHANNEL', 'OMQ_DISCORD_WEBHOOK_URL', 'OMQ_TELEGRAM_BOT_TOKEN', 'OMQ_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMQ_TELEGRAM_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_UID', 'OMQ_SLACK_WEBHOOK_URL', 'OMQ_SLACK_MENTION', 'OMQ_SLACK_BOT_TOKEN', 'OMQ_SLACK_APP_TOKEN', 'OMQ_SLACK_BOT_CHANNEL', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE', ...(process.env.NODE_ENV === 'test' ? ['OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS'] : [])];
+  const keys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'QODER_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'OMQ_DISCORD_MENTION', 'OMQ_DISCORD_NOTIFIER_BOT_TOKEN', 'OMQ_DISCORD_NOTIFIER_CHANNEL', 'OMQ_DISCORD_WEBHOOK_URL', 'OMQ_TELEGRAM_BOT_TOKEN', 'OMQ_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMQ_TELEGRAM_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_UID', 'OMQ_SLACK_WEBHOOK_URL', 'OMQ_SLACK_MENTION', 'OMQ_SLACK_BOT_TOKEN', 'OMQ_SLACK_APP_TOKEN', 'OMQ_SLACK_BOT_CHANNEL', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE', ...(process.env.NODE_ENV === 'test' ? ['OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS'] : [])];
   return Object.fromEntries(keys.flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]]]));
 }
 export function spawnSessionEndWorker(payload: SessionEndWorkerPayload): boolean {

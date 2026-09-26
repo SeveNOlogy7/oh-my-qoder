@@ -673,7 +673,7 @@ Use the real docs file.
     expect(readFileSync(targetPath, 'utf-8')).toBe(installed);
   });
 
-  it('uses CLAUDE_CONFIG_DIR for global setup targets and plugin verification', () => {
+  it('uses QODER_CONFIG_DIR for global setup targets and plugin verification', () => {
     const fixture = createPluginFixture(`<!-- OMQ:START -->
 <!-- OMQ:VERSION:9.9.9 -->
 
@@ -692,7 +692,7 @@ Use the real docs file.
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
       },
       encoding: 'utf-8',
     });
@@ -736,7 +736,7 @@ Use the real docs file.
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
       },
       encoding: 'utf-8',
     });
@@ -776,7 +776,7 @@ Use the real docs file.
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
       },
       encoding: 'utf-8',
     });
@@ -819,7 +819,7 @@ Use the real docs file.
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
       },
       encoding: 'utf-8',
     });
@@ -850,7 +850,7 @@ Use the real docs file.
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
       },
       encoding: 'utf-8',
     });
@@ -884,7 +884,7 @@ Use the real docs file.
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
       },
       encoding: 'utf-8',
     });
@@ -924,7 +924,7 @@ Use the real docs file.
     const env = {
       ...process.env,
       HOME: fixture.homeRoot,
-      CLAUDE_CONFIG_DIR: configDir,
+      QODER_CONFIG_DIR: configDir,
     };
 
     const first = spawnSync('bash', [fixture.scriptPath, 'global', 'preserve'], {
@@ -964,7 +964,7 @@ Use the real docs file.
     const env = {
       ...process.env,
       HOME: fixture.homeRoot,
-      CLAUDE_CONFIG_DIR: configDir,
+      QODER_CONFIG_DIR: configDir,
     };
 
     // Run 1: preserve mode — creates companion + import block
@@ -1022,7 +1022,7 @@ Use the real docs file.
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
       },
       encoding: 'utf-8',
     });
@@ -1080,7 +1080,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
       env: {
         ...process.env,
         HOME: homeRoot,
-        CLAUDE_CONFIG_DIR: join(homeRoot, '.claude'),
+        QODER_CONFIG_DIR: join(homeRoot, '.claude'),
       },
       encoding: 'utf-8',
     });
@@ -1130,7 +1130,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
       env: {
         ...process.env,
         HOME: homeRoot,
-        CLAUDE_CONFIG_DIR: join(homeRoot, '.claude'),
+        QODER_CONFIG_DIR: join(homeRoot, '.claude'),
       },
       encoding: 'utf-8',
     });
@@ -1211,7 +1211,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
         env: {
           ...process.env,
           HOME: homeRoot,
-          CLAUDE_CONFIG_DIR: join(homeRoot, '.claude'),
+          QODER_CONFIG_DIR: join(homeRoot, '.claude'),
         },
         encoding: 'utf-8',
       },
@@ -1289,7 +1289,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
         env: {
           ...process.env,
           HOME: homeRoot,
-          CLAUDE_CONFIG_DIR: join(homeRoot, '.claude'),
+          QODER_CONFIG_DIR: join(homeRoot, '.claude'),
         },
         encoding: 'utf-8',
       },
@@ -1363,7 +1363,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
         env: {
           ...process.env,
           HOME: homeRoot,
-          CLAUDE_CONFIG_DIR: join(homeRoot, '.claude'),
+          QODER_CONFIG_DIR: join(homeRoot, '.claude'),
         },
         encoding: 'utf-8',
       },
@@ -1424,7 +1424,7 @@ describe('setup-claude-md.sh stale CLAUDE_PLUGIN_ROOT resolution', () => {
         env: {
           ...process.env,
           HOME: homeRoot,
-          CLAUDE_CONFIG_DIR: join(homeRoot, '.claude'),
+          QODER_CONFIG_DIR: join(homeRoot, '.claude'),
         },
         encoding: 'utf-8',
       },
@@ -1512,7 +1512,7 @@ describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)'
 
     const result = spawnSync('bash', [join(fixture.checkoutRoot, 'scripts', 'setup-claude-md.sh'), 'local'], {
       cwd: fixture.projectRoot,
-      env: { ...process.env, HOME: fixture.homeRoot, CLAUDE_CONFIG_DIR: join(fixture.homeRoot, '.claude') },
+      env: { ...process.env, HOME: fixture.homeRoot, QODER_CONFIG_DIR: join(fixture.homeRoot, '.claude') },
       encoding: 'utf-8',
       timeout: 10_000,
     });
@@ -1548,7 +1548,7 @@ describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)'
         env: {
           ...process.env,
           HOME: fixture.homeRoot,
-          CLAUDE_CONFIG_DIR: join(fixture.homeRoot, '.claude'),
+          QODER_CONFIG_DIR: join(fixture.homeRoot, '.claude'),
           OMQ_SETUP_REEXEC_DEPTH: '2',
         },
         encoding: 'utf-8',
@@ -1583,7 +1583,7 @@ describe('setup-claude-md.sh Volta shim + re-exec loop regression (issue #3743)'
       env: {
         ...process.env,
         HOME: fixture.homeRoot,
-        CLAUDE_CONFIG_DIR: join(fixture.homeRoot, '.claude'),
+        QODER_CONFIG_DIR: join(fixture.homeRoot, '.claude'),
         PATH: `${shimDir}:${process.env.PATH}`,
       },
       encoding: 'utf-8',

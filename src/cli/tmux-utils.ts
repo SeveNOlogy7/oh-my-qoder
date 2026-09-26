@@ -15,6 +15,7 @@ import {
   type SpawnSyncReturns,
 } from 'child_process';
 import { basename, isAbsolute, win32 as win32Path } from 'path';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { promisify } from 'util';
 
 // ── tmux environment & execution wrappers ────────────────────────────────────
@@ -24,6 +25,22 @@ export interface TmuxExecOptions {
    *  Default: false — preserves TMUX (targets the current server).
    *  Set to true for OMC-owned background sessions and cross-session scans. */
   stripTmux?: boolean;
+}
+
+
+/**
+ * Check whether the Qoder CLI binary is callable from this process.
+ */
+export function isQoderCliAvailable(): boolean {
+  try {
+    execFileSync(qoderCliBinary(), ['--version'], {
+      stdio: 'ignore',
+      shell: process.platform === 'win32',
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function tmuxEnv(): NodeJS.ProcessEnv {

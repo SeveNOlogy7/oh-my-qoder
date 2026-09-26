@@ -30,7 +30,7 @@ describe('SessionEnd foreground manifest handoff (issue #1700)', () => {
   let transcriptPath: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-session-end-timeout-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-session-end-timeout-'));
     transcriptPath = path.join(tmpDir, 'transcript.jsonl');
     fs.writeFileSync(
       transcriptPath,

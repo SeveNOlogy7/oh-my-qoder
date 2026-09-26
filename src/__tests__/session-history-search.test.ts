@@ -20,18 +20,18 @@ function normalizePathForAssert(path: string): string {
 
 describe('session history search', () => {
   const repoRoot = process.cwd();
-  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  const originalConfigDir = process.env.QODER_CONFIG_DIR;
   let tempRoot: string;
   let claudeDir: string;
   let otherProject: string;
   let tildeClaudeDir: string;
 
   beforeEach(() => {
-    tempRoot = mkdtempSync(join(tmpdir(), 'omc-session-search-'));
+    tempRoot = mkdtempSync(join(tmpdir(), 'omq-session-search-'));
     claudeDir = join(tempRoot, 'claude');
     otherProject = join(tempRoot, 'other-project');
     tildeClaudeDir = join(homedir(), `.omq-session-search-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    process.env.CLAUDE_CONFIG_DIR = claudeDir;
+    process.env.QODER_CONFIG_DIR = claudeDir;
     process.env.OMQ_STATE_DIR = join(tempRoot, 'omc-state');
 
     const currentProjectDir = join(claudeDir, 'projects', encodeProjectPath(repoRoot));
@@ -77,9 +77,9 @@ describe('session history search', () => {
 
   afterEach(() => {
     if (originalConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     } else {
-      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+      process.env.QODER_CONFIG_DIR = originalConfigDir;
     }
     delete process.env.OMQ_STATE_DIR;
     rmSync(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
@@ -166,8 +166,8 @@ describe('session history search', () => {
     expect(report.results[0].sessionId).toBe('session-current');
   });
 
-  it('uses a ~-prefixed CLAUDE_CONFIG_DIR for transcript discovery', async () => {
-    process.env.CLAUDE_CONFIG_DIR = `~/${basename(tildeClaudeDir)}`;
+  it('uses a ~-prefixed QODER_CONFIG_DIR for transcript discovery', async () => {
+    process.env.QODER_CONFIG_DIR = `~/${basename(tildeClaudeDir)}`;
 
     const tildeProjectDir = join(tildeClaudeDir, 'projects', encodeProjectPath(repoRoot));
     writeTranscript(join(tildeProjectDir, 'session-tilde.jsonl'), [

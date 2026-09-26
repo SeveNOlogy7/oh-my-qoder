@@ -132,7 +132,7 @@ function resolveQwenModel(
  * an explicit non-tier model ID is passed through.
  */
 function resolveExternalModel(
-  provider: 'claude' | 'codex' | 'gemini' | 'grok' | 'cursor' | 'antigravity',
+  provider: 'claude' | 'qwen' | 'codex' | 'gemini' | 'grok' | 'cursor' | 'antigravity',
   raw: string | undefined,
   cfg: PluginConfig,
 ): string {

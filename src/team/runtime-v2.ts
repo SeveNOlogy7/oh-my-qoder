@@ -916,6 +916,8 @@ const WORKER_STARTUP_EVIDENCE_POLL_INTERVAL_MS = 250;
 const WORKER_STARTUP_EVIDENCE_POLICIES: Readonly<Record<CliAgentType, WorkerStartupEvidencePolicy>> = {
   // Claude's interactive transport can lose a submit, so retain the existing
   // bounded resubmit behavior and its effective 6 + (4 * 12) poll windows.
+  // Qoder CLI uses the same interactive submit/pane transport as Claude.
+  qwen: { initialBudgetMs: 1_250, finalRecheckBudgetMs: 0, resubmitAttempts: 4, resubmitBudgetMs: 2_750 },
   claude: { initialBudgetMs: 1_250, finalRecheckBudgetMs: 0, resubmitAttempts: 4, resubmitBudgetMs: 2_750 },
   // External providers can be visibly ready before they publish task/status
   // evidence. Give that distinct evidence gate enough time for a cold start,

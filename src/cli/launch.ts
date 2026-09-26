@@ -952,13 +952,13 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
 /**
  * Env vars that must be forwarded into tmux sessions.
  * tmux new-session inherits the *server's* environment, not the calling
- * process's, so vars set on process.env (e.g. CLAUDE_CONFIG_DIR at launch)
+ * process's, so vars set on process.env (e.g. QODER_CONFIG_DIR at launch)
  * are silently lost.  We inject them as `export` statements into the shell
  * command that runs inside the tmux pane, *after* .zshrc/.bashrc sourcing
  * so our values take precedence.
  */
 export const TMUX_ENV_FORWARD = [
-  'CLAUDE_CONFIG_DIR',
+  'QODER_CONFIG_DIR',
   'OMQ_NOTIFY',
   'OMQ_OPENCLAW',
   'OMQ_TELEGRAM',
@@ -1188,9 +1188,9 @@ export async function launchCommand(args: string[]): Promise<void> {
 
   const launchConfigDir = prepareOmcLaunchConfigDir();
   if (isDefaultClaudeConfigDirPath(launchConfigDir)) {
-    delete process.env.CLAUDE_CONFIG_DIR;
+    delete process.env.QODER_CONFIG_DIR;
   } else {
-    process.env.CLAUDE_CONFIG_DIR = launchConfigDir;
+    process.env.QODER_CONFIG_DIR = launchConfigDir;
   }
 
   const normalizedArgs = normalizeClaudeLaunchArgs(argsAfterWebhook);

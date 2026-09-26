@@ -538,12 +538,12 @@ function createRateLimitedCacheEntry(
  * Get the Keychain service name for the current config directory.
  * Claude Code uses "Claude Code-credentials-{sha256(configDir)[:8]}" for
  * non-default dirs, where configDir is derived from the exact
- * CLAUDE_CONFIG_DIR value rather than the expanded filesystem path. Preserve
+ * QODER_CONFIG_DIR value rather than the expanded filesystem path. Preserve
  * that behavior so ~-prefixed profiles keep matching Claude Code's own
  * Keychain entries.
  */
 function getKeychainServiceName(): string {
-  const configDir = process.env.CLAUDE_CONFIG_DIR;
+  const configDir = process.env.QODER_CONFIG_DIR;
   if (configDir) {
     const hash = createHash('sha256').update(configDir).digest('hex').slice(0, 8);
     return `Claude Code-credentials-${hash}`;

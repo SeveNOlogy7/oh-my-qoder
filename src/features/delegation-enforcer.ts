@@ -18,7 +18,7 @@ import { join } from 'path';
 import { getAgentDefinitions } from '../agents/definitions.js';
 import { normalizeDelegationRole } from './delegation-routing/types.js';
 import { loadConfig } from '../config/loader.js';
-import { isProviderSpecificModelId, resolveClaudeFamily } from '../config/models.js';
+import { isProviderSpecificModelId, resolveClaudeFamily, resolveQwenFamily } from '../config/models.js';
 import { createBuiltinSkills, getSkillsDir } from './builtin-skills/skills.js';
 import { isSkininthegamebrosUser } from '../utils/skininthegamebros-user.js';
 import entitlementManifest from '../config/builtin-skill-entitlements.json' with { type: 'json' };
@@ -104,6 +104,23 @@ export function normalizeToCcAlias(model: string): string {
 
   const family = resolveClaudeFamily(model);
   return family ? (FAMILY_TO_ALIAS[family] ?? model) : model;
+}
+
+/** Map Qwen model family to the tier aliases this fork routes on. */
+const FAMILY_TO_TIER_ALIAS: Record<string, string> = {
+  MAX: 'high',
+  PLUS: 'medium',
+  TURBO: 'low',
+};
+
+/** Normalize a model ID to a tier alias (high/medium/low) for Qwen family models. */
+export function normalizeToTierAlias(model: string): string {
+  if (isProviderSpecificModelId(model)) {
+    return model;
+  }
+
+  const family = resolveQwenFamily(model);
+  return family ? (FAMILY_TO_TIER_ALIAS[family] ?? model) : model;
 }
 
 /**

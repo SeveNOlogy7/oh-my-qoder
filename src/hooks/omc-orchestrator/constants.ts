@@ -104,7 +104,7 @@ As an ORCHESTRATOR, you MUST:
 
 **ALLOWED direct file operations:**
 - Files inside \`.omq/\` (plans, notepads, drafts)
-- Files inside \`[$CLAUDE_CONFIG_DIR|~/.claude]/\`
+- Files inside \`[$QODER_CONFIG_DIR|~/.claude]/\`
 - \`CLAUDE.md\` and \`AGENTS.md\` files
 - Reading files for verification
 - Running diagnostics/tests

@@ -26,7 +26,7 @@ function runHook(script: string, prompt: string, cwd: string, configHome: string
       transcript_path: transcriptPath,
     }),
     encoding: 'utf8',
-    env: { ...process.env, NODE_ENV: 'test', OMQ_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, CLAUDE_CONFIG_DIR: join(cwd, 'claude-config'), ...extraEnv },
+    env: { ...process.env, NODE_ENV: 'test', OMQ_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, QODER_CONFIG_DIR: join(cwd, 'claude-config'), ...extraEnv },
   })) as { hookSpecificOutput?: { additionalContext?: string } };
 }
 
@@ -34,7 +34,7 @@ function runHookAsync(script: string, prompt: string, cwd: string, configHome: s
   return new Promise<{ hookSpecificOutput?: { additionalContext?: string } }>((resolve, reject) => {
     const child = spawn(NODE, [script], {
       cwd,
-      env: { ...process.env, NODE_ENV: 'test', OMQ_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, CLAUDE_CONFIG_DIR: join(cwd, 'claude-config') },
+      env: { ...process.env, NODE_ENV: 'test', OMQ_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, QODER_CONFIG_DIR: join(cwd, 'claude-config') },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -234,7 +234,7 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
       mkdirSync(nested, { recursive: true });
       mkdirSync(join(parent, '.claude'), { recursive: true });
       writeFileSync(join(parent, '.claude', 'omc.jsonc'), '{ "autopilot": { "workflows": { "release-flow": { "version": 1, "stages": ["ralplan", "execution", "qa"] } } } }');
-      runHook(script, '/autopilot --workflow release-flow ship the release', nested, configHome, transcriptPath, { CLAUDE_CONFIG_DIR: join(workspace, 'claude-config') });
+      runHook(script, '/autopilot --workflow release-flow ship the release', nested, configHome, transcriptPath, { QODER_CONFIG_DIR: join(workspace, 'claude-config') });
       expect(JSON.parse(stateBytes(nested)!.toString())).toMatchObject({ workflow: { workflowName: 'release-flow', stages: ['ralplan', 'execution'] } });
     } finally {
       rmSync(parent, { recursive: true, force: true });
@@ -746,7 +746,7 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
     try {
       mkdirSync(join(nested, '.claude'), { recursive: true });
       writeFileSync(join(nested, '.claude', 'omc.jsonc'), JSON.stringify({ autopilot: { workflows: { 'root-only': { version: 1, stages: ['ralplan', 'execution'] } } } }));
-      const output = runHook(script, '/autopilot --workflow root-only ship it', nested, configHome, transcriptPath, { CLAUDE_CONFIG_DIR: join(cwd, 'claude-config') });
+      const output = runHook(script, '/autopilot --workflow root-only ship it', nested, configHome, transcriptPath, { QODER_CONFIG_DIR: join(cwd, 'claude-config') });
       expect(output.hookSpecificOutput?.additionalContext).toContain('## PIPELINE STAGE: RALPLAN (Consensus Planning)');
     } finally {
       rmSync(cwd, { recursive: true, force: true });

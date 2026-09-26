@@ -343,7 +343,7 @@ OMC Ultrawork = "특수부대 작전 반"
           ...process.env,
           HOME: fakeHome,
           XDG_CONFIG_HOME: join(fakeHome, '.xdg'),
-          CLAUDE_CONFIG_DIR: configDir,
+          QODER_CONFIG_DIR: configDir,
           ...env,
         },
         input: JSON.stringify({
@@ -465,7 +465,7 @@ OMC Ultrawork = "특수부대 작전 반"
         const result = JSON.parse(
           execFileSync('node', [scriptPath], {
             cwd: packageRoot,
-            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), CLAUDE_CONFIG_DIR: configDir },
+            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
             input: JSON.stringify({ prompt: 'autopilot build me a CLI', cwd: projectDir, directory: projectDir, session_id: `autopilot-${basename(scriptPath)}` }),
             encoding: 'utf-8',
           }),
@@ -479,7 +479,7 @@ OMC Ultrawork = "특수부대 작전 반"
         const result = JSON.parse(
           execFileSync('node', [scriptPath], {
             cwd: packageRoot,
-            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), CLAUDE_CONFIG_DIR: configDir },
+            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
             input: JSON.stringify({ prompt: '/ralph-loop fix the parser', cwd: projectDir, directory: projectDir, session_id: `ralphloop-cmd-${basename(scriptPath)}` }),
             encoding: 'utf-8',
           }),
@@ -540,7 +540,7 @@ OMC Ultrawork = "특수부대 작전 반"
         expect(contextOf(runIn(scriptPath, `ralph-malformed-${basename(scriptPath)}`))).not.toContain('ralph-loop');
       }
 
-      // N. Config-root variant: settings lives at HOME/.claude and CLAUDE_CONFIG_DIR is
+      // N. Config-root variant: settings lives at HOME/.claude and QODER_CONFIG_DIR is
       //    unset (HOME-derived root) -> the notice still resolves the same config root.
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
@@ -549,7 +549,7 @@ OMC Ultrawork = "특수부대 작전 반"
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         const result = runWithEnv(scriptPath, `ralph-homeroot-${basename(scriptPath)}`, '/ralph fix the parser', {
-          CLAUDE_CONFIG_DIR: undefined,
+          QODER_CONFIG_DIR: undefined,
         });
         expect(result.hookSpecificOutput?.additionalContext ?? '').toContain('ralph-loop');
       }
@@ -702,7 +702,7 @@ OMC Ultrawork = "특수부대 작전 반"
               ...process.env,
               HOME: fakeHome,
               XDG_CONFIG_HOME: join(fakeHome, '.xdg'),
-              CLAUDE_CONFIG_DIR: configDir,
+              QODER_CONFIG_DIR: configDir,
             },
             input: JSON.stringify({
               prompt: '/ralph fix the parser',
@@ -787,7 +787,7 @@ describe('pre-tool-use packaged artifacts', () => {
     const fakeHome = mkdtempSync(join(tmpdir(), 'pre-tool-template-home-'));
     const env = {
       CLAUDE_PLUGIN_ROOT: packageRoot,
-      CLAUDE_CONFIG_DIR: join(fakeHome, '.claude'),
+      QODER_CONFIG_DIR: join(fakeHome, '.claude'),
       HOME: fakeHome,
       USER_TYPE: '',
     };
@@ -875,7 +875,7 @@ describe('pre-tool-use packaged artifacts', () => {
     writeFileSync(join(pluginRoot, 'skills', 'wiki', 'SKILL.md'), '---\nname: wiki\n---\nskill body\n');
     const env = {
       CLAUDE_PLUGIN_ROOT: pluginRoot,
-      CLAUDE_CONFIG_DIR: join(fakeHome, '.claude'),
+      QODER_CONFIG_DIR: join(fakeHome, '.claude'),
       HOME: fakeHome,
       USER_TYPE: '',
     };
@@ -933,7 +933,7 @@ describe('pre-tool-use packaged artifacts', () => {
 
     try {
       const env = {
-        CLAUDE_CONFIG_DIR: configDir,
+        QODER_CONFIG_DIR: configDir,
         CLAUDE_PLUGIN_ROOT: undefined,
         HOME: fakeHome,
         USER_TYPE: '',

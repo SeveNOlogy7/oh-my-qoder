@@ -33,7 +33,7 @@ import { processSessionEndWorker, reconcileSessionEndJobs, workerEnvironment } f
 const directories: string[] = [];
 
 function project(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'omc-session-end-worker-'));
+  const directory = mkdtempSync(join(tmpdir(), 'omq-session-end-worker-'));
   directories.push(directory);
   return directory;
 }

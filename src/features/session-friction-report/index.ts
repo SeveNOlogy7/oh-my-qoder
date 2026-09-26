@@ -16,7 +16,7 @@ const IDLE_GAP_WARN_MINUTES = 45;
 
 interface ScanTarget {
   filePath: string;
-  sourceType: 'project-transcript' | 'legacy-transcript' | 'omc-session-summary' | 'omc-session-replay';
+  sourceType: 'project-transcript' | 'legacy-transcript' | 'omq-session-summary' | 'omq-session-replay';
 }
 
 interface MutableSessionStats {
@@ -133,7 +133,7 @@ function matchesProjectFilter(projectPath: string | undefined, projectFilter: st
 }
 
 function isOmcSource(sourceType: ScanTarget['sourceType']): boolean {
-  return sourceType === 'omc-session-summary' || sourceType === 'omc-session-replay';
+  return sourceType === 'omq-session-summary' || sourceType === 'omq-session-replay';
 }
 
 function matchesProjectScope(sourceType: ScanTarget['sourceType'], projectPath: string | undefined, projectFilter: string | undefined): boolean {
@@ -182,11 +182,11 @@ function buildTargets(projectRoot: string, projectRoots: string[], scopeMode: 'c
   }
   const omcRoot = getOmcRoot(projectRoot);
   for (const filePath of listJsonFiles(join(omcRoot, 'sessions'))) {
-    targets.push({ filePath, sourceType: 'omc-session-summary' });
+    targets.push({ filePath, sourceType: 'omq-session-summary' });
   }
   for (const filePath of listJsonFiles(join(omcRoot, 'state'))) {
     if (filePath.includes('agent-replay-') && filePath.endsWith('.jsonl')) {
-      targets.push({ filePath, sourceType: 'omc-session-replay' });
+      targets.push({ filePath, sourceType: 'omq-session-replay' });
     }
   }
 
@@ -407,7 +407,7 @@ async function scanJsonlTarget(target: ScanTarget, sessions: Map<string, Mutable
       if (isErrorResult(record)) stats.errorResults += 1;
       updateContextEstimate(stats, record);
 
-      if (target.sourceType === 'omc-session-replay') {
+      if (target.sourceType === 'omq-session-replay') {
         stats.replayEvents += 1;
         if (record.event === 'agent_start') stats.replayAgentsSpawned += 1;
         if (record.event === 'agent_stop' && record.success === false) stats.replayAgentsFailed += 1;

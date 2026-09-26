@@ -129,9 +129,9 @@ describe('isOmcHook()', () => {
     expect(isOmcHook('node "/tmp/custom-claude/hooks/keyword-detector.mjs"')).toBe(true);
   });
 
-  it('recognises CLAUDE_CONFIG_DIR-aware hook commands', () => {
-    expect(isOmcHook('node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"')).toBe(true);
-    expect(isOmcHook('node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"')).toBe(true);
+  it('recognises QODER_CONFIG_DIR-aware hook commands', () => {
+    expect(isOmcHook('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"')).toBe(true);
+    expect(isOmcHook('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"')).toBe(true);
   });
 
   it('recognises oh-my-claudecode in command path', () => {

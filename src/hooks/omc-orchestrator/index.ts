@@ -54,7 +54,7 @@ export function clearEnforcementCache(): void {
 
 /**
  * Read enforcement level from config.
- * Checks: .omq/config.json → [$CLAUDE_CONFIG_DIR|~/.claude]/.omq-config.json → default (warn)
+ * Checks: .omq/config.json → [$QODER_CONFIG_DIR|~/.claude]/.omq-config.json → default (warn)
  */
 function getEnforcementLevel(directory: string): EnforcementLevel {
   const now = Date.now();

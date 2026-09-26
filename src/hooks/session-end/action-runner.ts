@@ -8,7 +8,7 @@ import { getProcessStartIdentitySync, terminateOwnedProcessTree } from '../../pl
 import { markSessionEndActionRunner, readSessionEndJob } from './cleanup-manifest.js';
 import { getOmcRoot } from '../../lib/worktree-paths.js';
 
-const RUNNER_ARG = '--omc-session-end-action-runner';
+const RUNNER_ARG = '--omq-session-end-action-runner';
 export interface ActionRunContext { directory: string; sessionId: string; job: SessionEndJobV1; actionName: SessionEndActionName; action: SessionEndActionState; ownerNonce: string; runnerNonce: string; deadlineAt: number; }
 export interface ActionRunResult { code: string; completed: boolean; }
 function runDirectory(context: ActionRunContext): string { return path.join(getOmcRoot(context.directory), 'state', 'session-end-jobs', 'runs', context.job.jobId, context.actionName, String(context.action.attempts), context.runnerNonce); }
@@ -28,7 +28,7 @@ function openClawRoutingEnvironment(payload: Record<string, unknown>): NodeJS.Pr
 }
 
 function runnerEnvironment(context: ActionRunContext): NodeJS.ProcessEnv {
-  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'CLAUDE_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
+  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'QODER_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
   const notificationKeys = ['OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'OMQ_DISCORD_MENTION', 'OMQ_DISCORD_NOTIFIER_BOT_TOKEN', 'OMQ_DISCORD_NOTIFIER_CHANNEL', 'OMQ_DISCORD_WEBHOOK_URL', 'OMQ_TELEGRAM_BOT_TOKEN', 'OMQ_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMQ_TELEGRAM_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_UID', 'OMQ_SLACK_WEBHOOK_URL', 'OMQ_SLACK_MENTION', 'OMQ_SLACK_BOT_TOKEN', 'OMQ_SLACK_APP_TOKEN', 'OMQ_SLACK_BOT_CHANNEL'];
   const keys = context.actionName === 'callback' || context.actionName === 'notification' ? [...baseKeys, ...notificationKeys] : baseKeys;
   const exact = Object.fromEntries(keys.flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]]]));

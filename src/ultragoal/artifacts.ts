@@ -56,7 +56,7 @@ export interface UltragoalAggregateCompletion {
   status: 'complete';
   completedAt: string;
   evidence: string;
-  claudeGoal?: unknown;
+  qoderGoal?: unknown;
 }
 
 export interface UltragoalPlan {
@@ -72,8 +72,8 @@ export interface UltragoalPlan {
   briefPath: string;
   goalsPath: string;
   ledgerPath: string;
-  claudeGoalMode?: UltragoalClaudeGoalMode;
-  claudeObjective?: string;
+  qoderGoalMode?: UltragoalClaudeGoalMode;
+  qoderObjective?: string;
   aggregateCompletion?: UltragoalAggregateCompletion;
   activeGoalId?: string;
   goals: UltragoalItem[];
@@ -96,7 +96,7 @@ export interface UltragoalLedgerEntry {
   goalId?: string;
   status?: UltragoalStatus;
   message?: string;
-  claudeGoal?: unknown;
+  qoderGoal?: unknown;
   evidence?: string;
   qualityGate?: UltragoalQualityGate;
 }
@@ -104,7 +104,7 @@ export interface UltragoalLedgerEntry {
 export interface CreateUltragoalOptions {
   brief: string;
   goals?: Array<{ title?: string; objective: string; tokenBudget?: number }>;
-  claudeGoalMode?: UltragoalClaudeGoalMode;
+  qoderGoalMode?: UltragoalClaudeGoalMode;
   now?: Date;
   force?: boolean;
   /**
@@ -131,7 +131,7 @@ export interface CheckpointOptions {
   goalId: string;
   status: Extract<UltragoalStatus, 'complete' | 'failed'> | 'blocked';
   evidence?: string;
-  claudeGoal?: unknown;
+  qoderGoal?: unknown;
   qualityGate?: unknown;
   allowActiveFinalClaudeGoal?: boolean;
   now?: Date;
@@ -148,7 +148,7 @@ export interface AddUltragoalGoalOptions {
 
 export interface RecordFinalReviewBlockersOptions extends AddUltragoalGoalOptions {
   goalId: string;
-  claudeGoal?: unknown;
+  qoderGoal?: unknown;
 }
 
 export interface UltragoalQualityGate {
@@ -300,7 +300,7 @@ async function canReconcileCompletedTaskScopedAggregateSnapshot(
   snapshotObjective: string,
   evidence: string | undefined,
 ): Promise<boolean> {
-  if (claudeGoalMode(plan) !== 'aggregate') return false;
+  if (qoderGoalMode(plan) !== 'aggregate') return false;
   if (goal.status !== 'in_progress' || plan.activeGoalId !== goal.id) return false;
   if (!textMentionsUltragoalPlanArtifact(evidence)) return false;
   if (!textMentionsGoalId(evidence, goal.id)) return false;
@@ -322,8 +322,8 @@ function buildCompletedLegacyGoalRemediation(goal: UltragoalItem): string {
   ].join(' ');
 }
 
-function claudeGoalMode(plan: UltragoalPlan): UltragoalClaudeGoalMode {
-  return plan.claudeGoalMode ?? 'per_story';
+function qoderGoalMode(plan: UltragoalPlan): UltragoalClaudeGoalMode {
+  return plan.qoderGoalMode ?? 'per_story';
 }
 
 function isResolvedStatus(status: UltragoalStatus): boolean {
@@ -346,8 +346,8 @@ function aggregateClaudeObjective(goals: readonly UltragoalItem[], planId?: stri
 }
 
 function expectedClaudeObjective(plan: UltragoalPlan, goal: UltragoalItem): string {
-  return claudeGoalMode(plan) === 'aggregate'
-    ? (plan.claudeObjective ?? aggregateClaudeObjective(plan.goals, plan.planId))
+  return qoderGoalMode(plan) === 'aggregate'
+    ? (plan.qoderObjective ?? aggregateClaudeObjective(plan.goals, plan.planId))
     : goal.objective;
 }
 
@@ -477,10 +477,10 @@ export async function createUltragoalPlan(cwd: string, options: CreateUltragoalO
     briefPath: `${planDir}/${ULTRAGOAL_BRIEF}`,
     goalsPath: `${planDir}/${ULTRAGOAL_GOALS}`,
     ledgerPath: `${planDir}/${ULTRAGOAL_LEDGER}`,
-    claudeGoalMode: options.claudeGoalMode ?? 'aggregate',
+    qoderGoalMode: options.qoderGoalMode ?? 'aggregate',
     goals: candidates,
   };
-  if (plan.claudeGoalMode === 'aggregate') plan.claudeObjective = aggregateClaudeObjective(candidates, planId);
+  if (plan.qoderGoalMode === 'aggregate') plan.qoderObjective = aggregateClaudeObjective(candidates, planId);
 
   await mkdir(ultragoalDir(cwd, planId), { recursive: true });
   await writeFile(ultragoalBriefPath(cwd, planId), options.brief.endsWith('\n') ? options.brief : `${options.brief}\n`);
@@ -629,7 +629,7 @@ export async function checkpointUltragoal(cwd: string, options: CheckpointOption
   const now = iso(options.now);
   if (options.status === 'blocked') {
     assertActiveInProgressCheckpoint(plan, goal, 'blocked');
-    const snapshot = options.claudeGoal === undefined ? null : parseClaudeGoalSnapshot(options.claudeGoal);
+    const snapshot = options.qoderGoal === undefined ? null : parseClaudeGoalSnapshot(options.qoderGoal);
     if (!snapshot?.available) {
       throw new UltragoalError('Blocked ultragoal checkpoints require a Claude /goal snapshot for the completed legacy goal that blocked a new /goal directive; pass --claude-goal-json.');
     }
@@ -652,7 +652,7 @@ export async function checkpointUltragoal(cwd: string, options: CheckpointOption
       goalId: goal.id,
       status: goal.status,
       evidence: options.evidence,
-      claudeGoal: options.claudeGoal,
+      qoderGoal: options.qoderGoal,
     }, plan.planId);
     return plan;
   }
@@ -663,9 +663,9 @@ export async function checkpointUltragoal(cwd: string, options: CheckpointOption
   if (options.status === 'complete') {
     assertActiveInProgressCheckpoint(plan, goal, 'complete');
     const expectedObjective = expectedClaudeObjective(plan, goal);
-    const aggregateMode = claudeGoalMode(plan) === 'aggregate';
+    const aggregateMode = qoderGoalMode(plan) === 'aggregate';
     const finalRunCheckpoint = isFinalRunCompletionCandidate(plan, goal);
-    const snapshot = options.claudeGoal === undefined ? null : parseClaudeGoalSnapshot(options.claudeGoal);
+    const snapshot = options.qoderGoal === undefined ? null : parseClaudeGoalSnapshot(options.qoderGoal);
     const reconciliation = reconcileClaudeGoalSnapshot(
       snapshot,
       {
@@ -688,7 +688,7 @@ export async function checkpointUltragoal(cwd: string, options: CheckpointOption
           status: 'complete',
           completedAt: now,
           evidence: assertNonEmpty(options.evidence, '--evidence'),
-          claudeGoal: options.claudeGoal,
+          qoderGoal: options.qoderGoal,
         };
       } else {
         const taskScopedRequirement = aggregateMode && snapshot?.status === 'complete' && Boolean(snapshot.objective)
@@ -719,7 +719,7 @@ export async function checkpointUltragoal(cwd: string, options: CheckpointOption
       goalId: goal.id,
       status: goal.status,
       evidence: options.evidence,
-      claudeGoal: options.claudeGoal,
+      qoderGoal: options.qoderGoal,
       qualityGate,
       message: 'Aggregate ultragoal plan completed via task-scoped Claude /goal snapshot; microgoal ledger progress remains independent.',
     }, plan.planId);
@@ -746,7 +746,7 @@ export async function checkpointUltragoal(cwd: string, options: CheckpointOption
     goalId: goal.id,
     status: goal.status,
     evidence: options.evidence,
-    claudeGoal: options.claudeGoal,
+    qoderGoal: options.qoderGoal,
     qualityGate,
   }, plan.planId);
   return plan;
@@ -766,9 +766,9 @@ export async function recordFinalReviewBlockers(cwd: string, options: RecordFina
 
   const now = iso(options.now);
   const expectedObjective = expectedClaudeObjective(plan, goal);
-  const aggregateMode = claudeGoalMode(plan) === 'aggregate';
+  const aggregateMode = qoderGoalMode(plan) === 'aggregate';
   const reconciliation = reconcileClaudeGoalSnapshot(
-    options.claudeGoal === undefined ? null : parseClaudeGoalSnapshot(options.claudeGoal),
+    options.qoderGoal === undefined ? null : parseClaudeGoalSnapshot(options.qoderGoal),
     {
       expectedObjective,
       allowedStatuses: ['active'],
@@ -798,7 +798,7 @@ export async function recordFinalReviewBlockers(cwd: string, options: RecordFina
     goalId: goal.id,
     status: goal.status,
     evidence: options.evidence,
-    claudeGoal: options.claudeGoal,
+    qoderGoal: options.qoderGoal,
     message: aggregateMode
       ? 'Final aggregate code-review was not clean; blocker story was appended while Claude /goal remains active.'
       : 'Final per-story code-review was not clean; blocker story was appended and may require a fresh/available Claude /goal context.',
@@ -817,13 +817,13 @@ export async function recordFinalReviewBlockers(cwd: string, options: RecordFina
     goalId: goal.id,
     status: goal.status,
     evidence: options.evidence,
-    claudeGoal: options.claudeGoal,
+    qoderGoal: options.qoderGoal,
   }, plan.planId);
   return { plan, blockedGoal: goal, addedGoal };
 }
 
 export function buildClaudeGoalInstruction(goal: UltragoalItem, plan: UltragoalPlan): string {
-  if (claudeGoalMode(plan) === 'aggregate') return buildAggregateClaudeGoalInstruction(goal, plan);
+  if (qoderGoalMode(plan) === 'aggregate') return buildAggregateClaudeGoalInstruction(goal, plan);
   return buildPerStoryClaudeGoalInstruction(goal, plan);
 }
 
@@ -874,7 +874,7 @@ function buildPerStoryClaudeGoalInstruction(goal: UltragoalItem, plan: Ultragoal
 }
 
 function buildAggregateClaudeGoalInstruction(goal: UltragoalItem, plan: UltragoalPlan): string {
-  const objective = plan.claudeObjective ?? aggregateClaudeObjective(plan.goals, plan.planId);
+  const objective = plan.qoderObjective ?? aggregateClaudeObjective(plan.goals, plan.planId);
   const finalStory = isFinalRunCompletionCandidate(plan, goal);
   const createPayload = { condition: objective };
   const checkpointStatus = finalStory ? 'complete' : 'active';

@@ -30,7 +30,7 @@ import { renderSkillRuntimeGuidance } from '../../features/builtin-skills/runtim
 import { getSkillsDir, renderBundledSkillBody } from '../../features/builtin-skills/skills.js';
 
 /** Claude config directory */
-const CLAUDE_CONFIG_DIR = getClaudeConfigDir();
+const QODER_CONFIG_DIR = getClaudeConfigDir();
 
 /**
  * Claude Code native commands that must not be shadowed by user skills.
@@ -194,12 +194,12 @@ function discoverSkillsFromDir(skillsDir: string): CommandInfo[] {
  * Discover all available commands from multiple sources
  */
 export function discoverAllCommands(): CommandInfo[] {
-  const userCommandsDir = join(CLAUDE_CONFIG_DIR, 'commands');
+  const userCommandsDir = join(QODER_CONFIG_DIR, 'commands');
   const projectCommandsDir = join(process.cwd(), '.claude', 'commands');
   const projectClaudeSkillsDir = join(process.cwd(), '.claude', 'skills');
   const projectOmcSkillsDir = join(getOmcRoot(), 'skills');
   const projectAgentSkillsDir = join(process.cwd(), '.agents', 'skills');
-  const userSkillsDir = join(CLAUDE_CONFIG_DIR, 'skills');
+  const userSkillsDir = join(QODER_CONFIG_DIR, 'skills');
 
   const userCommands = discoverCommandsFromDir(userCommandsDir, 'user');
   const projectCommands = discoverCommandsFromDir(projectCommandsDir, 'project');
@@ -392,7 +392,7 @@ export function executeSlashCommand(parsed: ParsedSlashCommand): ExecuteResult {
   if (!command) {
     return {
       success: false,
-      error: `Command "/${parsed.command}" not found. Available commands are in ${CLAUDE_CONFIG_DIR}/commands/ or .claude/commands/`,
+      error: `Command "/${parsed.command}" not found. Available commands are in ${QODER_CONFIG_DIR}/commands/ or .claude/commands/`,
     };
   }
 

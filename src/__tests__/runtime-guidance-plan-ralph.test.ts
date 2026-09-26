@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CliAgentType } from '../team/model-contract.js';
 
 const availability = vi.hoisted(() => ({
+  claude: false,
+  antigravity: false,
   qwen: true,
   codex: false,
   gemini: false,

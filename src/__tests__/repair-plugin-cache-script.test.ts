@@ -53,7 +53,7 @@ describe('repair-plugin-cache.mjs', () => {
     }, null, 2));
 
     const result = spawnSync(process.execPath, [SCRIPT_PATH], {
-      env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, OMQ_REPAIR_PLUGIN_CACHE_PLATFORM: 'linux' },
+      env: { ...process.env, QODER_CONFIG_DIR: configDir, OMQ_REPAIR_PLUGIN_CACHE_PLATFORM: 'linux' },
       encoding: 'utf-8',
     });
 
@@ -88,7 +88,7 @@ describe('repair-plugin-cache.mjs', () => {
     }, null, 2));
 
     const result = spawnSync(process.execPath, [SCRIPT_PATH], {
-      env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, OMQ_REPAIR_PLUGIN_CACHE_PLATFORM: 'linux' },
+      env: { ...process.env, QODER_CONFIG_DIR: configDir, OMQ_REPAIR_PLUGIN_CACHE_PLATFORM: 'linux' },
       encoding: 'utf-8',
     });
 
@@ -125,7 +125,7 @@ describe('repair-plugin-cache.mjs', () => {
     }, null, 2));
 
     const result = spawnSync(process.execPath, [SCRIPT_PATH], {
-      env: { ...process.env, CLAUDE_CONFIG_DIR: configDir },
+      env: { ...process.env, QODER_CONFIG_DIR: configDir },
       encoding: 'utf-8',
     });
 
@@ -151,7 +151,7 @@ describe('repair-plugin-cache.mjs', () => {
     );
 
     const result = spawnSync(process.execPath, [SCRIPT_PATH], {
-      env: { ...process.env, CLAUDE_CONFIG_DIR: configDir },
+      env: { ...process.env, QODER_CONFIG_DIR: configDir },
       encoding: 'utf-8',
     });
 
@@ -196,7 +196,7 @@ describe('repair-plugin-cache.mjs', () => {
     }, null, 2));
 
     const result = spawnSync(process.execPath, [SCRIPT_PATH], {
-      env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, OMQ_REPAIR_PLUGIN_CACHE_PLATFORM: 'win32' },
+      env: { ...process.env, QODER_CONFIG_DIR: configDir, OMQ_REPAIR_PLUGIN_CACHE_PLATFORM: 'win32' },
       encoding: 'utf-8',
     });
 

@@ -4,6 +4,8 @@ const LEGACY_IDLE_PROMPT_LINE = /^\s*(?:[│┃║▌▐▏▕╎┆┊]\s*)?[�
 const CURSOR_IDLE_PROMPT_LINE = /^\s*(?:[│┃║▌▐▏▕╎┆┊]\s*)?[›>❯→]\s*/u;
 
 const PROVIDER_IDLE_PROMPT_LINES: Readonly<Record<CliAgentType, RegExp>> = {
+  // Qoder CLI presents the same idle prompt line as the Claude interactive transport.
+  qwen: LEGACY_IDLE_PROMPT_LINE,
   claude: LEGACY_IDLE_PROMPT_LINE,
   codex: LEGACY_IDLE_PROMPT_LINE,
   gemini: LEGACY_IDLE_PROMPT_LINE,

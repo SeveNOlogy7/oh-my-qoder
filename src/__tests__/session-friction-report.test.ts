@@ -17,9 +17,9 @@ describe('session friction report', () => {
   let claudeDir: string;
 
   beforeEach(() => {
-    tempRoot = mkdtempSync(join(tmpdir(), 'omc-session-friction-'));
+    tempRoot = mkdtempSync(join(tmpdir(), 'omq-session-friction-'));
     claudeDir = join(tempRoot, 'claude');
-    process.env.CLAUDE_CONFIG_DIR = claudeDir;
+    process.env.QODER_CONFIG_DIR = claudeDir;
     process.env.OMQ_STATE_DIR = join(tempRoot, 'omc-state');
 
     const currentProjectDir = join(claudeDir, 'projects', encodeProjectPath(repoRoot));
@@ -57,7 +57,7 @@ describe('session friction report', () => {
   });
 
   afterEach(() => {
-    delete process.env.CLAUDE_CONFIG_DIR;
+    delete process.env.QODER_CONFIG_DIR;
     delete process.env.OMQ_STATE_DIR;
     rmSync(tempRoot, { recursive: true, force: true });
   });
@@ -95,7 +95,7 @@ describe('session friction report', () => {
 
     expect(report.sessions.some((session) => session.sessionId === 'session-current')).toBe(true);
     const session = report.sessions.find((candidate) => candidate.sessionId === 'session-current');
-    expect(session?.sources).toContain('omc-session-replay');
+    expect(session?.sources).toContain('omq-session-replay');
     expect(session?.replayAgentsFailed).toBe(1);
   });
 
@@ -103,7 +103,7 @@ describe('session friction report', () => {
     const report = await generateSessionFrictionReport({ workingDirectory: repoRoot, project: 'oh-my-claudecode' });
 
     const session = report.sessions.find((candidate) => candidate.sessionId === 'session-current');
-    expect(session?.sources).toContain('omc-session-replay');
+    expect(session?.sources).toContain('omq-session-replay');
     expect(session?.replayToolCalls).toBe(1);
   });
 });

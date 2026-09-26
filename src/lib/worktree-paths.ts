@@ -834,7 +834,7 @@ export function isValidTranscriptPath(transcriptPath: string): boolean {
   const normalized = normalize(expandedPath);
   const home = homedir();
 
-  // Allowed: [$CLAUDE_CONFIG_DIR|~/.claude], ~/.omq/..., system temp dir
+  // Allowed: [$QODER_CONFIG_DIR|~/.claude], ~/.omq/..., system temp dir
   const allowedPrefixes = [
     getClaudeConfigDir(),
     join(home, '.omq'),

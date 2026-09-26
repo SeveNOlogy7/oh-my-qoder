@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-const originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+const originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
 const originalPluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
 const originalHome = process.env.HOME;
 
@@ -69,7 +69,7 @@ describe('install() standalone hook reconciliation', () => {
     testHomeDir = mkdtempSync(join(tmpdir(), 'omc-home-'));
     mkdirSync(testHomeDir, { recursive: true });
     writeFileSync(join(testHomeDir, 'CLAUDE.md'), '# test home claude');
-    process.env.CLAUDE_CONFIG_DIR = testClaudeDir;
+    process.env.QODER_CONFIG_DIR = testClaudeDir;
     process.env.HOME = testHomeDir;
     delete process.env.CLAUDE_PLUGIN_ROOT;
   });
@@ -78,9 +78,9 @@ describe('install() standalone hook reconciliation', () => {
     rmSync(testClaudeDir, { recursive: true, force: true });
     rmSync(testHomeDir, { recursive: true, force: true });
     if (originalClaudeConfigDir !== undefined) {
-      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
     } else {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     }
     if (originalPluginRoot !== undefined) {
       process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
@@ -102,7 +102,7 @@ describe('install() standalone hook reconciliation', () => {
     const { install } = await loadInstaller();
     const result = install({
       force: true,
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
     });
 
     const writtenSettings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as {
@@ -146,7 +146,7 @@ describe('install() standalone hook reconciliation', () => {
       const { install } = await loadInstaller();
       const result = install({
         force: true,
-        skipClaudeCheck: true,
+        skipQoderCheck: true,
       });
 
       expect(result.success).toBe(true);
@@ -169,7 +169,7 @@ describe('install() standalone hook reconciliation', () => {
     const { install } = await loadInstaller();
     const result = install({
       force: true,
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
     });
 
     expect(result.success).toBe(true);
@@ -188,7 +188,7 @@ describe('install() standalone hook reconciliation', () => {
       const { install } = await loadInstaller();
       const result = install({
         force: true,
-        skipClaudeCheck: true,
+        skipQoderCheck: true,
       });
 
       expect(result.success).toBe(true);
@@ -232,7 +232,7 @@ describe('install() standalone hook reconciliation', () => {
           encoding: 'utf-8',
           env: {
             ...process.env,
-            CLAUDE_CONFIG_DIR: testClaudeDir,
+            QODER_CONFIG_DIR: testClaudeDir,
             HOME: testHomeDir,
             USERPROFILE: testHomeDir,
           },
@@ -268,7 +268,7 @@ describe('install() standalone hook reconciliation', () => {
     const { install } = await loadInstaller();
     const result = install({
       force: true,
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
     });
 
     const writtenSettings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as {
@@ -323,7 +323,7 @@ describe('install() standalone hook reconciliation', () => {
     const { install } = await loadInstaller();
     const result = install({
       force: true,
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
     });
 
     const writtenSettings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as {
@@ -348,7 +348,7 @@ describe('install() standalone hook reconciliation', () => {
     writeFileSync(join(hooksLibDir, 'workflow-profile-runtime.mjs'), 'export const stale = true;\n');
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
     const shipped = shippedStandaloneHookPayload('workflow-profile-runtime.mjs', 'hooks/lib');
 
     expect(result.success).toBe(true);
@@ -368,7 +368,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     testHomeDir = mkdtempSync(join(tmpdir(), 'omc-home-dedup-'));
     mkdirSync(testHomeDir, { recursive: true });
     writeFileSync(join(testHomeDir, 'CLAUDE.md'), '# test home claude');
-    process.env.CLAUDE_CONFIG_DIR = testClaudeDir;
+    process.env.QODER_CONFIG_DIR = testClaudeDir;
     process.env.HOME = testHomeDir;
     delete process.env.CLAUDE_PLUGIN_ROOT;
   });
@@ -380,9 +380,9 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     rmSync(testClaudeDir, { recursive: true, force: true });
     rmSync(testHomeDir, { recursive: true, force: true });
     if (originalClaudeConfigDir !== undefined) {
-      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
     } else {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     }
     if (originalPluginRoot !== undefined) {
       process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
@@ -431,7 +431,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     setupPluginWithHooks();
 
     const { install } = await loadInstaller();
-    install({ force: true, skipClaudeCheck: true });
+    install({ force: true, skipQoderCheck: true });
 
     // Standalone hook scripts should NOT be copied to ~/.claude/hooks/
     expect(existsSync(join(testClaudeDir, 'hooks', 'keyword-detector.mjs'))).toBe(false);
@@ -443,7 +443,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     setupPluginWithHooks();
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
 
     const writtenSettings = JSON.parse(
       readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8'),
@@ -482,7 +482,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     setupPluginWithHooks();
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
 
     const writtenSettings = JSON.parse(
       readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8'),
@@ -526,7 +526,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     writeFileSync(join(hooksDir, 'attention', 'notify.mjs'), 'user nested hook');
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
 
     expect(result.success).toBe(true);
     for (const filename of legacyFiles) {
@@ -561,7 +561,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
             hooks: [
               {
                 type: 'command',
-                command: 'node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"',
+                command: 'node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"',
               },
               {
                 type: 'command',
@@ -574,7 +574,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
 
     const writtenSettings = JSON.parse(
       readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8'),
@@ -582,7 +582,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     const commands = writtenSettings.hooks?.Stop?.[0]?.hooks.map(hook => hook.command) ?? [];
 
     expect(result.success).toBe(true);
-    expect(commands).toContain('node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"');
+    expect(commands).toContain('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"');
     expect(commands).toContain('node $HOME/.claude/hooks/user-stop-hook.mjs');
     expect(existsSync(join(hooksDir, 'persistent-mode.mjs'))).toBe(true);
     expect(existsSync(join(hooksDir, 'keyword-detector.mjs'))).toBe(false);
@@ -606,7 +606,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
           {
             hooks: [{
               type: 'command',
-              command: 'node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"',
+              command: 'node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"',
             }],
           },
         ],
@@ -614,7 +614,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
           {
             hooks: [{
               type: 'command',
-              command: 'node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/code-simplifier.mjs"',
+              command: 'node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/code-simplifier.mjs"',
             }],
           },
         ],
@@ -622,7 +622,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
 
     const writtenSettings = JSON.parse(
       readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8'),
@@ -647,7 +647,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     writeFileSync(join(hooksLibDir, 'state-root.mjs'), shippedStandaloneHookPayload('state-root.mjs', 'hooks/lib'));
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
 
     expect(result.success).toBe(true);
     expect(readFileSync(join(hooksDir, 'keyword-detector.mjs'), 'utf-8')).toBe('console.log("user-owned keyword detector");\n');
@@ -662,7 +662,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     writeFileSync(join(hooksDir, 'keyword-detector.mjs'), 'legacy omc payload');
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
 
     expect(result.success).toBe(true);
     expect(readFileSync(join(hooksDir, 'keyword-detector.mjs'), 'utf-8')).toContain('Ralph keywords');
@@ -694,7 +694,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    install({ force: true, skipClaudeCheck: true });
+    install({ force: true, skipQoderCheck: true });
 
     const writtenSettings = JSON.parse(
       readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8'),
@@ -738,7 +738,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
     const writtenSettings = JSON.parse(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')) as {
       hooks?: Record<string, Array<Record<string, unknown> & { hooks: Array<Record<string, unknown>> }>>;
     };
@@ -753,7 +753,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       { type: 'command', command: pluginCommand },
     ]);
     const firstWrittenSettings = readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8');
-    const secondResult = install({ force: true, skipClaudeCheck: true });
+    const secondResult = install({ force: true, skipQoderCheck: true });
     expect(secondResult.success).toBe(true);
     expect(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')).toBe(firstWrittenSettings);
   });
@@ -776,10 +776,10 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    const firstResult = install({ force: true, skipClaudeCheck: true });
+    const firstResult = install({ force: true, skipQoderCheck: true });
     const firstWrittenSettings = readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8');
     const firstSettings = JSON.parse(firstWrittenSettings) as { hooks?: Record<string, unknown> };
-    const secondResult = install({ force: true, skipClaudeCheck: true });
+    const secondResult = install({ force: true, skipQoderCheck: true });
 
     expect(firstResult.success).toBe(true);
     expect(secondResult.success).toBe(true);
@@ -801,7 +801,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
 
     try {
       const { install } = await loadInstaller();
-      const result = install({ force: true, skipClaudeCheck: true, verbose: true });
+      const result = install({ force: true, skipQoderCheck: true, verbose: true });
       const writtenSettings = JSON.parse(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')) as {
         hooks?: Record<string, unknown>;
       };
@@ -835,7 +835,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
 
     try {
       const { install } = await loadInstaller();
-      const result = install({ force: true, skipClaudeCheck: true, verbose: true });
+      const result = install({ force: true, skipQoderCheck: true, verbose: true });
       const writtenSettings = JSON.parse(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')) as {
         hooks?: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
       };
@@ -878,7 +878,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
     const writtenSettings = JSON.parse(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')) as {
       hooks?: Record<string, unknown>;
     };
@@ -923,7 +923,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
     const writtenSettings = JSON.parse(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')) as {
       hooks?: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
     };
@@ -958,7 +958,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }, null, 2));
 
     const { install } = await loadInstaller();
-    const result = install({ force: true, skipClaudeCheck: true });
+    const result = install({ force: true, skipQoderCheck: true });
     const writtenSettings = JSON.parse(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')) as {
       hooks?: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
     };

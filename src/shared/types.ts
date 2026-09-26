@@ -2,7 +2,7 @@
  * Shared types for Oh-My-ClaudeCode
  */
 
-export type ModelType = "sonnet" | "opus" | "haiku" | "fable" | "inherit";
+export type ModelType = "high" | "medium" | "low" | "sonnet" | "opus" | "haiku" | "fable" | "inherit";
 
 export interface AgentConfig {
   name: string;
@@ -488,7 +488,7 @@ export type TeamRoleTier = 'HIGH' | 'MEDIUM' | 'LOW';
 
 /** Known agent names derived from `buildDefaultConfig().agents` keys in src/config/loader.ts. */
 export const KNOWN_AGENT_NAMES = [
-  'omc',
+  'omq',
   'explore',
   'analyst',
   'planner',

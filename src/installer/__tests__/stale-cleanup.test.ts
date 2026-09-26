@@ -105,16 +105,16 @@ describe('cleanupStaleAgents', () => {
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-stale-agents-'));
-    originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
-    process.env.CLAUDE_CONFIG_DIR = tempDir;
+    originalConfigDir = process.env.QODER_CONFIG_DIR;
+    process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
   });
 
   afterEach(() => {
     if (originalConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     } else {
-      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+      process.env.QODER_CONFIG_DIR = originalConfigDir;
     }
     rmSync(tempDir, { recursive: true, force: true });
   });
@@ -462,16 +462,16 @@ describe('cleanupStaleSkills', () => {
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-stale-skills-'));
-    originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
-    process.env.CLAUDE_CONFIG_DIR = tempDir;
+    originalConfigDir = process.env.QODER_CONFIG_DIR;
+    process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
   });
 
   afterEach(() => {
     if (originalConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     } else {
-      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+      process.env.QODER_CONFIG_DIR = originalConfigDir;
     }
     rmSync(tempDir, { recursive: true, force: true });
   });
@@ -639,16 +639,16 @@ describe('prunePluginDuplicateSkills', () => {
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-prune-dupes-'));
-    originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
-    process.env.CLAUDE_CONFIG_DIR = tempDir;
+    originalConfigDir = process.env.QODER_CONFIG_DIR;
+    process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
   });
 
   afterEach(() => {
     if (originalConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     } else {
-      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+      process.env.QODER_CONFIG_DIR = originalConfigDir;
     }
     rmSync(tempDir, { recursive: true, force: true });
   });
@@ -801,16 +801,16 @@ describe('prunePluginDuplicateAgents', () => {
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'omc-prune-agent-dupes-'));
-    originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
-    process.env.CLAUDE_CONFIG_DIR = tempDir;
+    originalConfigDir = process.env.QODER_CONFIG_DIR;
+    process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
   });
 
   afterEach(() => {
     if (originalConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     } else {
-      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+      process.env.QODER_CONFIG_DIR = originalConfigDir;
     }
     rmSync(tempDir, { recursive: true, force: true });
   });

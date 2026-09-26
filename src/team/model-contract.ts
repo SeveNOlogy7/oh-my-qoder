@@ -1,12 +1,13 @@
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { spawnSync } from 'child_process';
 import { isAbsolute, normalize, sep, win32 as win32Path } from 'path';
 import { validateTeamName } from './team-name.js';
-import { normalizeToCcAlias } from '../features/delegation-enforcer.js';
+import { normalizeToCcAlias, normalizeToTierAlias } from '../features/delegation-enforcer.js';
 import { isBedrock, isVertexAI, isProviderSpecificModelId } from '../config/models.js';
 import { isExternalLLMDisabled } from '../lib/security-config.js';
 import type { WorkerLaunchDescriptor } from './types.js';
 
-export type CliAgentType = 'claude' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
+export type CliAgentType = 'claude' | 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
 
 export interface CliAgentContract {
   agentType: CliAgentType;
@@ -182,6 +183,30 @@ export function shouldUseClaudeBareMode(env: NodeJS.ProcessEnv = process.env): b
 }
 
 const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
+  qwen: {
+    agentType: 'qwen',
+    // Resolved lazily so importing this module does not shell out to PATH lookup.
+    get binary() { return qoderCliBinary(); },
+    installInstructions: 'Install Qoder CLI: curl -fsSL https://qoder.com/install | bash',
+    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+      const args = ['--dangerously-skip-permissions'];
+      if (shouldUseClaudeBareMode() && !extraFlags.includes('--bare')) {
+        args.push('--bare');
+      }
+      if (model) {
+        // Provider-specific model IDs must be passed as-is.
+        // Normalizing them to tier aliases like "medium" causes Qoder CLI to expand
+        // them to default Qwen API names (qwen-plus) which are invalid on
+        // non-standard providers. (issue #1695)
+        const resolved = isProviderSpecificModelId(model) ? model : normalizeToTierAlias(model);
+        args.push('--model', resolved);
+      }
+      return [...args, ...extraFlags];
+    },
+    parseOutput(rawOutput: string): string {
+      return rawOutput.trim();
+    },
+  },
   claude: {
     agentType: 'claude',
     binary: 'claude',

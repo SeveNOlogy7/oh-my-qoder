@@ -119,7 +119,7 @@ async function defaultAction() {
 
 
 program
-  .name('omc')
+  .name('omq')
   .description('Multi-agent orchestration system for Claude Agent SDK')
   .version(version)
   .allowUnknownOption()
@@ -890,7 +890,7 @@ Examples:
   $ omc install                  Install to config directory (default: ~/.claude/)
   $ omc install --force          Reinstall, overwriting existing files
   $ omc install --quiet          Silent install for scripts
-  $ CLAUDE_CONFIG_DIR=$HOME/.claude-isolated-workspace omc install  Isolated config directory`)
+  $ QODER_CONFIG_DIR=$HOME/.claude-isolated-workspace omc install  Isolated config directory`)
   .action(async (options) => {
     if (!options.quiet) {
       console.log(chalk.blue('╔═══════════════════════════════════════════════════════════╗'));
@@ -918,7 +918,7 @@ Examples:
     const result = installOmc({
       force: options.force,
       verbose: !options.quiet,
-      skipClaudeCheck: options.skipClaudeCheck
+      skipQoderCheck: options.skipQoderCheck
     });
 
     if (result.success) {
@@ -1344,7 +1344,7 @@ Examples:
     const result = installOmc({
       force: !!options.force,
       verbose: !options.quiet,
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       forceHooks: !!options.forceHooks,
       noPlugin: useLocalBundledSkills,
       pluginDirMode,
@@ -1407,7 +1407,7 @@ program
     const result = installOmc({
       force: false,
       verbose: false,
-      skipClaudeCheck: true
+      skipQoderCheck: true
     });
 
     if (result.success) {

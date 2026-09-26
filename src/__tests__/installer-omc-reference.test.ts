@@ -45,7 +45,7 @@ vi.mock('fs', async () => {
 
 async function loadInstallerWithEnv(claudeConfigDir: string, homeDir: string) {
   vi.resetModules();
-  process.env.CLAUDE_CONFIG_DIR = claudeConfigDir;
+  process.env.QODER_CONFIG_DIR = claudeConfigDir;
   process.env.HOME = homeDir;
   return import('../installer/index.js');
 }
@@ -124,15 +124,15 @@ describe('installer bundled + standalone skill sync', () => {
     mkdirSync(homeDir, { recursive: true });
     mkdirSync(claudeConfigDir, { recursive: true });
 
-    originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
     originalHome = process.env.HOME;
   });
 
   afterEach(() => {
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
     } else {
-      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
     }
 
     if (originalHome === undefined) {
@@ -148,7 +148,7 @@ describe('installer bundled + standalone skill sync', () => {
   it('installs standalone slash skills into ~/.claude/skills during legacy install', async () => {
     const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
     });
 
@@ -180,7 +180,7 @@ describe('installer bundled + standalone skill sync', () => {
 
     const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
     });
 
@@ -206,7 +206,7 @@ describe('installer bundled + standalone skill sync', () => {
 
     const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
     });
 
@@ -224,7 +224,7 @@ describe('installer bundled + standalone skill sync', () => {
 
     const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
       noPlugin: true,
     });
@@ -242,7 +242,7 @@ describe('installer bundled + standalone skill sync', () => {
 
     const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
     });
 
@@ -257,7 +257,7 @@ describe('installer bundled + standalone skill sync', () => {
 
     const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
     const result = installer.install({
-      skipClaudeCheck: true,
+      skipQoderCheck: true,
       skipHud: true,
       noPlugin: true,
     });
@@ -278,7 +278,7 @@ describe('installer bundled + standalone skill sync', () => {
     try {
       const installer = await loadInstallerWithEnv(claudeConfigDir, homeDir);
       const result = installer.install({
-        skipClaudeCheck: true,
+        skipQoderCheck: true,
         skipHud: true,
         verbose: true,
       });

@@ -20,7 +20,7 @@ import {
   getHooksSettingsConfig,
 } from './hooks.js';
 import { getRuntimePackageVersion } from '../lib/version.js';
-import { getClaudeConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir } from '../utils/config-dir.js';
 import { resolveNodeBinary } from '../utils/resolve-node.js';
 import { parseFrontmatter } from '../utils/frontmatter.js';
 import { isSkininthegamebrosUser } from '../utils/skininthegamebros-user.js';
@@ -36,14 +36,14 @@ import { HISTORICAL_AGENT_OWNERSHIP, type HistoricalAgentOwnership } from './his
 import entitlementManifest from '../config/builtin-skill-entitlements.json' with { type: 'json' };
 
 /** Claude Code configuration directory */
-export const CLAUDE_CONFIG_DIR = getClaudeConfigDir();
-export const AGENTS_DIR = join(CLAUDE_CONFIG_DIR, 'agents');
-export const COMMANDS_DIR = join(CLAUDE_CONFIG_DIR, 'commands');
-export const SKILLS_DIR = join(CLAUDE_CONFIG_DIR, 'skills');
-export const HOOKS_DIR = join(CLAUDE_CONFIG_DIR, 'hooks');
-export const HUD_DIR = join(CLAUDE_CONFIG_DIR, 'hud');
-export const SETTINGS_FILE = join(CLAUDE_CONFIG_DIR, 'settings.json');
-export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omq-version.json');
+export const QODER_CONFIG_DIR = getQoderConfigDir();
+export const AGENTS_DIR = join(QODER_CONFIG_DIR, 'agents');
+export const COMMANDS_DIR = join(QODER_CONFIG_DIR, 'commands');
+export const SKILLS_DIR = join(QODER_CONFIG_DIR, 'skills');
+export const HOOKS_DIR = join(QODER_CONFIG_DIR, 'hooks');
+export const HUD_DIR = join(QODER_CONFIG_DIR, 'hud');
+export const SETTINGS_FILE = join(QODER_CONFIG_DIR, 'settings.json');
+export const VERSION_FILE = join(QODER_CONFIG_DIR, '.omq-version.json');
 const OMQ_MANAGED_SKILL_MARKER = '.omq-managed';
 const PLUGIN_FULL_SKILL_BODIES_DIR = 'skill-bodies';
 const PLUGIN_COMPACT_SKILL_SHIM_MARKER = '<!-- OMC:COMPACT-PLUGIN-SKILL -->';
@@ -132,11 +132,11 @@ function hasUnchangedRegularAgentFile(filepath: string, previous: { content: Buf
 }
 
 function currentAgentsDir(): string {
-  return join(getClaudeConfigDir(), 'agents');
+  return join(getQoderConfigDir(), 'agents');
 }
 
 function currentSkillsDir(): string {
-  return join(getClaudeConfigDir(), 'skills');
+  return join(getQoderConfigDir(), 'skills');
 }
 
 /**
@@ -183,7 +183,7 @@ function getNewestInstalledVersionHint(): string | null {
   }
 
   const claudeCandidates = [
-    join(CLAUDE_CONFIG_DIR, 'CLAUDE.md'),
+    join(QODER_CONFIG_DIR, 'CLAUDE.md'),
     join(homedir(), 'CLAUDE.md'),
   ];
 
@@ -242,19 +242,19 @@ function buildStatusLineCommand(
   const normalizedHudScriptPath = hudScriptPath.replace(/\\/g, '/');
 
   if (cacheWrapperPath) {
-    if (isDefaultClaudeConfigDirPath(CLAUDE_CONFIG_DIR)) {
-      return 'sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud-cache.sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
+    if (isDefaultClaudeConfigDirPath(QODER_CONFIG_DIR)) {
+      return 'sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud-cache.sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
     }
 
     return `sh ${quoteShellArg(cacheWrapperPath.replace(/\\/g, '/'))} ${quoteShellArg(normalizedHudScriptPath)}`;
   }
 
-  if (isDefaultClaudeConfigDirPath(CLAUDE_CONFIG_DIR)) {
+  if (isDefaultClaudeConfigDirPath(QODER_CONFIG_DIR)) {
     if (findNodePath) {
-      return 'sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/find-node.sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
+      return 'sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/find-node.sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
     }
 
-    return 'node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
+    return 'node ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
   }
 
   if (findNodePath) {
@@ -296,7 +296,7 @@ export interface InstallOptions {
   force?: boolean;
   version?: string;
   verbose?: boolean;
-  skipClaudeCheck?: boolean;
+  skipQoderCheck?: boolean;
   forceHooks?: boolean;
   refreshHooksInPlugin?: boolean;
   skipHud?: boolean;
@@ -317,7 +317,7 @@ export interface InstallOptions {
  * (avoids circular dependency since auto-update imports from installer)
  */
 export function isHudEnabledInConfig(): boolean {
-  const configPath = join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
+  const configPath = join(QODER_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
   if (!existsSync(configPath)) {
     return true; // default: enabled
   }
@@ -594,7 +594,7 @@ export function isProjectScopedPlugin(): boolean {
   }
 
   // Global plugins are installed under ~/.claude/plugins/
-  const globalPluginBase = join(CLAUDE_CONFIG_DIR, 'plugins');
+  const globalPluginBase = join(QODER_CONFIG_DIR, 'plugins');
 
   // If the plugin root is NOT under the global plugin directory, it's project-scoped
   // Normalize paths for comparison (resolve symlinks, trailing slashes, etc.)
@@ -726,7 +726,7 @@ function pruneLegacyStandaloneHookScripts(log: (msg: string) => void, activeStan
   }
 
   if (removed > 0) {
-    log(`  Removed ${removed} legacy hook script file${removed === 1 ? '' : 's'} from ${basename(CLAUDE_CONFIG_DIR)}/hooks`);
+    log(`  Removed ${removed} legacy hook script file${removed === 1 ? '' : 's'} from ${basename(QODER_CONFIG_DIR)}/hooks`);
   }
 }
 
@@ -1361,7 +1361,7 @@ function resolveInstalledOmcPluginRoots(): PluginRootResolution {
     return { mode: 'plugin', roots: [explicitRoot], cleanupAllowed: true };
   }
 
-  const installedPluginsPath = join(CLAUDE_CONFIG_DIR, 'plugins', 'installed_plugins.json');
+  const installedPluginsPath = join(QODER_CONFIG_DIR, 'plugins', 'installed_plugins.json');
   if (!existsSync(installedPluginsPath)) {
     return { mode: 'legacy', roots: [], cleanupAllowed: true };
   }
@@ -1691,7 +1691,7 @@ function countPluginSyncPayloadEntries(root: string): number {
 }
 
 function getKnownMarketplaceInstallRoots(): string[] {
-  const knownMarketplacesPath = join(CLAUDE_CONFIG_DIR, 'plugins', 'known_marketplaces.json');
+  const knownMarketplacesPath = join(QODER_CONFIG_DIR, 'plugins', 'known_marketplaces.json');
   if (!existsSync(knownMarketplacesPath)) {
     return [];
   }
@@ -1747,7 +1747,7 @@ function getGlobalInstalledPackageRoot(): string | null {
 
 function isCacheInstalledPluginRoot(root: string): boolean {
   const normalizedRoot = normalizePath(root);
-  const cacheBase = normalizePath(join(CLAUDE_CONFIG_DIR, 'plugins', 'cache'));
+  const cacheBase = normalizePath(join(QODER_CONFIG_DIR, 'plugins', 'cache'));
   if (!(normalizedRoot === cacheBase || normalizedRoot.startsWith(`${cacheBase}/`))) {
     return false;
   }
@@ -2026,7 +2026,7 @@ export function hasPluginProvidedHookFiles(): boolean {
   );
 }
 
-export function hasEnabledOmcPlugin(): boolean {
+export function hasEnabledOmqPlugin(): boolean {
   if (process.env.CLAUDE_PLUGIN_ROOT?.trim()) {
     return true;
   }
@@ -2286,7 +2286,7 @@ export function syncPersistedSetupVersion(options?: {
   version?: string;
   onlyIfConfigured?: boolean;
 }): boolean {
-  const configPath = options?.configPath ?? join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
+  const configPath = options?.configPath ?? join(QODER_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
   let config: Record<string, unknown> = {};
 
   if (existsSync(configPath)) {
@@ -2304,7 +2304,7 @@ export function syncPersistedSetupVersion(options?: {
 
   let detectedVersion = options?.version?.trim();
   if (!detectedVersion) {
-    const claudeMdPath = options?.claudeMdPath ?? join(CLAUDE_CONFIG_DIR, 'CLAUDE.md');
+    const claudeMdPath = options?.claudeMdPath ?? join(QODER_CONFIG_DIR, 'CLAUDE.md');
     if (existsSync(claudeMdPath)) {
       detectedVersion = extractOmcVersionFromClaudeMd(readFileSync(claudeMdPath, 'utf-8')) ?? undefined;
     }
@@ -2440,7 +2440,7 @@ export function install(options: InstallOptions = {}): InstallResult {
   const pluginProvidesAgentFiles = hasPluginProvidedAgentFiles();
   const pluginProvidesSkillFiles = hasPluginProvidedSkillFiles();
   const pluginProvidesHookFiles = hasPluginProvidedHookFiles();
-  const enabledOmcPlugin = hasEnabledOmcPlugin();
+  const enabledOmcPlugin = hasEnabledOmqPlugin();
   // Dev plugin-dir mode: user launched OMC via `claude --plugin-dir <path>` or
   // `omc --plugin-dir <path>`. The plugin already exposes agents/skills at runtime,
   // so skip copying them into <configDir>. Auto-detected via OMQ_PLUGIN_ROOT in CLI.
@@ -2471,7 +2471,7 @@ export function install(options: InstallOptions = {}): InstallResult {
   }
 
   // Check Claude installation (optional)
-  if (!options.skipClaudeCheck && !isClaudeInstalled()) {
+  if (!options.skipQoderCheck && !isClaudeInstalled()) {
     log('Warning: Claude Code not found. Install it first:');
     if (isWindows()) {
       log('  Visit https://docs.anthropic.com/claude-code for Windows installation');
@@ -2483,8 +2483,8 @@ export function install(options: InstallOptions = {}): InstallResult {
 
   try {
     // Ensure base config directory exists (skip for project-scoped plugins)
-    if ((!projectScoped || shouldInstallBundledSkills) && !existsSync(CLAUDE_CONFIG_DIR)) {
-      mkdirSync(CLAUDE_CONFIG_DIR, { recursive: true });
+    if ((!projectScoped || shouldInstallBundledSkills) && !existsSync(QODER_CONFIG_DIR)) {
+      mkdirSync(QODER_CONFIG_DIR, { recursive: true });
     }
 
     if (shouldInstallBundledSkills && !existsSync(SKILLS_DIR)) {
@@ -2634,7 +2634,7 @@ export function install(options: InstallOptions = {}): InstallResult {
     if (!projectScoped) {
       const transaction = executeClaudeMdTransaction({
         mode: 'global-overwrite',
-        root: CLAUDE_CONFIG_DIR,
+        root: QODER_CONFIG_DIR,
         source: join(getPackageDir(), 'docs', 'CLAUDE.md'),
         sourceRoot: getPackageDir(),
         version: targetVersion,
@@ -2712,7 +2712,7 @@ export function install(options: InstallOptions = {}): InstallResult {
       //    find-node.sh (used in hooks/hooks.json) can locate it at hook runtime
       //    even when node is not on PATH (nvm/fnm users, issue #892).
       try {
-        const configPath = join(CLAUDE_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
+        const configPath = join(QODER_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
         let omcConfig: Record<string, unknown> = {};
         if (existsSync(configPath)) {
           omcConfig = JSON.parse(readFileSync(configPath, 'utf-8'));

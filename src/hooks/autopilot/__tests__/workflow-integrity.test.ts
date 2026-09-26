@@ -29,15 +29,15 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), "workflow-integrity-"));
-    process.env.CLAUDE_CONFIG_DIR = join(testDir, "claude-config");
-    mkdirSync(join(process.env.CLAUDE_CONFIG_DIR, "projects"), {
+    process.env.QODER_CONFIG_DIR = join(testDir, "claude-config");
+    mkdirSync(join(process.env.QODER_CONFIG_DIR, "projects"), {
       recursive: true,
     });
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
-    delete process.env.CLAUDE_CONFIG_DIR;
+    delete process.env.QODER_CONFIG_DIR;
     delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
 
   });
