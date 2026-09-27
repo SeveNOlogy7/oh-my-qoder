@@ -111,6 +111,15 @@ function isFirstPartyEndpoint(rawUrl, trustedHost) {
   const host = parsed.hostname.toLowerCase();
   return host === trustedHost || host.endsWith(`.${trustedHost}`);
 }
+// A hook reason is read back as JSON and injected into the agent's context, so any value
+// this file echoes into one has to stay single-line: an operator-set model env (or a
+// model param) carrying CR/LF or ESC bytes would otherwise forge extra lines of the
+// message the model is being told to obey. Capped well above any real model ID.
+function asHookVisibleText(value, max = 200) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
+    .slice(0, max);
+}
 function isNormalClaudeModelId(modelId) {
   const lower = (modelId || '').toLowerCase();
   return Boolean(lower) && lower.includes('claude') && !isProviderSpecificModelId(modelId);
@@ -175,12 +184,13 @@ function resolveTierAliasToSafeModel(tierAlias) {
     // model resolution, which handles [1m] suffixes correctly for explicit model= calls.
     // OMC-internal vars (OMQ_SUBAGENT_MODEL, OMQ_MODEL_*) are not read by CC, so a [1m]
     // value there is not a valid routing proof — keep the stricter isSubagentSafeModelId check.
-    // DASHSCOPE_DEFAULT_* joins the provider-specific branch: on this fork it holds the
-    // Qwen IDs the tier aliases resolve to (pre-hop behaviour, restored).
-    const isAnthropicDefaultTierVar = key.startsWith('ANTHROPIC_DEFAULT_');
-    const isNativeCcVar = isAnthropicDefaultTierVar
-      || key.startsWith('CLAUDE_CODE_BEDROCK_')
-      || key.startsWith('DASHSCOPE_DEFAULT_');
+    // DASHSCOPE_DEFAULT_* keeps the shape requirement but NOT the suffix exemption:
+    // b37141e skipped the suffix check here, but src/config/models.ts
+    // :isSubagentSafeModelId is the authority for what the sub-agent runtime can take, and
+    // it says a context-window suffix is precisely what it cannot handle. Accepting one as
+    // proof would point the guidance at an ID that fails downstream anyway.
+    const isNativeCcVar = key.startsWith('ANTHROPIC_DEFAULT_')
+      || key.startsWith('CLAUDE_CODE_BEDROCK_');
     const validator = isNativeCcVar ? isProviderSpecificModelId : isSubagentSafeModelId;
     if (value && (validator(value) || acceptsProxyAnthropicDefaultTierValue(key, value))) return value;
   }
@@ -1865,7 +1875,8 @@ async function main() {
         const lmSuffixedVar = sessionVars.find((v) => hasExtendedContextSuffix(v)) || '';
         const sessionHasLmSuffix = Boolean(lmSuffixedVar);
         // For error messages: prefer whichever var actually carries the [1m] suffix.
-        const sessionModel = lmSuffixedVar || sessionVars[0] || '';
+        // Sanitised at the source so every use of it in a model-visible string is single-line.
+        const sessionModel = asHookVisibleText(lmSuffixedVar || sessionVars[0] || '');
 
         if (toolModel) {
           // Allow tier aliases (sonnet/opus/haiku) when a subagent-safe model can be
@@ -1886,7 +1897,7 @@ async function main() {
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',
                 permissionDecision: 'deny',
-                permissionDecisionReason: `[MODEL ROUTING] This environment uses a non-standard provider (Bedrock/Vertex/proxy). ${guidance} The model "${toolModel}" is not valid for this provider.`
+                permissionDecisionReason: `[MODEL ROUTING] This environment uses a non-standard provider (Bedrock/Vertex/proxy). ${guidance} The model "${asHookVisibleText(toolModel)}" is not valid for this provider.`
               }
             }));
             return;
