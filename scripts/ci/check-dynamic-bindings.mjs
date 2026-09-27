@@ -29,6 +29,13 @@ const files = git(['ls-files', '--', 'scripts', 'templates', 'src'])
   .map((l) => l.trim())
   .filter((l) => /\.(mjs|cjs|js)$/.test(l));
 
+// git() returns '' when the listing fails, which would scan nothing and still
+// exit 0 -- a silent no-op is indistinguishable from a clean bill of health.
+if (!files.length) {
+  console.error('REFUSE: no .mjs/.cjs/.js files listed by git; refusing to report a clean scan.');
+  process.exit(1);
+}
+
 function exportsOf(file) {
   let text;
   try {
