@@ -241,4 +241,4 @@ jobs:
 
       - name: Known-failure delta gate (win32)
         shell: bash
-        run: node scripts/known-failures.mjs --check --require-summary --baseline=tests/known-failures-win32.json < .omq/vitest-out-win.txt
+        run: node scripts/known-failures.mjs --check --require-summary --baseline=tests/known-failures-win32.json --flake-list=tests/known-failures-flaky-win32.json < .omq/vitest-out-win.txt

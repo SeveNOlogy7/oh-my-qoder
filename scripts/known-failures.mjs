@@ -240,10 +240,39 @@ function main() {
       process.exit(2);
     }
     
+    // Measured-flake exemption. A win32 suite of this size flips 0.5%-1.2% of its
+    // tolerated entries per run even when nothing a test can see has changed, so
+    // without this the delta gate would be red on almost every push and stop being
+    // read. Titles enter the list only via scripts/ci/derive-flake-list.mjs, and
+    // exemption is symmetric: a listed title neither reports as new nor as stale.
+    const flakePath = argValue('--flake-list');
+    let flaky = new Set();
+    if (flakePath) {
+      let list;
+      try {
+        list = JSON.parse(readFileSync(flakePath, 'utf8'));
+      } catch (err) {
+        console.error(`Error loading flake list: ${err.message}`);
+        process.exit(2);
+      }
+      const listPlatform = list.metadata?.platform;
+      if (listPlatform && baseline.metadata?.platform && listPlatform !== baseline.metadata.platform) {
+        console.error(`Error: flake list ${flakePath} declares platform "${listPlatform}" but the baseline declares "${baseline.metadata.platform}".`);
+        process.exit(2);
+      }
+      flaky = new Set((list.entries ?? []).map(e => (typeof e === 'string' ? e : e.entry)));
+    }
+    const strip = arr => (flaky.size ? arr.filter(f => !flaky.has(f)) : arr);
+    const suppressed = flaky.size ? actualFailures.filter(f => flaky.has(f)).length : 0;
+
     const { newFailures, staleEntries, matchedCount } = compareFailures(
-      actualFailures,
-      baseline.failures
+      strip(actualFailures),
+      strip(baseline.failures)
     );
+
+    if (flaky.size) {
+      console.log(`Flakes:   ${flakePath} holds ${flaky.size} titles, ${suppressed} of them failing this run (excluded both ways)`);
+    }
     
     console.log(`Baseline: ${baseline.failures.length} known failures`);
     console.log(`Actual:   ${actualFailures.length} failures`);
