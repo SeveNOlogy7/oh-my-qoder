@@ -254,6 +254,24 @@ describe('hook integration — force-inherit + [1m] scenarios', () => {
     expect(result.denied).toBe(false);
   });
 
+  it('falls back to a fork tier alias when the session model carries no family token', () => {
+    // A proxy endpoint can hand out a model ID with neither `qwen` nor `claude` in
+    // it. This fork's fallback is the middle tier; the ancestor's is 'sonnet',
+    // which is not a valid alias here. Picking the right one requires provider
+    // detection that reads the fork's session vars -- QODER_MODEL -- as well.
+    const result = runHook(
+      {},
+      {
+        QODER_MODEL: 'internal-router-model[1m]',
+        DASHSCOPE_MODEL: '',
+        CLAUDE_MODEL: '',
+        ANTHROPIC_MODEL: '',
+      },
+    );
+    expect(result.denied).toBe(true);
+    expect(result.reason).toMatch(/model="medium"/);
+  });
+
   it('denies no-model call when session model has [1m] suffix and guides to tier alias', () => {
     const result = runHook(
       {},

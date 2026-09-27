@@ -42,26 +42,39 @@ function hasExtendedContextSuffix(modelId) {
 function isSubagentSafeModelId(modelId) {
   return isProviderSpecificModelId(modelId) && !hasExtendedContextSuffix(modelId);
 }
+// Session model vars differ per distribution: this fork publishes QODER_MODEL /
+// DASHSCOPE_MODEL, the ancestor chain CLAUDE_MODEL / ANTHROPIC_MODEL. Provider
+// detection that reads only the second pair answers "Anthropic" on a CN install,
+// which then steers every routing decision and every guidance string the wrong way
+// (b37141e read the fork pair; the hop restored the ancestor one).
+function activeModelIds() {
+  return [
+    process.env.QODER_MODEL || '',
+    process.env.DASHSCOPE_MODEL || '',
+    process.env.CLAUDE_MODEL || '',
+    process.env.ANTHROPIC_MODEL || '',
+  ].filter(Boolean);
+}
 function isBedrockProviderEnv() {
   if (process.env.CLAUDE_CODE_USE_BEDROCK === '1') return true;
-  const modelId = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || '';
-  if (/^((us|eu|ap|global)\.anthropic\.|anthropic\.claude)/i.test(modelId)) return true;
-  if (
-    /^arn:aws(-[^:]+)?:bedrock:/i.test(modelId)
-    && /:(inference-profile|application-inference-profile)\//i.test(modelId)
-    && modelId.toLowerCase().includes('claude')
-  ) {
-    return true;
-  }
-  return false;
+  return activeModelIds().some((modelId) => {
+    if (/^((us|eu|ap|global)\.anthropic\.|anthropic\.claude)/i.test(modelId)) return true;
+    if (
+      /^arn:aws(-[^:]+)?:bedrock:/i.test(modelId)
+      && /:(inference-profile|application-inference-profile)\//i.test(modelId)
+      && modelId.toLowerCase().includes('claude')
+    ) {
+      return true;
+    }
+    return false;
+  });
 }
 function isVertexProviderEnv() {
   if (process.env.CLAUDE_CODE_USE_VERTEX === '1') return true;
-  const modelId = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || '';
-  return !!modelId && modelId.toLowerCase().startsWith('vertex_ai/');
+  return activeModelIds().some((modelId) => modelId.toLowerCase().startsWith('vertex_ai/'));
 }
 function getActiveModelIds() {
-  return [process.env.CLAUDE_MODEL || '', process.env.ANTHROPIC_MODEL || ''].filter(Boolean);
+  return activeModelIds();
 }
 function isNormalClaudeModelId(modelId) {
   const lower = (modelId || '').toLowerCase();
@@ -76,10 +89,14 @@ function isConfigForceInheritProxyEnv() {
 }
 function isNonClaudeProviderEnv() {
   if (isBedrockProviderEnv() || isVertexProviderEnv()) return true;
-  const modelId = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || '';
-  if (modelId && !modelId.toLowerCase().includes('claude')) return true;
+  if (activeModelIds().some((modelId) => !modelId.toLowerCase().includes('claude'))) return true;
   const baseUrl = process.env.ANTHROPIC_BASE_URL || '';
   if (baseUrl && !baseUrl.includes('anthropic.com')) return true;
+  // DASHSCOPE_BASE_URL is this fork's endpoint var; reading only the Anthropic one
+  // made a proxy install look like a first-class Anthropic setup (b37141e checked
+  // both).
+  const dashscopeBaseUrl = process.env.DASHSCOPE_BASE_URL || '';
+  if (dashscopeBaseUrl && !dashscopeBaseUrl.includes('dashscope.aliyuncs.com')) return true;
   return isConfigForceInheritProxyEnv();
 }
 function acceptsProxyAnthropicDefaultTierValue(key, value) {
