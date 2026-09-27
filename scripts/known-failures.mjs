@@ -289,8 +289,12 @@ function main() {
     }
     
     if (newFailures.length > 0 || staleEntries.length > 0) {
-      console.error('\nBaseline mismatch. Update tests/known-failures-linux.json:');
-      console.error('  npx vitest run | node scripts/known-failures.mjs > tests/known-failures-linux.json');
+      // Echo the baseline that was actually opened: both CI jobs share this script and
+      // only the win32 one passes --baseline, so naming the linux file sent a Windows
+      // red run to edit the wrong tracked file. Baselines are authored from CI logs
+      // (a workstation parse disagrees with the runner by ~2.5%), hence the tool name.
+      console.error(`\nBaseline mismatch. Re-author ${baselinePath} from a CI run:`);
+      console.error('  node scripts/ci/author-known-failures.mjs --linux-log=<log> --win32-log=<log> --run=<runId@sha>');
       process.exit(1);
     }
     

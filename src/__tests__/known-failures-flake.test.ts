@@ -54,6 +54,17 @@ describe('known-failures flake list', () => {
     expect(`${r.stdout}${r.stderr}`).toContain('stale baseline entry');
   });
 
+  it('names the baseline it actually loaded when it refuses', () => {
+    // The hint used to hardcode the linux filename, so a win32 red run told the
+    // reader to edit the file the gate had not opened.
+    const r = check(base(), log([` FAIL  ${FLAKY_A}`, ` FAIL  ${STABLE}`]));
+    const out = `${r.stdout}${r.stderr}`;
+    expect(r.status).not.toBe(0);
+    expect(out).toContain(baseline());
+    expect(out).toContain('author-known-failures.mjs');
+    expect(out).not.toContain('known-failures-linux.json');
+  });
+
   it('is a title allowlist, not a file allowlist', () => {
     // A different title in a file that has listed flakes must still go red.
     const unlisted = `${FLAKY_A.replace(' > flips in one direction', '')} > an unlisted sibling title`;
