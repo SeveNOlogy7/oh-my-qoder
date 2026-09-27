@@ -510,12 +510,14 @@ is attributed to the test files that exercise it):
   `runtime-done-recovery`, `workflow-integrity`.
 
 Consequence, stated plainly because it otherwise looks like a broken gate: at 999 tolerated entries a
-win32 flip is near-certain (measured 5/999 in one run, so ~0.5% per entry-run), which means
-`windows-test` will go red on almost every push even when nothing testable changed. Run 36298032744 and
-its `--failed` re-run were red twice in a row on a diff that touched no test-visible file. So:
-a windows-test red naming only the files above is noise to re-run and compare, not a delta -- the
-signal is a NEW file appearing, or a delta far bigger than a handful. The `test` job (linux) flipped
-zero entries across the same comparisons, and its green is meaningful.
+win32 flip is close to certain on every push. Measured on three pairs: 5 entries between 4aa3b3b and
+19a507a (2 in, 3 out), the `--failed` re-run of that same commit red again, and 12 entries at 18547c4
+(5 in, 7 out, 7 of them inside `workflow-profile-stop-transition`). That is 0.5%-1.2% of the set per
+run, from diffs that touched no test-visible file. So: a `windows-test` red naming only the files
+listed here is noise to re-run and compare, not a delta -- the signal is a file that never appeared in
+this list, or a delta far larger than a dozen. `test` (linux) flipped zero entries across the same
+comparisons, and it is green at 18547c4 with the completeness equation enforced inside the job, so
+linux is the gate to read.
 The files that keep flipping are process-exit, state-root and worker/recovery timing suites -- the
 `tmux-worker-timing` family and its neighbours.
 
