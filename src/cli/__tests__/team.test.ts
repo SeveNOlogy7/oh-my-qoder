@@ -120,7 +120,7 @@ describe('team cli', () => {
     });
 
     expect(result.status).toBe('running');
-    expect(result.jobId).toMatch(/^omc-[a-z0-9]{1,16}$/);
+    expect(result.jobId).toMatch(/^omq-[a-z0-9]{1,16}$/);
     expect(result.pid).toBe(4242);
 
     expect(mocks.spawn).toHaveBeenCalledWith(
@@ -202,7 +202,7 @@ describe('team cli', () => {
       status: string;
       pid: number;
     };
-    expect(output.jobId).toMatch(/^omc-[a-z0-9]{1,16}$/);
+    expect(output.jobId).toMatch(/^omq-[a-z0-9]{1,16}$/);
     expect(output.status).toBe('running');
     expect(output.pid).toBe(7777);
 
@@ -470,7 +470,7 @@ describe('team cli', () => {
   it('getTeamJobStatus converges to result artifact state', async () => {
     const { getTeamJobStatus } = await import('../team.js');
 
-    const jobId = 'omc-abc123';
+    const jobId = 'omq-abc123';
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
       status: 'running',
       startedAt: Date.now() - 2_000,
@@ -494,7 +494,7 @@ describe('team cli', () => {
   it('waitForTeamJob times out with running status', async () => {
     const { waitForTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-timeout1';
+    const jobId = 'omq-timeout1';
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
       status: 'running',
       startedAt: Date.now(),
@@ -511,7 +511,7 @@ describe('team cli', () => {
   it('cleanupTeamJob kills worker panes and clears team state root', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanup1';
+    const jobId = 'omq-cleanup1';
     const cwd = mkdtempSync(join(tmpdir(), 'omc-team-cli-cleanup-'));
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
@@ -556,7 +556,7 @@ describe('team cli', () => {
   it('cleanupTeamJob keeps state root when worktree cleanup preserves metadata', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanup3';
+    const jobId = 'omq-cleanup3';
     const cwd = mkdtempSync(join(tmpdir(), 'omc-team-cli-preserve-cleanup-'));
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
@@ -611,7 +611,7 @@ describe('team cli', () => {
   it('cleanupTeamJob blocks state cleanup when panes artifact is missing and config still has workers', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanup5';
+    const jobId = 'omq-cleanup5';
     const cwd = mkdtempSync(join(tmpdir(), 'omc-team-cli-unknown-liveness-'));
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
@@ -656,7 +656,7 @@ describe('team cli', () => {
   it('cleanupTeamJob preserves state when pane liveness probe is unknown', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanup6';
+    const jobId = 'omq-cleanup6';
     const cwd = mkdtempSync(join(tmpdir(), 'omc-team-cli-unknown-probe-'));
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
@@ -689,7 +689,7 @@ describe('team cli', () => {
   it('cleanupTeamJob preserves worktrees and state when worker panes remain alive', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanup4';
+    const jobId = 'omq-cleanup4';
     const cwd = mkdtempSync(join(tmpdir(), 'omc-team-cli-live-cleanup-'));
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
@@ -724,7 +724,7 @@ describe('team cli', () => {
   it('cleanupTeamJob removes a dedicated team tmux window when recorded', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanup2';
+    const jobId = 'omq-cleanup2';
     const cwd = mkdtempSync(join(tmpdir(), 'omc-team-cli-window-cleanup-'));
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
