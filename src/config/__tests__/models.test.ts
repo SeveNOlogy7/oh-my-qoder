@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   isNonDefaultProvider,
   isProviderSpecificModelId,
+  resolveClaudeFamily,
   resolveQwenFamily,
   QWEN_FAMILY_DEFAULTS,
   hasExtendedContextSuffix,
@@ -241,6 +242,38 @@ describe('resolveQwenFamily()', () => {
 
   it('returns null for qwen model without family suffix', () => {
     expect(resolveQwenFamily('qwen-72b')).toBeNull();
+  });
+});
+
+// The delegation enforcer folds a model id to whichever alias vocabulary its
+// own family defines (7ab618e). That is only safe while the two resolvers are
+// disjoint; if an id ever matched both, a tier alias and a CC alias would be
+// candidates for the same model and the fold would become order-dependent.
+describe('resolveClaudeFamily() and family disjointness', () => {
+  const QWEN_IDS = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'QWEN-PLUS'];
+  const CLAUDE_IDS = ['claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-4-8', 'claude-fable-5'];
+
+  it('resolves each Claude family from its canonical id', () => {
+    expect(resolveClaudeFamily('claude-haiku-4-5')).toBe('HAIKU');
+    expect(resolveClaudeFamily('claude-sonnet-5')).toBe('SONNET');
+    expect(resolveClaudeFamily('claude-opus-4-8')).toBe('OPUS');
+    expect(resolveClaudeFamily('claude-fable-5')).toBe('FABLE');
+  });
+
+  it('returns null for ids outside the Claude family', () => {
+    expect(resolveClaudeFamily('deepseek-v3')).toBeNull();
+    expect(resolveClaudeFamily('gpt-4')).toBeNull();
+  });
+
+  it('never resolves the same id as both a Qwen and a Claude family', () => {
+    for (const id of QWEN_IDS) {
+      expect(resolveClaudeFamily(id), `resolveClaudeFamily(${id})`).toBeNull();
+      expect(resolveQwenFamily(id), `resolveQwenFamily(${id})`).not.toBeNull();
+    }
+    for (const id of CLAUDE_IDS) {
+      expect(resolveQwenFamily(id), `resolveQwenFamily(${id})`).toBeNull();
+      expect(resolveClaudeFamily(id), `resolveClaudeFamily(${id})`).not.toBeNull();
+    }
   });
 });
 
