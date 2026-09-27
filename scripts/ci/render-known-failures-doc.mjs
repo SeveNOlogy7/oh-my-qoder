@@ -173,7 +173,7 @@ const FAMILIES = [
     fix: 'fix code',
     owner: 'Lane 2-4 (hooks + state)',
     cause: 'OMQ_STATE_DIR / per-session state resolution: resolveSessionStatePaths returns an empty string when no session id is supplied, and the skill-active-state writer does not honour OMQ_STATE_DIR, so state lands outside the intended root. Both are the fork\'s own pre-hop behaviour, which the hop\'s state-root refactor did not carry.',
-    evidence: "AssertionError: expected '' to contain 'sessions'  (worktree-paths > resolveSessionStatePaths > no sessionId)",
+    evidence: "AssertionError: expected '' to contain 'sessions'",
     files: [
       'src/lib/__tests__/worktree-paths.test.ts',
       'src/__tests__/state-root-resolution.test.ts',
@@ -225,6 +225,7 @@ const FAMILIES = [
     owner: 'Lane 0 (L0-E branding) + Lane 1',
     cause: 'A vi.mock factory replaces the module wholesale, so a renamed export must be renamed inside every mock too; where it was not, the case dies with "No X export is defined on the mock" or with an `undefined` that makes the assertion itself invalid. Two are confirmed rather than inferred: beads-context mocks `getOMCConfig` while the hook imports `getOMQConfig`, and purge-stale-cache mocks only `getClaudeConfigDir` although src/utils/paths.ts:12 imports `getQoderConfigDir` as well, so the purge resolves no cache root and returns 0 -- which reads like a discovery bug but is a fixture gap. Two of these files (beads-context, jobid-collision-safety) are already fixed on the branch.',
     evidence: 'Error: [vitest] No "getOMQConfig" export is defined on the "../../../features/auto-update.js" mock.',
+    evidenceFrom: 'run `36289613547@4aca1fe` -- the family is still open, but this exact error no longer appears in the rendered run',
     files: [
       'src/hooks/beads-context/__tests__/index.test.ts',
       'src/__tests__/jobid-collision-safety.test.ts',
@@ -281,8 +282,8 @@ const FAMILIES = [
     title: 'Plugin-cache and installer discovery',
     fix: 'investigate -- real defects likely',
     owner: 'Lane 1 (installer + paths + config)',
-    cause: 'The remaining plugin-cache and repair-script cases: what the cache directory looks like on a CN install, and what the repair script should do about interrupted relinks. Two verified notes rather than a blanket hedge -- `purge-stale-cache` is a fixture gap and now lives in `mock-or-undefined-export`, and `plugin-dir-capture` fails for **different reasons per platform** (Linux: `expected null not to be null` on `OMQ_PLUGIN_ROOT` child-env propagation; Windows: `expected \'/foo/bar\' to be \'E:\\foo\\bar\'`, a separator artefact of the same assertion). The rest are not yet root-caused file by file.',
-    evidence: 'AssertionError: expected +0 to be 2 // Object.is equality  (repair-plugin-cache-script)',
+    cause: 'The remaining plugin-cache and repair-script cases: what the cache directory looks like on a CN install, and what the repair script should do about interrupted relinks. Two verified notes rather than a blanket hedge -- `purge-stale-cache` is a fixture gap and now lives in `mock-or-undefined-export`, and `plugin-dir-capture` fails for **different reasons per platform** (Linux: `expected null not to be null` on `OMQ_PLUGIN_ROOT` child-env propagation; Windows: `expected \'/foo/bar\' to be \'D:\\foo\\bar\'`, a separator artefact of the same assertion). The rest are not yet root-caused file by file.',
+    evidence: 'AssertionError: expected +0 to be 2 // Object.is equality',
     files: [
       'src/__tests__/repair-plugin-cache-script.test.ts',
       'src/cli/__tests__/plugin-dir-capture.test.ts',
@@ -345,7 +346,7 @@ const FAMILIES = [
     fix: 'fixed on this branch',
     owner: 'closed by 4aca1fe',
     cause: 'The branding passes edited the entitlement manifest without refreshing the generated projections, whose header carries the manifest\'s sha256. Fixed in 4aca1fe; it stays listed so the entry does not silently vanish from the baseline diff.',
-    evidence: 'Error: Command failed: … generate-skill-entitlements.mjs --verify / skill entitlement projections are stale',
+    evidence: 'skill entitlement projections are stale: scripts/lib/skill-entitlements.mjs, templates/hooks/lib/skill-entitlements.mjs',
     files: ['src/__tests__/skill-entitlements.test.ts'],
   },
   {
@@ -355,6 +356,7 @@ const FAMILIES = [
     owner: 'closed by d178d27 + c3c7cc5',
     cause: 'team-server issues `omq-${timestamp}${uuid}` and validates that form, while src/cli/team.ts kept the ancestor\'s `/^omc-/` pattern -- so every CLI subcommand taking a job id rejected the id the server had just produced. d178d27 restored the validator and the convergence suite\'s fixtures but left generateJobId() on `omc-`, which made the CLI emit ids its own validator rejects; c3c7cc5 closes that and moves team.test.ts\'s ten job-id assertions with it. Discovered by diffing the failure sets of two CI runs: 17 entries went green while 8 new ones appeared.',
     evidence: 'Error: Invalid job_id: "omc-art1". Must match /^omq-[a-z0-9]{1,16}$/',
+    evidenceFrom: 'run `36289613547@4aca1fe` -- closed by `d178d27` + `c3c7cc5`, so it is absent from the rendered run',
     files: [
       'src/mcp/__tests__/team-server-artifact-convergence.test.ts',
       'src/cli/__tests__/team.test.ts',
@@ -387,6 +389,36 @@ const closed = [...seen.keys()].filter((f) => !L.has(f));
 if (closed.length) console.error(`closed (claimed but no longer failing): ${closed.join(', ')}`);
 if (process.exitCode) process.exit(1);
 
+/**
+ * Prove each family's quoted failure really came from the run being rendered.
+ * A page that lists "representative CI failure" strings has no value if any of
+ * them were written from memory, so each one is looked up in the same logs the
+ * counts came from. Text that is legitimately from elsewhere (an earlier run, a
+ * local reproduction) must say so via `evidenceFrom` instead of going unlabelled.
+ */
+const normForSearch = (p) =>
+  stripAnsi(readFileSync(p, 'utf8'))
+    .split('\n')
+    .map(stripRunnerPrefix)
+    .join('\n')
+    .replace(/[ \t]+/g, ' ');
+const haystacks = { linux: normForSearch(linuxPath), win32: normForSearch(winPath) };
+
+const evidenceProblems = [];
+for (const f of FAMILIES) {
+  const needle = f.evidence.replace(/[ \t]+/g, ' ').trim().slice(0, 60);
+  const found = Object.entries(haystacks).filter(([, text]) => text.includes(needle)).map(([k]) => k);
+  f.evidenceIn = found;
+  if (!found.length && !f.evidenceFrom) {
+    evidenceProblems.push(`${f.id}: ${JSON.stringify(needle)}`);
+  }
+}
+if (evidenceProblems.length) {
+  console.error(`EVIDENCE-UNSOURCED (${evidenceProblems.length}) -- not verbatim in the rendered run and no evidenceFrom label:`);
+  for (const p of evidenceProblems) console.error(`  ${p}`);
+  process.exit(1);
+}
+
 const lTotal = [...L.values()].reduce((a, b) => a + b, 0);
 const wTotal = [...W.values()].reduce((a, b) => a + b, 0);
 const linuxOnlySum = [...L.keys()].reduce((a, f) => a + count(W, f), 0);
@@ -398,7 +430,8 @@ lines.push('# Known failures');
 lines.push('');
 lines.push(`Tracked in \`tests/known-failures-linux.json\` and \`tests/known-failures-win32.json\`, both machine-generated.`);
 lines.push(`This page is generated by \`scripts/ci/render-known-failures-doc.mjs\` from the CI logs of run \`${runRef}\`,`);
-lines.push('so the counts below are measured, not remembered.');
+lines.push('so the counts below are measured, not remembered. Each quoted failure is either looked up verbatim in');
+lines.push('those logs by this script, or labelled with the run it actually came from.');
 lines.push('');
 lines.push('## Why a baseline exists at all');
 lines.push('');
@@ -458,7 +491,10 @@ for (const f of familyOrder) {
   lines.push('');
   lines.push(f.cause);
   lines.push('');
-  lines.push('Representative CI failure:');
+  const src = f.evidenceIn.length
+    ? `verbatim on ${f.evidenceIn.join(' + ')} in run \`${runRef}\``
+    : f.evidenceFrom;
+  lines.push(`Representative failure (${src}):`);
   lines.push('');
   lines.push('```');
   lines.push(f.evidence);
@@ -503,19 +539,26 @@ lines.push('reporting exactly one new failure. So a red gate after a baseline ch
 lines.push('parser that never matches.');
 lines.push('');
 lines.push([
-    'Run-to-run churn was measured rather than assumed, by diffing the failure sets of two adjacent runs',
-    '(`4aca1fe` then `d2a1a28`, whose only difference is the two job-id/mock fixes):',
+    'Run-to-run churn was measured rather than assumed, by set-diffing the failure sets of adjacent',
+    'runs and asking entry by entry whether the commit in between could have caused it (a `src` change',
+    'is attributed to the test files that exercise it):',
     '',
-    '- linux: 17 entries stopped failing and 8 started, every one of them in the files those commits touched.',
-    '  **No unexplained churn**, so a Linux drift-red is always worth reading.',
-    '- win32: same 17 stopped and 12 started, but only 8 of the additions are attributable. Four entries flipped',
-    '  on their own -- `src/__tests__/session-start-background-output.test.ts`, `src/__tests__/session-start-script-context.test.ts`,',
-    '  `src/__tests__/skill-entitlements-cross-surface.test.ts` and `tests/lint/inventory-graph-drift.test.ts`.',
-    '  That is roughly 0.4% of the win32 set per run, so a windows-test drift that names only files like these is',
-    '  a flake: re-run the job before treating it as a delta.',
+    '- `4aca1fe` -> `d2a1a28` (job-id validator + beads-context mock): linux 428 -> 419, every one of the',
+    '  25 deltas attributable. win32 1029 -> 1024, with **4 entries starting on their own** --',
+    '  `session-start-background-output`, `session-start-script-context`,',
+    '  `skill-entitlements-cross-surface`, `tests/lint/inventory-graph-drift`.',
+    '- `6ba78e7` -> `4aa3b3b` (workflow-profile fixture env name, test files only): linux 411 -> 283, 127',
+    '  of the 128 stops sitting in the two files edited and **1** elsewhere',
+    '  (`src/team/__tests__/worker-activation-gate.test.ts > kills recovery provider descendants when the',
+    '  root exits immediately`). win32 1016 -> 999 with **7 self-flipping entries**: `session-end-process-exit`',
+    '  (one start, one stop), two `state-root-resolution` cases, `run-cjs-graceful-fallback`,',
+    '  `runtime-done-recovery`, `workflow-integrity`.',
     '',
-    'The `tmux-worker-timing` family waits on worker log events with fixed timeouts and is the likeliest place',
-    'for that kind of flip to appear next.',
+    'That is ~0.2% of the linux set and ~0.5% of the win32 set per run. Consequence, stated plainly',
+    'because it otherwise looks like a broken gate: a windows-test drift naming a handful of files no',
+    'commit touched is flake -- re-run the job before treating it as a delta. The same shape is now',
+    'possible on linux, just rarer. The files that keep flipping are process-exit, state-root and',
+    'worker/recovery timing suites -- the `tmux-worker-timing` family and its neighbours.',
     ''].join('\n'));
 
 const out = lines.join('\n') + '\n';
