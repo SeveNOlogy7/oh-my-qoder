@@ -110,7 +110,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('qwen-plus'); // executor defaults to claude-sonnet-5
+      expect(result.modifiedInput.model).toBe('medium'); // executor defaults to qwen-plus
       expect(result.originalInput.model).toBeUndefined();
     });
 
@@ -124,7 +124,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('qwen-plus'); // debugger defaults to claude-sonnet-5
+      expect(result.modifiedInput.model).toBe('medium'); // debugger defaults to qwen-plus
     });
 
     it('rewrites deprecated aliases to canonical agent names before injecting model', () => {
@@ -138,7 +138,7 @@ describe('delegation-enforcer', () => {
 
       expect(result.injected).toBe(true);
       expect(result.modifiedInput.subagent_type).toBe('oh-my-claudecode:debugger');
-      expect(result.modifiedInput.model).toBe('sonnet');
+      expect(result.modifiedInput.model).toBe('medium');
     });
 
     it('throws error for unknown agent type', () => {
@@ -354,7 +354,7 @@ describe('delegation-enforcer', () => {
       const resultWithDebug = enforceModel(input);
       expect(resultWithDebug.warning).toBeDefined();
       expect(resultWithDebug.warning).toContain('Auto-injecting model');
-      expect(resultWithDebug.warning).toContain('claude-sonnet-5');
+      expect(resultWithDebug.warning).toContain('qwen-plus');
       expect(resultWithDebug.warning).toContain('executor');
     });
 
@@ -372,14 +372,14 @@ describe('delegation-enforcer', () => {
 
     it('works with all agents', () => {
       const testCases = [
-        { agent: 'architect', expectedModel: 'qwen-max' },
-        { agent: 'executor', expectedModel: 'sonnet' },
-        { agent: 'explore', expectedModel: 'haiku' },
-        { agent: 'designer', expectedModel: 'sonnet' },
-        { agent: 'debugger', expectedModel: 'sonnet' },
-        { agent: 'verifier', expectedModel: 'sonnet' },
-        { agent: 'code-reviewer', expectedModel: 'qwen-max' },
-        { agent: 'test-engineer', expectedModel: 'sonnet' }
+        { agent: 'architect', expectedModel: 'high' },
+        { agent: 'executor', expectedModel: 'medium' },
+        { agent: 'explore', expectedModel: 'low' },
+        { agent: 'designer', expectedModel: 'medium' },
+        { agent: 'debugger', expectedModel: 'medium' },
+        { agent: 'verifier', expectedModel: 'medium' },
+        { agent: 'code-reviewer', expectedModel: 'high' },
+        { agent: 'test-engineer', expectedModel: 'medium' }
       ];
 
       for (const testCase of testCases) {
@@ -472,7 +472,7 @@ describe('delegation-enforcer', () => {
 
       const result = processPreToolUse('Agent', toolInput);
 
-      expect(result.modifiedInput).toHaveProperty('model', 'qwen-plus');
+      expect(result.modifiedInput).toHaveProperty('model', 'medium');
     });
 
     it('does not modify input when model already specified', () => {
@@ -510,16 +510,16 @@ describe('delegation-enforcer', () => {
 
   describe('getModelForAgent', () => {
     it('returns correct model for agent with prefix', () => {
-      expect(getModelForAgent('oh-my-claudecode:executor')).toBe('qwen-plus');
-      expect(getModelForAgent('oh-my-claudecode:debugger')).toBe('qwen-plus');
-      expect(getModelForAgent('oh-my-claudecode:architect')).toBe('opus');
+      expect(getModelForAgent('oh-my-claudecode:executor')).toBe('medium');
+      expect(getModelForAgent('oh-my-claudecode:debugger')).toBe('medium');
+      expect(getModelForAgent('oh-my-claudecode:architect')).toBe('high');
     });
 
     it('returns correct model for agent without prefix', () => {
-      expect(getModelForAgent('executor')).toBe('qwen-plus');
-      expect(getModelForAgent('debugger')).toBe('qwen-plus');
-      expect(getModelForAgent('architect')).toBe('opus');
-      expect(getModelForAgent('build-fixer')).toBe('qwen-plus');
+      expect(getModelForAgent('executor')).toBe('medium');
+      expect(getModelForAgent('debugger')).toBe('medium');
+      expect(getModelForAgent('architect')).toBe('high');
+      expect(getModelForAgent('build-fixer')).toBe('medium');
     });
 
     it('throws error for unknown agent', () => {
@@ -612,7 +612,7 @@ describe('delegation-enforcer', () => {
 
   describe('modelAliases config override (issue #1211)', () => {
     const savedEnv: Record<string, string | undefined> = {};
-    const aliasEnvKeys = ['OMQ_MODEL_ALIAS_HAIKU', 'OMQ_MODEL_ALIAS_SONNET', 'OMQ_MODEL_ALIAS_OPUS', 'OMQ_MODEL_ALIAS_FABLE'];
+    const aliasEnvKeys = ['OMQ_MODEL_ALIAS_LOW', 'OMQ_MODEL_ALIAS_MEDIUM', 'OMQ_MODEL_ALIAS_HIGH'];
 
     beforeEach(() => {
       for (const key of aliasEnvKeys) {
@@ -631,59 +631,60 @@ describe('delegation-enforcer', () => {
       }
     });
 
-    it('remaps haiku agents to inherit via env var', () => {
-      process.env.OMQ_MODEL_ALIAS_HAIKU = 'inherit';
+    it('remaps low-tier agents to inherit via env var', () => {
+      process.env.OMQ_MODEL_ALIAS_LOW = 'inherit';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'explore' // explore defaults to haiku
+        subagent_type: 'explore' // explore defaults to low
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('remaps haiku agents to sonnet via env var', () => {
-      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
+    it('remaps low-tier agents to medium via env var', () => {
+      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'explore' // explore defaults to haiku
+        subagent_type: 'explore' // explore defaults to low
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('sonnet');
-      expect(result.modifiedInput.model).toBe('sonnet');
+      expect(result.model).toBe('medium');
+      expect(result.modifiedInput.model).toBe('medium');
     });
 
     it('does not remap when no alias configured for the tier', () => {
-      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
-      // executor defaults to sonnet — no alias for sonnet
+      // Deliberately alias a DIFFERENT tier: an alias loaded for low must not
+      // move a medium-tier agent, otherwise this case passes vacuously.
+      process.env.OMQ_MODEL_ALIAS_LOW = 'high';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'executor'
+        subagent_type: 'executor' // executor defaults to medium
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('sonnet');
-      expect(result.modifiedInput.model).toBe('sonnet');
+      expect(result.model).toBe('medium');
+      expect(result.modifiedInput.model).toBe('medium');
     });
 
     it('explicit model param takes priority over alias', () => {
-      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'explore',
-        model: 'opus' // explicit param wins
+        model: 'high' // explicit param wins
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('opus');
-      expect(result.modifiedInput.model).toBe('opus');
+      expect(result.model).toBe('high');
+      expect(result.modifiedInput.model).toBe('high');
     });
 
     it('forceInherit takes priority over alias', () => {
       process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
-      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -694,24 +695,24 @@ describe('delegation-enforcer', () => {
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('remaps opus agents to fable via env var (issue #3726)', () => {
-      process.env.OMQ_MODEL_ALIAS_OPUS = 'fable';
+    it('remaps high-tier agents to fable via env var (issue #3726)', () => {
+      process.env.OMQ_MODEL_ALIAS_HIGH = 'fable';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'architect' // architect defaults to opus
+        subagent_type: 'architect' // architect defaults to high
       };
       const result = enforceModel(input);
       expect(result.model).toBe('fable');
       expect(result.modifiedInput.model).toBe('fable');
     });
 
-    it('remaps opus agents to inherit via env var', () => {
-      process.env.OMQ_MODEL_ALIAS_OPUS = 'inherit';
+    it('remaps high-tier agents to inherit via env var', () => {
+      process.env.OMQ_MODEL_ALIAS_HIGH = 'inherit';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'architect' // architect defaults to opus
+        subagent_type: 'architect' // architect defaults to high
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
@@ -719,7 +720,7 @@ describe('delegation-enforcer', () => {
     });
 
     it('includes alias note in debug warning', () => {
-      process.env.OMQ_MODEL_ALIAS_HAIKU = 'sonnet';
+      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
       process.env.OMQ_DEBUG = 'true';
       const input: AgentInput = {
         description: 'Test task',
@@ -727,7 +728,7 @@ describe('delegation-enforcer', () => {
         subagent_type: 'explore'
       };
       const result = enforceModel(input);
-      expect(result.warning).toContain('aliased from haiku');
+      expect(result.warning).toContain('aliased from low');
     });
   });
 

@@ -113,14 +113,22 @@ const FAMILY_TO_TIER_ALIAS: Record<string, string> = {
   TURBO: 'low',
 };
 
-/** Normalize a model ID to a tier alias (high/medium/low) for Qwen family models. */
+/**
+ * Normalize a model ID to a tier alias (high/medium/low) for Qwen family models.
+ * Claude IDs keep their own alias vocabulary; the two resolvers are disjoint.
+ */
 export function normalizeToTierAlias(model: string): string {
   if (isProviderSpecificModelId(model)) {
     return model;
   }
 
   const family = resolveQwenFamily(model);
-  return family ? (FAMILY_TO_TIER_ALIAS[family] ?? model) : model;
+  if (family) {
+    return FAMILY_TO_TIER_ALIAS[family] ?? model;
+  }
+
+  const claudeFamily = resolveClaudeFamily(model);
+  return claudeFamily ? (FAMILY_TO_ALIAS[claudeFamily] ?? model) : model;
 }
 
 /**
@@ -302,11 +310,9 @@ export function enforceModel(agentInput: AgentInput): EnforcementResult {
     };
   }
 
-  // If model is already specified, normalize it to CC-supported aliases
-  // before passing through. Full IDs like 'claude-sonnet-5' cause 400
-  // errors on Bedrock/Vertex. (issue #1415)
+  // Fold an explicitly specified model to an alias: full IDs break Bedrock/Vertex (issue #1415).
   if (agentInput.model) {
-    const normalizedModel = normalizeToCcAlias(agentInput.model);
+    const normalizedModel = normalizeToTierAlias(agentInput.model);
     return {
       originalInput: agentInput,
       modifiedInput: { ...agentInput, subagent_type: canonicalSubagentType, model: normalizedModel },
@@ -344,9 +350,8 @@ export function enforceModel(agentInput: AgentInput): EnforcementResult {
     };
   }
 
-  // Normalize model to Claude Code's supported aliases (sonnet/opus/haiku).
-  // Full IDs cause 400 errors on Bedrock/Vertex. (issue #1201, #1415)
-  const normalizedModel = normalizeToCcAlias(resolvedModel);
+  // Fold the injected model to the alias vocabulary this build routes on.
+  const normalizedModel = normalizeToTierAlias(resolvedModel);
 
   const modifiedInput: AgentInput = {
     ...agentInput,
@@ -434,7 +439,7 @@ export function getModelForAgent(agentType: string): string {
     throw new Error(`No default model defined for agent: ${normalizedType}`);
   }
 
-  // Normalize standard Anthropic IDs to CC-supported aliases (sonnet/opus/haiku),
-  // while preserving provider-specific IDs such as Bedrock/Vertex paths.
-  return normalizeToCcAlias(agentDef.model);
+  // Normalize standard Anthropic IDs to CC aliases (sonnet/opus/haiku) and Qwen
+  // IDs to tier aliases (low/medium/high), preserving provider-specific IDs.
+  return normalizeToTierAlias(agentDef.model);
 }

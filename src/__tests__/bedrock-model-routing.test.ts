@@ -132,44 +132,44 @@ describe('Bedrock model routing repro', () => {
       // 3. Agent definitions use full builtin model IDs from config
       const { getAgentDefinitions } = await import('../agents/definitions.js');
       const defs = getAgentDefinitions({ config });
-      expect(defs['executor'].model).toBe('claude-sonnet-5');
-      expect(defs['explore'].model).toBe('claude-haiku-4-5');
-      expect(defs['architect'].model).toBe('claude-opus-4-8');
+      expect(defs['executor'].model).toBe('qwen-plus');
+      expect(defs['explore'].model).toBe('qwen-turbo');
+      expect(defs['architect'].model).toBe('qwen-max');
 
-      // 4. enforceModel normalizes to bare CC-supported aliases (FIX)
+      // 4. enforceModel normalizes to bare aliases (FIX)
       const { enforceModel } = await import('../features/delegation-enforcer.js');
 
-      // 4a. executor → 'sonnet' (normalized from config's full model ID)
+      // 4a. executor → 'medium' (normalized from config's full model ID)
       const executorResult = enforceModel({
         description: 'Implement feature',
         prompt: 'Write the code',
         subagent_type: 'oh-my-claudecode:executor',
       });
       expect(executorResult.injected).toBe(true);
-      expect(executorResult.modifiedInput.model).toBe('sonnet');
+      expect(executorResult.modifiedInput.model).toBe('medium');
 
-      // 4b. explore → 'haiku'
+      // 4b. explore → 'low'
       const exploreResult = enforceModel({
         description: 'Find files',
         prompt: 'Search codebase',
         subagent_type: 'oh-my-claudecode:explore',
       });
       expect(exploreResult.injected).toBe(true);
-      expect(exploreResult.modifiedInput.model).toBe('haiku');
+      expect(exploreResult.modifiedInput.model).toBe('low');
 
-      // 4c. architect → 'opus'
+      // 4c. architect → 'high'
       const architectResult = enforceModel({
         description: 'Design system',
         prompt: 'Analyze architecture',
         subagent_type: 'oh-my-claudecode:architect',
       });
       expect(architectResult.injected).toBe(true);
-      expect(architectResult.modifiedInput.model).toBe('opus');
+      expect(architectResult.modifiedInput.model).toBe('high');
 
-      // 5. After fix: these are valid CC aliases that CC resolves on any provider
-      expect(['sonnet', 'opus', 'haiku'].includes(executorResult.modifiedInput.model!)).toBe(true);
-      expect(['sonnet', 'opus', 'haiku'].includes(exploreResult.modifiedInput.model!)).toBe(true);
-      expect(['sonnet', 'opus', 'haiku'].includes(architectResult.modifiedInput.model!)).toBe(true);
+      // 5. After fix: these are tier aliases the CLI resolves on any provider
+      expect(['medium', 'high', 'low'].includes(executorResult.modifiedInput.model!)).toBe(true);
+      expect(['medium', 'high', 'low'].includes(exploreResult.modifiedInput.model!)).toBe(true);
+      expect(['medium', 'high', 'low'].includes(architectResult.modifiedInput.model!)).toBe(true);
     });
 
     it('the defense works when CLAUDE_CODE_USE_BEDROCK IS propagated', async () => {
@@ -352,8 +352,9 @@ describe('Bedrock model routing repro', () => {
         subagent_type: 'oh-my-claudecode:executor',
       });
 
-      // This is exactly the model ID from the error report
-      expect(result.modifiedInput.model).toBe('sonnet');
+      // The ancestor report carried the injected full ID; on this fork the same
+      // injection path folds its Qwen default to a tier alias.
+      expect(result.modifiedInput.model).toBe('medium');
     });
   });
 
