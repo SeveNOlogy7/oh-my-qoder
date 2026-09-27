@@ -216,7 +216,7 @@ function applyDeepInterviewRuntimeSettings(template: string): string {
 }
 
 function normalizeSkillNameForRuntimeRendering(skillName: string): string {
-  return skillName.trim().toLowerCase().replace(/^oh-my-claudecode:/, '').replace(/^omc:/, '');
+  return skillName.trim().toLowerCase().replace(/^oh-my-qoder:/, '').replace(/^omc:/, '');
 }
 
 export function renderBundledSkillBody(skillName: string, body: string): string {

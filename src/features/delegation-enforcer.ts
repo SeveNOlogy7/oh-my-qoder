@@ -176,16 +176,16 @@ function isDelegationToolName(toolName: string): boolean {
 }
 
 function canonicalizeSubagentType(subagentType: string): string {
-  const hasPrefix = subagentType.startsWith('oh-my-claudecode:');
-  const rawAgentType = subagentType.replace(/^oh-my-claudecode:/, '');
+  const hasPrefix = subagentType.startsWith('oh-my-qoder:');
+  const rawAgentType = subagentType.replace(/^oh-my-qoder:/, '');
   const canonicalAgentType = normalizeDelegationRole(rawAgentType);
-  return hasPrefix ? `oh-my-claudecode:${canonicalAgentType}` : canonicalAgentType;
+  return hasPrefix ? `oh-my-qoder:${canonicalAgentType}` : canonicalAgentType;
 }
 /**
  * Bundled-skill guidance for an unknown agent identifier (issue #3667).
  *
  * Task/Agent subagent_type identifiers and bundled skills share the
- * `oh-my-claudecode:` namespace. When an identifier resolves to a bundled
+ * `oh-my-qoder:` namespace. When an identifier resolves to a bundled
  * skill rather than an agent, the error names the Skill tool and the correct
  * identifier instead of a generic "Unknown agent type", so the caller cannot
  * mistake the failure for a typo and substitute a closest-match agent.
@@ -196,7 +196,7 @@ function skillInvocationHint(agentType: string, originalSubagentType?: string): 
   if (!primary) {
     return null;
   }
-  return ` "${agentType}" is a bundled Skill, not an agent — invoke it with the Skill tool (Skill(skill="oh-my-claudecode:${primary}")) instead of Task/Agent subagent_type, and do NOT substitute a similarly-named agent`;
+  return ` "${agentType}" is a bundled Skill, not an agent — invoke it with the Skill tool (Skill(skill="oh-my-qoder:${primary}")) instead of Task/Agent subagent_type, and do NOT substitute a similarly-named agent`;
 }
 
 const SKININTHEGAMEBROS_ONLY_SKILLS = new Set<string>(
@@ -234,8 +234,8 @@ function resolveBundledSkillPrimary(
   // must agree even on case-insensitive filesystems (Windows/macOS), where a
   // case-variant identifier resolves the same directory.
   const foldedInput = agentType.toLowerCase();
-  const stripped = foldedInput.startsWith('oh-my-claudecode:')
-    ? foldedInput.slice('oh-my-claudecode:'.length)
+  const stripped = foldedInput.startsWith('oh-my-qoder:')
+    ? foldedInput.slice('oh-my-qoder:'.length)
     : foldedInput.startsWith('omc:')
       ? foldedInput.slice('omc:'.length)
       : foldedInput;
@@ -249,7 +249,7 @@ function resolveBundledSkillPrimary(
   // (e.g. Claude Code's built-in `Plan` vs the skills/plan dir registering
   // omc-plan) are never mistaken for skills (issue #3667 P1, JS/TS parity).
   const wasNamespaced = typeof originalSubagentType === 'string'
-    && /^(?:oh-my-claudecode|omc):/i.test(originalSubagentType.trim());
+    && /^(?:oh-my-qoder|omc):/i.test(originalSubagentType.trim());
   if (!wasNamespaced) {
     return null;
   }
@@ -291,7 +291,7 @@ function resolveBundledSkillPrimary(
  */
 export function enforceModel(agentInput: AgentInput): EnforcementResult {
   const canonicalSubagentType = canonicalizeSubagentType(agentInput.subagent_type);
-  const agentType = canonicalSubagentType.replace(/^oh-my-claudecode:/, '');
+  const agentType = canonicalSubagentType.replace(/^oh-my-qoder:/, '');
 
   // Validate the agent BEFORE any routing early-return so the unknown-agent
   // error and Skill-tool guidance fire even when an explicit model or
@@ -437,7 +437,7 @@ export function processPreToolUse(
  * Get model for an agent type (for testing/debugging)
  */
 export function getModelForAgent(agentType: string): string {
-  const normalizedType = normalizeDelegationRole(agentType.replace(/^oh-my-claudecode:/, ''));
+  const normalizedType = normalizeDelegationRole(agentType.replace(/^oh-my-qoder:/, ''));
   const agentDefs = getAgentDefinitions({ config: getCachedConfig() });
   const agentDef = agentDefs[normalizedType];
 
