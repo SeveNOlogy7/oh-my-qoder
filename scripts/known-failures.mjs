@@ -84,13 +84,19 @@ export function parseVitestOutput(output) {
  */
 export function vitestTally(output) {
   const lines = stripAnsi(output).split('\n').map(l => stripRunnerPrefix(l).trim());
-  const summary = re => {
-    const hit = lines.find(l => re.test(l));
-    return hit ? Number(re.exec(hit)[1]) : null;
+  // vitest prints `Tests  276 failed | 12716 passed | 38 skipped (13030)`, but
+  // when nothing failed the "N failed" segment is omitted entirely -- so a
+  // present summary line without it means zero, not unknown. Treating that as
+  // unknown would make --require-summary red the day the suite goes green.
+  const summary = label => {
+    const hit = lines.find(l => new RegExp(`^${label}\\s+\\d+\\s`).test(l));
+    if (!hit) return null;
+    const m = /(\d+) failed\b/.exec(hit);
+    return m ? Number(m[1]) : 0;
   };
   return {
-    tests: summary(/^Tests\s+(\d+) failed\b/),
-    files: summary(/^Test Files\s+(\d+) failed\b/),
+    tests: summary('Tests'),
+    files: summary('Test Files'),
     collection: lines.filter(l => /^FAIL\s+\S+\s+\[\s*\S+\s*\]$/.test(l)).length,
   };
 }
