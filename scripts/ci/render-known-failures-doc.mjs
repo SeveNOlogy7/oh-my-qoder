@@ -448,6 +448,10 @@ const linuxOnlySum = [...L.keys()].reduce((a, f) => a + count(W, f), 0);
 
 const familyOrder = [...FAMILIES].sort((a, b) => b.files.reduce((s, f) => s + count(L, f), 0) - a.files.reduce((s, f) => s + count(L, f), 0));
 
+// Read the flake list too: the page reports its size from the file, so the prose
+// cannot drift away from what the windows job actually exempts.
+const flakeList = JSON.parse(readFileSync('tests/known-failures-flaky-win32.json', 'utf8'));
+
 const lines = [];
 lines.push('# Known failures');
 lines.push('');
@@ -603,13 +607,33 @@ lines.push([
     'win32 flip is close to certain on every push. Measured on three pairs: 5 entries between 4aa3b3b and',
     '19a507a (2 in, 3 out), the `--failed` re-run of that same commit red again, and 12 entries at 18547c4',
     '(5 in, 7 out, 7 of them inside `workflow-profile-stop-transition`). That is 0.5%-1.2% of the set per',
-    'run, from diffs that touched no test-visible file. So: a `windows-test` red naming only the files',
-    'listed here is noise to re-run and compare, not a delta -- the signal is a file that never appeared in',
-    'this list, or a delta far larger than a dozen. `test` (linux) flipped zero entries across the same',
-    'comparisons, and it is green at 18547c4 with the completeness equation enforced inside the job, so',
-    'linux is the gate to read.',
+    'run, from diffs that touched no test-visible file. That is why `windows-test` runs the same check with a',
+    'named flake list (next section) and `test` does not: across the same comparisons linux flipped one entry',
+    'in total, so a linux red keeps its meaning and a windows red no longer can on its own.',
     'The files that keep flipping are process-exit, state-root and worker/recovery timing suites -- the',
     '`tmux-worker-timing` family and its neighbours.',
+    '',
+    '### The win32 flake list',
+    '',
+    `\`windows-test\` adds \`--flake-list=tests/known-failures-flaky-win32.json\`, currently`,
+    `\`${flakeList.metadata.entryCount}\` titles. Membership is measured, never asserted:`,
+    '`scripts/ci/derive-flake-list.mjs` admits a title only when it flipped between two adjacent CI runs',
+    'whose diff did not contain the file owning that title, and it refuses to write anything from a single',
+    'comparison. Exemption is symmetric -- a listed title neither reports as new nor as stale, which is',
+    'what lets a flaky entry leave the baseline without turning that red -- and it is scoped to the exact',
+    'test title, so a different title in a listed file still fails the gate. Linux has no list, because that',
+    'is the job that has to stay readable.',
+    '',
+    '```bash',
+    '# regenerate from the captured logs of the runs being compared (see above)',
+    'node scripts/ci/derive-flake-list.mjs \\',
+    '  --pair=<shaA>,<shaB>,<winLogA>,<winLogB> --pair=<shaB>,<shaC>,<winLogB>,<winLogC> --write',
+    '```',
+    '',
+    'Removing an entry is the expected direction as families get fixed; adding one always goes through the',
+    'script and its run pairs. `src/__tests__/known-failures-flake.test.ts` pins the two properties that',
+    'matter -- symmetric exemption and title-level (not file-level) scope -- so a future edit cannot quietly',
+    'turn the list into a blanket exemption.',
     ''].join('\n'));
 
 const out = lines.join('\n') + '\n';
