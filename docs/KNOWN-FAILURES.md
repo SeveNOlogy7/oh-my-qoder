@@ -21,17 +21,22 @@ that stops failing. Absolute green is not the goal -- a red that is *new* is the
 | win32 | 999 | 196 | `tests/known-failures-win32.json` |
 
 283 linux failures sit in 93 files, and every one of them is claimed by a family below.
-win32 reports 328 failures in those same files plus 671 in files that pass on
-Linux. That surplus is classified here from the log rather than described by hand:
+win32 reports 328 failures in those same files, plus 671 in files that
+pass on Linux -- 201 of those belong to a family below, and the remaining
+**470** are classified here from the log rather than described by hand:
+(328 + 201 + 470 = 999).
+
+The surplus is what is left over, so it is deliberately coarse -- it names a signature, not an owner:
 
 
 | win32-only failures | files | signature |
 | --: | --: | --- |
-| 372 | 48 | unclassified |
-| 206 | 38 | path separator or CRLF |
+| 203 | 37 | path separator or CRLF |
+| 171 | 45 | unclassified |
 | 47 | 8 | registry or count ratchet |
 | 27 | 6 | collection-error (module did not parse) |
 | 19 | 3 | win32 fs permission or ENOENT |
+| 3 | 1 | reads /proc/<pid>/stat, which win32 has no equivalent of |
 
 The classification keys on the first error line after each file's `FAIL` header, so `unclassified` is
 the honest residual rather than a bucket labelled "environment". Two consequences worth stating: a
@@ -61,7 +66,8 @@ win32 baseline may never be authored from a Linux run -- hence two files with th
 | [entitlement-projection](#entitlement-projection) | 1 | 1 | fixed on this branch | closed by 4aca1fe |
 | [workflow-profile-config-root-fixture](#workflow-profile-config-root-fixture) | 0 | 131 | fixed on this branch | closed by 4aa3b3b |
 | [mcp-team-job-id](#mcp-team-job-id) | 0 | 0 | fixed on this branch | closed by d178d27 + c3c7cc5 |
-| **total** | **283** | **328** | | |
+| [win32-named-workflow-platform-gate](#win32-named-workflow-platform-gate) | 0 | 61 | accepted known (explicit platform gate in the runtime) | task #14 -- needs a win32 lock backend |
+| **total** | **283** | **529** | | |
 
 <a id="provider-default-expectations"></a>
 ## Ancestor asserts Claude provider defaults -- 42 linux / 45 win32
@@ -400,7 +406,7 @@ skill entitlement projections are stale: scripts/lib/skill-entitlements.mjs, tem
 | 1 | 1 | `src/__tests__/skill-entitlements.test.ts` |
 
 <a id="workflow-profile-config-root-fixture"></a>
-## Workflow-profile fixtures named the wrong config-root env var -- closed (0 remaining)
+## Workflow-profile fixtures named the wrong config-root env var -- 0 linux / 131 win32
 
 **Disposition:** fixed on this branch · **Owner:** closed by 4aa3b3b
 
@@ -434,6 +440,23 @@ Error: Invalid job_id: "omc-art1". Must match /^omq-[a-z0-9]{1,16}$/
 | --: | --: | --- |
 | 0 | 0 | `src/mcp/__tests__/team-server-artifact-convergence.test.ts` |
 | 0 | 0 | `src/cli/__tests__/team.test.ts` |
+
+<a id="win32-named-workflow-platform-gate"></a>
+## Named workflow profiles are gated to Linux + flock by product code -- 0 linux / 61 win32
+
+**Disposition:** accepted known (explicit platform gate in the runtime) · **Owner:** task #14 -- needs a win32 lock backend
+
+Not drift and not a missing mirror: scripts/lib/workflow-profile-runtime.mjs:24 returns false for `isWorkflowRuntimeSupported()` unless `process.platform === 'linux'` and `/usr/bin/flock` or `/bin/flock` exists, and `assertWorkflowRuntimeSupported()` then throws "named autopilot workflow profiles require Linux with flock" from three call sites (scripts/keyword-detector.mjs:1692, templates/hooks/keyword-detector.mjs:1530 and the runtime itself). Every one of these fixtures drives the named-workflow path and asserts a stage prompt, so on windows-latest it is refused by design. The suite even pins the refusal (`src/__tests__/workflow-profile-activation-script.test.ts:273` expects that message), so the behaviour is intended on both platforms; only the fixture expectations assume it never fires. Fixing this needs a win32 lock backend, which is what task #14 is for -- it is not the same cause as the lock-recovery suite, whose helper reads `/proc/<pid>/stat`.
+
+Representative failure (verbatim on win32 in run `36295605800@4aa3b3b` (whole quote matched)):
+
+```
+Received: "[AUTOPILOT WORKFLOW ERROR] named autopilot workflow profiles require Linux with flock No autopilot state was activated."
+```
+
+| linux | win32 | file |
+| --: | --: | --- |
+| 0 | 61 | `src/__tests__/workflow-profile-activation-script.test.ts` |
 
 ## Regenerating a baseline
 
@@ -486,10 +509,13 @@ is attributed to the test files that exercise it):
   (one start, one stop), two `state-root-resolution` cases, `run-cjs-graceful-fallback`,
   `runtime-done-recovery`, `workflow-integrity`.
 
-Consequence, stated plainly because it otherwise looks like a broken gate: a windows-test drift naming
-a handful of the files above, with no src/test change in between, is flake -- re-run the job
-(`gh run rerun <id> --failed`) before treating it as a delta, and never re-author a baseline from a run
-you have not explained. The same shape is now possible on linux, just rarer. The files that keep
-flipping are process-exit, state-root and worker/recovery timing suites -- the `tmux-worker-timing`
-family and its neighbours.
+Consequence, stated plainly because it otherwise looks like a broken gate: at 999 tolerated entries a
+win32 flip is near-certain (measured 5/999 in one run, so ~0.5% per entry-run), which means
+`windows-test` will go red on almost every push even when nothing testable changed. Run 36298032744 and
+its `--failed` re-run were red twice in a row on a diff that touched no test-visible file. So:
+a windows-test red naming only the files above is noise to re-run and compare, not a delta -- the
+signal is a NEW file appearing, or a delta far bigger than a handful. The `test` job (linux) flipped
+zero entries across the same comparisons, and its green is meaningful.
+The files that keep flipping are process-exit, state-root and worker/recovery timing suites -- the
+`tmux-worker-timing` family and its neighbours.
 

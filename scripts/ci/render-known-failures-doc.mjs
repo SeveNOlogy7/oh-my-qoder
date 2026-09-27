@@ -34,6 +34,9 @@ function readLog(logPath) {
 const WIN32_BUCKETS = [
   ['collection-error (module did not parse)', / \[ .* \]$/],
   ['missing python bridge payload', /gyoshu_bridge\.py/],
+  // Measured, not assumed: the lock-recovery suite's own helper reads
+  // /proc/<pid>/stat, which the runner resolves as D:\proc\<pid>\stat.
+  ['reads /proc/<pid>/stat, which win32 has no equivalent of', /\\proc\\\d+\\stat|\/proc\/\d+\/stat/],
   ['path separator or CRLF', /\\[A-Za-z0-9_.-]|\r\n|to be '\/|\/foo\/bar|StringContaining "\/dist/],
   ['win32 fs permission or ENOENT', /EPERM|EBUSY|ENOENT|ENOTEMPTY|rmSync|unlink/],
   ['subprocess or shell dialect', /cmd\.exe|COMSPEC|node:internal\/errors|spawnSync|shell:true/],
@@ -42,7 +45,7 @@ const WIN32_BUCKETS = [
   ['registry or count ratchet', /length of|expected \d+ to be/],
 ];
 
-function classifyWin32Only(winLogPath, winCounts, linuxCounts) {
+function classifyWin32Only(winLogPath, winCounts, linuxCounts, claimed) {
   const raw = readFileSync(winLogPath, 'utf8');
   const lines = stripAnsi(raw).split('\n').map(stripRunnerPrefix);
   const firstMsg = new Map();
@@ -64,8 +67,12 @@ function classifyWin32Only(winLogPath, winCounts, linuxCounts) {
   }
 
   const buckets = new Map();
+  let claimedWin32Only = 0;
   for (const [file, n] of winCounts) {
     if (linuxCounts.has(file)) continue;
+    // A win32-only file that already has a family is not surplus to classify
+    // twice; count it once, in the family table.
+    if (claimed.has(file)) { claimedWin32Only += n; continue; }
     const msg = firstMsg.get(file) ?? '';
     let name = 'unclassified';
     for (const [bucket, re] of WIN32_BUCKETS) {
@@ -76,7 +83,7 @@ function classifyWin32Only(winLogPath, winCounts, linuxCounts) {
     e.files.push(file);
     buckets.set(name, e);
   }
-  return buckets;
+  return { buckets, claimedWin32Only };
 }
 
 const args = process.argv.slice(2);
@@ -363,6 +370,17 @@ const FAMILIES = [
       'src/cli/__tests__/team.test.ts',
     ],
   },
+  {
+    id: 'win32-named-workflow-platform-gate',
+    title: 'Named workflow profiles are gated to Linux + flock by product code',
+    fix: 'accepted known (explicit platform gate in the runtime)',
+    owner: 'task #14 -- needs a win32 lock backend',
+    cause: 'Not drift and not a missing mirror: scripts/lib/workflow-profile-runtime.mjs:24 returns false for `isWorkflowRuntimeSupported()` unless `process.platform === \'linux\'` and `/usr/bin/flock` or `/bin/flock` exists, and `assertWorkflowRuntimeSupported()` then throws "named autopilot workflow profiles require Linux with flock" from three call sites (scripts/keyword-detector.mjs:1692, templates/hooks/keyword-detector.mjs:1530 and the runtime itself). Every one of these fixtures drives the named-workflow path and asserts a stage prompt, so on windows-latest it is refused by design. The suite even pins the refusal (`src/__tests__/workflow-profile-activation-script.test.ts:273` expects that message), so the behaviour is intended on both platforms; only the fixture expectations assume it never fires. Fixing this needs a win32 lock backend, which is what task #14 is for -- it is not the same cause as the lock-recovery suite, whose helper reads `/proc/<pid>/stat`.',
+    evidence: 'Received: "[AUTOPILOT WORKFLOW ERROR] named autopilot workflow profiles require Linux with flock No autopilot state was activated."',
+    files: [
+      'src/__tests__/workflow-profile-activation-script.test.ts',
+    ],
+  },
 ];
 
 const seen = new Map();
@@ -454,12 +472,21 @@ lines.push('| --- | --: | --: | --- |');
 lines.push(`| linux | ${lTotal} | ${L.size} | \`tests/known-failures-linux.json\` |`);
 lines.push(`| win32 | ${wTotal} | ${W.size} | \`tests/known-failures-win32.json\` |`);
 lines.push('');
-const win32OnlyBuckets = classifyWin32Only(winPath, W, L);
+const { buckets: win32OnlyBuckets, claimedWin32Only } = classifyWin32Only(winPath, W, L, seen);
 const win32OnlyTotal = [...win32OnlyBuckets.values()].reduce((a, v) => a + v.n, 0);
+// The page must account for every win32 entry exactly once, here in prose.
+if (linuxOnlySum + win32OnlyTotal + claimedWin32Only !== wTotal) {
+  console.error(`ARITHMETIC: ${linuxOnlySum} shared + ${win32OnlyTotal} surplus + ${claimedWin32Only} claimed-win32-only != ${wTotal} win32 total`);
+  process.exit(1);
+}
 lines.push([
     `${lTotal} linux failures sit in ${L.size} files, and every one of them is claimed by a family below.`,
-    `win32 reports ${linuxOnlySum} failures in those same files plus ${win32OnlyTotal} in files that pass on`,
-    'Linux. That surplus is classified here from the log rather than described by hand:',
+    `win32 reports ${linuxOnlySum} failures in those same files, plus ${wTotal - linuxOnlySum} in files that`,
+    `pass on Linux -- ${claimedWin32Only} of those belong to a family below, and the remaining`,
+    `**${win32OnlyTotal}** are classified here from the log rather than described by hand:`,
+    `(${linuxOnlySum} + ${claimedWin32Only} + ${win32OnlyTotal} = ${wTotal}).`,
+    '',
+    'The surplus is what is left over, so it is deliberately coarse -- it names a signature, not an owner:',
     ''].join('\n'));
 lines.push('');
 lines.push('| win32-only failures | files | signature |');
@@ -484,13 +511,15 @@ for (const f of familyOrder) {
   const w = f.files.reduce((s, file) => s + count(W, file), 0);
   lines.push(`| [${f.id}](#${f.id}) | ${l} | ${w} | ${f.fix} | ${f.owner} |`);
 }
-lines.push(`| **total** | **${lTotal}** | **${[...L.keys()].reduce((a, f) => a + count(W, f), 0)}** | | |`);
+// Sum over every claimed file, not just the ones failing on Linux: otherwise
+// this row under-reports the win32 column it sits under.
+lines.push(`| **total** | **${lTotal}** | **${[...seen.keys()].reduce((a, f) => a + count(W, f), 0)}** | | |`);
 lines.push('');
 for (const f of familyOrder) {
   const l = f.files.reduce((s, file) => s + count(L, file), 0);
   const w = f.files.reduce((s, file) => s + count(W, file), 0);
   lines.push(`<a id="${f.id}"></a>`);
-  lines.push(`## ${f.title} -- ${l === 0 ? 'closed (0 remaining)' : `${l} linux / ${w} win32`}`);
+  lines.push(`## ${f.title} -- ${l === 0 && w === 0 ? 'closed (0 remaining)' : `${l} linux / ${w} win32`}`);
   lines.push('');
   lines.push(`**Disposition:** ${f.fix} · **Owner:** ${f.owner}`);
   lines.push('');
@@ -570,12 +599,15 @@ lines.push([
     '  (one start, one stop), two `state-root-resolution` cases, `run-cjs-graceful-fallback`,',
     '  `runtime-done-recovery`, `workflow-integrity`.',
     '',
-    'Consequence, stated plainly because it otherwise looks like a broken gate: a windows-test drift naming',
-    'a handful of the files above, with no src/test change in between, is flake -- re-run the job',
-    '(`gh run rerun <id> --failed`) before treating it as a delta, and never re-author a baseline from a run',
-    'you have not explained. The same shape is now possible on linux, just rarer. The files that keep',
-    'flipping are process-exit, state-root and worker/recovery timing suites -- the `tmux-worker-timing`',
-    'family and its neighbours.',
+    'Consequence, stated plainly because it otherwise looks like a broken gate: at 999 tolerated entries a',
+    'win32 flip is near-certain (measured 5/999 in one run, so ~0.5% per entry-run), which means',
+    '`windows-test` will go red on almost every push even when nothing testable changed. Run 36298032744 and',
+    'its `--failed` re-run were red twice in a row on a diff that touched no test-visible file. So:',
+    'a windows-test red naming only the files above is noise to re-run and compare, not a delta -- the',
+    'signal is a NEW file appearing, or a delta far bigger than a handful. The `test` job (linux) flipped',
+    'zero entries across the same comparisons, and its green is meaningful.',
+    'The files that keep flipping are process-exit, state-root and worker/recovery timing suites -- the',
+    '`tmux-worker-timing` family and its neighbours.',
     ''].join('\n'));
 
 const out = lines.join('\n') + '\n';
