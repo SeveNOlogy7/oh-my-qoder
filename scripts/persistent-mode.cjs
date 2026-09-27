@@ -25,7 +25,7 @@ const { execFileSync } = require("child_process");
 const { homedir } = require("os");
 const { join, dirname, resolve, normalize } = require("path");
 const { getClaudeConfigDir } = require("./lib/config-dir.cjs");
-const { resolveOmcStateRoot } = require("./lib/state-root.cjs");
+const { resolveOmqStateRoot } = require("./lib/state-root.cjs");
 
 async function readStdin(timeoutMs = 2000) {
   return new Promise((resolve) => {
@@ -825,7 +825,7 @@ async function countIncompleteTodos(sessionId, projectDir) {
   }
 
   // Project-local todos only
-  const omcRoot = await resolveOmcStateRoot(projectDir);
+  const omcRoot = await resolveOmqStateRoot(projectDir);
   for (const path of [
     join(omcRoot, "todos.json"),
     join(projectDir, ".claude", "todos.json"),
@@ -1047,7 +1047,7 @@ async function main() {
 
     const directory = data.cwd || data.directory || process.cwd();
     const sessionId = data.session_id || data.sessionId || "";
-    const omcRoot = await resolveOmcStateRoot(directory);
+    const omcRoot = await resolveOmqStateRoot(directory);
     const stateDir = join(omcRoot, "state");
 
     // CRITICAL: Never block context-limit stops.

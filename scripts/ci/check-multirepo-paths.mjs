@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * AST-grep CI gate: detect raw .omq path constructions that bypass
- * resolveSessionStatePaths() / getOmcRoot() / resolveOmcStateRoot().
+ * resolveSessionStatePaths() / getOmcRoot() / resolveOmqStateRoot().
  *
  * Exits non-zero if any match is found outside the whitelist.
  * Run: node scripts/ci/check-multirepo-paths.mjs [--root <dir>]
@@ -180,6 +180,6 @@ if (totalHits === 0) {
   for (const line of hitLines) {
     console.error(line);
   }
-  console.error('\nFix: use resolveSessionStatePaths() / getOmcRoot() / resolveOmcStateRoot() instead.');
+  console.error('\nFix: use resolveSessionStatePaths() / getOmcRoot() / resolveOmqStateRoot() instead.');
   process.exit(1);
 }

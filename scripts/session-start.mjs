@@ -12,7 +12,7 @@ import { join, dirname, basename, resolve, relative, isAbsolute } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { getClaudeConfigDir, getUpdateCheckCachePath } from './lib/config-dir.mjs';
-import { resolveOmcStateRoot } from './lib/state-root.mjs';
+import { resolveOmqStateRoot } from './lib/state-root.mjs';
 import { pathIdentity, publishCacheOccupancy, readOccupiedPluginRoots } from './lib/cache-occupancy.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -434,7 +434,7 @@ function validateCwd(candidate) {
   // looking for a `.omq-workspace` marker or `.git` dir. Stop before scanning
   // $HOME (or above) so a stray marker/repo in $HOME cannot validate an
   // unrelated directory. Returns the original candidate so downstream root
-  // resolution (getOmcRoot/resolveOmcStateRoot) can anchor it.
+  // resolution (getOmcRoot/resolveOmqStateRoot) can anchor it.
   let home = null;
   try { home = homedir(); } catch { home = null; }
   let cursor = candidate;
@@ -901,7 +901,7 @@ async function main() {
       return;
     }
     const sessionId = data.session_id || data.sessionId || '';
-    const omcRoot = await resolveOmcStateRoot(directory);
+    const omcRoot = await resolveOmqStateRoot(directory);
     let messages = [];
     const userMessages = [];
     let pendingRestore = null;

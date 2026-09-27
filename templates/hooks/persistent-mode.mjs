@@ -96,7 +96,7 @@ const { getClaudeConfigDir } = await import(pathToFileURL(join(__dirname, "lib",
 const { readStdin } = await import(
   pathToFileURL(join(__dirname, "lib", "stdin.mjs")).href
 );
-const { resolveOmcStateRoot } = await import(pathToFileURL(join(__dirname, "lib", "state-root.mjs")).href);
+const { resolveOmqStateRoot } = await import(pathToFileURL(join(__dirname, "lib", "state-root.mjs")).href);
 const { advanceWorkflowOnStop, isValidWorkflowDescriptor, isValidWorkflowTrackingState, isWorkflowRuntimeSupported, refreshWorkflowBoundaryForCommit, resolveWorkflowStagePrompt, takeWorkflowTranscriptFailure } = await import(pathToFileURL(join(__dirname, "lib", "workflow-profile-runtime.mjs")).href);
 const { acquireStateFileLockSync, atomicWriteFileSync, isStateFileLockingSupported, releaseStateFileLockSync, withStateFileLockSync } = await import(pathToFileURL(join(__dirname, "lib", "atomic-write.mjs")).href);
 
@@ -814,7 +814,7 @@ async function countIncompleteTodos(sessionId, projectDir) {
   }
 
   // Project-local todos only
-  const projectOmcRoot = await resolveOmcStateRoot(projectDir);
+  const projectOmcRoot = await resolveOmqStateRoot(projectDir);
   for (const path of [
     join(projectOmcRoot, "todos.json"),
     join(projectDir, ".claude", "todos.json"),
@@ -1020,7 +1020,7 @@ async function main() {
     const sessionIdRaw = data.sessionId || data.session_id || data.sessionid || "";
     const sessionId = sanitizeSessionId(sessionIdRaw);
     const hasValidSessionId = isValidSessionId(sessionIdRaw);
-    const omcRoot = await resolveOmcStateRoot(directory);
+    const omcRoot = await resolveOmqStateRoot(directory);
     const stateDir = join(omcRoot, "state");
     const globalStateDir = join(homedir(), ".omq", "state");
 

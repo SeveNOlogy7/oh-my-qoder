@@ -30,7 +30,7 @@ import { fileURLToPath } from 'url';
 import { getClaudeConfigDir } from './lib/config-dir.mjs';
 import { atomicWriteFileSync, recoverEmergencyStateFile, withStateFileLockSync } from './lib/atomic-write.mjs';
 import { readStdin } from './lib/stdin.mjs';
-import { resolveOmcStateRoot, resolveSessionStatePathsForHook } from './lib/state-root.mjs';
+import { resolveOmqStateRoot, resolveSessionStatePathsForHook } from './lib/state-root.mjs';
 import { parseWorkflowInvocation, selectWorkflowProfile, createWorkflowState, isValidWorkflowTrackingState, isWorkflowRuntimeSupported, resolveWorkflowStagePrompt, takeWorkflowTranscriptFailure } from './lib/workflow-profile-runtime.mjs';
 
 // Resolve OMC package root: CLAUDE_PLUGIN_ROOT (plugin system) or derive from this script's location
@@ -1670,7 +1670,7 @@ async function main() {
     try { data = JSON.parse(input); } catch {}
     const directory = data.cwd || data.directory || process.cwd();
     const sessionId = data.session_id || data.sessionId || '';
-    const omcRoot = await resolveOmcStateRoot(directory);
+    const omcRoot = await resolveOmqStateRoot(directory);
 
     const prompt = extractPrompt(input);
     if (!prompt) {

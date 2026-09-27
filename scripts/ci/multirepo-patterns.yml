@@ -37,22 +37,22 @@ rules:
     language: JavaScript
     rule:
       pattern: join($_, '.omq', $$$)
-    message: "Raw join(..., '.omq', ...) detected — use resolveOmcStateRoot() instead"
+    message: "Raw join(..., '.omq', ...) detected — use resolveOmqStateRoot() instead"
 
   - id: join-omc-literal-double-js
     language: JavaScript
     rule:
       pattern: join($_, ".omq", $$$)
-    message: "Raw join(..., \".omq\", ...) detected — use resolveOmcStateRoot() instead"
+    message: "Raw join(..., \".omq\", ...) detected — use resolveOmqStateRoot() instead"
 
   - id: template-omc-forward-slash-js
     language: JavaScript
     rule:
       pattern: "`${$_}/.omq/$$$`"
-    message: "Raw template `.../.omq/...` detected — use resolveOmcStateRoot() instead"
+    message: "Raw template `.../.omq/...` detected — use resolveOmqStateRoot() instead"
 
   - id: path-join-omc-js
     language: JavaScript
     rule:
       pattern: path.join($_, '.omq', $$$)
-    message: "Raw path.join(..., '.omq', ...) detected — use resolveOmcStateRoot() instead"
+    message: "Raw path.join(..., '.omq', ...) detected — use resolveOmqStateRoot() instead"

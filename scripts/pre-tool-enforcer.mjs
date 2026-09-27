@@ -16,7 +16,7 @@ import { getClaudeConfigDir } from './lib/config-dir.mjs';
 import { encodeProjectPath } from './lib/encode-project-path.mjs';
 import { evaluateAgentHeavyPreflight } from './lib/pre-tool-enforcer-preflight.mjs';
 import { evaluateForceAgentDelegation } from './lib/force-agent-delegation-preflight.mjs';
-import { resolveOmcStateRoot, resolveSessionStatePathsForHook } from './lib/state-root.mjs';
+import { resolveOmqStateRoot, resolveSessionStatePathsForHook } from './lib/state-root.mjs';
 import { readStdin } from './lib/stdin.mjs';
 import { resolveConfiguredAgentModel } from './lib/agent-model-config.mjs';
 import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
@@ -697,7 +697,7 @@ function getQuietLevel() {
  *
  * Resolution order (mirrors src/lib/worktree-paths.ts getOmcRoot):
  *   1) OMQ_STATE_DIR env — log a warning and fall through (full project-id
- *      derivation lives in the TS layer; use resolveOmcStateRoot() for async
+ *      derivation lives in the TS layer; use resolveOmqStateRoot() for async
  *      TS-backed OMQ_STATE_DIR support in main()).
  *   2) Walk up from startDir looking for a .omq-workspace marker file.
  *      The first directory containing that file is the workspace anchor.
@@ -714,7 +714,7 @@ function resolveOmcRoot(startDir) {
   if (process.env.OMQ_STATE_DIR) {
     process.stderr.write(
       '[omc] OMQ_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
-      'resolution. Use resolveOmcStateRoot() for full OMQ_STATE_DIR support.\n'
+      'resolution. Use resolveOmqStateRoot() for full OMQ_STATE_DIR support.\n'
     );
   }
 
@@ -893,7 +893,7 @@ async function getTodoStatus(directory) {
   let inProgress = 0;
 
   // Check project-local todos
-  const omcRoot = await resolveOmcStateRoot(directory);
+  const omcRoot = await resolveOmqStateRoot(directory);
   const localPaths = [
     join(omcRoot, 'todos.json'),
     join(directory, '.claude', 'todos.json')
@@ -1685,7 +1685,7 @@ async function main() {
     // Resolve the .omq state root once, honoring OMQ_STATE_DIR.
     // All helpers receive stateDir so they stay in sync with the centralized
     // resolver used by session-start.mjs and persistent-mode (issue #2518, PR #2532).
-    const omcRoot = await resolveOmcStateRoot(directory);
+    const omcRoot = await resolveOmqStateRoot(directory);
     const stateDir = join(omcRoot, 'state');
 
     // Record Skill invocations to flow trace

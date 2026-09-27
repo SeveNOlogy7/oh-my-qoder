@@ -28,7 +28,7 @@ const __dirname = dirname(__filename);
 const { readStdin } = await import(
   pathToFileURL(join(__dirname, 'lib', 'stdin.mjs')).href
 );
-const { resolveOmcStateRoot } = await import(pathToFileURL(join(__dirname, 'lib', 'state-root.mjs')).href);
+const { resolveOmqStateRoot } = await import(pathToFileURL(join(__dirname, 'lib', 'state-root.mjs')).href);
 const { BOUNDED_GIT_TIMEOUT_MS } = await import(
   pathToFileURL(join(__dirname, 'lib', 'bounded-git-timeout.mjs')).href
 );
@@ -100,7 +100,7 @@ async function main() {
     }
 
     const cwd = data.cwd || data.directory || process.cwd();
-    const stateDir = join(await resolveOmcStateRoot(cwd), 'state');
+    const stateDir = join(await resolveOmqStateRoot(cwd), 'state');
     const config = readOmcConfig();
 
     if (!isEnabled(config)) {

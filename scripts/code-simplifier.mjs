@@ -21,7 +21,7 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { execFileSync } from 'child_process';
 import { readStdin } from './lib/stdin.mjs';
-import { resolveOmcStateRoot } from './lib/state-root.mjs';
+import { resolveOmqStateRoot } from './lib/state-root.mjs';
 import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
 
 const DEFAULT_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs'];
@@ -91,7 +91,7 @@ async function main() {
     }
 
     const cwd = data.cwd || data.directory || process.cwd();
-    const stateDir = join(await resolveOmcStateRoot(cwd), 'state');
+    const stateDir = join(await resolveOmqStateRoot(cwd), 'state');
     const config = readOmcConfig();
 
     if (!isEnabled(config)) {

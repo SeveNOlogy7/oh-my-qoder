@@ -3,7 +3,7 @@ import { spawnSync } from 'child_process';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import process from 'process';
-import { resolveOmcStateRoot } from './lib/state-root.mjs';
+import { resolveOmqStateRoot } from './lib/state-root.mjs';
 
 const PROVIDER_BINARIES = {
   claude: 'claude',
@@ -266,7 +266,7 @@ function resolveOriginalTask(prompt) {
 
 async function writeArtifact({ provider, originalTask, finalPrompt, rawOutput, exitCode }) {
   const root = process.cwd();
-  const artifactDir = join(await resolveOmcStateRoot(root), 'artifacts', 'ask');
+  const artifactDir = join(await resolveOmqStateRoot(root), 'artifacts', 'ask');
   const slug = slugify(originalTask);
   const timestamp = timestampToken();
   const artifactPath = join(artifactDir, `${provider}-${slug}-${timestamp}.md`);

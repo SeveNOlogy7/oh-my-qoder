@@ -18,7 +18,7 @@ const __dirname = dirname(__filename);
 
 // Dynamic import for the shared stdin module
 const { readStdin } = await import(pathToFileURL(path.join(__dirname, 'lib', 'stdin.mjs')).href);
-const { resolveOmcStateRoot } = await import(pathToFileURL(path.join(__dirname, 'lib', 'state-root.mjs')).href);
+const { resolveOmqStateRoot } = await import(pathToFileURL(path.join(__dirname, 'lib', 'state-root.mjs')).href);
 
 // ---------------------------------------------------------------------------
 // Skill Active State (issue #1033)
@@ -94,7 +94,7 @@ async function writeSkillActiveState(directory, skillName, sessionId) {
     stale_ttl_ms: config.staleTtlMs,
   };
 
-  const stateDir = path.join(await resolveOmcStateRoot(directory), 'state');
+  const stateDir = path.join(await resolveOmqStateRoot(directory), 'state');
 
   // Write to session-scoped path when sessionId is available (must match persistent-mode.mjs reads)
   const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
@@ -117,7 +117,7 @@ async function writeSkillActiveState(directory, skillName, sessionId) {
 
 
 async function clearAwaitingConfirmationFlag(directory, stateName, sessionId) {
-  const stateDir = path.join(await resolveOmcStateRoot(directory), 'state');
+  const stateDir = path.join(await resolveOmqStateRoot(directory), 'state');
   const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
   const paths = [
     safeSessionId ? path.join(stateDir, 'sessions', safeSessionId, `${stateName}-state.json`) : null,

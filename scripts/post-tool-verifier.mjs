@@ -14,7 +14,7 @@ import { homedir, tmpdir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { getClaudeConfigDir } from './lib/config-dir.mjs';
 import { encodeProjectPath } from './lib/encode-project-path.mjs';
-import { resolveOmcStateRoot } from './lib/state-root.mjs';
+import { resolveOmqStateRoot } from './lib/state-root.mjs';
 import { readStdin } from './lib/stdin.mjs';
 import { resolveContextPercent } from './lib/context-usage.mjs';
 import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
@@ -39,7 +39,7 @@ function getQuietLevel() {
  *
  * Resolution order (mirrors src/lib/worktree-paths.ts getOmcRoot):
  *   1) OMQ_STATE_DIR env — log a warning and fall through (full project-id
- *      derivation lives in the TS layer; .mjs scripts use resolveOmcStateRoot
+ *      derivation lives in the TS layer; .mjs scripts use resolveOmqStateRoot
  *      for the async TS-backed path when they need OMQ_STATE_DIR honoring).
  *   2) Walk up from startDir looking for a .omq-workspace marker file.
  *      The first directory containing that file is the workspace anchor.
@@ -56,7 +56,7 @@ function resolveOmcRoot(startDir) {
   if (process.env.OMQ_STATE_DIR) {
     process.stderr.write(
       '[omc] OMQ_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
-      'resolution. Use resolveOmcStateRoot() for full OMQ_STATE_DIR support.\n'
+      'resolution. Use resolveOmqStateRoot() for full OMQ_STATE_DIR support.\n'
     );
   }
 

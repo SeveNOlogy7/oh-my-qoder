@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const { getClaudeConfigDir, getUpdateCheckCachePath } = await import(pathToFileURL(join(__dirname, 'lib', 'config-dir.mjs')).href);
 const configDir = getClaudeConfigDir();
-const { resolveSessionStatePathsForHook, resolveOmcStateRoot } = await import(pathToFileURL(join(__dirname, 'lib', 'state-root.mjs')).href);
+const { resolveSessionStatePathsForHook, resolveOmqStateRoot } = await import(pathToFileURL(join(__dirname, 'lib', 'state-root.mjs')).href);
 const { publishCacheOccupancy } = await import(pathToFileURL(join(__dirname, 'lib', 'cache-occupancy.mjs')).href);
 
 // Import timeout-protected stdin reader (prevents hangs on Linux/Windows, see issue #240, #524)
@@ -176,7 +176,7 @@ function isVertexSession() {
 }
 
 async function readRoutingForceInheritFromConfig(directory) {
-  const omcRoot = await resolveOmcStateRoot(directory);
+  const omcRoot = await resolveOmqStateRoot(directory);
   const configPaths = [
     join(configDir, '.omq-config.json'),
     join(omcRoot, 'config.json'),
@@ -317,7 +317,7 @@ const WORKING_MEMORY_HEADER = '## Working Memory';
  * Get notepad path in .omq directory
  */
 async function getNotepadPath(directory) {
-  const omcRoot = await resolveOmcStateRoot(directory);
+  const omcRoot = await resolveOmqStateRoot(directory);
   return join(omcRoot, NOTEPAD_FILENAME);
 }
 
@@ -401,7 +401,7 @@ function validateCwd(candidate) {
   // looking for a `.omq-workspace` marker or `.git` dir. Stop before scanning
   // $HOME (or above) so a stray marker/repo in $HOME cannot validate an
   // unrelated directory. Returns the original candidate so downstream root
-  // resolution (getOmcRoot/resolveOmcStateRoot) can anchor it.
+  // resolution (getOmcRoot/resolveOmqStateRoot) can anchor it.
   let home = null;
   try { home = homedir(); } catch { home = null; }
   let cursor = candidate;
@@ -553,7 +553,7 @@ async function main() {
         const { preparePreCompactCheckpointRestore, claimPreCompactCheckpointRestore } = await import(
           pathToFileURL(join(__dirname, 'lib', 'precompact-restore.mjs')).href
         );
-        const restoreRoot = await resolveOmcStateRoot(directory);
+        const restoreRoot = await resolveOmqStateRoot(directory);
         const prepared = preparePreCompactCheckpointRestore(restoreRoot, sessionId);
         if (prepared) {
           pendingRestore = { ...prepared, restoreRoot, preparePreCompactCheckpointRestore, claimPreCompactCheckpointRestore };
@@ -580,7 +580,7 @@ async function main() {
     // Template-version drift check: warn once per session if installed templates differ from plugin
     if (currentVersion) {
       try {
-        const omcRoot = await resolveOmcStateRoot(directory);
+        const omcRoot = await resolveOmqStateRoot(directory);
         const stampPath = join(omcRoot, 'template-version.json');
         const driftMarkerPath = join(omcRoot, 'state', `drift-warned-${sessionId || 'nosession'}.json`);
         if (existsSync(stampPath) && !existsSync(driftMarkerPath)) {
@@ -641,7 +641,7 @@ Continue working in ultrawork mode until all tasks are complete.
     // [$CLAUDE_CONFIG_DIR|~/.claude]/todos/ directory.
     // That directory accumulates todo files from ALL past sessions across all
     // projects, causing phantom task counts in fresh sessions (see issue #354).
-    const omcRootForTodos = await resolveOmcStateRoot(directory);
+    const omcRootForTodos = await resolveOmqStateRoot(directory);
     const localTodoPaths = [
       join(omcRootForTodos, 'todos.json'),
       join(directory, '.claude', 'todos.json')
