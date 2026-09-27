@@ -14,6 +14,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Strip ANSI escape sequences from text.
@@ -213,4 +214,10 @@ function main() {
   });
 }
 
-main();
+// Guarded so the parser can be imported (src/__tests__/known-failures.test.ts
+// already does, and scripts/ci/render-known-failures-doc.mjs must use the same
+// rules the gate applies). main() reads stdin and process.exit()s on empty
+// input, so an unguarded call here can kill any importer.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
