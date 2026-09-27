@@ -47,13 +47,31 @@ function isSubagentSafeModelId(modelId) {
 // detection that reads only the second pair answers "Anthropic" on a CN install,
 // which then steers every routing decision and every guidance string the wrong way
 // (b37141e read the fork pair; the hop restored the ancestor one).
+//
+// But it has to answer about the ONE model the runtime will actually use.
+// src/config/models.ts:getProviderDetectionModelEnvValues() takes the first non-empty
+// direct var (getDirectModelEnvValue) and consults the tier-default chain only when no
+// direct var is set. ORing across all four -- which is what b37141e's two-var version
+// grew into -- reclassifies a session from a var the runtime never reads: a stale
+// ANTHROPIC_MODEL on a Claude box suppressed real denials, and a stale Bedrock-shaped
+// QODER_MODEL on a proxy box tripped the Bedrock branch for a call that would not use it.
+const DIRECT_MODEL_ENV_KEYS = ['QODER_MODEL', 'DASHSCOPE_MODEL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL'];
+const INHERIT_TIER_PRIORITY = ['medium', 'high', 'low'];
 function activeModelIds() {
-  return [
-    process.env.QODER_MODEL || '',
-    process.env.DASHSCOPE_MODEL || '',
-    process.env.CLAUDE_MODEL || '',
-    process.env.ANTHROPIC_MODEL || '',
-  ].filter(Boolean);
+  for (const key of DIRECT_MODEL_ENV_KEYS) {
+    const value = (process.env[key] || '').trim();
+    if (value) return [value];
+  }
+  const values = new Set();
+  for (const tier of INHERIT_TIER_PRIORITY) {
+    // First hit per tier, mirroring resolveTierModelFromEnv: the chain is a
+    // precedence list, not a set of candidates to vote over.
+    const hit = (TIER_TO_DEFAULT_ENV_KEYS[tier] || [])
+      .map((key) => (process.env[key] || '').trim())
+      .find(Boolean);
+    if (hit) values.add(hit);
+  }
+  return [...values];
 }
 function isBedrockProviderEnv() {
   if (process.env.CLAUDE_CODE_USE_BEDROCK === '1') return true;
@@ -76,6 +94,23 @@ function isVertexProviderEnv() {
 function getActiveModelIds() {
   return activeModelIds();
 }
+// An endpoint var points at first-party infrastructure only when the URL's own host IS
+// that host or a subdomain of it. A substring match accepted
+// `dashscope.aliyuncs.com.attacker.test` and `https://x.test/?k=anthropic.com` as
+// first-party, so a proxy install was classified as native and the denials built on that
+// answer stopped firing. src/utils/ssrf-guard.ts:validateUrlForSSRF is what the runtime
+// does, and this file's contract is that the inlined copy is no looser than it.
+function isFirstPartyEndpoint(rawUrl, trustedHost) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+  const host = parsed.hostname.toLowerCase();
+  return host === trustedHost || host.endsWith(`.${trustedHost}`);
+}
 function isNormalClaudeModelId(modelId) {
   const lower = (modelId || '').toLowerCase();
   return Boolean(lower) && lower.includes('claude') && !isProviderSpecificModelId(modelId);
@@ -91,12 +126,12 @@ function isNonClaudeProviderEnv() {
   if (isBedrockProviderEnv() || isVertexProviderEnv()) return true;
   if (activeModelIds().some((modelId) => !modelId.toLowerCase().includes('claude'))) return true;
   const baseUrl = process.env.ANTHROPIC_BASE_URL || '';
-  if (baseUrl && !baseUrl.includes('anthropic.com')) return true;
+  if (baseUrl && !isFirstPartyEndpoint(baseUrl, 'anthropic.com')) return true;
   // DASHSCOPE_BASE_URL is this fork's endpoint var; reading only the Anthropic one
   // made a proxy install look like a first-class Anthropic setup (b37141e checked
   // both).
   const dashscopeBaseUrl = process.env.DASHSCOPE_BASE_URL || '';
-  if (dashscopeBaseUrl && !dashscopeBaseUrl.includes('dashscope.aliyuncs.com')) return true;
+  if (dashscopeBaseUrl && !isFirstPartyEndpoint(dashscopeBaseUrl, 'dashscope.aliyuncs.com')) return true;
   return isConfigForceInheritProxyEnv();
 }
 function acceptsProxyAnthropicDefaultTierValue(key, value) {

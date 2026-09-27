@@ -272,6 +272,49 @@ describe('hook integration — force-inherit + [1m] scenarios', () => {
     expect(result.reason).toMatch(/model="medium"/);
   });
 
+  it('denies a tier alias when only a lower-precedence session var looks non-Claude', () => {
+    // The runtime resolves ONE direct session model, first of
+    // QODER_MODEL > DASHSCOPE_MODEL > CLAUDE_MODEL > ANTHROPIC_MODEL (src/config/models.ts
+    // :getDirectModelEnvValue), and only falls back to the tier defaults when none is set.
+    // Detection that ORs over all four instead lets a stale leftover in the last position
+    // reclassify a session the runtime will not read it for -- here it turns a denial into
+    // silence by accepting ANTHROPIC_DEFAULT_OPUS_MODEL as routing proof.
+    const result = runHook(
+      { model: 'opus' },
+      {
+        QODER_MODEL: '',
+        DASHSCOPE_MODEL: '',
+        CLAUDE_MODEL: 'claude-sonnet-5',
+        ANTHROPIC_MODEL: 'qwen3-max',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'some-proxy-model-name',
+        ANTHROPIC_BASE_URL: '',
+        DASHSCOPE_BASE_URL: '',
+      },
+    );
+    expect(result.denied).toBe(true);
+    expect(result.reason).toMatch(/ANTHROPIC_DEFAULT_OPUS_MODEL/);
+  });
+
+  it('treats a look-alike DashScope endpoint as a proxy, not as first-party', () => {
+    // The fork's endpoint trust check was a substring match, so a host that merely
+    // contains `dashscope.aliyuncs.com` read as first-party and the hook then answered
+    // "Anthropic" about a session pointing anywhere. src/utils/ssrf-guard.ts parses the
+    // URL and compares hostnames; the inlined copy has to be no looser than the runtime.
+    const result = runHook(
+      {},
+      {
+        QODER_MODEL: 'my-claude-derivative-router[1m]',
+        DASHSCOPE_MODEL: '',
+        CLAUDE_MODEL: '',
+        ANTHROPIC_MODEL: '',
+        DASHSCOPE_BASE_URL: 'https://dashscope.aliyuncs.com.attacker.test/compatible-mode',
+        ANTHROPIC_BASE_URL: '',
+      },
+    );
+    expect(result.denied).toBe(true);
+    expect(result.reason).toMatch(/model="medium"/);
+  });
+
   it('denies no-model call when session model has [1m] suffix and guides to tier alias', () => {
     const result = runHook(
       {},
