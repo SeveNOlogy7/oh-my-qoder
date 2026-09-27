@@ -99,13 +99,16 @@ const runRef = argValue('run') ?? 'unknown';
 // ---------------------------------------------------------------------------
 const FAMILIES = [
   {
-    id: 'workflow-profile-stage-dispatch',
-    title: 'Workflow-profile stage dispatch never resolves a stage',
-    fix: 'fix code',
-    owner: 'Lane 2-4 (hooks + workflow profile state)',
-    cause: 'The stop hook returns the generic `[AUTOPILOT WORKFLOW] <description>` notice instead of the stage-specific `## PIPELINE STAGE: …` prompt, and one case reads `activationBoundary` off an undefined profile. The v5.0.0 workflow-profile feature is not wired to this fork\'s profile store, so no stage is ever selected.',
-    evidence: "AssertionError: expected '[AUTOPILOT WORKFLOW] workflow_descrip…' to be '## PIPELINE STAGE: EXECUTION (Solo Mo…'",
-    files: ['tests/integration/workflow-profile-stop-transition.test.ts'],
+    id: 'workflow-profile-config-root-fixture',
+    title: 'Workflow-profile fixtures named the wrong config-root env var',
+    fix: 'fixed on this branch',
+    owner: 'closed by 4aa3b3b',
+    cause: 'Three integration fixtures spawned the stop hook with CLAUDE_CONFIG_DIR, which this fork never reads: getQoderConfigDir() takes QODER_CONFIG_DIR / QODERCN_CONFIG_DIR, so the hook resolved the transcript root under $HOME/.qoder[-cn] instead of the fixture directory, readStableTranscript() returned null, and the hook reported `workflow_descriptor_integrity_failed` before any stage prompt was built. Fixed by naming the env var the fork actually honours; measured 127 -> 0 on Linux. Two remainders, deliberately not smoothed over: on win32 workflow-profile-stop-transition still fails because readStableTranscript() requires /proc/self/fd (named workflow profiles cannot run there at all -- tracked separately), and the fixture variable is still spelled claudeConfigDir.',
+    evidence: "AssertionError: expected '[AUTOPILOT WORKFLOW] workflow_descriptor…' to be '## PIPELINE STAGE: EXECUTION (Solo Mode…'",
+    files: [
+      'tests/integration/workflow-profile-stop-transition.test.ts',
+      'tests/integration/task-list-identity-stop.test.ts',
+    ],
   },
   {
     id: 'python-bridge-payload-missing',
@@ -126,7 +129,6 @@ const FAMILIES = [
     files: [
       'src/__tests__/routing-force-inherit.test.ts',
       'src/hooks/skill-state/__tests__/skill-state.test.ts',
-      'tests/integration/task-list-identity-stop.test.ts',
       'src/hooks/autopilot/__tests__/pipeline.test.ts',
       'src/hooks/autopilot/__tests__/prompts.test.ts',
       'src/hooks/autopilot/__tests__/validation.test.ts',
@@ -303,6 +305,7 @@ const FAMILIES = [
     evidence: 'Error: waitForEventInLog: timed out after 30000ms waiting for 1x "merge_succeeded" (worker=worker-1). Found 0.',
     files: [
       'src/team/__tests__/worktree-runtime-e2e.test.ts',
+      'src/team/__tests__/worker-activation-gate.test.ts',
       'src/team/__tests__/auto-merge.perf.test.ts',
       'src/team/__tests__/teardown-invariant.test.ts',
       'src/team/__tests__/rebase-smoke.test.ts',
