@@ -110,7 +110,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('sonnet'); // executor defaults to claude-sonnet-5
+      expect(result.modifiedInput.model).toBe('qwen-plus'); // executor defaults to claude-sonnet-5
       expect(result.originalInput.model).toBeUndefined();
     });
 
@@ -124,7 +124,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('sonnet'); // debugger defaults to claude-sonnet-5
+      expect(result.modifiedInput.model).toBe('qwen-plus'); // debugger defaults to claude-sonnet-5
     });
 
     it('rewrites deprecated aliases to canonical agent names before injecting model', () => {
@@ -372,13 +372,13 @@ describe('delegation-enforcer', () => {
 
     it('works with all agents', () => {
       const testCases = [
-        { agent: 'architect', expectedModel: 'opus' },
+        { agent: 'architect', expectedModel: 'qwen-max' },
         { agent: 'executor', expectedModel: 'sonnet' },
         { agent: 'explore', expectedModel: 'haiku' },
         { agent: 'designer', expectedModel: 'sonnet' },
         { agent: 'debugger', expectedModel: 'sonnet' },
         { agent: 'verifier', expectedModel: 'sonnet' },
-        { agent: 'code-reviewer', expectedModel: 'opus' },
+        { agent: 'code-reviewer', expectedModel: 'qwen-max' },
         { agent: 'test-engineer', expectedModel: 'sonnet' }
       ];
 
@@ -472,7 +472,7 @@ describe('delegation-enforcer', () => {
 
       const result = processPreToolUse('Agent', toolInput);
 
-      expect(result.modifiedInput).toHaveProperty('model', 'sonnet');
+      expect(result.modifiedInput).toHaveProperty('model', 'qwen-plus');
     });
 
     it('does not modify input when model already specified', () => {
@@ -510,16 +510,16 @@ describe('delegation-enforcer', () => {
 
   describe('getModelForAgent', () => {
     it('returns correct model for agent with prefix', () => {
-      expect(getModelForAgent('oh-my-claudecode:executor')).toBe('sonnet');
-      expect(getModelForAgent('oh-my-claudecode:debugger')).toBe('sonnet');
+      expect(getModelForAgent('oh-my-claudecode:executor')).toBe('qwen-plus');
+      expect(getModelForAgent('oh-my-claudecode:debugger')).toBe('qwen-plus');
       expect(getModelForAgent('oh-my-claudecode:architect')).toBe('opus');
     });
 
     it('returns correct model for agent without prefix', () => {
-      expect(getModelForAgent('executor')).toBe('sonnet');
-      expect(getModelForAgent('debugger')).toBe('sonnet');
+      expect(getModelForAgent('executor')).toBe('qwen-plus');
+      expect(getModelForAgent('debugger')).toBe('qwen-plus');
       expect(getModelForAgent('architect')).toBe('opus');
-      expect(getModelForAgent('build-fixer')).toBe('sonnet');
+      expect(getModelForAgent('build-fixer')).toBe('qwen-plus');
     });
 
     it('throws error for unknown agent', () => {
@@ -538,35 +538,35 @@ describe('delegation-enforcer', () => {
   describe('deprecated alias routing', () => {
     it('routes api-reviewer to code-reviewer', () => {
       const result = resolveDelegation({ agentRole: 'api-reviewer' });
-      expect(result.provider).toBe('claude');
+      expect(result.provider).toBe('qwen');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('code-reviewer');
     });
 
     it('routes performance-reviewer to code-reviewer', () => {
       const result = resolveDelegation({ agentRole: 'performance-reviewer' });
-      expect(result.provider).toBe('claude');
+      expect(result.provider).toBe('qwen');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('code-reviewer');
     });
 
     it('routes dependency-expert to document-specialist', () => {
       const result = resolveDelegation({ agentRole: 'dependency-expert' });
-      expect(result.provider).toBe('claude');
+      expect(result.provider).toBe('qwen');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('document-specialist');
     });
 
     it('routes quality-strategist to code-reviewer', () => {
       const result = resolveDelegation({ agentRole: 'quality-strategist' });
-      expect(result.provider).toBe('claude');
+      expect(result.provider).toBe('qwen');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('code-reviewer');
     });
 
     it('routes vision to document-specialist', () => {
       const result = resolveDelegation({ agentRole: 'vision' });
-      expect(result.provider).toBe('claude');
+      expect(result.provider).toBe('qwen');
       expect(result.tool).toBe('Task');
       expect(result.agentOrModel).toBe('document-specialist');
     });

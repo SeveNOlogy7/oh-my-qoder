@@ -181,7 +181,7 @@ export interface PluginConfig {
      *
      * Env: OMQ_MODEL_ALIAS_HAIKU, OMQ_MODEL_ALIAS_SONNET, OMQ_MODEL_ALIAS_OPUS, OMQ_MODEL_ALIAS_FABLE
      */
-    modelAliases?: Partial<Record<"haiku" | "sonnet" | "opus" | "fable", ModelType>>;
+    modelAliases?: Partial<Record<"low" | "medium" | "high" | "haiku" | "sonnet" | "opus" | "fable", ModelType>>;
     /** Keywords that force escalation to higher tier */
     escalationKeywords?: string[];
     /** Keywords that suggest lower tier */

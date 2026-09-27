@@ -336,7 +336,7 @@ export function loadEnvConfig(): Partial<PluginConfig> {
   }
 
   // Model alias overrides from environment (issue #1211, issue #3726)
-  const aliasKeys = ["HAIKU", "SONNET", "OPUS", "FABLE"] as const;
+  const aliasKeys = ["LOW", "MEDIUM", "HIGH", "HAIKU", "SONNET", "OPUS", "FABLE"] as const;
   const modelAliases: Record<string, string> = {};
   for (const key of aliasKeys) {
     const envVal = process.env[`OMQ_MODEL_ALIAS_${key}`];

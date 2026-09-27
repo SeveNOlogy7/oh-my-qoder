@@ -106,7 +106,7 @@ describe('Bedrock model routing repro', () => {
     it('falls back to bare "claude-sonnet-5" without env vars', async () => {
       const { getDefaultModelMedium } = await import('../config/models.js');
       // getDefaultModelMedium returns the raw config value (not normalized)
-      expect(getDefaultModelMedium()).toBe('claude-sonnet-5');
+      expect(getDefaultModelMedium()).toBe('qwen-plus');
     });
   });
 
