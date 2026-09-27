@@ -1,20 +1,12 @@
 {
   "metadata": {
     "platform": "linux",
-    "source": "run:36295605800@4aa3b3b",
-    "fileCount": 93,
-    "testCount": 283
+    "source": "run:36315952043@fc77058",
+    "fileCount": 91,
+    "testCount": 270
   },
   "failures": [
     "src/__tests__/auto-slash-aliases.test.ts > auto slash aliases + skill guidance > renders skill pipeline guidance for slash-loaded skills with handoff metadata",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > allows valid Qwen model ID through without denying",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > denies no-model call when QODER_MODEL has [1m] and DASHSCOPE_MODEL has [1m]",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > denies no-model call when only DASHSCOPE_MODEL has [1m] suffix (any [1m] triggers deny)",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > denies no-model call when session model has [1m] suffix and guides to tier alias",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > denies no-model call when session model is a bare Anthropic ID with [1m] suffix",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > derives tier alias from DASHSCOPE_DEFAULT_MEDIUM_MODEL for guidance in [1m] deny",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > derives tier alias from OMQ_SUBAGENT_MODEL when set (backward compat)",
-    "src/__tests__/bedrock-lm-suffix-hook.test.ts > hook integration — force-inherit + [1m] scenarios > derives tier alias from session model when DASHSCOPE_DEFAULT_MEDIUM_MODEL is set",
     "src/__tests__/claude-goal-adapter-doc.test.ts > Qoder CLI /goal adapter docs contract > documents Claude/Anthropic as the only authority for Qoder CLI /goal facts",
     "src/__tests__/claude-goal-adapter-doc.test.ts > Qoder CLI /goal adapter docs contract > documents the hidden-state non-mutation boundary",
     "src/__tests__/claude-goal-adapter-doc.test.ts > Qoder CLI /goal adapter docs contract > links the adapter design from REFERENCE.md",
@@ -85,11 +77,6 @@
     "src/__tests__/post-tool-rules-injector.test.ts > post-tool-rules-injector.mjs skip guards (DISABLE_OMQ / OMQ_SKIP_HOOKS) > no-ops when DISABLE_OMQ=1",
     "src/__tests__/post-tool-rules-injector.test.ts > post-tool-rules-injector.mjs skip guards (DISABLE_OMQ / OMQ_SKIP_HOOKS) > no-ops when DISABLE_OMQ=true",
     "src/__tests__/post-tool-rules-injector.test.ts > post-tool-rules-injector.mjs skip guards (DISABLE_OMQ / OMQ_SKIP_HOOKS) > no-ops when OMQ_SKIP_HOOKS contains the post-tool-use event token",
-    "src/__tests__/pre-tool-enforcer.test.ts > pre-tool-enforcer agents.<name>.model injection (issue #3242) > injects configured model via updatedInput for native Task calls without a model param",
-    "src/__tests__/pre-tool-enforcer.test.ts > pre-tool-enforcer agents.<name>.model injection (issue #3242) > lets project config override user config",
-    "src/__tests__/pre-tool-enforcer.test.ts > pre-tool-enforcer agents.<name>.model injection (issue #3242) > normalizes full Claude model IDs to a CC tier alias",
-    "src/__tests__/pre-tool-enforcer.test.ts > pre-tool-enforcer agents.<name>.model injection (issue #3242) > resolves deprecated subagent aliases to the canonical config key",
-    "src/__tests__/pre-tool-enforcer.test.ts > pre-tool-enforcer agents.<name>.model injection (issue #3242) > still injects the configured model when the advisory message is throttled (suppressOutput)",
     "src/__tests__/purge-stale-cache.test.ts > purgeStalePluginCacheVersions > clears a dangling redirect symlink and restores the backup over it",
     "src/__tests__/purge-stale-cache.test.ts > purgeStalePluginCacheVersions > clears the squatter and retries when it blocks the restore rename",
     "src/__tests__/purge-stale-cache.test.ts > purgeStalePluginCacheVersions > discards the aside copy when the redirect symlink is already in place",

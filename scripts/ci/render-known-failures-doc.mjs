@@ -451,6 +451,18 @@ const familyOrder = [...FAMILIES].sort((a, b) => b.files.reduce((s, f) => s + co
 // Read the flake list too: the page reports its size from the file, so the prose
 // cannot drift away from what the windows job actually exempts.
 const flakeList = JSON.parse(readFileSync('tests/known-failures-flaky-win32.json', 'utf8'));
+// The churn paragraph is the reason the two gates are asymmetric, so it prints numbers
+// the derivation tool measured, not numbers whoever edited this page last remembered.
+const churn = flakeList.metadata?.churn;
+if (!churn?.win32?.unexplainedPerPair?.length || !churn?.linux?.unexplainedPerPair?.length) {
+  console.error('REFUSE: the flake list carries no measured churn. Re-derive it with --linux-pair=... --write (see docs/KNOWN-FAILURES.md) rather than print a rate from memory.');
+  process.exit(1);
+}
+const churnSpan = (p) => {
+  const a = churn[p].unexplainedPerPair;
+  return `${Math.min(...a)}-${Math.max(...a)}`;
+};
+const pct = (n, of) => `${((n / of) * 100).toFixed(1)}%`;
 
 const lines = [];
 lines.push('# Known failures');
@@ -603,13 +615,18 @@ lines.push([
     '  (one start, one stop), two `state-root-resolution` cases, `run-cjs-graceful-fallback`,',
     '  `runtime-done-recovery`, `workflow-integrity`.',
     '',
-    'Consequence, stated plainly because it otherwise looks like a broken gate: at 999 tolerated entries a',
-    'win32 flip is close to certain on every push. Measured on three pairs: 5 entries between 4aa3b3b and',
-    '19a507a (2 in, 3 out), the `--failed` re-run of that same commit red again, and 12 entries at 18547c4',
-    '(5 in, 7 out, 7 of them inside `workflow-profile-stop-transition`). That is 0.5%-1.2% of the set per',
-    'run, from diffs that touched no test-visible file. That is why `windows-test` runs the same check with a',
-    'named flake list (next section) and `test` does not: across the same comparisons linux flipped one entry',
-    'in total, so a linux red keeps its meaning and a windows red no longer can on its own.',
+    `Consequence, stated plainly because it otherwise looks like a broken gate: at ${wTotal} tolerated entries a`,
+    'win32 flip is close to certain on every push. `scripts/ci/derive-flake-list.mjs` measures it over',
+    `${churn.win32.pairs} adjacent-run pairs: ${churn.win32.flips} title flips, ${churn.win32.unexplained} of them unexplainable by the commit in`,
+    `between -- ${churnSpan('win32')} per pair, or ${pct(churn.win32.unexplained / churn.win32.pairs, wTotal)} of the set per run on average. Linux over the`,
+    `same pairs: ${churn.linux.flips} flips, only ${churn.linux.unexplained} unexplainable in total -- ${pct(churn.linux.unexplained / churn.linux.pairs, lTotal)} of its`,
+    `${lTotal} per run, against win32's ${pct(churn.win32.unexplained / churn.win32.pairs, wTotal)}. That gap is why`,
+    '`windows-test` runs the same check with a named flake list (next section) and `test` does not: a',
+    'linux red keeps its meaning and a windows red no longer can on its own.',
+    `${churn.win32.flips - churn.win32.unexplained} of the ${churn.win32.flips} win32 flips are credited to a file the flipping test drives rather than to the test`,
+    'file itself, and that step is load-bearing: it is what kept the 13 titles that',
+    '`scripts/pre-tool-enforcer.mjs` turned green out of the allowlist instead of laundering a fix as a',
+    'flake. Drop it and a real fix silently buys permanent immunity for its own tests.',
     'The files that keep flipping are process-exit, state-root and worker/recovery timing suites -- the',
     '`tmux-worker-timing` family and its neighbours.',
     '',
@@ -618,16 +635,19 @@ lines.push([
     `\`windows-test\` adds \`--flake-list=tests/known-failures-flaky-win32.json\`, currently`,
     `\`${flakeList.metadata.entryCount}\` titles. Membership is measured, never asserted:`,
     '`scripts/ci/derive-flake-list.mjs` admits a title only when it flipped between two adjacent CI runs',
-    'whose diff did not contain the file owning that title, and it refuses to write anything from a single',
-    'comparison. Exemption is symmetric -- a listed title neither reports as new nor as stale, which is',
+    'whose diff touched neither the file owning that title nor any file that test drives -- a changed file',
+    'whose name appears in the flipping test\'s own source is credited, because that test is what the change',
+    'was for. It refuses to write anything from a single comparison. Exemption is symmetric -- a listed',
+    'title neither reports as new nor as stale, which is',
     'what lets a flaky entry leave the baseline without turning that red -- and it is scoped to the exact',
     'test title, so a different title in a listed file still fails the gate. Linux has no list, because that',
     'is the job that has to stay readable.',
     '',
     '```bash',
-    '# regenerate from the captured logs of the runs being compared (see above)',
+    '# regenerate from the captured logs of the runs being compared (see above). The --linux-pair flags',
+    '# change nothing about membership; they are what the churn numbers above are computed from.',
     'node scripts/ci/derive-flake-list.mjs \\',
-    '  --pair=<shaA>,<shaB>,<winLogA>,<winLogB> --pair=<shaB>,<shaC>,<winLogB>,<winLogC> --write',
+    '  --pair=<shaA>,<shaB>,<winLogA>,<winLogB> --linux-pair=<shaA>,<shaB>,<logA>,<logB> --write',
     '```',
     '',
     'Removing an entry is the expected direction as families get fixed; adding one always goes through the',

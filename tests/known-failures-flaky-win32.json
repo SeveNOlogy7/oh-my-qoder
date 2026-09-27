@@ -1,11 +1,75 @@
 {
   "metadata": {
     "platform": "win32",
-    "rule": "a title enters this file only by scripts/ci/derive-flake-list.mjs: it must have flipped between two adjacent CI runs whose diff does not contain its own file",
-    "pairs": 5,
-    "entryCount": 22
+    "rule": "a title enters this file only by scripts/ci/derive-flake-list.mjs: it must have flipped between two adjacent CI runs whose diff touches neither its own test file nor any file that test drives",
+    "pairs": 8,
+    "entryCount": 22,
+    "churn": {
+      "win32": {
+        "pairs": 8,
+        "flips": 87,
+        "unexplained": 56,
+        "unexplainedPerPair": [
+          5,
+          8,
+          7,
+          5,
+          13,
+          4,
+          8,
+          6
+        ]
+      },
+      "linux": {
+        "pairs": 8,
+        "flips": 142,
+        "unexplained": 2,
+        "unexplainedPerPair": [
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
   },
   "entries": [
+    {
+      "entry": "src/__tests__/skill-entitlements-cross-surface.test.ts > nonempty skill entitlement fixture > withholds delegation guidance for mixed-case hidden skill invocations",
+      "flips": 5,
+      "evidence": [
+        "f1e53ef->0297c98",
+        "19a507a->18547c4",
+        "0b57eb3->d39c588",
+        "d39c588->740566e",
+        "740566e->fc77058"
+      ]
+    },
+    {
+      "entry": "tests/lint/inventory-graph-drift.test.ts > inventory-graph drift enforcement (#3702) > verify mode rejects tampered hashes and head provenance",
+      "flips": 5,
+      "evidence": [
+        "f1e53ef->0297c98",
+        "19a507a->18547c4",
+        "0b57eb3->d39c588",
+        "d39c588->740566e",
+        "740566e->fc77058"
+      ]
+    },
+    {
+      "entry": "src/__tests__/session-start-background-output.test.ts > session-start background output isolation > keeps foreground hook stdout/stderr clean when notification module writes",
+      "flips": 4,
+      "evidence": [
+        "4aa3b3b->19a507a",
+        "19a507a->18547c4",
+        "0b57eb3->d39c588",
+        "d39c588->740566e"
+      ]
+    },
     {
       "entry": "src/hooks/autopilot/__tests__/workflow-integrity.test.ts > workflow descriptor integrity enforcement (#3487) > does not advance or dispatch a signed named workflow on an unsupported runtime",
       "flips": 4,
@@ -14,6 +78,51 @@
         "0297c98->6ba78e7",
         "6ba78e7->4aa3b3b",
         "19a507a->18547c4"
+      ]
+    },
+    {
+      "entry": "src/hooks/session-end/__tests__/session-end-timeout.test.ts > SessionEnd foreground manifest handoff (issue #1700) > returns within the foreground deadline after publishing deferred worker actions",
+      "flips": 3,
+      "evidence": [
+        "f1e53ef->0297c98",
+        "0297c98->6ba78e7",
+        "d39c588->740566e"
+      ]
+    },
+    {
+      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > accepts a structurally valid >16 MiB boundary without flock on linux",
+      "flips": 3,
+      "evidence": [
+        "19a507a->18547c4",
+        "0b57eb3->d39c588",
+        "740566e->fc77058"
+      ]
+    },
+    {
+      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > accepts a structurally valid >16 MiB boundary without flock on win32",
+      "flips": 3,
+      "evidence": [
+        "19a507a->18547c4",
+        "d39c588->740566e",
+        "740566e->fc77058"
+      ]
+    },
+    {
+      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > honors an exact same-run cancel signal for a named workflow",
+      "flips": 3,
+      "evidence": [
+        "19a507a->18547c4",
+        "d39c588->740566e",
+        "740566e->fc77058"
+      ]
+    },
+    {
+      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > rejects mutation between verified-fd read and post-read identity capture",
+      "flips": 3,
+      "evidence": [
+        "4aa3b3b->19a507a",
+        "19a507a->18547c4",
+        "740566e->fc77058"
       ]
     },
     {
@@ -49,22 +158,6 @@
       ]
     },
     {
-      "entry": "src/__tests__/session-start-background-output.test.ts > session-start background output isolation > keeps foreground hook stdout/stderr clean when notification module writes",
-      "flips": 2,
-      "evidence": [
-        "4aa3b3b->19a507a",
-        "19a507a->18547c4"
-      ]
-    },
-    {
-      "entry": "src/__tests__/skill-entitlements-cross-surface.test.ts > nonempty skill entitlement fixture > withholds delegation guidance for mixed-case hidden skill invocations",
-      "flips": 2,
-      "evidence": [
-        "f1e53ef->0297c98",
-        "19a507a->18547c4"
-      ]
-    },
-    {
       "entry": "src/__tests__/state-root-resolution.test.ts > OMQ_STATE_DIR state-root resolution (issue #2532) > session-start ignores tombstoned stale ralph restore state after cancel",
       "flips": 2,
       "evidence": [
@@ -89,14 +182,6 @@
       ]
     },
     {
-      "entry": "src/hooks/session-end/__tests__/session-end-timeout.test.ts > SessionEnd foreground manifest handoff (issue #1700) > returns within the foreground deadline after publishing deferred worker actions",
-      "flips": 2,
-      "evidence": [
-        "f1e53ef->0297c98",
-        "0297c98->6ba78e7"
-      ]
-    },
-    {
       "entry": "src/team/__tests__/runtime-done-recovery.test.ts > watchdog done.json parsing recovery > marks task completed when done.json is briefly malformed before pane-dead check",
       "flips": 2,
       "evidence": [
@@ -105,19 +190,19 @@
       ]
     },
     {
-      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > rejects mutation between verified-fd read and post-read identity capture",
+      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > does not mutate or redispatch named workflow Stop after runtime support is lost",
       "flips": 2,
       "evidence": [
-        "4aa3b3b->19a507a",
-        "19a507a->18547c4"
+        "19a507a->18547c4",
+        "d39c588->740566e"
       ]
     },
     {
-      "entry": "tests/lint/inventory-graph-drift.test.ts > inventory-graph drift enforcement (#3702) > verify mode rejects tampered hashes and head provenance",
+      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > honors requested_at-only cancellation for ultrawork when inactive autopilot coexists",
       "flips": 2,
       "evidence": [
-        "f1e53ef->0297c98",
-        "19a507a->18547c4"
+        "19a507a->18547c4",
+        "d39c588->740566e"
       ]
     },
     {
@@ -128,42 +213,7 @@
       ]
     },
     {
-      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > accepts a structurally valid >16 MiB boundary without flock on linux",
-      "flips": 1,
-      "evidence": [
-        "19a507a->18547c4"
-      ]
-    },
-    {
-      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > accepts a structurally valid >16 MiB boundary without flock on win32",
-      "flips": 1,
-      "evidence": [
-        "19a507a->18547c4"
-      ]
-    },
-    {
-      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > does not mutate or redispatch named workflow Stop after runtime support is lost",
-      "flips": 1,
-      "evidence": [
-        "19a507a->18547c4"
-      ]
-    },
-    {
       "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > fails closed on invalid UTF-8 split across transcript chunks",
-      "flips": 1,
-      "evidence": [
-        "19a507a->18547c4"
-      ]
-    },
-    {
-      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > honors an exact same-run cancel signal for a named workflow",
-      "flips": 1,
-      "evidence": [
-        "19a507a->18547c4"
-      ]
-    },
-    {
-      "entry": "tests/integration/workflow-profile-stop-transition.test.ts > workflow profile stop transition (installed-template) > honors requested_at-only cancellation for ultrawork when inactive autopilot coexists",
       "flips": 1,
       "evidence": [
         "19a507a->18547c4"
