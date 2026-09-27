@@ -2308,7 +2308,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-agent-model-'));
     xdgConfigHome = join(tempDir, 'xdg-config');
-    mkdirSync(join(xdgConfigHome, 'claude-omc'), { recursive: true });
+    mkdirSync(join(xdgConfigHome, 'qoder-omq'), { recursive: true });
   });
 
   afterEach(() => {
@@ -2316,19 +2316,22 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
   });
 
   function writeUserConfig(jsonc: string): void {
-    writeFileSync(join(xdgConfigHome, 'claude-omc', 'config.jsonc'), jsonc);
+    writeFileSync(join(xdgConfigHome, 'qoder-omq', 'config.jsonc'), jsonc);
   }
 
   function writeProjectConfig(jsonc: string): void {
     const dir = join(tempDir, '.claude');
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'omc.jsonc'), jsonc);
+    writeFileSync(join(dir, 'omq.jsonc'), jsonc);
   }
 
   function run(input: Record<string, unknown>, env: Record<string, string> = {}): Record<string, unknown> {
+    // agent-model-config.mjs resolves the user config from XDG_CONFIG_HOME on
+    // POSIX and APPDATA on Windows, so a fixture that wants one user config file
+    // has to pin both -- otherwise the same test reads different paths per OS.
     return runPreToolEnforcerWithEnv(
       { cwd: tempDir, ...input },
-      { XDG_CONFIG_HOME: xdgConfigHome, OMQ_ROUTING_FORCE_INHERIT: 'false', ...env },
+      { XDG_CONFIG_HOME: xdgConfigHome, APPDATA: xdgConfigHome, OMQ_ROUTING_FORCE_INHERIT: 'false', ...env },
     );
   }
 
@@ -2342,7 +2345,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     writeUserConfig('{ "agents": { "explore": { "model": "sonnet" } } }');
     const output = run({
       tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-claudecode:explore', prompt: 'x', description: 'find files' },
+      toolInput: { subagent_type: 'oh-my-qoder:explore', prompt: 'x', description: 'find files' },
       session_id: 'session-3242-inject',
     });
     expect(updatedModel(output)).toBe('sonnet');
@@ -2352,7 +2355,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     writeUserConfig('{ "agents": {} }');
     const output = run({
       tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-claudecode:architect', prompt: 'x', description: 'design' },
+      toolInput: { subagent_type: 'oh-my-qoder:architect', prompt: 'x', description: 'design' },
       session_id: 'session-3242-noop',
     });
     expect(updatedModel(output)).toBeUndefined();
@@ -2362,7 +2365,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     writeUserConfig('{ "agents": { "explore": { "model": "sonnet" } } }');
     const output = run({
       tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-claudecode:explore', model: 'opus', prompt: 'x', description: 'd' },
+      toolInput: { subagent_type: 'oh-my-qoder:explore', model: 'opus', prompt: 'x', description: 'd' },
       session_id: 'session-3242-explicit',
     });
     expect(updatedModel(output)).toBeUndefined();
@@ -2372,7 +2375,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     writeUserConfig('{ "agents": { "executor": { "model": "claude-opus-4-6" } } }');
     const output = run({
       tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-claudecode:executor', prompt: 'x', description: 'd' },
+      toolInput: { subagent_type: 'oh-my-qoder:executor', prompt: 'x', description: 'd' },
       session_id: 'session-3242-normalize',
     });
     expect(updatedModel(output)).toBe('opus');
@@ -2383,7 +2386,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     writeProjectConfig('{ "agents": { "explore": { "model": "sonnet" } } }');
     const output = run({
       tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-claudecode:explore', prompt: 'x', description: 'd' },
+      toolInput: { subagent_type: 'oh-my-qoder:explore', prompt: 'x', description: 'd' },
       session_id: 'session-3242-precedence',
     });
     expect(updatedModel(output)).toBe('sonnet');
@@ -2393,10 +2396,36 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     writeUserConfig('{ "agents": { "codeReviewer": { "model": "opus" } } }');
     const output = run({
       tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-claudecode:reviewer', prompt: 'x', description: 'd' },
+      toolInput: { subagent_type: 'oh-my-qoder:reviewer', prompt: 'x', description: 'd' },
       session_id: 'session-3242-alias',
     });
     expect(updatedModel(output)).toBe('opus');
+  });
+
+  it('injects a configured fork tier alias unchanged', () => {
+    // This fork stores tier aliases (low/medium/high) in agent config, not
+    // sonnet/opus/haiku. Folding is a no-op here, but the site must still inject.
+    writeUserConfig('{ "agents": { "explore": { "model": "medium" } } }');
+    const output = run({
+      tool_name: 'Task',
+      toolInput: { subagent_type: 'oh-my-qoder:explore', prompt: 'x', description: 'd' },
+      session_id: 'session-3242-tier',
+    });
+    expect(updatedModel(output)).toBe('medium');
+  });
+
+  it('folds a configured Qwen model ID to its tier alias', () => {
+    // The pre-hop hook folded qwen-plus -> medium (mirroring src/features/
+    // delegation-enforcer.ts:normalizeToTierAlias); a full provider ID breaks
+    // Bedrock/Vertex style callers, and on this fork agent config legitimately
+    // carries the provider default. Issue #1415 applies to qwen IDs too.
+    writeUserConfig('{ "agents": { "executor": { "model": "qwen-plus" } } }');
+    const output = run({
+      tool_name: 'Task',
+      toolInput: { subagent_type: 'oh-my-qoder:executor', prompt: 'x', description: 'd' },
+      session_id: 'session-3242-qwen',
+    });
+    expect(updatedModel(output)).toBe('medium');
   });
 
   it('does not inject under forceInherit even when an override is configured', () => {
@@ -2404,7 +2433,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     const output = run(
       {
         tool_name: 'Task',
-        toolInput: { subagent_type: 'oh-my-claudecode:explore', prompt: 'x', description: 'd' },
+        toolInput: { subagent_type: 'oh-my-qoder:explore', prompt: 'x', description: 'd' },
         session_id: 'session-3242-force-inherit',
       },
       { OMQ_ROUTING_FORCE_INHERIT: 'true' },
@@ -2416,7 +2445,7 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     writeUserConfig('{ "agents": { "explore": { "model": "sonnet" } } }');
     const input = {
       tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-claudecode:explore', prompt: 'x', description: 'find files' },
+      toolInput: { subagent_type: 'oh-my-qoder:explore', prompt: 'x', description: 'find files' },
       session_id: 'session-3242-throttle',
     };
     // Pin the throttle clock so the second identical call lands inside the cooldown

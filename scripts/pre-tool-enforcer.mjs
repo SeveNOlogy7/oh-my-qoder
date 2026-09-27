@@ -128,6 +128,22 @@ function normalizeToCcAlias(model) {
   return null;
 }
 /**
+ * Fold a configured model to the alias vocabulary the runtime accepts. This fork
+ * routes on tier aliases (low/medium/high) and its agent config legitimately
+ * carries Qwen provider IDs as defaults, so both have to land on an alias --
+ * mirroring normalizeToTierAlias in src/features/delegation-enforcer.ts. Claude
+ * IDs keep the ancestor's alias vocabulary; the two families are disjoint.
+ */
+function normalizeToTierAlias(model) {
+  if (!model) return null;
+  const lower = model.toLowerCase();
+  if (lower === 'low' || lower === 'medium' || lower === 'high') return lower;
+  if (lower.includes('qwen-max')) return 'high';
+  if (lower.includes('qwen-plus')) return 'medium';
+  if (lower.includes('qwen-turbo')) return 'low';
+  return normalizeToCcAlias(model);
+}
+/**
  * Read the `model:` field from an OMC agent definition's YAML frontmatter.
  * Returns the raw model string (e.g. "claude-opus-4-6") or null if not found.
  */
@@ -1851,7 +1867,7 @@ async function main() {
         // updatedInput so the spawned subagent runs on the configured model.
         const configuredModel = resolveConfiguredAgentModel(toolInput.subagent_type, directory);
         if (configuredModel && configuredModel !== 'inherit') {
-          const normalizedModel = normalizeToCcAlias(configuredModel);
+          const normalizedModel = normalizeToTierAlias(configuredModel);
           if (normalizedModel) {
             updatedToolInput = { ...toolInput, model: normalizedModel };
           }
