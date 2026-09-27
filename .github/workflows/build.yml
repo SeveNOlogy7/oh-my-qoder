@@ -141,6 +141,12 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # tsc cannot see the untyped script surface: a hook template that pulls a
+      # name its sibling lib stopped exporting only fails at runtime, inside a
+      # hook the model never observes.
+      - name: Dynamic binding check
+        run: node scripts/ci/check-dynamic-bindings.mjs
+
       - name: Identity gate (source tree)
         run: node scripts/check-canonical-identity.mjs
 

@@ -58,8 +58,38 @@ function resolveSpec(hostFile, spec) {
 }
 
 const problems = [];
+
+/**
+ * Static ESM imports of a sibling module. tsc does check these for .ts hosts,
+ * which is why the scan is limited to the untyped surface (.mjs/.cjs/.js): a
+ * hook template importing a name the lib stopped exporting is exactly the bug
+ * this file exists to catch. Type-only imports are skipped, and an import of a
+ * `./types.js` specifier never resolves because only .mjs/.cjs/.js targets do.
+ */
+const STATIC_IMPORT_RE = /^[ \t]*import\s+(type\s+)?\{([\s\S]*?)\}\s*from\s*['"]([^'"]+)['"]/gm;
+
+function checkStaticImports(file, text) {
+  for (const m of text.matchAll(STATIC_IMPORT_RE)) {
+    if (m[1]) continue;
+    const target = m[3];
+    const mod = resolveSpec(file, target);
+    if (!mod) continue;
+    const ex = exportsOf(mod);
+    if (!ex) continue;
+    for (const raw of m[2].split(',')) {
+      // ESM renames with `as` (import { a as b }), unlike object destructuring
+      // below that renames with `:`; the imported name is always the left side.
+      const original = raw.split(/\s+as\s+/)[0].trim();
+      if (!original || original === 'default') continue;
+      const line = text.slice(0, m.index).split('\n').length;
+      if (!ex.has(original)) problems.push({ file, line, binding: original, module: mod });
+    }
+  }
+}
+
 for (const file of files) {
   const text = readFileSync(join(ROOT, file), 'utf8');
+  checkStaticImports(file, text);
   const lines = text.split('\n');
   lines.forEach((line, idx) => {
     const req = /const\s*\{([^}]+)\}\s*=\s*(?:require\(\s*['"]([^'"]+)['"]\s*\)|await\s+import\()/.exec(line);
@@ -105,3 +135,6 @@ console.log(JSON.stringify(Object.entries(byModule).map(([mod, v]) => ({
   sites: v.sites,
 })), null, 1));
 console.log('TOTAL missing-binding sites:', problems.length);
+// Without a non-zero exit this guard is decorative: it is wired into the build
+// job, where a reported site has to fail the run.
+process.exit(problems.length ? 1 : 0);
