@@ -28,6 +28,9 @@ export function getQoderConfigDir() {
   return stripTrailingSep(normalize(configured));
 }
 
+/** Hook templates spell the config root getter getClaudeConfigDir; keep it exported next to the canonical name. */
+export const getClaudeConfigDir = getQoderConfigDir;
+
 export function getOmqConfigDir() {
   return join(getQoderConfigDir(), '.omq');
 }
