@@ -36,13 +36,33 @@ function exportsOf(file) {
   } catch {
     return null;
   }
+  // `export * from` makes the real set unknowable; reporting against a partial
+  // set would invent missing bindings, so such modules are left unchecked.
+  if (/export\s+\*/.test(text)) return null;
   const names = new Set();
   for (const m of text.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)) names.add(m[1]);
   for (const m of text.matchAll(/export\s+(?:const|let|var|class)\s+(\w+)/g)) names.add(m[1]);
   for (const m of text.matchAll(/exports\.(\w+)\s*=/g)) names.add(m[1]);
-  for (const m of text.matchAll(/^\s*(\w+)\s*:\s*(?:function|[A-Za-z_$][\w$]*\s*[,(]?\s*\(?)/gm)) names.add(m[1]);
-  const me = /module\.exports\s*=\s*\{([^}]*)\}/.exec(text);
-  if (me) for (const part of me[1].split(',')) { const k = part.split(':')[0].trim(); if (/^\w+$/.test(k)) names.add(k); }
+  // `export { a, b as c }` and `export { a } from './x'` publish the right-hand
+  // side of `as`; missing this form reports a perfectly good binding as broken.
+  for (const m of text.matchAll(/export\s*\{([^}]*)\}/g)) {
+    for (const part of m[1].split(',')) {
+      const k = part.trim().split(/\s+as\s+/).pop().trim();
+      if (/^\w+$/.test(k)) names.add(k);
+    }
+  }
+  // Only keys of a module.exports object are exports. Applied to the whole file
+  // this rule credited 72 of the 122 scanned modules with names taken from
+  // unrelated object literals, which silently un-checks real missing bindings.
+  // The region ends at the first `}`, so a nested object inside module.exports
+  // is out of scope -- none exists in the scanned surface today.
+  for (const region of text.matchAll(/module\.exports\s*=\s*\{([^}]*)\}/g)) {
+    for (const part of region[1].split(/[,\n]/)) {
+      // `{ a, b: c }` -- the exported name is on the left of the colon either way.
+      const entry = /^(\w+)\s*:?\s*(?=$|[,{}\s])/.exec(part.replace(/\/\/.*$/, '').trim());
+      if (entry) names.add(entry[1]);
+    }
+  }
   return names;
 }
 
