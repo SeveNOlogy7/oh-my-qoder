@@ -14,7 +14,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 // The counts on this page are only meaningful if they are the counts the gate
 // itself would compute, so the parse is imported rather than re-implemented.
-import { parseVitestOutput } from '../known-failures.mjs';
+import { parseVitestOutput, stripAnsi, stripRunnerPrefix } from '../known-failures.mjs';
 
 function readLog(logPath) {
   const counts = new Map();
@@ -24,6 +24,59 @@ function readLog(logPath) {
     counts.set(file, (counts.get(file) ?? 0) + 1);
   }
   return counts;
+}
+
+/**
+ * Bucket the win32 failures that have no Linux counterpart. The signature is the
+ * first error line after a file's FAIL header, so this reads the raw log rather
+ * than the gate's parsed entries.
+ */
+const WIN32_BUCKETS = [
+  ['collection-error (module did not parse)', / \[ .* \]$/],
+  ['missing python bridge payload', /gyoshu_bridge\.py/],
+  ['path separator or CRLF', /\\[A-Za-z0-9_.-]|\r\n|to be '\/|\/foo\/bar|StringContaining "\/dist/],
+  ['win32 fs permission or ENOENT', /EPERM|EBUSY|ENOENT|ENOTEMPTY|rmSync|unlink/],
+  ['subprocess or shell dialect', /cmd\.exe|COMSPEC|node:internal\/errors|spawnSync|shell:true/],
+  ['timing or timeout', /timed out|timeout of \d+ms|Found 0\./],
+  ['ancestor brand expectation', /omc|OMC|[Cc]laude/],
+  ['registry or count ratchet', /length of|expected \d+ to be/],
+];
+
+function classifyWin32Only(winLogPath, winCounts, linuxCounts) {
+  const raw = readFileSync(winLogPath, 'utf8');
+  const lines = stripAnsi(raw).split('\n').map(stripRunnerPrefix);
+  const firstMsg = new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^\s*FAIL\s+(.+)$/.exec(lines[i].trim());
+    if (!m) continue;
+    const full = m[1].trim().replace(/\\/g, '/');
+    const file = full.split(' > ')[0].replace(/ \[.*\]$/, '');
+    if (firstMsg.has(file)) continue;
+    let msg = / \[ .* \]$/.test(full) ? 'COLLECTION' : '';
+    if (!msg) {
+      for (let j = i + 1; j < Math.min(i + 16, lines.length); j++) {
+        if (/^\s*FAIL\s/.test(lines[j]) || /^\s*Test Files/.test(lines[j])) break;
+        const b = lines[j].trim();
+        if (/AssertionError|Error:|TypeError|SyntaxError/.test(b)) { msg = b; break; }
+      }
+    }
+    firstMsg.set(file, msg || '(no inline error)');
+  }
+
+  const buckets = new Map();
+  for (const [file, n] of winCounts) {
+    if (linuxCounts.has(file)) continue;
+    const msg = firstMsg.get(file) ?? '';
+    let name = 'unclassified';
+    for (const [bucket, re] of WIN32_BUCKETS) {
+      if (re.test(msg)) { name = bucket; break; }
+    }
+    const e = buckets.get(name) ?? { n: 0, files: [] };
+    e.n += n;
+    e.files.push(file);
+    buckets.set(name, e);
+  }
+  return buckets;
 }
 
 const args = process.argv.slice(2);
@@ -316,10 +369,13 @@ for (const family of FAMILIES) {
     seen.set(file, family.id);
   }
 }
+/** Declared before the checks below so the error paths can use it too. */
+const count = (map, file) => map.get(file) ?? 0;
+
 const unclaimed = [...L.keys()].filter((f) => !seen.has(f));
 if (unclaimed.length) {
   console.error(`UNCLAIMED (${unclaimed.length}):`);
-  for (const f of unclaimed) console.error(`  ${f}  ${L.get(f)}x linux / ${W.get(f) ?? 0}x win32`);
+  for (const f of unclaimed) console.error(`  ${f}  ${count(L, f)}x linux / ${count(W, f)}x win32`);
   process.exitCode = 1;
 }
 // A claimed file that no longer fails is not an error: it is the ratchet shrinking.
@@ -328,14 +384,9 @@ const closed = [...seen.keys()].filter((f) => !L.has(f));
 if (closed.length) console.error(`closed (claimed but no longer failing): ${closed.join(', ')}`);
 if (process.exitCode) process.exit(1);
 
-const count = (map, file) => map.get(file) ?? 0;
-
 const lTotal = [...L.values()].reduce((a, b) => a + b, 0);
 const wTotal = [...W.values()].reduce((a, b) => a + b, 0);
-const linuxOnlySum = [...L.keys()].reduce((a, f) => a + (W.get(f) ?? 0), 0);
-const winFiles = [...W.keys()];
-const extraWin = winFiles.filter((f) => !L.has(f));
-const extraSum = extraWin.reduce((a, f) => a + W.get(f), 0);
+const linuxOnlySum = [...L.keys()].reduce((a, f) => a + count(W, f), 0);
 
 const familyOrder = [...FAMILIES].sort((a, b) => b.files.reduce((s, f) => s + count(L, f), 0) - a.files.reduce((s, f) => s + count(L, f), 0));
 
@@ -362,23 +413,26 @@ lines.push('| --- | --: | --: | --- |');
 lines.push(`| linux | ${lTotal} | ${L.size} | \`tests/known-failures-linux.json\` |`);
 lines.push(`| win32 | ${wTotal} | ${W.size} | \`tests/known-failures-win32.json\` |`);
 lines.push('');
+const win32OnlyBuckets = classifyWin32Only(winPath, W, L);
+const win32OnlyTotal = [...win32OnlyBuckets.values()].reduce((a, v) => a + v.n, 0);
 lines.push([
     `${lTotal} linux failures sit in ${L.size} files, and every one of them is claimed by a family below.`,
-    `win32 reports ${linuxOnlySum} failures in those same files plus ${extraSum} in ${extraWin.length} files that`,
-    'pass on Linux. **That surplus is not yet classified per family** -- the Linux families are the ones this',
-    'programme tracks. Three observed causes, from the largest win32-only entries:',
-    '',
-    '- the workflow-profile feature again, but erroring rather than falling back:',
-    '  `src/__tests__/workflow-profile-activation-script.test.ts` (61) reports',
-    "  `[AUTOPILOT WORKFLOW ERROR] named auto…` where Linux reports the stage-dispatch miss;",
-    '- subprocess stderr leaking into the captured value: `tests/integration/epic-3698-closure-verifier.test.ts` (97) with',
-    "  `expected 'node:internal/errors:986\\r\\n  const e…' to contain 'not completed'`;",
-    '- CRLF-sensitive length assertions: `src/lib/__tests__/mode-state-io.test.ts` (30) reports',
-    '  `expected 438 to be 384`, i.e. a byte count inflated by line endings.',
-    '',
-    'The surplus is why the two baselines are separate files with their own `metadata.platform` and why neither',
-    'may be authored from the other run.',
+    `win32 reports ${linuxOnlySum} failures in those same files plus ${win32OnlyTotal} in files that pass on`,
+    'Linux. That surplus is classified here from the log rather than described by hand:',
     ''].join('\n'));
+lines.push('');
+lines.push('| win32-only failures | files | signature |');
+lines.push('| --: | --: | --- |');
+for (const [name, v] of [...win32OnlyBuckets].sort((a, b) => b[1].n - a[1].n)) {
+  lines.push(`| ${v.n} | ${v.files.length} | ${name} |`);
+}
+lines.push('');
+lines.push('The classification keys on the first error line after each file\'s `FAIL` header, so `unclassified` is');
+lines.push('the honest residual rather than a bucket labelled "environment". Two consequences worth stating: a');
+lines.push('*collection* failure (`FAIL <file> [<file>]`) loses every test in that module, so it is counted as the');
+lines.push('file\'s whole win32 contribution; and because the surplus is largely Windows-path expectations, the');
+lines.push('win32 baseline may never be authored from a Linux run -- hence two files with their own');
+lines.push('`metadata.platform`.');
 lines.push('');
 lines.push('## Families');
 lines.push('');
