@@ -110,7 +110,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('medium'); // executor defaults to qwen-plus
+      expect(result.modifiedInput.model).toBe('medium'); // tier default resolves to qwen-plus, folded back to a tier
       expect(result.originalInput.model).toBeUndefined();
     });
 
@@ -124,7 +124,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('medium'); // debugger defaults to qwen-plus
+      expect(result.modifiedInput.model).toBe('medium'); // debugger's tier default is qwen-plus, folded to a tier
     });
 
     it('rewrites deprecated aliases to canonical agent names before injecting model', () => {

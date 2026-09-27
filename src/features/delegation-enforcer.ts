@@ -36,10 +36,13 @@ import type { PluginConfig } from '../shared/types.js';
 
 /** All env var names that affect the output of loadConfig(). */
 const CONFIG_ENV_KEYS = [
-  // forceInherit auto-detection (isNonClaudeProvider)
+  // forceInherit auto-detection (isNonClaudeProvider / isNonDefaultProvider)
   'ANTHROPIC_BASE_URL',
+  'DASHSCOPE_BASE_URL',
   'CLAUDE_MODEL',
   'ANTHROPIC_MODEL',
+  'QODER_MODEL',
+  'DASHSCOPE_MODEL',
   'CLAUDE_CODE_USE_BEDROCK',
   'CLAUDE_CODE_USE_VERTEX',
   // explicit routing overrides
@@ -47,7 +50,12 @@ const CONFIG_ENV_KEYS = [
   'OMQ_ROUTING_ENABLED',
   'OMQ_ROUTING_DEFAULT_TIER',
   'OMQ_ESCALATION_ENABLED',
-  // model alias overrides (issue #1211, issue #3726)
+  // model alias overrides (issue #1211, issue #3726). Both key spaces are live:
+  // loader.ts reads LOW/MEDIUM/HIGH (this fork's agent defs are tier-keyed, so
+  // only these can hit the lookup) and HAIKU/SONNET/OPUS/FABLE (ancestor).
+  'OMQ_MODEL_ALIAS_LOW',
+  'OMQ_MODEL_ALIAS_MEDIUM',
+  'OMQ_MODEL_ALIAS_HIGH',
   'OMQ_MODEL_ALIAS_HAIKU',
   'OMQ_MODEL_ALIAS_SONNET',
   'OMQ_MODEL_ALIAS_OPUS',
@@ -56,6 +64,9 @@ const CONFIG_ENV_KEYS = [
   'OMQ_MODEL_HIGH',
   'OMQ_MODEL_MEDIUM',
   'OMQ_MODEL_LOW',
+  'DASHSCOPE_DEFAULT_TURBO_MODEL',
+  'DASHSCOPE_DEFAULT_PLUS_MODEL',
+  'DASHSCOPE_DEFAULT_MAX_MODEL',
   'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
   'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
   'CLAUDE_CODE_BEDROCK_OPUS_MODEL',

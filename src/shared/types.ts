@@ -179,7 +179,11 @@ export interface PluginConfig {
      *   (useful on non-Anthropic backends without the nuclear forceInherit)
      * - `{ haiku: 'sonnet' }` — promote all haiku agents to sonnet tier
      *
-     * Env: OMQ_MODEL_ALIAS_HAIKU, OMQ_MODEL_ALIAS_SONNET, OMQ_MODEL_ALIAS_OPUS, OMQ_MODEL_ALIAS_FABLE
+     * Env: OMQ_MODEL_ALIAS_LOW / _MEDIUM / _HIGH and OMQ_MODEL_ALIAS_HAIKU /
+     * _SONNET / _OPUS / _FABLE. The enforcer looks a key up by the agent
+     * definition's own tier name, so on this fork -- where agent defs are
+     * tier-keyed and the defaults resolve to the Qwen family -- only the
+     * LOW/MEDIUM/HIGH forms can match an agent default today.
      */
     modelAliases?: Partial<Record<"low" | "medium" | "high" | "haiku" | "sonnet" | "opus" | "fable", ModelType>>;
     /** Keywords that force escalation to higher tier */
