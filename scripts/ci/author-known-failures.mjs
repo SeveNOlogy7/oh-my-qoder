@@ -14,10 +14,10 @@
  */
 import { execFileSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
-// The gate's own normalisation, imported rather than copied: if the strips ever
-// widen, the tally below and the parse the gate performs must widen together, or
-// the completeness check would compare two different views of the log.
-import { stripAnsi, stripRunnerPrefix } from '../known-failures.mjs';
+// The gate's own parse and tally, imported rather than copied: authoring and
+// --check must agree on what a complete log looks like, and --check now enforces
+// the same equation in CI that this script enforces before it writes a file.
+import { vitestTally } from '../known-failures.mjs';
 
 const args = process.argv.slice(2);
 const argValue = (name) => {
@@ -37,28 +37,6 @@ if (!runRef || targets.some((t) => !t.log)) {
 
 const run = (argv, input) =>
   execFileSync(process.execPath, argv, { encoding: 'utf8', input, maxBuffer: 256 * 1024 * 1024 });
-
-/** A FAIL line with a bracketed file suffix is a module-level collection error:
- *  the file counts as failed but contributes no test to vitest's Tests tally. */
-const COLLECTION_FAIL_RE = /^FAIL\s+\S+\s+\[\s*\S+\s*\]$/;
-
-/**
- * vitest's own tally, so a truncated log cannot pass as a complete one.
- * Authoring and --check consume the same buffer, so the round-trip only proves
- * the parse is self-consistent; this proves it saw the whole run.
- */
-function vitestTally(logText) {
-  const lines = stripAnsi(logText).split('\n').map((l) => stripRunnerPrefix(l).trim());
-  const summary = (re) => {
-    const hit = lines.find((l) => re.test(l));
-    return hit ? Number(re.exec(hit)[1]) : null;
-  };
-  return {
-    tests: summary(/^Tests\s+(\d+) failed\b/),
-    files: summary(/^Test Files\s+(\d+) failed\b/),
-    collection: lines.filter((l) => COLLECTION_FAIL_RE.test(l)).length,
-  };
-}
 
 for (const t of targets) {
   const text = readFileSync(t.log, 'utf8');

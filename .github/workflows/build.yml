@@ -203,7 +203,7 @@ jobs:
         run: mkdir -p .omq && npm run test:run 2>&1 | tee .omq/vitest-out.txt || true
 
       - name: Known-failure delta gate
-        run: node scripts/known-failures.mjs --check < .omq/vitest-out.txt
+        run: node scripts/known-failures.mjs --check --require-summary < .omq/vitest-out.txt
 
   # Windows is where the CN distribution actually runs, and the behaviours it
   # exercises are invisible to the Linux jobs -- measuring the same 13 patch-layer
@@ -241,4 +241,4 @@ jobs:
 
       - name: Known-failure delta gate (win32)
         shell: bash
-        run: node scripts/known-failures.mjs --check --baseline=tests/known-failures-win32.json < .omq/vitest-out-win.txt
+        run: node scripts/known-failures.mjs --check --require-summary --baseline=tests/known-failures-win32.json < .omq/vitest-out-win.txt

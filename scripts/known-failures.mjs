@@ -73,6 +73,29 @@ export function parseVitestOutput(output) {
 }
 
 /**
+ * vitest's own tally of the same run. The parsed FAIL-line count must equal
+ * failed tests plus module-level collection errors, or the log this tool read
+ * is not the whole run: a tee that dropped its tail, a truncated artifact, or a
+ * parse that stopped matching all look like "fewer failures" -- which the delta
+ * gate would otherwise report as an improvement.
+ *
+ * A FAIL line carrying a bracketed file suffix is a collection error: the file
+ * counts as failed but contributes no test to the `Tests N failed` tally.
+ */
+export function vitestTally(output) {
+  const lines = stripAnsi(output).split('\n').map(l => stripRunnerPrefix(l).trim());
+  const summary = re => {
+    const hit = lines.find(l => re.test(l));
+    return hit ? Number(re.exec(hit)[1]) : null;
+  };
+  return {
+    tests: summary(/^Tests\s+(\d+) failed\b/),
+    files: summary(/^Test Files\s+(\d+) failed\b/),
+    collection: lines.filter(l => /^FAIL\s+\S+\s+\[\s*\S+\s*\]$/.test(l)).length,
+  };
+}
+
+/**
  * Load baseline from JSON file.
  * Expected format:
  * {
@@ -128,6 +151,7 @@ function main() {
     return hit ? hit.slice(name.length + 1) : undefined;
   };
   const checkMode = args.includes('--check');
+  const requireSummary = args.includes('--require-summary');
   const baselineArg = args.find(a => a.startsWith('--baseline='));
   const baselinePath = baselineArg 
     ? baselineArg.split('=')[1] 
@@ -150,6 +174,37 @@ function main() {
     }
     
     const actualFailures = parseVitestOutput(vitestOutput);
+    const tally = vitestTally(vitestOutput);
+
+    if (checkMode) {
+      // The equation is checked here rather than only in the authoring tool,
+      // because authoring is human-invoked and this path is what CI runs: a
+      // parse that stopped matching a new failure shape must not read as green.
+      if (requireSummary && (tally.tests === null || tally.files === null)) {
+        console.error('Error: no "Tests N failed" / "Test Files N failed" summary in the input'
+          + ` (tests=${tally.tests} files=${tally.files}) -- cannot prove this log is complete.`);
+        process.exit(2);
+      }
+      if (tally.tests !== null && actualFailures.length !== tally.tests + tally.collection) {
+        console.error(`\n❌ Incomplete parse: ${actualFailures.length} FAIL entries read, but vitest reported`
+          + ` ${tally.tests} failed tests + ${tally.collection} module-level collection errors`
+          + ` = ${tally.tests + tally.collection}. The log is truncated or the parser stopped matching.`);
+        process.exit(1);
+      }
+      const parsedFiles = new Set(actualFailures.map(f => f.split(' > ')[0])).size;
+      if (tally.files !== null && parsedFiles !== tally.files) {
+        console.error(`\n❌ Incomplete parse: ${parsedFiles} failing files read, but vitest reported ${tally.files}.`);
+        process.exit(1);
+      }
+      console.log(`Completeness: ${actualFailures.length} entries = ${tally.tests} tests + ${tally.collection} collection`
+        + ` across ${parsedFiles} files (vitest tally agrees)`);
+      // Blind spot, stated rather than hidden: vitest's `Errors` line reports
+      // unhandled rejections that print no FAIL line, so they exist in neither
+      // the baseline nor the equation above.
+      const errLine = stripAnsi(vitestOutput).split('\n').map(stripRunnerPrefix)
+        .map(l => l.trim()).find(l => /^Errors\s+\d+/.test(l));
+      if (errLine) console.log(`Note: vitest reports "${errLine}" -- unhandled errors carry no FAIL line and are not gated.`);
+    }
     
     if (!checkMode) {
       // Generate baseline mode

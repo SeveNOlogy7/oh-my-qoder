@@ -59,8 +59,9 @@ function exportsOf(file) {
     }
   }
   // Only keys of a module.exports object are exports. Applied to the whole file
-  // this rule credited 72 of the 122 scanned modules with names taken from
-  // unrelated object literals, which silently un-checks real missing bindings.
+  // this rule credited names from unrelated object literals in 69 of the 122
+  // scanned modules (581 names, measured against the rules now in this file),
+  // which silently un-checks real missing bindings.
   // The region ends at the first `}`, so a nested object inside module.exports
   // is out of scope -- none exists in the scanned surface today.
   for (const region of text.matchAll(/module\.exports\s*=\s*\{([^}]*)\}/g)) {
