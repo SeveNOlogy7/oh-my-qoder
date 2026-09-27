@@ -15,11 +15,18 @@ export function parseJsonc(content: string): unknown {
 
 /**
  * Strip comments from JSONC content
- * Handles single-line (//) and multi-line comments
+ * Handles single-line (//) and multi-line comments, and drops a trailing comma that
+ * precedes a closing brace/bracket. The comma removal is done by the same scan rather
+ * than a post-pass regex, because a regex cannot tell `{"a":1,}` from `{"a":",}"}` --
+ * the value in the second one is a legitimate two-character string.
  */
 export function stripJsoncComments(content: string): string {
   let result = '';
   let i = 0;
+  // Position of the most recent comma emitted outside a string, and whether only
+  // whitespace has followed it. Comments are invisible here, so `, /* c */ }` counts.
+  let pendingComma = -1;
+  let whitespaceSinceComma = false;
 
   while (i < content.length) {
     // Check for single-line comment
@@ -63,7 +70,33 @@ export function stripJsoncComments(content: string): string {
         result += content[i];
         i++;
       }
+      // A string is not whitespace: any comma before it belongs to the data.
+      pendingComma = -1;
+      whitespaceSinceComma = false;
       continue;
+    }
+
+    if (content[i] === ',') {
+      pendingComma = result.length;
+      whitespaceSinceComma = true;
+      result += content[i];
+      i++;
+      continue;
+    }
+
+    if (content[i] === '}' || content[i] === ']') {
+      if (pendingComma >= 0 && whitespaceSinceComma) {
+        result = result.slice(0, pendingComma) + result.slice(pendingComma + 1);
+      }
+      pendingComma = -1;
+      whitespaceSinceComma = false;
+      result += content[i];
+      i++;
+      continue;
+    }
+
+    if (!/\s/.test(content[i])) {
+      whitespaceSinceComma = false;
     }
 
     result += content[i];
