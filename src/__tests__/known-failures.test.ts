@@ -71,6 +71,25 @@ Test Files  1 failed | 1 total
       expect(failures[1]).toBe('src/test.test.ts > suite > failing test 2');
     });
 
+    it('collapses the repeated FAIL lines that a retried test emits', () => {
+      // vitest prints one FAIL block per attempt, so a flake that is retried and fails
+      // twice yields two lines while its own Tests summary counts the test once. Measured
+      // on run 36365309333: 960 lines against a tally of 947 + 12, which made the
+      // completeness guard refuse the whole comparison before any drift was judged. A
+      // baseline is a set of titles, so the second occurrence adds no fact.
+      const output = [
+        ' FAIL  src/a.test.ts > suite > retried case',
+        'AssertionError: first attempt',
+        '',
+        ' FAIL  src/a.test.ts > suite > retried case',
+        'AssertionError: second attempt',
+        '',
+        'Test Files  1 failed | 1 total',
+        '      Tests  1 failed | 1 total',
+      ].join('\n');
+      expect(parseVitestOutput(output)).toEqual(['src/a.test.ts > suite > retried case']);
+    });
+
     it('normalizes backslashes to forward slashes', () => {
       const output = ' FAIL  src\\path\\to\\test.test.ts > test name';
       const failures = parseVitestOutput(output);

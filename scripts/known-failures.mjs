@@ -52,7 +52,7 @@ export function stripRunnerPrefix(line) {
  * 
  * Returns array of normalized failure lines.
  */
-export function parseVitestOutput(output) {
+function failLinesOf(output) {
   const cleaned = stripAnsi(output);
   const lines = cleaned.split('\n');
   const failures = [];
@@ -68,8 +68,25 @@ export function parseVitestOutput(output) {
       failures.push(normalized);
     }
   }
-  
+
   return failures;
+}
+
+/**
+ * A retried test emits one FAIL block per attempt, so the raw line list can repeat a
+ * title while vitest's own tally still counts that test once. Measured on run
+ * 36365309333: 960 FAIL lines against 947 failed tests + 12 collection errors, which made
+ * the completeness guard refuse the whole comparison before any drift could be judged.
+ * A baseline is a set of titles, so the repeat carries no extra fact.
+ */
+export function parseVitestOutput(output) {
+  return [...new Set(failLinesOf(output))];
+}
+
+/** How many FAIL lines parseVitestOutput collapsed -- reported out loud, never silently. */
+export function collapsedFailLines(output) {
+  const all = failLinesOf(output);
+  return all.length - new Set(all).size;
 }
 
 /**
@@ -204,6 +221,12 @@ function main() {
       }
       console.log(`Completeness: ${actualFailures.length} entries = ${tally.tests} tests + ${tally.collection} collection`
         + ` across ${parsedFiles} files (vitest tally agrees)`);
+      // Say it out loud rather than absorb it: collapsing is right for retries, but the
+      // same shape also hides two tests that share a title, and that is a test-side bug.
+      const collapsed = collapsedFailLines(vitestOutput);
+      if (collapsed) {
+        console.log(`Note:    ${collapsed} duplicate FAIL line(s) collapsed -- retried attempts, or two tests sharing a title.`);
+      }
       // Blind spot, stated rather than hidden: vitest's `Errors` line reports
       // unhandled rejections that print no FAIL line, so they exist in neither
       // the baseline nor the equation above.
