@@ -48,7 +48,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         model: 'haiku'
       };
 
@@ -62,7 +62,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         model: 'claude-sonnet-5'
       };
 
@@ -76,7 +76,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         model: 'claude-fable-5'
       };
 
@@ -90,7 +90,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         model: 'us.anthropic.claude-sonnet-4-6-v1:0'
       };
 
@@ -104,7 +104,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor'
+        subagent_type: 'oh-my-qoder:executor'
       };
 
       const result = enforceModel(input);
@@ -131,13 +131,13 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:build-fixer'
+        subagent_type: 'oh-my-qoder:build-fixer'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.subagent_type).toBe('oh-my-claudecode:debugger');
+      expect(result.modifiedInput.subagent_type).toBe('oh-my-qoder:debugger');
       expect(result.modifiedInput.model).toBe('medium');
     });
 
@@ -154,7 +154,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Deslop changed files',
         prompt: 'Run the cleaner',
-        subagent_type: 'oh-my-claudecode:ai-slop-cleaner'
+        subagent_type: 'oh-my-qoder:ai-slop-cleaner'
       };
 
       let thrown: Error | undefined;
@@ -168,7 +168,7 @@ describe('delegation-enforcer', () => {
       expect(thrown!.message).toContain('Unknown agent type');
       expect(thrown!.message).toContain('ai-slop-cleaner');
       expect(thrown!.message).toContain('Skill');
-      expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+      expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
       expect(thrown!.message).toContain('do NOT substitute a similarly-named agent');
     });
 
@@ -176,7 +176,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:ai-slop-cleanr'
+        subagent_type: 'oh-my-qoder:ai-slop-cleanr'
       };
 
       let thrown: Error | undefined;
@@ -196,7 +196,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Plan task',
         prompt: 'Run it',
-        subagent_type: 'oh-my-claudecode:plan'
+        subagent_type: 'oh-my-qoder:plan'
       };
 
       let thrown: Error | undefined;
@@ -207,7 +207,7 @@ describe('delegation-enforcer', () => {
       }
 
       expect(thrown).toBeDefined();
-      expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+      expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:omc-plan")');
     });
     describe('bundled skill visibility (entitlement set empty since 5.0.0, issue #3667)', () => {
       let savedUserType: string | undefined;
@@ -241,9 +241,9 @@ describe('delegation-enforcer', () => {
         (skillName) => {
           delete process.env.USER_TYPE;
           clearSkillsCache();
-          const thrown = thrownFor(`oh-my-claudecode:${skillName}`);
+          const thrown = thrownFor(`oh-my-qoder:${skillName}`);
           expect(thrown).toBeDefined();
-          expect(thrown!.message).toContain(`Skill(skill="oh-my-claudecode:${skillName}")`);
+          expect(thrown!.message).toContain(`Skill(skill="oh-my-qoder:${skillName}")`);
         },
       );
 
@@ -252,39 +252,39 @@ describe('delegation-enforcer', () => {
         (hiddenSkill) => {
           process.env.USER_TYPE = 'ant';
           clearSkillsCache();
-          const thrown = thrownFor(`oh-my-claudecode:${hiddenSkill}`);
+          const thrown = thrownFor(`oh-my-qoder:${hiddenSkill}`);
           expect(thrown).toBeDefined();
-          expect(thrown!.message).toContain(`Skill(skill="oh-my-claudecode:${hiddenSkill}")`);
+          expect(thrown!.message).toContain(`Skill(skill="oh-my-qoder:${hiddenSkill}")`);
         },
       );
 
       it('keeps guidance for every bundled skill in the same process', () => {
         delete process.env.USER_TYPE;
         clearSkillsCache();
-        const visible = thrownFor('oh-my-claudecode:ai-slop-cleaner');
-        const ungated = thrownFor('oh-my-claudecode:remember');
-        expect(visible!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
-        expect(ungated!.message).toContain('Skill(skill="oh-my-claudecode:remember")');
+        const visible = thrownFor('oh-my-qoder:ai-slop-cleaner');
+        const ungated = thrownFor('oh-my-qoder:remember');
+        expect(visible!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
+        expect(ungated!.message).toContain('Skill(skill="oh-my-qoder:remember")');
       });
 
       it('case-folds identifiers before visibility and resolution (Windows/macOS semantics, issue #3667)', () => {
         delete process.env.USER_TYPE;
         clearSkillsCache();
-        const ungatedMixedCase = thrownFor('oh-my-claudecode:Remember');
-        expect(ungatedMixedCase!.message).toContain('Skill(skill="oh-my-claudecode:remember")');
+        const ungatedMixedCase = thrownFor('oh-my-qoder:Remember');
+        expect(ungatedMixedCase!.message).toContain('Skill(skill="oh-my-qoder:remember")');
 
-        const visibleMixedCase = thrownFor('oh-my-claudecode:Plan');
-        expect(visibleMixedCase!.message).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+        const visibleMixedCase = thrownFor('oh-my-qoder:Plan');
+        expect(visibleMixedCase!.message).toContain('Skill(skill="oh-my-qoder:omc-plan")');
 
       });
 
       it('case-folds the namespace prefix for USER_TYPE=ant', () => {
         process.env.USER_TYPE = 'ant';
         clearSkillsCache();
-        const hiddenMixedCase = thrownFor('oh-my-claudecode:Remember');
-        expect(hiddenMixedCase!.message).toContain('Skill(skill="oh-my-claudecode:remember")');
+        const hiddenMixedCase = thrownFor('oh-my-qoder:Remember');
+        expect(hiddenMixedCase!.message).toContain('Skill(skill="oh-my-qoder:remember")');
         const omcPrefix = thrownFor('OMC:ai-slop-cleaner');
-        expect(omcPrefix!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+        expect(omcPrefix!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
       });
       it('preserves bare native identifiers (no Skill guidance for plan/general-purpose, issue #3667 P1)', () => {
         delete process.env.USER_TYPE;
@@ -305,14 +305,14 @@ describe('delegation-enforcer', () => {
           enforceModel({
             description: 't',
             prompt: 'p',
-            subagent_type: 'oh-my-claudecode:ai-slop-cleaner',
+            subagent_type: 'oh-my-qoder:ai-slop-cleaner',
             model: 'sonnet',
           });
         } catch (error) {
           thrown = error as Error;
         }
         expect(thrown).toBeDefined();
-        expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+        expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
       });
 
       it('validates skill names under force-inherit routing (issue #3667 P2)', () => {
@@ -321,12 +321,12 @@ describe('delegation-enforcer', () => {
         clearSkillsCache();
         let thrown: Error | undefined;
         try {
-          enforceModel({ description: 't', prompt: 'p', subagent_type: 'oh-my-claudecode:ai-slop-cleaner' });
+          enforceModel({ description: 't', prompt: 'p', subagent_type: 'oh-my-qoder:ai-slop-cleaner' });
         } catch (error) {
           thrown = error as Error;
         }
         expect(thrown).toBeDefined();
-        expect(thrown!.message).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+        expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
         delete process.env.OMQ_ROUTING_FORCE_INHERIT;
       });
 
@@ -510,9 +510,9 @@ describe('delegation-enforcer', () => {
 
   describe('getModelForAgent', () => {
     it('returns correct model for agent with prefix', () => {
-      expect(getModelForAgent('oh-my-claudecode:executor')).toBe('medium');
-      expect(getModelForAgent('oh-my-claudecode:debugger')).toBe('medium');
-      expect(getModelForAgent('oh-my-claudecode:architect')).toBe('high');
+      expect(getModelForAgent('oh-my-qoder:executor')).toBe('medium');
+      expect(getModelForAgent('oh-my-qoder:debugger')).toBe('medium');
+      expect(getModelForAgent('oh-my-qoder:architect')).toBe('high');
     });
 
     it('returns correct model for agent without prefix', () => {
@@ -527,9 +527,9 @@ describe('delegation-enforcer', () => {
     });
 
     it('guides namespaced bundled skills to the canonical Skill invocation (issue #3667 P2)', () => {
-      for (const skillType of ['oh-my-claudecode:plan', 'omc:plan']) {
+      for (const skillType of ['oh-my-qoder:plan', 'omc:plan']) {
         expect(() => getModelForAgent(skillType)).toThrow(
-          'Skill(skill="oh-my-claudecode:omc-plan")',
+          'Skill(skill="oh-my-qoder:omc-plan")',
         );
       }
     });
@@ -758,7 +758,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         model: 'sonnet'
       };
       const result = enforceModel(input);
@@ -772,7 +772,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         model: 'sonnet'
       };
       const result = enforceModel(input);
@@ -785,7 +785,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:architect',
+        subagent_type: 'oh-my-qoder:architect',
         model: 'opus'
       };
       const result = enforceModel(input);
@@ -797,7 +797,7 @@ describe('delegation-enforcer', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         model: 'haiku'
       };
       const result = enforceModel(input);

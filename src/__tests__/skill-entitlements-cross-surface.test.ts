@@ -57,15 +57,15 @@ describe('nonempty skill entitlement fixture', () => {
       for (const skill of ['Remember', 'VERIFY', 'Debug']) {
         process.env.USER_TYPE = '';
         clearSkillsCache();
-        expect(() => enforceModel({ description: 't', prompt: 'p', subagent_type: `oh-my-claudecode:${skill}` }))
+        expect(() => enforceModel({ description: 't', prompt: 'p', subagent_type: `oh-my-qoder:${skill}` }))
           .toThrow(/Unknown agent type/);
-        expect(() => enforceModel({ description: 't', prompt: 'p', subagent_type: `oh-my-claudecode:${skill}` }))
+        expect(() => enforceModel({ description: 't', prompt: 'p', subagent_type: `oh-my-qoder:${skill}` }))
           .not.toThrow(/Skill\(skill=/);
 
         process.env.USER_TYPE = 'ant';
         clearSkillsCache();
-        expect(() => enforceModel({ description: 't', prompt: 'p', subagent_type: `oh-my-claudecode:${skill}` }))
-          .toThrow(`Skill(skill="oh-my-claudecode:${skill.toLowerCase()}")`);
+        expect(() => enforceModel({ description: 't', prompt: 'p', subagent_type: `oh-my-qoder:${skill}` }))
+          .toThrow(`Skill(skill="oh-my-qoder:${skill.toLowerCase()}")`);
       }
     });
   });

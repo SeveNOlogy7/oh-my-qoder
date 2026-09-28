@@ -483,7 +483,7 @@ describe('Builtin Skills', () => {
       clearSkillsCache();
 
       const rendered = renderBundledSkillBody(
-        'oh-my-claudecode:deep-interview',
+        'oh-my-qoder:deep-interview',
         [
           'State:',
           '"threshold": 0.2,',
