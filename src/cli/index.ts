@@ -1266,6 +1266,23 @@ Examples:
   });
 
 doctorCmd
+  .command('check')
+  .description('Check whether this installed copy can run: payload completeness + per-module load probes')
+  .option('--json', 'Output as JSON')
+  .option('--plugin-dir <path>', 'Override OMQ plugin root directory (sets OMQ_PLUGIN_ROOT)')
+  .addHelpText('after', `
+Examples:
+  $ omq doctor check                            Diagnose the active plugin install
+  $ omq doctor check --plugin-dir <dir>         Diagnose a specific cache/clone dir
+  $ omq doctor check --json                     Machine-readable report`)
+  .action(async (options) => {
+    applyPluginDirOption(options.pluginDir);
+    const { doctorCheckCommand } = await import('./commands/doctor-check.js');
+    const exitCode = await doctorCheckCommand({ json: options.json ?? false, pluginDir: options.pluginDir });
+    process.exit(exitCode);
+  });
+
+doctorCmd
   .command('conflicts')
   .description('Check for plugin coexistence issues and configuration conflicts')
   .option('--json', 'Output as JSON')
