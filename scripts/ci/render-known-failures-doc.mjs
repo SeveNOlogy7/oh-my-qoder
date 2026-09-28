@@ -134,6 +134,7 @@ const FAMILIES = [
     owner: 'Lane 0 (L0-E branding)',
     cause: 'The plugin registers itself as `oh-my-qoder` (`.qoder-plugin/plugin.json` name, and `~/.qoder-cn/plugins/cache/local/oh-my-qoder`), so Qoder addresses its agents as `oh-my-qoder:<name>` -- the live agent catalogue in any session shows that spelling. b37141e stripped exactly that prefix, but the hop restored the ancestor\'s `/^oh-my-claudecode:/`, so a namespaced agent type reaches the registry unstripped and dies as "Unknown agent type", and emitted guidance still tells users to call `/oh-my-claudecode:cancel`. This is a runtime defect, not test drift.',
     evidence: "Error: Unknown agent type: oh-my-qoder:executor (from oh-my-qoder:executor)",
+    evidenceFrom: 'run `36315952043@fc77058` -- closed by `47b7c74` + `205a184`, so the string is absent from the rendered run',
     files: [
       'src/__tests__/routing-force-inherit.test.ts',
       'src/hooks/skill-state/__tests__/skill-state.test.ts',
@@ -194,6 +195,7 @@ const FAMILIES = [
     owner: 'Lane 1 (config loading)',
     cause: 'src/utils/jsonc.ts strips comments and then calls JSON.parse, so a trailing comma -- legal in JSONC and produced by any hand-edited config -- throws. jsonc-parser is declared in package.json and required by nothing in the bundle, which is the obvious way to satisfy the suite. Neither the adopted ancestor snapshot of jsonc.ts nor b37141e implemented trailing-comma removal, so this is an unmet contract rather than something the hop deleted.',
     evidence: "SyntaxError: Unexpected token ']', \"[1,2,]\" is not valid JSON",
+    evidenceFrom: 'run `36315952043@fc77058` -- closed by `5ee9222`, so the throw is absent from the rendered run',
     files: ['src/utils/__tests__/jsonc.test.ts'],
   },
   {
