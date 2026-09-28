@@ -23,19 +23,26 @@ describe('CLI command registration — no duplicates', () => {
     const source = readFileSync(CLI_SOURCE, 'utf-8');
     // Match program.command('name') or .command('name') — capture the command name
     const commandPattern = /\.command\(\s*['"]([^'"[\s]+)/g;
-    const names: string[] = [];
+    // A command name is only a collision within its own parent: `omq doctor check` and
+    // `omq capabilities check` are distinct paths and commander routes them fine, so a
+    // flat name set would forbid a normal CLI shape. The receiver is the identifier that
+    // the .command() call hangs off (own line, or `program` inline); anything unattributed
+    // shares one bucket, so a chain-added duplicate still collides.
+    const keys: string[] = [];
     let match: RegExpExecArray | null;
     while ((match = commandPattern.exec(source)) !== null) {
-      names.push(match[1]);
+      const before = source.slice(Math.max(0, match.index - 160), match.index).trimEnd();
+      const receiver = /([A-Za-z_$][\w$]*)\s*$/.exec(before)?.[1] ?? '(unknown)';
+      keys.push(`${receiver} ${match[1]}`);
     }
 
     const seen = new Set<string>();
     const duplicates: string[] = [];
-    for (const name of names) {
-      if (seen.has(name)) {
-        duplicates.push(name);
+    for (const key of keys) {
+      if (seen.has(key)) {
+        duplicates.push(key);
       }
-      seen.add(name);
+      seen.add(key);
     }
 
     expect(duplicates, `Duplicate command names found: ${duplicates.join(', ')}`).toEqual([]);
