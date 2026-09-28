@@ -3,7 +3,7 @@
 /**
  * State Root Resolver (ESM)
  *
- * Single authoritative entry point for resolving the .omc root directory in
+ * Single authoritative entry point for resolving the .omq root directory in
  * hook scripts, respecting the OMQ_STATE_DIR environment variable.
  *
  * Delegates to getOmqRoot() from dist/lib/worktree-paths.js (the canonical
@@ -24,10 +24,10 @@ import { createHash } from 'crypto';
 import { pathToFileURL } from 'url';
 
 /**
- * Resolve the .omc root directory, respecting OMQ_STATE_DIR.
+ * Resolve the .omq root directory, respecting OMQ_STATE_DIR.
  *
  * @param {string} directory - Worktree root directory
- * @returns {Promise<string>} Absolute path to the .omc root
+ * @returns {Promise<string>} Absolute path to the .omq root
  */
 export async function resolveOmqStateRoot(directory) {
   const pluginRoot = process.env.QODER_PLUGIN_ROOT;
@@ -49,7 +49,7 @@ export async function resolveOmqStateRoot(directory) {
     const dirName = basename(directory).replace(/[^a-zA-Z0-9_-]/g, '_');
     return join(customDir, `${dirName}-${hash}`);
   }
-  return join(directory, '.omc');
+  return join(directory, '.omq');
 }
 
 /**

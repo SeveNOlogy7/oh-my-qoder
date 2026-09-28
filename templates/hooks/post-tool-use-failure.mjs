@@ -232,7 +232,7 @@ function isPathContained(targetPath, basePath) {
   return normalizedTarget.startsWith(normalizedBase + sep) || normalizedTarget === normalizedBase;
 }
 
-// Initialize .omc directory if needed; returns the omc root (not state subdir)
+// Initialize .omq directory if needed; returns the omc root (not state subdir)
 async function initOmcDir(directory) {
   if (!directory || typeof directory !== 'string') {
     directory = process.cwd();
@@ -361,7 +361,7 @@ async function main() {
     const rawSessionId = resolveHookSessionId(data);
     const sessionId = validateSessionId(rawSessionId);
 
-    // Initialize .omc root directory
+    // Initialize .omq root directory
     const omcRoot = await initOmcDir(directory);
 
     // Resolve state paths (session-scoped or legacy)

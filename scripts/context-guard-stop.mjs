@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * OMQ Context Guard Hook (Stop)
+ * OMC Context Guard Hook (Stop)
  *
  * Suggests session refresh when context usage exceeds a warning threshold.
  * This complements persistent-mode.cjs — it fires BEFORE modes like Ralph
@@ -19,12 +19,13 @@
  *   - { continue: true, suppressOutput: true } otherwise
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, openSync, readSync, closeSync } from 'node:fs';
-import { join, dirname, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
-import { execSync } from 'node:child_process';
-import { getQoderConfigDir } from './lib/config-dir.mjs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname, resolve, basename } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { getClaudeConfigDir } from './lib/config-dir.mjs';
+import { encodeProjectPath } from './lib/encode-project-path.mjs';
 import { readStdin } from './lib/stdin.mjs';
+import { resolveContextPercent } from './lib/context-usage.mjs';
 
 const THRESHOLD = parseInt(process.env.OMQ_CONTEXT_GUARD_THRESHOLD || '75', 10);
 const CRITICAL_THRESHOLD = 95;
@@ -78,17 +79,18 @@ function hasLocalGitMarker(startDir) {
 }
 
 function runGitRevParse(args, cwd) {
-  return execSync(`git rev-parse ${args.join(' ')}`, {
+  return execFileSync('git', ['rev-parse', ...args], {
     cwd,
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
     timeout: GIT_PROBE_TIMEOUT_MS,
+    windowsHide: true,
   }).trim();
 }
 
 /**
  * Resolve a transcript path that may be mismatched in worktree sessions (issue #1094).
- * When Qoder CLI runs inside .qoder/worktrees/X, the encoded project directory
+ * When Claude Code runs inside .claude/worktrees/X, the encoded project directory
  * contains `--claude-worktrees-X` which doesn't exist. Strip it to find the real path.
  */
 function resolveTranscriptPath(transcriptPath, cwd) {
@@ -122,13 +124,12 @@ function resolveTranscriptPath(transcriptPath, cwd) {
     const worktreeTop = runGitRevParse(['--show-toplevel'], effectiveCwd);
 
     if (mainRepoRoot !== worktreeTop) {
-      const lastSep = transcriptPath.lastIndexOf('/');
-      const sessionFile = lastSep !== -1 ? transcriptPath.substring(lastSep + 1) : '';
+      const sessionFile = basename(transcriptPath);
       if (sessionFile) {
-        const configDir = getQoderConfigDir();
+        const configDir = getClaudeConfigDir();
         const projectsDir = join(configDir, 'projects');
         if (existsSync(projectsDir)) {
-          const encodedMain = mainRepoRoot.replace(/[/\\]/g, '-');
+          const encodedMain = encodeProjectPath(mainRepoRoot);
           const resolvedPath = join(projectsDir, encodedMain, sessionFile);
           try {
             if (existsSync(resolvedPath)) return resolvedPath;
@@ -141,50 +142,13 @@ function resolveTranscriptPath(transcriptPath, cwd) {
   return transcriptPath;
 }
 
-/**
- * Estimate context usage percentage from the transcript file.
- */
-function estimateContextPercent(transcriptPath) {
-  if (!transcriptPath) return 0;
-
-  let fd = -1;
-  try {
-    const stat = statSync(transcriptPath);
-    if (stat.size === 0) return 0;
-
-    fd = openSync(transcriptPath, 'r');
-    const readSize = Math.min(4096, stat.size);
-    const buf = Buffer.alloc(readSize);
-    readSync(fd, buf, 0, readSize, stat.size - readSize);
-    closeSync(fd);
-    fd = -1;
-
-    const tail = buf.toString('utf-8');
-
-    // Bounded quantifiers to avoid ReDoS on malformed input
-    const windowMatch = tail.match(/"context_window"\s{0,5}:\s{0,5}(\d+)/g);
-    const inputMatch = tail.match(/"input_tokens"\s{0,5}:\s{0,5}(\d+)/g);
-
-    if (!windowMatch || !inputMatch) return 0;
-
-    const lastWindow = parseInt(windowMatch[windowMatch.length - 1].match(/(\d+)/)[1], 10);
-    const lastInput = parseInt(inputMatch[inputMatch.length - 1].match(/(\d+)/)[1], 10);
-
-    if (lastWindow === 0) return 0;
-    return Math.round((lastInput / lastWindow) * 100);
-  } catch {
-    return 0;
-  } finally {
-    if (fd !== -1) try { closeSync(fd); } catch { /* ignore */ }
-  }
-}
 
 /**
  * Retry guard: track how many times we've blocked this transcript.
  * Prevents infinite block loops by capping at MAX_BLOCKS.
  */
 function getGuardFilePath(sessionId) {
-  const configDir = getQoderConfigDir();
+  const configDir = getClaudeConfigDir();
   const guardDir = join(configDir, 'projects', '.omq-guards');
   try {
     mkdirSync(guardDir, { recursive: true, mode: 0o700 });
@@ -222,7 +186,7 @@ function incrementBlockCount(sessionId) {
 
 function buildStopRecoveryAdvice(contextPercent, blockCount) {
   const severity = contextPercent >= 90 ? 'CRITICAL' : 'HIGH';
-  return `[OMQ ${severity}] Context at ${contextPercent}% (threshold: ${THRESHOLD}%). ` +
+  return `[OMC ${severity}] Context at ${contextPercent}% (threshold: ${THRESHOLD}%). ` +
     `Run /compact immediately before continuing. If /compact cannot complete, ` +
     `stop spawning new agents and recover in a fresh session using existing checkpoints ` +
     `(.omq/state, .omq/notepad.md). (Block ${blockCount}/${MAX_BLOCKS})`;
@@ -248,7 +212,7 @@ async function main() {
     const sessionId = data.session_id || data.sessionId || '';
     const rawTranscriptPath = data.transcript_path || data.transcriptPath || '';
     const transcriptPath = resolveTranscriptPath(rawTranscriptPath, data.cwd);
-    const pct = estimateContextPercent(transcriptPath);
+    const pct = (await resolveContextPercent(data, transcriptPath, data.cwd)) ?? 0;
 
     if (pct >= CRITICAL_THRESHOLD) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));

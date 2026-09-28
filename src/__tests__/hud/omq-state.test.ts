@@ -171,4 +171,37 @@ describe('hud omq state session scoping', () => {
       reinforcementCount: 7,
     });
   });
+
+  it('executes named-workflow resume validation when reading autopilot state with workflow markers', () => {
+    const worktree = createWorktree();
+    const omqRoot = join(worktree, '.omq');
+
+    // Create autopilot state with workflow markers but invalid profile hash
+    writeJson(join(omqRoot, 'state', 'autopilot-state.json'), {
+      active: true,
+      session_id: 'test-session-id',
+      phase: 'execution',
+      iteration: 1,
+      max_iterations: 10,
+      workflowRunId: 'test-workflow-run-id',
+      workflow: {
+        descriptorVersion: 1,
+        workflowName: 'test-workflow',
+        profileVersion: 1,
+        stages: ['stage1', 'stage2'],
+        profileHash: 'invalid-hash-that-wont-match',
+      },
+      pipelineTracking: {
+        currentStageIndex: 0,
+        stages: [
+          { id: 'stage1', status: 'active' },
+          { id: 'stage2', status: 'pending' },
+        ],
+      },
+    });
+
+    const result = readAutopilotStateForHud(worktree);
+    // The validation should execute and mark this as invalid
+    expect(result?.workflow).toEqual({ invalid: true });
+  });
 });

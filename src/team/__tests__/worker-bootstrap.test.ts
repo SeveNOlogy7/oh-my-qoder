@@ -4,11 +4,12 @@ import {
   generatePromptModeStartupPrompt,
   generateTriggerMessage,
   generateWorkerOverlay,
+  renderRecoveryContinuationInstruction,
   getWorkerEnv,
 } from '../worker-bootstrap.js';
 
 describe('worker-bootstrap', () => {
-  const originalPluginRoot = process.env.QODER_PLUGIN_ROOT;
+  const originalPluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
   const originalPath = process.env.PATH;
   const baseParams = {
     teamName: 'test-team',
@@ -22,9 +23,9 @@ describe('worker-bootstrap', () => {
 
   beforeEach(() => {
     if (originalPluginRoot === undefined) {
-      delete process.env.QODER_PLUGIN_ROOT;
+      delete process.env.CLAUDE_PLUGIN_ROOT;
     } else {
-      process.env.QODER_PLUGIN_ROOT = originalPluginRoot;
+      process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
     }
     if (originalPath === undefined) {
       delete process.env.PATH;
@@ -35,9 +36,9 @@ describe('worker-bootstrap', () => {
 
   afterEach(() => {
     if (originalPluginRoot === undefined) {
-      delete process.env.QODER_PLUGIN_ROOT;
+      delete process.env.CLAUDE_PLUGIN_ROOT;
     } else {
-      process.env.QODER_PLUGIN_ROOT = originalPluginRoot;
+      process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
     }
     if (originalPath === undefined) {
       delete process.env.PATH;
@@ -86,6 +87,8 @@ describe('worker-bootstrap', () => {
       expect(overlay).toContain('Read $OMQ_TEAM_STATE_ROOT/workers/worker-1/inbox.md');
       expect(overlay).toContain('Write to $OMQ_TEAM_STATE_ROOT/workers/worker-1/status.json');
       expect(overlay).toContain('$OMQ_TEAM_STATE_ROOT/workers/worker-1/shutdown-ack.json');
+      expect(overlay).toContain('OMQ_WORKER_LAUNCH_ATTEMPT_ID');
+      expect(overlay).toContain('"launch_attempt_id": "<exact OMQ_WORKER_LAUNCH_ATTEMPT_ID>"');
       expect(overlay).not.toContain('$OMQ_TEAM_STATE_ROOT/team/test-team');
     });
 
@@ -173,15 +176,23 @@ describe('worker-bootstrap', () => {
       expect(overlay).not.toContain('Read your task file at');
     });
 
-    it('renders plugin-safe CLI lifecycle examples when omq is unavailable in plugin installs', () => {
-      process.env.QODER_PLUGIN_ROOT = '/plugin-root';
+    it('renders required task versions in ordinary and adopted checkpoint commands', () => {
+      expect(generateWorkerOverlay(baseParams)).toContain('\\"task_version\\":<current_task_version>');
+      const recovery = renderRecoveryContinuationInstruction({ teamName: 'test-team', workerName: 'worker-1',
+        taskId: '1', taskVersion: 7, claimToken: 'claim-token', sequence: 4, resumePayload: { cursor: 3 } });
+      expect(recovery).toContain('\\"task_version\\":7');
+      expect(recovery).not.toContain('<current_task_version>');
+    });
+
+    it('renders plugin-safe CLI lifecycle examples when omc is unavailable in plugin installs', () => {
+      process.env.CLAUDE_PLUGIN_ROOT = '/plugin-root';
       process.env.PATH = '';
 
       const overlay = generateWorkerOverlay(baseParams);
 
-      expect(overlay).toContain('node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs team api read-task');
-      expect(overlay).toContain('node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs team api claim-task');
-      expect(overlay).toContain('node "$QODER_PLUGIN_ROOT"/bridge/cli.cjs team api transition-task-status');
+      expect(overlay).toContain('node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs team api read-task');
+      expect(overlay).toContain('node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs team api claim-task');
+      expect(overlay).toContain('node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs team api transition-task-status');
     });
 
   });
@@ -192,6 +203,26 @@ describe('worker-bootstrap', () => {
       expect(env.OMQ_TEAM_WORKER).toBe('my-team/worker-2');
       expect(env.OMQ_TEAM_NAME).toBe('my-team');
       expect(env.OMQ_WORKER_AGENT_TYPE).toBe('gemini');
+    });
+  });
+  describe('overlay control character safety', () => {
+    it('generated overlay rejects all disallowed control bytes (NUL, BEL, BS, etc.)', () => {
+      const overlay = generateWorkerOverlay(baseParams);
+      // Reject all C0 control characters except HT (\t=0x09), LF (\n=0x0a), CR (\r=0x0d).
+      // This catches NUL bytes and any other invisible control characters that could
+      // corrupt terminal rendering or Markdown parsing in the worker overlay.
+      for (let i = 0; i < overlay.length; i++) {
+        const code = overlay.charCodeAt(i);
+        if (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) {
+          throw new Error(`Overlay contains disallowed control character 0x${code.toString(16).padStart(2, '0')} at offset ${i}`);
+        }
+      }
+    });
+
+    it('overlay uses backtick-delimited metadata references instead of NUL bytes', () => {
+      const overlay = generateWorkerOverlay(baseParams);
+      expect(overlay).toContain('`OMQ_WORKER_LAUNCH_ATTEMPT_ID`');
+      expect(overlay).toContain('`launch_attempt_id`');
     });
   });
 });

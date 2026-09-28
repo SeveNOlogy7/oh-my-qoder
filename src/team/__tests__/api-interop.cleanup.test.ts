@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const { shutdownTeamV2Mock, shutdownTeamMock } = vi.hoisted(() => ({
-  shutdownTeamV2Mock: vi.fn(async () => {}),
+  shutdownTeamV2Mock: vi.fn(async () => ({ outcome: 'cleaned' as const })),
   shutdownTeamMock: vi.fn(async () => {}),
 }));
 
@@ -67,12 +67,12 @@ describe('team api cleanup', () => {
   });
 
   it('routes cleanup through runtime-v2 shutdown when a v2 team config exists', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-cleanup-v2-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-cleanup-v2-'));
     const teamName = 'cleanup-v2';
     await writeJson(cwd, `.omq/state/team/${teamName}/config.json`, {
       name: teamName,
       task: 'test',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_launch_mode: 'interactive',
       governance: {
         delegation_only: false,
@@ -101,14 +101,14 @@ describe('team api cleanup', () => {
   });
 
   it('surfaces shutdown gate failures instead of deleting team state directly', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-cleanup-gated-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-cleanup-gated-'));
     const teamName = 'cleanup-gated';
     const teamRoot = join(cwd, '.omq', 'state', 'team', teamName);
 
     await writeJson(cwd, `.omq/state/team/${teamName}/config.json`, {
       name: teamName,
       task: 'test',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_launch_mode: 'interactive',
       governance: {
         delegation_only: false,
@@ -151,7 +151,7 @@ describe('team api cleanup', () => {
   });
 
   it('falls back to raw cleanup when no config or native worktree evidence exists', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-cleanup-orphan-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-cleanup-orphan-'));
     const teamName = 'cleanup-orphan';
     const teamRoot = join(cwd, '.omq', 'state', 'team', teamName);
     await mkdir(join(teamRoot, 'tasks'), { recursive: true });
@@ -166,7 +166,7 @@ describe('team api cleanup', () => {
   });
 
   it('blocks orphan-cleanup when worktree recovery evidence exists without explicit acknowledgement', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-orphan-cleanup-guard-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-orphan-cleanup-guard-'));
     const teamName = 'orphan-cleanup-guard';
     const teamRoot = join(cwd, '.omq', 'state', 'team', teamName);
     await mkdir(teamRoot, { recursive: true });
@@ -192,7 +192,7 @@ describe('team api cleanup', () => {
   });
 
   it('allows acknowledged orphan-cleanup to remove team state despite worktree recovery evidence', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-orphan-cleanup-ack-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-orphan-cleanup-ack-'));
     const teamName = 'orphan-cleanup-ack';
     const teamRoot = join(cwd, '.omq', 'state', 'team', teamName);
     await mkdir(teamRoot, { recursive: true });
@@ -216,7 +216,7 @@ describe('team api cleanup', () => {
   });
 
   it('blocks no-config cleanup when worktree metadata is unreadable', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-cleanup-corrupt-worktrees-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-cleanup-corrupt-worktrees-'));
     const teamName = 'cleanup-corrupt-worktrees';
     const teamRoot = join(cwd, '.omq', 'state', 'team', teamName);
     await mkdir(teamRoot, { recursive: true });
@@ -228,7 +228,7 @@ describe('team api cleanup', () => {
   });
 
   it('blocks no-config cleanup when only a root AGENTS backup remains', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-cleanup-backup-only-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-cleanup-backup-only-'));
     const teamName = 'cleanup-backup-only';
     const teamRoot = join(cwd, '.omq', 'state', 'team', teamName);
     await mkdir(teamRoot, { recursive: true });
@@ -246,7 +246,7 @@ describe('team api cleanup', () => {
   });
 
   it('blocks corrupt-config cleanup when native worktree recovery evidence exists', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omq-api-cleanup-corrupt-config-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omc-api-cleanup-corrupt-config-'));
     const teamName = 'cleanup-corrupt-config';
     const teamRoot = join(cwd, '.omq', 'state', 'team', teamName);
     await mkdir(teamRoot, { recursive: true });
@@ -256,7 +256,7 @@ describe('team api cleanup', () => {
     await writeJson(cwd, `.omq/state/team/${teamName}/worktrees.json`, [{
       workerName: 'worker-1',
       path: join(cwd, '.omq-worktrees', `${teamName}-worker-1`),
-      branch: `omq/${teamName}/worker-1`,
+      branch: `omc/${teamName}/worker-1`,
       createdAt: new Date().toISOString(),
     }]);
 

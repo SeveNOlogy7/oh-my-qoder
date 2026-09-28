@@ -7,6 +7,7 @@ name: build
 #
 # Job dependency chain:
 #   provenance -> build  (lint, typecheck, identity, pack)
+#   provenance -> windows-test (win32 suite, gated on its own baseline)
 #   provenance -> test   (build + suite)
 # The provenance job assembles the plugin payload, runs ancestor attribution
 # (generate then verify), and gates identity with attribution before build/test.
@@ -87,6 +88,14 @@ jobs:
           fi
           echo "All required payload files present."
 
+      # The ancestor blob trees live under .omq/, which is gitignored, so a fresh
+      # checkout has no cache and every attribution step would die on "Tree cache
+      # not found". Fetch them by the pinned content-addressed treeSha.
+      - name: Fetch ancestor blob trees
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/fetch-ancestor-trees.mjs
+
       - name: Generate ancestor attribution
         run: |
           set -euo pipefail
@@ -132,6 +141,12 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # tsc cannot see the untyped script surface: a hook template that pulls a
+      # name its sibling lib stopped exporting only fails at runtime, inside a
+      # hook the model never observes.
+      - name: Dynamic binding check
+        run: node scripts/ci/check-dynamic-bindings.mjs
+
       - name: Identity gate (source tree)
         run: node scripts/check-canonical-identity.mjs
 
@@ -162,7 +177,12 @@ jobs:
     needs: [provenance]
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth 0 because the negative-control harness resolves commits by
+      # SHA (`git show <fix>^:<file>`); the default shallow checkout has no
+      # history for that and every lane would error out as "harness error".
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -183,7 +203,7 @@ jobs:
         run: mkdir -p .omq && npm run test:run 2>&1 | tee .omq/vitest-out.txt || true
 
       - name: Known-failure delta gate
-        run: node scripts/known-failures.mjs --check < .omq/vitest-out.txt
+        run: node scripts/known-failures.mjs --check --require-summary < .omq/vitest-out.txt
 
   # Windows is where the CN distribution actually runs, and the behaviours it
   # exercises are invisible to the Linux jobs -- measuring the same 13 patch-layer
@@ -195,11 +215,19 @@ jobs:
     needs: [provenance]
     runs-on: windows-latest
     steps:
+      # Full history so the captured log matches the machine-generated baseline:
+      # several suites shell out to git and behave differently in a shallow clone.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # Node 24, not 20: better-sqlite3 ships no win32 prebuild for the node 20
+      # ABI, so `npm ci` on the runner falls through to a node-gyp rebuild and
+      # dies. The win32 baseline was produced on node 24, which is what installs
+      # cleanly here.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
 
       - run: npm ci
@@ -213,4 +241,4 @@ jobs:
 
       - name: Known-failure delta gate (win32)
         shell: bash
-        run: node scripts/known-failures.mjs --check --baseline=tests/known-failures-win32.json < .omq/vitest-out-win.txt
+        run: node scripts/known-failures.mjs --check --require-summary --baseline=tests/known-failures-win32.json --flake-list=tests/known-failures-flaky-win32.json < .omq/vitest-out-win.txt

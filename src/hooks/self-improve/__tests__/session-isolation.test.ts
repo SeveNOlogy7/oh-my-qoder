@@ -58,8 +58,8 @@ describe('self-improve session isolation (Wave B2)', () => {
   it('without session-id, two runs with same slug share the same topic root', () => {
     const slug = 'shared-topic';
 
-    const pathsA = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMC_SESSION_ID: undefined });
-    const pathsB = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMC_SESSION_ID: undefined });
+    const pathsA = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMQ_SESSION_ID: undefined });
+    const pathsB = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMQ_SESSION_ID: undefined });
 
     expect(pathsA.root).toBe(pathsB.root);
     expect(pathsA.scope_mode).toBe('topic-scoped');
@@ -93,12 +93,12 @@ describe('self-improve session isolation (Wave B2)', () => {
   it('session_id is null when not provided', () => {
     const slug = 'no-session';
 
-    const paths = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMC_SESSION_ID: undefined });
+    const paths = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMQ_SESSION_ID: undefined });
 
     expect(paths.session_id).toBeNull();
   });
 
-  it('OMC_SESSION_ID env var is used as fallback when --session-id not passed', () => {
+  it('OMQ_SESSION_ID env var is used as fallback when --session-id not passed', () => {
     const slug = 'env-session';
     const sid = 'env-session-123';
 
@@ -106,7 +106,7 @@ describe('self-improve session isolation (Wave B2)', () => {
     const result = JSON.parse(
       execFileSync('node', [RESOLVER, '--project-root', root, '--slug', slug], {
         encoding: 'utf-8',
-        env: { ...process.env, OMC_SESSION_ID: sid },
+        env: { ...process.env, OMQ_SESSION_ID: sid },
       })
     );
 

@@ -4,8 +4,8 @@ import type { ModelType, AgentConfig, PluginConfig } from '../shared/types.js';
 describe('Type Tests', () => {
   describe('ModelType', () => {
     it('should accept valid model types', () => {
-      const validTypes: ModelType[] = ['medium', 'high', 'low', 'inherit'];
-      expect(validTypes).toHaveLength(4);
+      const validTypes: ModelType[] = ['sonnet', 'opus', 'haiku', 'fable', 'inherit'];
+      expect(validTypes).toHaveLength(5);
     });
   });
 
@@ -16,12 +16,12 @@ describe('Type Tests', () => {
         description: 'A test agent',
         prompt: 'Test prompt',
         tools: ['tool1', 'tool2'],
-        model: 'medium',
+        model: 'sonnet',
       };
 
       expect(config.name).toBe('test-agent');
       expect(config.tools).toHaveLength(2);
-      expect(config.model).toBe('medium');
+      expect(config.model).toBe('sonnet');
     });
 
     it('should allow optional model field', () => {
@@ -55,15 +55,15 @@ describe('Type Tests', () => {
     it('should support agent configuration', () => {
       const config: PluginConfig = {
         agents: {
-          omq: { model: 'qwen-plus' },
-          architect: { model: 'qwen-max' },
-          explore: { model: 'qwen-turbo' },
-          documentSpecialist: { model: 'qwen-turbo' },
+          omc: { model: 'claude-sonnet-5' },
+          architect: { model: 'claude-opus-4-8' },
+          explore: { model: 'claude-haiku-4-5' },
+          documentSpecialist: { model: 'claude-haiku-4-5' },
         },
       };
 
-      expect(config.agents?.omq?.model).toBe('qwen-plus');
-      expect(config.agents?.architect?.model).toBe('qwen-max');
+      expect(config.agents?.omc?.model).toBe('claude-sonnet-5');
+      expect(config.agents?.architect?.model).toBe('claude-opus-4-8');
     });
 
     it('should support routing configuration', () => {
@@ -75,15 +75,15 @@ describe('Type Tests', () => {
           maxEscalations: 2,
           tierModels: {
             LOW: 'claude-haiku-4',
-            MEDIUM: 'qwen-plus',
-            HIGH: 'qwen-max',
+            MEDIUM: 'claude-sonnet-5',
+            HIGH: 'claude-opus-4-8',
           },
         },
       };
 
       expect(config.routing?.enabled).toBe(true);
       expect(config.routing?.defaultTier).toBe('MEDIUM');
-      expect(config.routing?.tierModels?.HIGH).toBe('qwen-max');
+      expect(config.routing?.tierModels?.HIGH).toBe('claude-opus-4-8');
     });
   });
 });

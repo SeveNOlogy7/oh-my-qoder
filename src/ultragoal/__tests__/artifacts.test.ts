@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { clearWorktreeCache } from '../../lib/worktree-paths.js';
 import {
   addUltragoalGoal,
-  buildQoderGoalInstruction,
+  buildClaudeGoalInstruction,
   checkpointUltragoal,
   createUltragoalPlan,
   isUltragoalDone,
@@ -17,7 +17,7 @@ import {
 } from '../artifacts.js';
 
 async function withTempRepo<T>(run: (cwd: string) => Promise<T>): Promise<T> {
-  const cwd = await mkdtemp(join(tmpdir(), 'omq-ultragoal-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'omc-ultragoal-'));
   try {
     return await run(cwd);
   } finally {
@@ -57,7 +57,7 @@ describe('ultragoal artifacts', () => {
     });
   });
 
-  it('starts one story at a time and emits an aggregate Qoder /goal handoff by default', async () => {
+  it('starts one story at a time and emits an aggregate Claude /goal handoff by default', async () => {
     await withTempRepo(async (cwd) => {
       await createUltragoalPlan(cwd, {
         brief: 'brief',
@@ -76,20 +76,57 @@ describe('ultragoal artifacts', () => {
       expect(resumed.goal?.id).toBe('G001-first');
       expect(resumed.resumed).toBe(true);
 
-      const instruction = buildQoderGoalInstruction(started.goal!, started.plan);
-      expect(instruction).toMatch(/active Qoder \/goal condition/i);
+      const instruction = buildClaudeGoalInstruction(started.goal!, started.plan);
+      expect(instruction).toMatch(/first confirm the active Claude \/goal for this session/i);
       expect(instruction).toMatch(/invoke \/goal/i);
-      expect(instruction).toMatch(/Qoder \/goal = the whole ultragoal run/i);
+      expect(instruction).toMatch(/ask the user to type it/i);
+      expect(instruction).toMatch(/does not satisfy the PreToolUse \/goal guard/i);
+      expect(instruction).toMatch(/Claude \/goal = the whole ultragoal run/i);
       expect(instruction).toMatch(/same aggregate objective as active/i);
       expect(instruction).toMatch(/do not clear the \/goal yet/i);
-      expect(instruction).not.toMatch(/fresh Qoder CLI session/i);
-      expect(instruction).toMatch(/--qoder-goal-json/);
+      expect(instruction).not.toMatch(/fresh Claude Code session/i);
+      expect(instruction).toMatch(/--claude-goal-json/);
       expect(instruction).toMatch(/Complete all ultragoal stories/);
       expect(instruction).toMatch(/Complete first milestone/);
       expect(instruction).not.toMatch(/get_goal/);
       expect(instruction).not.toMatch(/create_goal/);
       expect(instruction).not.toMatch(/update_goal/);
       expect(instruction).not.toMatch(/\bcodex\b/i);
+    });
+  });
+
+  it('targets named goals, preserves attempts on resume, and rejects conflicting or ineligible ids', async () => {
+    await withTempRepo(async (cwd) => {
+      await createUltragoalPlan(cwd, {
+        brief: 'brief',
+        goals: [
+          { title: 'First', objective: 'first' },
+          { title: 'Second', objective: 'second' },
+          { title: 'Third', objective: 'third' },
+        ],
+      });
+      const named = await startNextUltragoal(cwd, { goalId: 'G003-third' });
+      expect(named.goal?.id).toBe('G003-third');
+      expect(named.goal?.attempt).toBe(1);
+      const resumed = await startNextUltragoal(cwd, { goalId: 'G003-third' });
+      expect(resumed.resumed).toBe(true);
+      expect(resumed.goal?.attempt).toBe(1);
+      await expect(startNextUltragoal(cwd, { goalId: 'G002-second' })).rejects.toThrow(/active goal G003-third/);
+      const unchanged = await readUltragoalPlan(cwd);
+      expect(unchanged.activeGoalId).toBe('G003-third');
+      expect(unchanged.goals.find((goal) => goal.id === 'G002-second')?.status).toBe('pending');
+    });
+  });
+
+  it('requires explicit retry for a named failed goal', async () => {
+    await withTempRepo(async (cwd) => {
+      await createUltragoalPlan(cwd, { brief: 'brief', goals: [{ title: 'First', objective: 'first' }] });
+      const started = await startNextUltragoal(cwd);
+      await checkpointUltragoal(cwd, { goalId: started.goal!.id, status: 'failed', evidence: 'failed' });
+      await expect(startNextUltragoal(cwd, { goalId: started.goal!.id })).rejects.toThrow(/without --retry-failed/);
+      const retried = await startNextUltragoal(cwd, { goalId: started.goal!.id, retryFailed: true });
+      expect(retried.goal?.id).toBe(started.goal!.id);
+      expect(retried.goal?.attempt).toBe(2);
     });
   });
 
@@ -152,7 +189,7 @@ describe('ultragoal artifacts', () => {
 
   it('reconciles completed task-scoped Claude snapshot to finish exploded aggregate ultragoal bookkeeping', async () => {
     await withTempRepo(async (cwd) => {
-      const taskObjective = 'Fix the mismatch between Claude immutable completed /goal snapshots and OMQ ultragoal checkpoint reconciliation.';
+      const taskObjective = 'Fix the mismatch between Claude immutable completed /goal snapshots and OMC ultragoal checkpoint reconciliation.';
       await createUltragoalPlan(cwd, {
         brief: taskObjective,
         goals: Array.from({ length: 136 }, (_, index) => ({
@@ -237,7 +274,7 @@ describe('ultragoal artifacts', () => {
 
   it('fails closed for task-scoped aggregate completion on a non-active microgoal id', async () => {
     await withTempRepo(async (cwd) => {
-      const taskObjective = 'Fix the mismatch between Claude immutable completed /goal snapshots and OMQ ultragoal checkpoint reconciliation.';
+      const taskObjective = 'Fix the mismatch between Claude immutable completed /goal snapshots and OMC ultragoal checkpoint reconciliation.';
       await createUltragoalPlan(cwd, {
         brief: taskObjective,
         goals: [
@@ -285,7 +322,7 @@ describe('ultragoal artifacts', () => {
     });
   });
 
-  it('requires aggregate Qoder /goal completion only for the final story', async () => {
+  it('requires aggregate Claude /goal completion only for the final story', async () => {
     await withTempRepo(async (cwd) => {
       await createUltragoalPlan(cwd, {
         brief: 'brief',
@@ -333,9 +370,11 @@ describe('ultragoal artifacts', () => {
       await writeFile(join(cwd, '.omq/ultragoal/goals.json'), `${JSON.stringify(created, null, 2)}\n`);
 
       const first = await startNextUltragoal(cwd);
-      const instruction = buildQoderGoalInstruction(first.goal!, first.plan);
+      const instruction = buildClaudeGoalInstruction(first.goal!, first.plan);
       expect(instruction).toMatch(/Ultragoal active-goal handoff/);
-      expect(instruction).toMatch(/fresh Qoder CLI session/);
+      expect(instruction).toMatch(/fresh Claude Code session/);
+      expect(instruction).toMatch(/ask the user to type it/i);
+      expect(instruction).toMatch(/does not satisfy the PreToolUse \/goal guard/i);
 
       await checkpointUltragoal(cwd, {
         goalId: first.goal!.id,
@@ -403,7 +442,7 @@ describe('ultragoal artifacts', () => {
     });
   });
 
-  it('records final per-story review blockers without claiming Qoder /goal completion', async () => {
+  it('records final per-story review blockers without claiming Claude /goal completion', async () => {
     await withTempRepo(async (cwd) => {
       await createUltragoalPlan(cwd, {
         brief: 'brief',
@@ -499,7 +538,7 @@ describe('ultragoal artifacts', () => {
       const blocked = await checkpointUltragoal(cwd, {
         goalId: first.goal!.id,
         status: 'blocked',
-        evidence: 'completed aggregate Qoder /goal blocks new /goal',
+        evidence: 'completed aggregate Claude /goal blocks new /goal',
         qoderGoal: { goal: { objective: 'achieve all goals on this repo ultragoal status', status: 'complete' } },
         now: new Date('2026-05-04T10:03:00Z'),
       });
@@ -511,7 +550,7 @@ describe('ultragoal artifacts', () => {
 
       const ledger = await readFile(join(cwd, '.omq/ultragoal/ledger.jsonl'), 'utf-8');
       expect(ledger).toMatch(/"event":"goal_blocked"/);
-      expect(ledger).toMatch(/completed aggregate Qoder \/goal blocks new \/goal/);
+      expect(ledger).toMatch(/completed aggregate Claude \/goal blocks new \/goal/);
     });
   });
 
@@ -530,14 +569,14 @@ describe('ultragoal artifacts', () => {
         checkpointUltragoal(cwd, {
           goalId: first.goal!.id,
           status: 'complete',
-          evidence: 'audit passed but wrong Qoder /goal snapshot',
+          evidence: 'audit passed but wrong Claude /goal snapshot',
           qoderGoal: { goal: { objective: 'Completed legacy objective', status: 'complete' } },
         }),
-      ).rejects.toThrow(/objective mismatch[\s\S]*--status blocked[\s\S]*fresh Qoder CLI session/);
+      ).rejects.toThrow(/objective mismatch[\s\S]*--status blocked[\s\S]*fresh Claude Code session/);
     });
   });
 
-  it('rejects blocked checkpoints for active or same-objective Qoder goals', async () => {
+  it('rejects blocked checkpoints for active or same-objective Claude goals', async () => {
     await withTempRepo(async (cwd) => {
       await createUltragoalPlan(cwd, {
         brief: 'brief',
@@ -564,7 +603,7 @@ describe('ultragoal artifacts', () => {
           evidence: 'same complete goal',
           qoderGoal: { goal: { objective: first.goal!.objective, status: 'complete' } },
         }),
-      ).rejects.toThrow(/different completed legacy Qoder goal/);
+      ).rejects.toThrow(/different completed legacy Claude goal/);
     });
   });
 
@@ -650,9 +689,9 @@ describe('ultragoal artifacts', () => {
 
   describe('multi-repo workspace anchor', () => {
     it('writes artifacts to the workspace anchor .omq/ when .omq-workspace marker exists in a parent dir', async () => {
-      const workspaceRoot = await mkdtemp(join(tmpdir(), 'omq-workspace-anchor-'));
+      const workspaceRoot = await mkdtemp(join(tmpdir(), 'omc-workspace-anchor-'));
       try {
-        // Create workspace marker so getOmqRoot() anchors to workspaceRoot
+        // Create workspace marker so getOmcRoot() anchors to workspaceRoot
         writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
 
         // Create a sub-git-repo inside the workspace

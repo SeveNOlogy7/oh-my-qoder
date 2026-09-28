@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readHudConfig, writeHudConfig } from "../../hud/state.js";
-import { DEFAULT_HUD_CONFIG } from "../../hud/types.js";
+import { DEFAULT_HUD_CONFIG, PRESET_CONFIGS } from "../../hud/types.js";
 
 // Mock fs and os modules
 vi.mock("node:fs", () => ({
@@ -19,7 +19,7 @@ vi.mock("node:os", () => ({
 }));
 
 vi.mock("../../utils/config-dir.js", () => ({
-  getQoderConfigDir: () => "/Users/testuser/.qwen",
+  getClaudeConfigDir: () => "/Users/testuser/.claude",
 }));
 
 import { existsSync, readFileSync } from "node:fs";
@@ -34,18 +34,24 @@ describe("readHudConfig", () => {
   });
 
   describe("priority order", () => {
-    it("returns defaults when no config files exist", () => {
+    it("applies the focused preset when no config files exist", () => {
       mockExistsSync.mockReturnValue(false);
 
       const config = readHudConfig();
 
-      expect(config).toEqual(DEFAULT_HUD_CONFIG);
+      expect(config.preset).toBe("focused");
+      expect(config.elements.gitBranch).toBe(PRESET_CONFIGS.focused.gitBranch);
+      expect(config.elements.gitStatus).toBe(PRESET_CONFIGS.focused.gitStatus);
+      expect(config.elements.useBars).toBe(PRESET_CONFIGS.focused.useBars);
+      expect(config.elements.agentsMaxLines).toBe(
+        PRESET_CONFIGS.focused.agentsMaxLines,
+      );
     });
 
     it("reads from settings.json omqHud key first", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(
+        return /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(
           s,
         );
       });
@@ -69,7 +75,7 @@ describe("readHudConfig", () => {
     it("reads callCountsFormat from settings.json", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\/]Users[\/]testuser[\/]\.qwen[\/]settings\.json$/.test(
+        return /[\/]Users[\/]testuser[\/]\.claude[\/]settings\.json$/.test(
           s,
         );
       });
@@ -92,8 +98,8 @@ describe("readHudConfig", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
         return (
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(s) ||
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]\.omq[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(s) ||
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         );
@@ -101,12 +107,12 @@ describe("readHudConfig", () => {
       mockReadFileSync.mockImplementation((path) => {
         const s = String(path);
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(s)
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(s)
         ) {
           return JSON.stringify({ someOtherKey: true });
         }
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]\.omq[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         ) {
@@ -124,12 +130,30 @@ describe("readHudConfig", () => {
       expect(config.elements.cwd).toBe(true);
     });
 
+    it("applies the focused preset when settings.json has no omqHud and no legacy config exists", () => {
+      mockExistsSync.mockImplementation((path) => {
+        const s = String(path);
+        return /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(
+          s,
+        );
+      });
+      mockReadFileSync.mockReturnValue(JSON.stringify({ someOtherKey: true }));
+
+      const config = readHudConfig();
+
+      expect(config.preset).toBe("focused");
+      expect(config.elements.gitBranch).toBe(PRESET_CONFIGS.focused.gitBranch);
+      expect(config.elements.gitStatus).toBe(PRESET_CONFIGS.focused.gitStatus);
+      expect(config.elements.cwd).toBe(PRESET_CONFIGS.focused.cwd);
+      expect(config.elements.useBars).toBe(PRESET_CONFIGS.focused.useBars);
+    });
+
     it("prefers settings.json over legacy hud-config.json", () => {
       mockExistsSync.mockReturnValue(true);
       mockReadFileSync.mockImplementation((path) => {
         const s = String(path);
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(s)
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(s)
         ) {
           return JSON.stringify({
             omqHud: {
@@ -140,7 +164,7 @@ describe("readHudConfig", () => {
           });
         }
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]\.omq[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         ) {
@@ -162,10 +186,10 @@ describe("readHudConfig", () => {
   });
 
   describe("error handling", () => {
-    it("returns defaults when settings.json is invalid JSON", () => {
+    it("applies the focused preset when settings.json is invalid JSON and no legacy config exists", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(
+        return /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(
           s,
         );
       });
@@ -173,7 +197,9 @@ describe("readHudConfig", () => {
 
       const config = readHudConfig();
 
-      expect(config).toEqual(DEFAULT_HUD_CONFIG);
+      expect(config.elements.gitBranch).toBe(PRESET_CONFIGS.focused.gitBranch);
+      expect(config.elements.gitStatus).toBe(PRESET_CONFIGS.focused.gitStatus);
+      expect(config.elements.useBars).toBe(PRESET_CONFIGS.focused.useBars);
     });
 
     it("falls back to legacy when settings.json read fails", () => {
@@ -181,12 +207,12 @@ describe("readHudConfig", () => {
       mockReadFileSync.mockImplementation((path) => {
         const s = String(path);
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(s)
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(s)
         ) {
           throw new Error("Read error");
         }
         if (
-          /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]\.omq[\\/]hud-config\.json$/.test(
+          /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]\.omq[\\/]hud-config\.json$/.test(
             s,
           )
         ) {
@@ -207,7 +233,7 @@ describe("readHudConfig", () => {
     it("allows mission board to be explicitly enabled from settings", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\/]Users[\/]testuser[\/]\.qwen[\/]settings\.json$/.test(s);
+        return /[\/]Users[\/]testuser[\/]\.claude[\/]settings\.json$/.test(s);
       });
       mockReadFileSync.mockReturnValue(
         JSON.stringify({
@@ -228,7 +254,7 @@ describe("readHudConfig", () => {
     it("merges partial config with defaults", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(
+        return /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(
           s,
         );
       });
@@ -259,7 +285,7 @@ describe("readHudConfig", () => {
     it("merges thresholds with defaults", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(
+        return /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(
           s,
         );
       });
@@ -284,7 +310,7 @@ describe("readHudConfig", () => {
     it("merges maxWidth and wrapMode from settings", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(
+        return /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(
           s,
         );
       });
@@ -306,7 +332,7 @@ describe("readHudConfig", () => {
     it("merges usageApiPollIntervalMs from settings", () => {
       mockExistsSync.mockImplementation((path) => {
         const s = String(path);
-        return /[\\/]Users[\\/]testuser[\\/]\.qwen[\\/]settings\.json$/.test(
+        return /[\\/]Users[\\/]testuser[\\/]\.claude[\\/]settings\.json$/.test(
           s,
         );
       });

@@ -1,6 +1,6 @@
 /**
  * Tests for post-tool-verifier.mjs failure detection
- * Covers issue #696: false positive "permission denied" from Qoder CLI temp CWD errors on macOS
+ * Covers issue #696: false positive "permission denied" from Claude Code temp CWD errors on macOS
  */
 
 import { describe, it, expect } from 'vitest';
@@ -9,7 +9,7 @@ import { join } from 'path';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import process from 'process';
-import { detectBashFailure, detectWriteFailure, isClaudeCodeWriteSuccess, isNonZeroExitWithOutput, summarizeAgentResult } from '../../scripts/post-tool-verifier.mjs';
+import { detectAnnouncedBackgroundLaunch, detectBashFailure, detectWriteFailure, isBackgroundToolInvocation, isClaudeCodeWriteSuccess, isNonZeroExitWithOutput, summarizeAgentResult } from '../../scripts/post-tool-verifier.mjs';
 
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'post-tool-verifier.mjs');
 const TEMPLATE_HOOK_PATH = join(process.cwd(), 'templates', 'hooks', 'post-tool-use.mjs');
@@ -58,19 +58,19 @@ function withTempDir(fn) {
 }
 
 function skillStatePath(tempDir, sessionId) {
-  return join(tempDir, '.omc', 'state', 'sessions', sessionId, 'skill-active-state.json');
+  return join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json');
 }
 
 function legacySkillStatePath(tempDir) {
-  return join(tempDir, '.omc', 'state', 'skill-active-state.json');
+  return join(tempDir, '.omq', 'state', 'skill-active-state.json');
 }
 
 function ralplanStatePath(tempDir, sessionId) {
-  return join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralplan-state.json');
+  return join(tempDir, '.omq', 'state', 'sessions', sessionId, 'ralplan-state.json');
 }
 
 function writeSkillStateFixtures(tempDir, sessionId, skillName = 'plan') {
-  mkdirSync(join(tempDir, '.omc', 'state', 'sessions', sessionId), { recursive: true });
+  mkdirSync(join(tempDir, '.omq', 'state', 'sessions', sessionId), { recursive: true });
   writeFileSync(
     skillStatePath(tempDir, sessionId),
     JSON.stringify({
@@ -84,7 +84,7 @@ function writeSkillStateFixtures(tempDir, sessionId, skillName = 'plan') {
       stale_ttl_ms: 900000,
     }),
   );
-  mkdirSync(join(tempDir, '.omc', 'state'), { recursive: true });
+  mkdirSync(join(tempDir, '.omq', 'state'), { recursive: true });
   writeFileSync(
     legacySkillStatePath(tempDir),
     JSON.stringify({
@@ -95,7 +95,7 @@ function writeSkillStateFixtures(tempDir, sessionId, skillName = 'plan') {
 }
 
 function writeRalplanStateFixture(tempDir, sessionId, overrides = {}) {
-  mkdirSync(join(tempDir, '.omc', 'state', 'sessions', sessionId), { recursive: true });
+  mkdirSync(join(tempDir, '.omq', 'state', 'sessions', sessionId), { recursive: true });
   writeFileSync(
     ralplanStatePath(tempDir, sessionId),
     JSON.stringify({
@@ -109,7 +109,7 @@ function writeRalplanStateFixture(tempDir, sessionId, overrides = {}) {
 }
 
 describe('detectBashFailure', () => {
-  describe('Qoder CLI temp CWD false positives (issue #696)', () => {
+  describe('Claude Code temp CWD false positives (issue #696)', () => {
     it('should not flag macOS temp CWD permission error as a failure', () => {
       const output = 'zsh:1: permission denied: /var/folders/xx/yyyyyyy/T/claude-abc123def-cwd';
       expect(detectBashFailure(output)).toBe(false);
@@ -353,7 +353,7 @@ describe('isClaudeCodeWriteSuccess', () => {
 });
 
 describe('detectWriteFailure', () => {
-  describe('Qoder CLI temp CWD false positives (issue #696)', () => {
+  describe('Claude Code temp CWD false positives (issue #696)', () => {
     it('should not flag macOS temp CWD permission error as a write failure', () => {
       const output = 'zsh:1: permission denied: /var/folders/xx/yyyyyyy/T/claude-abc123def-cwd';
       expect(detectWriteFailure(output)).toBe(false);
@@ -499,8 +499,8 @@ describe('agent output summarization / truncation (issue #1373)', () => {
         cwd: process.cwd(),
       },
       {
-        OMC_AGENT_OUTPUT_ANALYSIS_LIMIT: '300',
-        OMC_AGENT_OUTPUT_SUMMARY_LIMIT: '90',
+        OMQ_AGENT_OUTPUT_ANALYSIS_LIMIT: '300',
+        OMQ_AGENT_OUTPUT_SUMMARY_LIMIT: '90',
       },
     );
 
@@ -530,7 +530,7 @@ describe('post-tool hook regression coverage (issue #2615)', () => {
     expect(out.hookSpecificOutput?.additionalContext).not.toContain('Edit operation failed');
   });
 
-  it('prefers exact Qoder CLI edit success output over embedded diagnostics', () => {
+  it('prefers exact Claude Code edit success output over embedded diagnostics', () => {
     const out = runPostToolVerifier({
       tool_name: 'Edit',
       tool_response: [
@@ -841,8 +841,8 @@ describe('post-tool hook structured Write/Edit envelopes (issue #2840)', () => {
   });
 });
 
-describe('OMC_QUIET hook message suppression (issue #1646)', () => {
-  it('suppresses routine success/advice messages at OMC_QUIET=1 while keeping failures', () => {
+describe('OMQ_QUIET hook message suppression (issue #1646)', () => {
+  it('suppresses routine success/advice messages at OMQ_QUIET=1 while keeping failures', () => {
     const edit = runPostToolVerifier(
       {
         tool_name: 'Edit',
@@ -850,7 +850,7 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-1',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(edit).toEqual({ continue: true, suppressOutput: true });
@@ -862,7 +862,7 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-1',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(grep).toEqual({ continue: true, suppressOutput: true });
@@ -874,14 +874,14 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-1',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '1' },
+      { OMQ_QUIET: '1' },
     );
 
     expect(writeFailure.hookSpecificOutput?.additionalContext)
       .toContain('Write operation failed');
   });
 
-  it('keeps important warnings at OMC_QUIET=2 but suppresses routine task summaries', () => {
+  it('keeps important warnings at OMQ_QUIET=2 but suppresses routine task summaries', () => {
     const nonZero = runPostToolVerifier(
       {
         tool_name: 'Bash',
@@ -889,18 +889,18 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
         session_id: 'quiet-2',
         cwd: process.cwd(),
       },
-      { OMC_QUIET: '2' },
+      { OMQ_QUIET: '2' },
     );
 
     expect(nonZero.hookSpecificOutput?.additionalContext)
       .toContain('produced valid output');
 
     const taskSummary = withTempDir((tempDir) => {
-      mkdirSync(join(tempDir, '.omc', 'state'), { recursive: true });
+      mkdirSync(join(tempDir, '.omq', 'state'), { recursive: true });
       writeFileSync(
-        join(tempDir, '.omc', 'state', 'subagent-tracking.json'),
+        join(tempDir, '.omq', 'state', 'subagent-tracking.json'),
         JSON.stringify({
-          agents: [{ status: 'running', agent_type: 'oh-my-qoder:executor' }],
+          agents: [{ status: 'running', agent_type: 'oh-my-claudecode:executor' }],
           total_completed: 1,
           total_failed: 0,
         }),
@@ -913,7 +913,7 @@ describe('OMC_QUIET hook message suppression (issue #1646)', () => {
           session_id: 'quiet-2',
           cwd: tempDir,
         },
-        { OMC_QUIET: '2' },
+        { OMQ_QUIET: '2' },
       );
     });
 
@@ -929,7 +929,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-qoder:plan' },
+        tool_input: { skill: 'oh-my-claudecode:plan' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -948,7 +948,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-qoder:mcp-setup' },
+        tool_input: { skill: 'oh-my-claudecode:mcp-setup' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -967,7 +967,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runHookScript(TEMPLATE_HOOK_PATH, {
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-qoder:plan' },
+        tool_input: { skill: 'oh-my-claudecode:plan' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -986,7 +986,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-qoder:ralplan' },
+        tool_input: { skill: 'oh-my-claudecode:ralplan' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1010,7 +1010,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
       const out = runHookScript(TEMPLATE_HOOK_PATH, {
         tool_name: 'Skill',
         tool_input: {
-          skill: 'oh-my-qoder:plan',
+          skill: 'oh-my-claudecode:plan',
           args: '--consensus issue #2368',
         },
         tool_response: { ok: true },
@@ -1035,7 +1035,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-qoder:deep-interview' },
+        tool_input: { skill: 'oh-my-claudecode:deep-interview' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1054,7 +1054,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-qoder:self-improve' },
+        tool_input: { skill: 'oh-my-claudecode:self-improve' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1064,5 +1064,155 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
       expect(existsSync(skillStatePath(tempDir, sessionId))).toBe(false);
       expect(existsSync(legacySkillStatePath(tempDir))).toBe(false);
     });
+  });
+});
+
+describe('background operation detection (issue #3578)', () => {
+  const TRIGGER_WORDS = ['started', 'running', 'background', 'async', 'task_id', 'spawned'];
+
+  describe('isBackgroundToolInvocation', () => {
+    it('is true only when run_in_background is exactly true', () => {
+      expect(isBackgroundToolInvocation({ run_in_background: true })).toBe(true);
+      expect(isBackgroundToolInvocation({ run_in_background: false })).toBe(false);
+      expect(isBackgroundToolInvocation({ run_in_background: 'true' })).toBe(false);
+      expect(isBackgroundToolInvocation({ command: 'echo running' })).toBe(false);
+    });
+
+    it('fails safe on malformed or missing tool_input', () => {
+      expect(isBackgroundToolInvocation(undefined)).toBe(false);
+      expect(isBackgroundToolInvocation(null)).toBe(false);
+      expect(isBackgroundToolInvocation('run_in_background')).toBe(false);
+      expect(isBackgroundToolInvocation([{ run_in_background: true }])).toBe(false);
+      expect(isBackgroundToolInvocation(42)).toBe(false);
+    });
+  });
+
+  describe('detectAnnouncedBackgroundLaunch', () => {
+    it('matches the harness announcement only at the start of output', () => {
+      expect(detectAnnouncedBackgroundLaunch('Async agent launched successfully\nagentId: a8de3dd')).toBe(true);
+      expect(detectAnnouncedBackgroundLaunch('  Background task launched\n')).toBe(true);
+      expect(detectAnnouncedBackgroundLaunch('Background task resumed')).toBe(true);
+    });
+
+    it('does not match the phrase quoted elsewhere in the output', () => {
+      expect(
+        detectAnnouncedBackgroundLaunch('Report: the parser checks for Async agent launched strings.'),
+      ).toBe(false);
+    });
+
+    it('is case-sensitive by design', () => {
+      expect(detectAnnouncedBackgroundLaunch('async agent launched successfully')).toBe(false);
+    });
+
+    it('fails safe on non-string output', () => {
+      expect(detectAnnouncedBackgroundLaunch(undefined)).toBe(false);
+      expect(detectAnnouncedBackgroundLaunch(null)).toBe(false);
+      expect(detectAnnouncedBackgroundLaunch({ text: 'Async agent launched' })).toBe(false);
+    });
+  });
+
+  describe('foreground Bash never reports a background operation', () => {
+    for (const word of TRIGGER_WORDS) {
+      it(`does not fire when foreground output contains "${word}"`, () => {
+        const out = runPostToolVerifier({
+          tool_name: 'Bash',
+          tool_input: { command: 'echo demo' },
+          tool_response: `the service is ${word} normally`,
+          session_id: `bg-fp-${word}`,
+        });
+
+        expect(out).toEqual({ continue: true, suppressOutput: true });
+      });
+    }
+
+    it('does not fire when foreground output contains every trigger word at once', () => {
+      const out = runPostToolVerifier({
+        tool_name: 'Bash',
+        tool_input: { command: 'cat notes.txt' },
+        tool_response: TRIGGER_WORDS.join(' '),
+        session_id: 'bg-fp-all',
+      });
+
+      expect(out).toEqual({ continue: true, suppressOutput: true });
+    });
+
+    it('does not fire for the reported repro payload', () => {
+      const out = runPostToolVerifier({
+        tool_name: 'Bash',
+        tool_input: { command: 'echo "the service is running"' },
+        tool_response: 'the service is running',
+        session_id: 'bg-fp-repro',
+      });
+
+      expect(out).toEqual({ continue: true, suppressOutput: true });
+    });
+  });
+
+  describe('genuine background invocations still fire', () => {
+    it('fires for Bash with run_in_background=true', () => {
+      const out = runPostToolVerifier({
+        tool_name: 'Bash',
+        tool_input: { command: 'sleep 100', run_in_background: true },
+        tool_response: 'ok',
+        session_id: 'bg-real-bash',
+      });
+
+      expect(out.hookSpecificOutput.additionalContext).toContain('Background operation detected');
+    });
+
+    it('fires for Task with run_in_background=true', () => {
+      const out = runPostToolVerifier({
+        tool_name: 'Task',
+        tool_input: { description: 'explore', run_in_background: true },
+        tool_response: 'ok',
+        session_id: 'bg-real-task',
+      });
+
+      expect(out.hookSpecificOutput.additionalContext).toContain('Background task launched');
+    });
+
+    it('fires for a Task output leading with the launch announcement', () => {
+      const out = runPostToolVerifier({
+        tool_name: 'Task',
+        tool_input: { description: 'explore' },
+        tool_response: 'Async agent launched successfully\nagentId: a8de3dd',
+        session_id: 'bg-real-announce',
+      });
+
+      expect(out.hookSpecificOutput.additionalContext).toContain('Background task launched');
+    });
+
+    it('does not fire for a foreground Task result that merely quotes the announcement', () => {
+      const out = runPostToolVerifier({
+        tool_name: 'Task',
+        tool_input: { description: 'investigate' },
+        tool_response: 'Investigation report: the parser matches "Async agent launched" text.',
+        session_id: 'bg-fg-task-quote',
+      });
+
+      expect(out).toEqual({ continue: true, suppressOutput: true });
+    });
+  });
+
+  describe('malformed tool_input fails safely', () => {
+    for (const [label, toolInput] of [
+      ['missing', undefined],
+      ['null', null],
+      ['string', 'run_in_background=true'],
+      ['array', [{ run_in_background: true }]],
+    ]) {
+      it(`does not fire and still continues for ${label} tool_input`, () => {
+        const payload = {
+          tool_name: 'Bash',
+          tool_response: TRIGGER_WORDS.join(' '),
+          session_id: `bg-malformed-${label}`,
+        };
+        if (toolInput !== undefined) payload.tool_input = toolInput;
+
+        const out = runPostToolVerifier(payload);
+
+        expect(out).toEqual({ continue: true, suppressOutput: true });
+      });
+    }
   });
 });

@@ -1,14 +1,11 @@
 ---
 name: skillify
-aliases: [learner]
-description: Turn a repeatable workflow from the current session into a reusable OMQ skill draft
+description: Turn a repeatable workflow from the current session into a reusable OMC skill draft
 ---
 
 # Skillify
 
-Use this skill when the current session uncovered a repeatable workflow that should become a reusable OMQ skill.
-
-> Compatibility: `/oh-my-qoder:learner` is a deprecated alias for this skill. Prefer `/oh-my-qoder:skillify` in docs, prompts, and new workflows. Internal implementation modules may still use the learner name.
+Use this skill when the current session uncovered a repeatable workflow that should become a reusable OMC skill.
 
 ## Goal
 Capture a successful multi-step workflow as a concrete skill draft instead of rediscovering it later.
@@ -48,7 +45,7 @@ Prefer skills that encode decision-making heuristics, constraints, pitfalls, and
      ---
      ```
    - Write learned/user/project skills to flat file-backed paths:
-     - `$QODER_CONFIG_DIR/skills/omq-learned/<skill-name>.md`
+     - `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/omc-learned/<skill-name>.md`
      - `.omq/skills/<skill-name>.md`
    - Remember that uncommitted skills are still worktree-local until committed or copied to a user-level directory.
 5. Draft the rest of the skill file with clear triggers, steps, success criteria, and pitfalls.
@@ -59,7 +56,7 @@ Prefer skills that encode decision-making heuristics, constraints, pitfalls, and
 - Keep the skill practical and scoped.
 - Prefer explicit success criteria over vague prose.
 - If the workflow still has unresolved branching decisions, note them before drafting.
-- Keep `omq-learned` as the storage directory name for compatibility; do not present it as the public invocation name.
+- Keep `omc-learned` as the storage directory name for compatibility; do not present it as the public invocation name.
 
 ## Output
 - Proposed skill name

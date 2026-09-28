@@ -20,14 +20,14 @@ export const SLASH_COMMAND_PATTERN = /^\/([a-zA-Z][\w-]*)\s*(.*)/;
  * (they have special handling elsewhere or are now skills with oh-my-qoder: prefix)
  */
 export const EXCLUDED_COMMANDS = new Set([
-  'ralph',
+  // ralph / ultraqa / learner were retired in 5.0.0; execute and verify cover them.
   'oh-my-qoder:ralplan',
-  'oh-my-qoder:ultraqa',
+  'oh-my-qoder:execute',
+  'oh-my-qoder:verify',
   'oh-my-qoder:skillify',
-  'oh-my-qoder:learner',
   'oh-my-qoder:plan',
   'oh-my-qoder:cancel',
-  // Qoder CLI built-in commands that shouldn't be expanded
+  // Claude Code built-in commands that shouldn't be expanded
   'help',
   'clear',
   'compact',

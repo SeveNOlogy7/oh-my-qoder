@@ -1,6 +1,22 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error - .mjs file has no type declarations
-import { stripAnsi, parseVitestOutput, compareFailures } from '../../scripts/known-failures.mjs';
+import { stripAnsi, parseVitestOutput, compareFailures, stripRunnerPrefix } from '../../scripts/known-failures.mjs';
+
+describe('stripRunnerPrefix', () => {
+  it('removes a job/step/timestamp prefix whose step name contains spaces', () => {
+    const line = 'windows-test	Test (captured)	2026-09-25T15:20:35.9602849Z  FAIL  src/a.test.ts > works';
+    expect(stripRunnerPrefix(line)).toBe(' FAIL  src/a.test.ts > works');
+  });
+
+  it('does not cut early on a Z inside the test title', () => {
+    const line = 'test	Test (captured)	2026-09-25T15:20:35Z  FAIL  src/z.test.ts > parses Zulu zones';
+    expect(stripRunnerPrefix(line)).toBe(' FAIL  src/z.test.ts > parses Zulu zones');
+  });
+
+  it('leaves a plain vitest line untouched', () => {
+    expect(stripRunnerPrefix(' FAIL  src/a.test.ts > works')).toBe(' FAIL  src/a.test.ts > works');
+  });
+});
 
 describe('known-failures script', () => {
   describe('stripAnsi', () => {
@@ -53,6 +69,25 @@ Test Files  1 failed | 1 total
       expect(failures).toHaveLength(2);
       expect(failures[0]).toBe('src/test.test.ts > suite > failing test 1');
       expect(failures[1]).toBe('src/test.test.ts > suite > failing test 2');
+    });
+
+    it('collapses the repeated FAIL lines that a retried test emits', () => {
+      // vitest prints one FAIL block per attempt, so a flake that is retried and fails
+      // twice yields two lines while its own Tests summary counts the test once. Measured
+      // on run 36365309333: 960 lines against a tally of 947 + 12, which made the
+      // completeness guard refuse the whole comparison before any drift was judged. A
+      // baseline is a set of titles, so the second occurrence adds no fact.
+      const output = [
+        ' FAIL  src/a.test.ts > suite > retried case',
+        'AssertionError: first attempt',
+        '',
+        ' FAIL  src/a.test.ts > suite > retried case',
+        'AssertionError: second attempt',
+        '',
+        'Test Files  1 failed | 1 total',
+        '      Tests  1 failed | 1 total',
+      ].join('\n');
+      expect(parseVitestOutput(output)).toEqual(['src/a.test.ts > suite > retried case']);
     });
 
     it('normalizes backslashes to forward slashes', () => {

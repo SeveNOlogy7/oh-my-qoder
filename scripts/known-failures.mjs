@@ -14,6 +14,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Strip ANSI escape sequences from text.
@@ -30,6 +31,20 @@ export function stripAnsi(text) {
 }
 
 /**
+ * Remove a GitHub Actions log prefix: `<job>\t<step>\t<ISO timestamp>Z `.
+ *
+ * Without this, "FAIL" never sits at the start of a line and a log holding dozens
+ * of failures parses as zero -- which is indistinguishable from "suite is green".
+ * Step names contain spaces ("Test (captured)") and a test title may itself
+ * contain "Z ", so the fields are anchored on tabs and the timestamp is matched
+ * as a whole instead of located with indexOf('Z ').
+ */
+export function stripRunnerPrefix(line) {
+  const match = /^[^\t]+\t[^\t]+\t\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z /.exec(line);
+  return match ? line.slice(match[0].length) : line;
+}
+
+/**
  * Parse vitest output and extract failed test lines.
  * 
  * Vitest output format:
@@ -37,17 +52,13 @@ export function stripAnsi(text) {
  * 
  * Returns array of normalized failure lines.
  */
-export function parseVitestOutput(output) {
+function failLinesOf(output) {
   const cleaned = stripAnsi(output);
   const lines = cleaned.split('\n');
   const failures = [];
 
   for (const rawLine of lines) {
-    // A GitHub Actions log prefixes every line with `<job>\t<step>\t<ts>Z `.
-    // Without removing it, "FAIL" never sits at line start and a 49-failure
-    // log parses as zero.
-    const marker = rawLine.indexOf('Z ');
-    const line = marker >= 0 && /^\S+\t\S+\t\d{4}-/.test(rawLine) ? rawLine.slice(marker + 2) : rawLine;
+    const line = stripRunnerPrefix(rawLine);
     // Match FAIL lines: " FAIL  path > test name"
     const match = line.match(/^\s*FAIL\s+(.+)$/);
     if (match) {
@@ -57,8 +68,54 @@ export function parseVitestOutput(output) {
       failures.push(normalized);
     }
   }
-  
+
   return failures;
+}
+
+/**
+ * A retried test emits one FAIL block per attempt, so the raw line list can repeat a
+ * title while vitest's own tally still counts that test once. Measured on run
+ * 36365309333: 960 FAIL lines against 947 failed tests + 12 collection errors, which made
+ * the completeness guard refuse the whole comparison before any drift could be judged.
+ * A baseline is a set of titles, so the repeat carries no extra fact.
+ */
+export function parseVitestOutput(output) {
+  return [...new Set(failLinesOf(output))];
+}
+
+/** How many FAIL lines parseVitestOutput collapsed -- reported out loud, never silently. */
+export function collapsedFailLines(output) {
+  const all = failLinesOf(output);
+  return all.length - new Set(all).size;
+}
+
+/**
+ * vitest's own tally of the same run. The parsed FAIL-line count must equal
+ * failed tests plus module-level collection errors, or the log this tool read
+ * is not the whole run: a tee that dropped its tail, a truncated artifact, or a
+ * parse that stopped matching all look like "fewer failures" -- which the delta
+ * gate would otherwise report as an improvement.
+ *
+ * A FAIL line carrying a bracketed file suffix is a collection error: the file
+ * counts as failed but contributes no test to the `Tests N failed` tally.
+ */
+export function vitestTally(output) {
+  const lines = stripAnsi(output).split('\n').map(l => stripRunnerPrefix(l).trim());
+  // vitest prints `Tests  276 failed | 12716 passed | 38 skipped (13030)`, but
+  // when nothing failed the "N failed" segment is omitted entirely -- so a
+  // present summary line without it means zero, not unknown. Treating that as
+  // unknown would make --require-summary red the day the suite goes green.
+  const summary = label => {
+    const hit = lines.find(l => new RegExp(`^${label}\\s+\\d+\\s`).test(l));
+    if (!hit) return null;
+    const m = /(\d+) failed\b/.exec(hit);
+    return m ? Number(m[1]) : 0;
+  };
+  return {
+    tests: summary('Tests'),
+    files: summary('Test Files'),
+    collection: lines.filter(l => /^FAIL\s+\S+\s+\[\s*\S+\s*\]$/.test(l)).length,
+  };
 }
 
 /**
@@ -117,6 +174,7 @@ function main() {
     return hit ? hit.slice(name.length + 1) : undefined;
   };
   const checkMode = args.includes('--check');
+  const requireSummary = args.includes('--require-summary');
   const baselineArg = args.find(a => a.startsWith('--baseline='));
   const baselinePath = baselineArg 
     ? baselineArg.split('=')[1] 
@@ -139,6 +197,43 @@ function main() {
     }
     
     const actualFailures = parseVitestOutput(vitestOutput);
+    const tally = vitestTally(vitestOutput);
+
+    if (checkMode) {
+      // The equation is checked here rather than only in the authoring tool,
+      // because authoring is human-invoked and this path is what CI runs: a
+      // parse that stopped matching a new failure shape must not read as green.
+      if (requireSummary && (tally.tests === null || tally.files === null)) {
+        console.error('Error: no "Tests N failed" / "Test Files N failed" summary in the input'
+          + ` (tests=${tally.tests} files=${tally.files}) -- cannot prove this log is complete.`);
+        process.exit(2);
+      }
+      if (tally.tests !== null && actualFailures.length !== tally.tests + tally.collection) {
+        console.error(`\n❌ Incomplete parse: ${actualFailures.length} FAIL entries read, but vitest reported`
+          + ` ${tally.tests} failed tests + ${tally.collection} module-level collection errors`
+          + ` = ${tally.tests + tally.collection}. The log is truncated or the parser stopped matching.`);
+        process.exit(1);
+      }
+      const parsedFiles = new Set(actualFailures.map(f => f.split(' > ')[0])).size;
+      if (tally.files !== null && parsedFiles !== tally.files) {
+        console.error(`\n❌ Incomplete parse: ${parsedFiles} failing files read, but vitest reported ${tally.files}.`);
+        process.exit(1);
+      }
+      console.log(`Completeness: ${actualFailures.length} entries = ${tally.tests} tests + ${tally.collection} collection`
+        + ` across ${parsedFiles} files (vitest tally agrees)`);
+      // Say it out loud rather than absorb it: collapsing is right for retries, but the
+      // same shape also hides two tests that share a title, and that is a test-side bug.
+      const collapsed = collapsedFailLines(vitestOutput);
+      if (collapsed) {
+        console.log(`Note:    ${collapsed} duplicate FAIL line(s) collapsed -- retried attempts, or two tests sharing a title.`);
+      }
+      // Blind spot, stated rather than hidden: vitest's `Errors` line reports
+      // unhandled rejections that print no FAIL line, so they exist in neither
+      // the baseline nor the equation above.
+      const errLine = stripAnsi(vitestOutput).split('\n').map(stripRunnerPrefix)
+        .map(l => l.trim()).find(l => /^Errors\s+\d+/.test(l));
+      if (errLine) console.log(`Note: vitest reports "${errLine}" -- unhandled errors carry no FAIL line and are not gated.`);
+    }
     
     if (!checkMode) {
       // Generate baseline mode
@@ -168,10 +263,39 @@ function main() {
       process.exit(2);
     }
     
+    // Measured-flake exemption. A win32 suite of this size flips 0.5%-1.2% of its
+    // tolerated entries per run even when nothing a test can see has changed, so
+    // without this the delta gate would be red on almost every push and stop being
+    // read. Titles enter the list only via scripts/ci/derive-flake-list.mjs, and
+    // exemption is symmetric: a listed title neither reports as new nor as stale.
+    const flakePath = argValue('--flake-list');
+    let flaky = new Set();
+    if (flakePath) {
+      let list;
+      try {
+        list = JSON.parse(readFileSync(flakePath, 'utf8'));
+      } catch (err) {
+        console.error(`Error loading flake list: ${err.message}`);
+        process.exit(2);
+      }
+      const listPlatform = list.metadata?.platform;
+      if (listPlatform && baseline.metadata?.platform && listPlatform !== baseline.metadata.platform) {
+        console.error(`Error: flake list ${flakePath} declares platform "${listPlatform}" but the baseline declares "${baseline.metadata.platform}".`);
+        process.exit(2);
+      }
+      flaky = new Set((list.entries ?? []).map(e => (typeof e === 'string' ? e : e.entry)));
+    }
+    const strip = arr => (flaky.size ? arr.filter(f => !flaky.has(f)) : arr);
+    const suppressed = flaky.size ? actualFailures.filter(f => flaky.has(f)).length : 0;
+
     const { newFailures, staleEntries, matchedCount } = compareFailures(
-      actualFailures,
-      baseline.failures
+      strip(actualFailures),
+      strip(baseline.failures)
     );
+
+    if (flaky.size) {
+      console.log(`Flakes:   ${flakePath} holds ${flaky.size} titles, ${suppressed} of them failing this run (excluded both ways)`);
+    }
     
     console.log(`Baseline: ${baseline.failures.length} known failures`);
     console.log(`Actual:   ${actualFailures.length} failures`);
@@ -188,8 +312,12 @@ function main() {
     }
     
     if (newFailures.length > 0 || staleEntries.length > 0) {
-      console.error('\nBaseline mismatch. Update tests/known-failures-linux.json:');
-      console.error('  npx vitest run | node scripts/known-failures.mjs > tests/known-failures-linux.json');
+      // Echo the baseline that was actually opened: both CI jobs share this script and
+      // only the win32 one passes --baseline, so naming the linux file sent a Windows
+      // red run to edit the wrong tracked file. Baselines are authored from CI logs
+      // (a workstation parse disagrees with the runner by ~2.5%), hence the tool name.
+      console.error(`\nBaseline mismatch. Re-author ${baselinePath} from a CI run:`);
+      console.error('  node scripts/ci/author-known-failures.mjs --linux-log=<log> --win32-log=<log> --run=<runId@sha>');
       process.exit(1);
     }
     
@@ -203,4 +331,10 @@ function main() {
   });
 }
 
-main();
+// Guarded so the parser can be imported (src/__tests__/known-failures.test.ts
+// already does, and scripts/ci/render-known-failures-doc.mjs must use the same
+// rules the gate applies). main() reads stdin and process.exit()s on empty
+// input, so an unguarded call here can kill any importer.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

@@ -133,3 +133,6 @@ export function syncOmqLearnedUserSkillsForClaudeCode(): string[] {
 
   return synced;
 }
+
+// Ancestor-spelling alias -> OMQ-branded implementation.
+export const syncOmcLearnedUserSkillsForClaudeCode = syncOmqLearnedUserSkillsForClaudeCode;

@@ -8,15 +8,16 @@
  * 1. Ralph claims task is complete
  * 2. System enters verification mode
  * 3. Architect agent is invoked to verify the work
- * 4. If architect approves -> truly complete, use /oh-my-qoder:cancel to exit
+ * 4. If architect approves -> truly complete, use /oh-my-claudecode:cancel to exit
  * 5. If architect finds flaws -> continue ralph with architect feedback
  */
 
 import { randomUUID } from 'crypto';
-import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { resolveSessionStatePath, ensureSessionStateDir, getOmqRoot } from '../../lib/worktree-paths.js';
-import { formatOmqCliInvocation } from '../../utils/omq-cli-rendering.js';
+import { resolveSessionStatePath, ensureSessionStateDir, getOmcRoot } from '../../lib/worktree-paths.js';
+import { clearStateFileLocked, writeStateFileLocked } from '../../lib/mode-state-io.js';
+import { formatOmcCliInvocation } from '../../utils/omc-cli-rendering.js';
 import type { UserStory } from './prd.js';
 import type { RalphCriticMode } from './loop.js';
 
@@ -79,7 +80,7 @@ function getVerificationAgentStep(mode?: RalphCriticMode): string {
     case 'codex':
       return `1. **Run an external Codex critic review**:
    \`\`\`
-   ${formatOmqCliInvocation('ask codex --agent-prompt critic "<verification prompt covering the task, completion claim, and acceptance criteria>"')}
+   ${formatOmcCliInvocation('ask codex --agent-prompt critic "<verification prompt covering the task, completion claim, and acceptance criteria>"')}
    \`\`\`
    Use the Codex output as the reviewer verdict before deciding pass/fix.`;
     default:
@@ -98,7 +99,7 @@ function getVerificationStatePath(directory: string, sessionId?: string): string
   if (sessionId) {
     return resolveSessionStatePath('ralph-verification', sessionId, directory);
   }
-  return join(getOmqRoot(directory), 'ralph-verification.json');
+  return join(getOmcRoot(directory), 'ralph-verification.json');
 }
 
 /**
@@ -131,7 +132,7 @@ export function writeVerificationState(directory: string, state: VerificationSta
   if (sessionId) {
     ensureSessionStateDir(sessionId, directory);
   } else {
-    const stateDir = getOmqRoot(directory);
+    const stateDir = getOmcRoot(directory);
     if (!existsSync(stateDir)) {
       try {
         mkdirSync(stateDir, { recursive: true });
@@ -141,12 +142,7 @@ export function writeVerificationState(directory: string, state: VerificationSta
     }
   }
 
-  try {
-    writeFileSync(statePath, JSON.stringify(state, null, 2));
-    return true;
-  } catch {
-    return false;
-  }
+  return writeStateFileLocked(statePath, state as unknown as Record<string, unknown>);
 }
 
 /**
@@ -155,15 +151,7 @@ export function writeVerificationState(directory: string, state: VerificationSta
  */
 export function clearVerificationState(directory: string, sessionId?: string): boolean {
   const statePath = getVerificationStatePath(directory, sessionId);
-  if (existsSync(statePath)) {
-    try {
-      unlinkSync(statePath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  return true;
+  return clearStateFileLocked(statePath);
 }
 
 /**
@@ -236,13 +224,21 @@ export function recordArchitectFeedback(
 export function getArchitectVerificationPrompt(state: VerificationState, currentStory?: UserStory): string {
   const criticLabel = getCriticLabel(state.critic_mode);
   const approvalTag = `<ralph-approved critic="${getCriticMode(state.critic_mode)}" request-id="${state.request_id}"${state.story_id ? ` story-id="${state.story_id}"` : ''}>VERIFIED_COMPLETE</ralph-approved>`;
+  const amendmentLedger = currentStory?.criterionAmendments?.length
+    ? `
+
+**Amended/Superseded Criteria (evidence ledger — original criteria retained):**
+${currentStory.criterionAmendments.map((a, i) => `${i + 1}. ~~${a.original}~~ — ${a.kind === 'replaced' ? `replaced by: ${a.replacement}` : 'superseded'} (reason: ${a.reason}; evidence: ${a.evidence}; authority: ${a.authority}; at: ${a.timestamp})`).join('\n')}
+Verify that each amendment is justified by its cited evidence and that the active criteria below are the ones that govern.
+`
+    : '';
   const storySection = currentStory ? `
 **Current Story: ${currentStory.id} - ${currentStory.title}**
 ${currentStory.description}
 
 **Acceptance Criteria to Verify:**
 ${currentStory.acceptanceCriteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
-
+${amendmentLedger}
 IMPORTANT: This review gates Ralph's progression to the next story/complete state. Verify EACH acceptance criterion above is met. Do not verify based on general impressions — check each criterion individually with concrete evidence.
 ` : '';
 
@@ -275,7 +271,7 @@ ${getVerificationAgentStep(state.critic_mode)}
    - Return ONLY a concise review summary under 100 words with verdict, evidence highlights, files checked, and blockers. Do not paste long logs inline.
 
 3. **Based on ${criticLabel}'s response:**
-   - If APPROVED: Output the exact correlated approval tag \`${approvalTag}\`, then run \`/oh-my-qoder:cancel\` to cleanly exit
+   - If APPROVED: Output the exact correlated approval tag \`${approvalTag}\`, then run \`/oh-my-claudecode:cancel\` to cleanly exit
    - If REJECTED: Continue working on the identified issues
 
 </ralph-verification>
@@ -307,7 +303,7 @@ ${state.original_task}
 1. Address ALL issues identified by ${criticLabel}
 2. Do NOT claim completion again until issues are fixed${state.story_id ? `, and do not progress story ${state.story_id} until it passes review` : ''}
 3. When truly done, another ${criticLabel} verification will be triggered
-4. After ${criticLabel} approves, run \`/oh-my-qoder:cancel\` to cleanly exit
+4. After ${criticLabel} approves, run \`/oh-my-claudecode:cancel\` to cleanly exit
 
 Continue working now.
 
