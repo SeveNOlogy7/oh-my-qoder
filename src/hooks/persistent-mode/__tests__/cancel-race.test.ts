@@ -32,8 +32,8 @@ function makeRalphSession(tempDir: string, sessionId: string): string {
 
 describe('persistent-mode cancel race guard (issue #921)', () => {
   it.each([
-    '/oh-my-qoder:cancel',
-    '/oh-my-qoder:cancel --force'
+    '/oh-my-claudecode:cancel',
+    '/oh-my-claudecode:cancel --force'
   ])('should not re-enforce while explicit cancel prompt is "%s"', async (cancelPrompt: string) => {
     const sessionId = `session-921-${cancelPrompt.includes('force') ? 'force' : 'normal'}`;
     const tempDir = mkdtempSync(join(tmpdir(), 'persistent-cancel-race-'));
@@ -68,13 +68,14 @@ describe('persistent-mode cancel race guard (issue #921)', () => {
       execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
       const stateDir = makeRalphSession(tempDir, sessionId);
 
+      const requestedAt = Date.now();
       writeFileSync(
         join(stateDir, 'cancel-signal-state.json'),
         JSON.stringify(
           {
             active: true,
-            requested_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 30_000).toISOString(),
+            requested_at: new Date(requestedAt).toISOString(),
+            expires_at: new Date(requestedAt + 30_000).toISOString(),
             source: 'test'
           },
           null,
@@ -112,13 +113,14 @@ describe('persistent-mode cancel race guard (issue #921)', () => {
       const resumedDir = join(tempDir, '.omq', 'state', 'sessions', resumedSessionId);
       mkdirSync(resumedDir, { recursive: true });
 
+      const requestedAt = Date.now();
       writeFileSync(
         join(ownerDir, 'cancel-signal-state.json'),
         JSON.stringify(
           {
             active: true,
-            requested_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 30_000).toISOString(),
+            requested_at: new Date(requestedAt).toISOString(),
+            expires_at: new Date(requestedAt + 30_000).toISOString(),
             mode: 'ralph',
             source: 'state_clear'
           },

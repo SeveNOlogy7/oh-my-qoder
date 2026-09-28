@@ -10,13 +10,14 @@ import {
   getModelForAgent,
   type AgentInput
 } from '../features/delegation-enforcer.js';
+import { clearSkillsCache } from '../features/builtin-skills/skills.js';
 import { resolveDelegation } from '../features/delegation-routing/resolver.js';
 
 describe('delegation-enforcer', () => {
   let originalDebugEnv: string | undefined;
   // Save/restore env vars that trigger non-Claude provider detection (issue #1201)
   // so existing tests run in a standard Claude environment
-  const providerEnvKeys = ['DASHSCOPE_BASE_URL', 'QODER_MODEL', 'DASHSCOPE_MODEL', 'OMQ_ROUTING_FORCE_INHERIT', 'OMQ_ROUTING_FORCE_INHERIT', 'OMQ_ROUTING_FORCE_INHERIT', 'DASHSCOPE_DEFAULT_MAX_MODEL', 'DASHSCOPE_DEFAULT_PLUS_MODEL', 'DASHSCOPE_DEFAULT_TURBO_MODEL', 'DASHSCOPE_DEFAULT_MAX_MODEL', 'DASHSCOPE_DEFAULT_PLUS_MODEL', 'DASHSCOPE_DEFAULT_TURBO_MODEL', 'OMQ_MODEL_HIGH', 'OMQ_MODEL_MEDIUM', 'OMQ_MODEL_LOW'];
+  const providerEnvKeys = ['ANTHROPIC_BASE_URL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'OMQ_ROUTING_FORCE_INHERIT', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'OMQ_MODEL_HIGH', 'OMQ_MODEL_MEDIUM', 'OMQ_MODEL_LOW'];
   const savedProviderEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
@@ -48,13 +49,13 @@ describe('delegation-enforcer', () => {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:executor',
-        model: 'low'
+        model: 'haiku'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('low');
+      expect(result.modifiedInput.model).toBe('haiku');
     });
 
     it('normalizes explicit full model ID to CC alias (issue #1415)', () => {
@@ -62,41 +63,41 @@ describe('delegation-enforcer', () => {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:executor',
-        model: 'qwen-plus'
+        model: 'claude-sonnet-5'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('medium');
+      expect(result.modifiedInput.model).toBe('sonnet');
     });
 
-    it('normalizes qwen-max to the fable tier alias (issue #3246)', () => {
+    it('normalizes claude-fable-5 to the fable tier alias (issue #3246)', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:executor',
-        model: 'qwen-max'
+        model: 'claude-fable-5'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('high');
+      expect(result.modifiedInput.model).toBe('fable');
     });
 
-    it('preserves explicit provider-specific DashScope model ID', () => {
+    it('preserves explicit provider-specific Bedrock model ID', () => {
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:executor',
-        model: 'dashscope/qwen-plus'
+        model: 'us.anthropic.claude-sonnet-4-6-v1:0'
       };
 
       const result = enforceModel(input);
 
       expect(result.injected).toBe(false);
-      expect(result.modifiedInput.model).toBe('dashscope/qwen-plus');
+      expect(result.modifiedInput.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
     });
 
     it('injects model from agent definition when not specified', () => {
@@ -109,7 +110,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('medium'); // executor defaults to qwen-plus
+      expect(result.modifiedInput.model).toBe('medium'); // tier default resolves to qwen-plus, folded back to a tier
       expect(result.originalInput.model).toBeUndefined();
     });
 
@@ -123,7 +124,7 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.modifiedInput.model).toBe('medium'); // debugger defaults to qwen-plus
+      expect(result.modifiedInput.model).toBe('medium'); // debugger's tier default is qwen-plus, folded to a tier
     });
 
     it('rewrites deprecated aliases to canonical agent names before injecting model', () => {
@@ -148,6 +149,192 @@ describe('delegation-enforcer', () => {
       };
 
       expect(() => enforceModel(input)).toThrow('Unknown agent type');
+    });
+    it('throws error for a bundled skill name with Skill-tool guidance (issue #3667)', () => {
+      const input: AgentInput = {
+        description: 'Deslop changed files',
+        prompt: 'Run the cleaner',
+        subagent_type: 'oh-my-qoder:ai-slop-cleaner'
+      };
+
+      let thrown: Error | undefined;
+      try {
+        enforceModel(input);
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown).toBeDefined();
+      expect(thrown!.message).toContain('Unknown agent type');
+      expect(thrown!.message).toContain('ai-slop-cleaner');
+      expect(thrown!.message).toContain('Skill');
+      expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
+      expect(thrown!.message).toContain('do NOT substitute a similarly-named agent');
+    });
+
+    it('does not add Skill guidance for genuinely unknown agents (no closest-match substitution)', () => {
+      const input: AgentInput = {
+        description: 'Test task',
+        prompt: 'Do something',
+        subagent_type: 'oh-my-qoder:ai-slop-cleanr'
+      };
+
+      let thrown: Error | undefined;
+      try {
+        enforceModel(input);
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown).toBeDefined();
+      expect(thrown!.message).toContain('Unknown agent type');
+      expect(thrown!.message).not.toContain('Skill');
+      expect(thrown!.message).not.toContain('closest match');
+    });
+
+    it('resolves the dir-only plan name to omc-plan in the guidance (hook parity)', () => {
+      const input: AgentInput = {
+        description: 'Plan task',
+        prompt: 'Run it',
+        subagent_type: 'oh-my-qoder:plan'
+      };
+
+      let thrown: Error | undefined;
+      try {
+        enforceModel(input);
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown).toBeDefined();
+      expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:omc-plan")');
+    });
+    describe('bundled skill visibility (entitlement set empty since 5.0.0, issue #3667)', () => {
+      let savedUserType: string | undefined;
+
+      beforeEach(() => {
+        savedUserType = process.env.USER_TYPE;
+        clearSkillsCache();
+      });
+
+      afterEach(() => {
+        if (savedUserType === undefined) {
+          delete process.env.USER_TYPE;
+        } else {
+          process.env.USER_TYPE = savedUserType;
+        }
+        clearSkillsCache();
+      });
+
+      function thrownFor(subagentType: string): Error | undefined {
+        try {
+          enforceModel({ description: 't', prompt: 'p', subagent_type: subagentType });
+        } catch (error) {
+          return error as Error;
+        }
+        return undefined;
+      }
+
+      // Ungated in 5.0.0: remember/verify/debug are suggested for every user.
+      it.each(['remember', 'verify', 'debug'])(
+        'adds Skill guidance for the %s skill regardless of USER_TYPE',
+        (skillName) => {
+          delete process.env.USER_TYPE;
+          clearSkillsCache();
+          const thrown = thrownFor(`oh-my-qoder:${skillName}`);
+          expect(thrown).toBeDefined();
+          expect(thrown!.message).toContain(`Skill(skill="oh-my-qoder:${skillName}")`);
+        },
+      );
+
+      it.each(['remember', 'verify', 'debug'])(
+        'adds Skill guidance for the %s skill when USER_TYPE=ant',
+        (hiddenSkill) => {
+          process.env.USER_TYPE = 'ant';
+          clearSkillsCache();
+          const thrown = thrownFor(`oh-my-qoder:${hiddenSkill}`);
+          expect(thrown).toBeDefined();
+          expect(thrown!.message).toContain(`Skill(skill="oh-my-qoder:${hiddenSkill}")`);
+        },
+      );
+
+      it('keeps guidance for every bundled skill in the same process', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        const visible = thrownFor('oh-my-qoder:ai-slop-cleaner');
+        const ungated = thrownFor('oh-my-qoder:remember');
+        expect(visible!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
+        expect(ungated!.message).toContain('Skill(skill="oh-my-qoder:remember")');
+      });
+
+      it('case-folds identifiers before visibility and resolution (Windows/macOS semantics, issue #3667)', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        const ungatedMixedCase = thrownFor('oh-my-qoder:Remember');
+        expect(ungatedMixedCase!.message).toContain('Skill(skill="oh-my-qoder:remember")');
+
+        const visibleMixedCase = thrownFor('oh-my-qoder:Plan');
+        expect(visibleMixedCase!.message).toContain('Skill(skill="oh-my-qoder:omc-plan")');
+
+      });
+
+      it('case-folds the namespace prefix for USER_TYPE=ant', () => {
+        process.env.USER_TYPE = 'ant';
+        clearSkillsCache();
+        const hiddenMixedCase = thrownFor('oh-my-qoder:Remember');
+        expect(hiddenMixedCase!.message).toContain('Skill(skill="oh-my-qoder:remember")');
+        const omcPrefix = thrownFor('OMC:ai-slop-cleaner');
+        expect(omcPrefix!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
+      });
+      it('preserves bare native identifiers (no Skill guidance for plan/general-purpose, issue #3667 P1)', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        for (const bare of ['plan', 'Plan', 'general-purpose']) {
+          const thrown = thrownFor(bare);
+          expect(thrown).toBeDefined();
+          expect(thrown!.message).toContain('Unknown agent type');
+          expect(thrown!.message).not.toContain('Skill(skill=');
+        }
+      });
+
+      it('validates skill names even with an explicit model (issue #3667 P2)', () => {
+        delete process.env.USER_TYPE;
+        clearSkillsCache();
+        let thrown: Error | undefined;
+        try {
+          enforceModel({
+            description: 't',
+            prompt: 'p',
+            subagent_type: 'oh-my-qoder:ai-slop-cleaner',
+            model: 'sonnet',
+          });
+        } catch (error) {
+          thrown = error as Error;
+        }
+        expect(thrown).toBeDefined();
+        expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
+      });
+
+      it('validates skill names under force-inherit routing (issue #3667 P2)', () => {
+        delete process.env.USER_TYPE;
+        process.env.OMQ_ROUTING_FORCE_INHERIT = 'true';
+        clearSkillsCache();
+        let thrown: Error | undefined;
+        try {
+          enforceModel({ description: 't', prompt: 'p', subagent_type: 'oh-my-qoder:ai-slop-cleaner' });
+        } catch (error) {
+          thrown = error as Error;
+        }
+        expect(thrown).toBeDefined();
+        expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
+        delete process.env.OMQ_ROUTING_FORCE_INHERIT;
+      });
+
+      it('keeps valid agents passing validation with an explicit model', () => {
+        const result = enforceModel({ description: 't', prompt: 'p', subagent_type: 'executor', model: 'haiku' });
+        expect(result.modifiedInput.model).toBe('haiku');
+        expect(result.injected).toBe(false);
+      });
     });
 
     it('logs warning only when OMQ_DEBUG=true', () => {
@@ -264,7 +451,7 @@ describe('delegation-enforcer', () => {
         description: 'Test',
         prompt: 'Test',
         subagent_type: 'quality-reviewer',
-        model: 'high'
+        model: 'opus'
       };
 
       const result = processPreToolUse('Task', toolInput);
@@ -293,7 +480,7 @@ describe('delegation-enforcer', () => {
         description: 'Test',
         prompt: 'Test',
         subagent_type: 'executor',
-        model: 'low'
+        model: 'haiku'
       };
 
       const result = processPreToolUse('Agent', toolInput);
@@ -338,6 +525,14 @@ describe('delegation-enforcer', () => {
     it('throws error for unknown agent', () => {
       expect(() => getModelForAgent('unknown')).toThrow('Unknown agent type');
     });
+
+    it('guides namespaced bundled skills to the canonical Skill invocation (issue #3667 P2)', () => {
+      for (const skillType of ['oh-my-qoder:plan', 'omc:plan']) {
+        expect(() => getModelForAgent(skillType)).toThrow(
+          'Skill(skill="oh-my-qoder:omc-plan")',
+        );
+      }
+    });
   });
 
   describe('deprecated alias routing', () => {
@@ -378,8 +573,8 @@ describe('delegation-enforcer', () => {
   });
 
   describe('env-resolved agent defaults (issue #1415)', () => {
-    it('preserves DashScope provider-specific env IDs without auto-enabling forceInherit from tier env alone', () => {
-      process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'dashscope/qwen-plus';
+    it('preserves Bedrock family env IDs without auto-enabling forceInherit from tier env alone', () => {
+      process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -389,13 +584,13 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.model).toBe('dashscope/qwen-plus');
-      expect(result.modifiedInput.model).toBe('dashscope/qwen-plus');
+      expect(result.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
+      expect(result.modifiedInput.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
     });
 
-    it('preserves DashScope provider-specific env model IDs when forceInherit is explicitly disabled', () => {
+    it('preserves Bedrock family env model IDs when forceInherit is explicitly disabled', () => {
       process.env.OMQ_ROUTING_FORCE_INHERIT = 'false';
-      process.env.DASHSCOPE_DEFAULT_PLUS_MODEL = 'dashscope/qwen-plus';
+      process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -405,13 +600,13 @@ describe('delegation-enforcer', () => {
       const result = enforceModel(input);
 
       expect(result.injected).toBe(true);
-      expect(result.model).toBe('dashscope/qwen-plus');
-      expect(result.modifiedInput.model).toBe('dashscope/qwen-plus');
+      expect(result.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
+      expect(result.modifiedInput.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
     });
 
-    it('getModelForAgent preserves provider-specific IDs from DashScope env vars', () => {
-      process.env.DASHSCOPE_DEFAULT_MAX_MODEL = 'dashscope/qwen-max';
-      expect(getModelForAgent('architect')).toBe('dashscope/qwen-max');
+    it('getModelForAgent preserves provider-specific IDs from Bedrock env vars', () => {
+      process.env.CLAUDE_CODE_BEDROCK_OPUS_MODEL = 'us.anthropic.claude-opus-4-6-v1:0';
+      expect(getModelForAgent('architect')).toBe('us.anthropic.claude-opus-4-6-v1:0');
     });
   });
 
@@ -461,12 +656,13 @@ describe('delegation-enforcer', () => {
     });
 
     it('does not remap when no alias configured for the tier', () => {
-      process.env.OMQ_MODEL_ALIAS_LOW = 'medium';
-      // executor defaults to medium — no alias for medium
+      // Deliberately alias a DIFFERENT tier: an alias loaded for low must not
+      // move a medium-tier agent, otherwise this case passes vacuously.
+      process.env.OMQ_MODEL_ALIAS_LOW = 'high';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
-        subagent_type: 'executor'
+        subagent_type: 'executor' // executor defaults to medium
       };
       const result = enforceModel(input);
       expect(result.model).toBe('medium');
@@ -499,6 +695,18 @@ describe('delegation-enforcer', () => {
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
+    it('remaps high-tier agents to fable via env var (issue #3726)', () => {
+      process.env.OMQ_MODEL_ALIAS_HIGH = 'fable';
+      const input: AgentInput = {
+        description: 'Test task',
+        prompt: 'Do something',
+        subagent_type: 'architect' // architect defaults to high
+      };
+      const result = enforceModel(input);
+      expect(result.model).toBe('fable');
+      expect(result.modifiedInput.model).toBe('fable');
+    });
+
     it('remaps high-tier agents to inherit via env var', () => {
       process.env.OMQ_MODEL_ALIAS_HIGH = 'inherit';
       const input: AgentInput = {
@@ -526,7 +734,7 @@ describe('delegation-enforcer', () => {
 
   describe('non-Claude provider support (issue #1201)', () => {
     const savedEnv: Record<string, string | undefined> = {};
-    const envKeys = ['QODER_MODEL', 'DASHSCOPE_BASE_URL', 'OMQ_ROUTING_FORCE_INHERIT'];
+    const envKeys = ['CLAUDE_MODEL', 'ANTHROPIC_BASE_URL', 'OMQ_ROUTING_FORCE_INHERIT'];
 
     beforeEach(() => {
       for (const key of envKeys) {
@@ -545,13 +753,13 @@ describe('delegation-enforcer', () => {
       }
     });
 
-    it('strips model when non-Qwen DASHSCOPE_MODEL auto-enables forceInherit', () => {
-      process.env.DASHSCOPE_MODEL = 'deepseek-v3';
+    it('strips model when Bedrock ARN auto-enables forceInherit', () => {
+      process.env.ANTHROPIC_MODEL = 'arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:executor',
-        model: 'medium'
+        model: 'sonnet'
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
@@ -559,26 +767,26 @@ describe('delegation-enforcer', () => {
     });
 
     it('strips model when non-Claude provider auto-enables forceInherit', () => {
-      process.env.QODER_MODEL = 'glm-5';
+      process.env.CLAUDE_MODEL = 'glm-5';
       // forceInherit is auto-enabled by loadConfig for non-Claude providers
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:executor',
-        model: 'medium'
+        model: 'sonnet'
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('strips model when custom DASHSCOPE_BASE_URL auto-enables forceInherit', () => {
-      process.env.DASHSCOPE_BASE_URL = 'https://my-proxy.example.com/v1';
+    it('strips model when custom ANTHROPIC_BASE_URL auto-enables forceInherit', () => {
+      process.env.ANTHROPIC_BASE_URL = 'https://my-proxy.example.com/v1';
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:architect',
-        model: 'high'
+        model: 'opus'
       };
       const result = enforceModel(input);
       expect(result.model).toBe('inherit');
@@ -590,11 +798,11 @@ describe('delegation-enforcer', () => {
         description: 'Test task',
         prompt: 'Do something',
         subagent_type: 'oh-my-qoder:executor',
-        model: 'low'
+        model: 'haiku'
       };
       const result = enforceModel(input);
-      expect(result.model).toBe('low');
-      expect(result.modifiedInput.model).toBe('low');
+      expect(result.model).toBe('haiku');
+      expect(result.modifiedInput.model).toBe('haiku');
     });
   });
 });

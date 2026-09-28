@@ -34,10 +34,12 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsc && npm run build:bridges && npm run compose-docs",
+    "build": "tsc && npm run build:bridges && npm run compose-docs && npm run generate:prompt-projections && npm run build:claude-md-coordinator",
     "build:bridges": "node scripts/build-mcp-server.mjs && node scripts/build-cli.mjs && node scripts/build-bridge-entry.mjs && node scripts/build-runtime-cli.mjs && node scripts/build-team-server.mjs && node scripts/build-skill-bridge.mjs",
     "install:local": "node scripts/install-local.mjs",
     "compose-docs": "node scripts/compose-docs.mjs",
+    "generate:prompt-projections": "node scripts/generate-prompt-projections.mjs",
+    "build:claude-md-coordinator": "node scripts/build-claude-md-coordinator.mjs",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "vitest",

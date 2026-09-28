@@ -18,10 +18,10 @@ import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 /**
- * The wrapper template checks `process.env.OMC_PLUGIN_ROOT` (not OMQ_).
+ * The wrapper template checks `process.env.OMQ_PLUGIN_ROOT` (not OMQ_).
  * We hardcode the env-var name here to match the template source of truth.
  */
-const OMC_PLUGIN_ROOT_ENV = 'OMC_PLUGIN_ROOT';
+const OMQ_PLUGIN_ROOT_ENV = 'OMQ_PLUGIN_ROOT';
 
 const CACHE_STUB_MARKER = 'FROM_CACHE_TEST_STUB';
 const CACHE_STUB_VERSION = '0.0.0-test-stub';
@@ -152,7 +152,7 @@ describe('HUD wrapper — OMQ_PLUGIN_ROOT resolution', () => {
     const isolatedConfig = join(s.dir, 'isolated-config');
     const result = runWrapper(s.wrapperPath, scrubbedEnv({
       QODER_CONFIG_DIR: isolatedConfig,
-      [OMC_PLUGIN_ROOT_ENV]: s.fakePluginRoot,
+      [OMQ_PLUGIN_ROOT_ENV]: s.fakePluginRoot,
     }));
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('FROM_OMQ_PLUGIN_ROOT');
@@ -168,7 +168,7 @@ describe('HUD wrapper — OMQ_PLUGIN_ROOT resolution', () => {
     mkdirSync(emptyRoot, { recursive: true });
     const result = runWrapper(s.wrapperPath, scrubbedEnv({
       QODER_CONFIG_DIR: isolatedConfig,
-      [OMC_PLUGIN_ROOT_ENV]: emptyRoot,
+      [OMQ_PLUGIN_ROOT_ENV]: emptyRoot,
     }));
     expect(result.status).toBe(0);
     // Pin: step 1 fell through, step 2 (cache) fired.
@@ -197,7 +197,7 @@ describe('HUD wrapper — OMQ_PLUGIN_ROOT resolution', () => {
     const ghostRoot = join(s.dir, 'does-not-exist-anywhere');
     const result = runWrapper(s.wrapperPath, scrubbedEnv({
       QODER_CONFIG_DIR: isolatedConfig,
-      [OMC_PLUGIN_ROOT_ENV]: ghostRoot,
+      [OMQ_PLUGIN_ROOT_ENV]: ghostRoot,
     }));
     expect(result.status).toBe(0);
     // Pin: step 1 fell through (ghost path), step 2 (cache) fired.
@@ -314,7 +314,7 @@ describe('HUD wrapper — OMQ_PLUGIN_ROOT resolution', () => {
     expect(fromMjs).toBe(fromInstaller);
 
     // Spot-check: critical invariants of the new wrapper
-    expect(txt).toContain('OMC_PLUGIN_ROOT');
+    expect(txt).toContain('OMQ_PLUGIN_ROOT');
     expect(txt).not.toContain('OMQ_DEV');
     expect(txt).not.toContain('Workspace/oh-my-qoder');
     expect(txt).not.toContain('projects/oh-my-qoder');

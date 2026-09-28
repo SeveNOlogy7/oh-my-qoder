@@ -62,7 +62,6 @@ export const CANONICAL_WORKFLOW_SKILLS = [
   'ralph',
   'team',
   'ultrawork',
-  'ultraqa',
   'deep-interview',
   'ralplan',
   'self-improve',
@@ -97,7 +96,7 @@ const PROTECTION_CONFIGS: Record<SkillProtectionLevel, SkillStateConfig> = {
 /**
  * Maps each skill name to its support-skill protection level.
  *
- * Workflow skills (autopilot, ralph, ultrawork, team, ultraqa, ralplan,
+ * Workflow skills (autopilot, ralph, ultrawork, team, ralplan,
  * deep-interview, self-improve) have dedicated mode state and workflow slots,
  * so their support-skill protection is 'none'. They flow through the
  * `active_skills` branch instead.
@@ -109,8 +108,7 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   ralph: 'none',
   ultrawork: 'none',
   team: 'none',
-  'omq-teams': 'none',
-  ultraqa: 'none',
+  'omc-teams': 'none',
   ralplan: 'none',
   'self-improve': 'none',
   cancel: 'none',
@@ -118,9 +116,9 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   // === Instant / read-only → no protection needed ===
   trace: 'none',
   hud: 'none',
-  'omq-doctor': 'none',
-  'omq-help': 'none',
-  'learn-about-omq': 'none',
+  'omc-doctor': 'none',
+  'omc-help': 'none',
+  'learn-about-omc': 'none',
   note: 'none',
 
   // === Light protection (simple shortcuts, 3 reinforcements) ===
@@ -129,13 +127,13 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   'configure-notifications': 'light',
 
   // === Medium protection (review/planning, 5 reinforcements) ===
-  'omq-plan': 'medium',
+  'omc-plan': 'medium',
   plan: 'medium',
   'deep-interview': 'heavy',
   review: 'medium',
   'external-context': 'medium',
   'ai-slop-cleaner': 'medium',
-  sciomq: 'medium',
+  sciomc: 'medium',
   skillify: 'medium',
   learner: 'medium',
   'omq-setup': 'medium',

@@ -76,7 +76,11 @@ describe('package dir resolution regression (#1322, #1324)', () => {
 
   it('bridge/cli.cjs keeps builtin skills package-dir resolution bridge-aware', () => {
     const source = readFileSync(join(REPO_ROOT, 'bridge', 'cli.cjs'), 'utf-8');
-    const skillsDirIndex = source.indexOf('var SKILLS_DIR2 =');
+    // esbuild emits this binding either as a hoisted `var` or as a bare
+    // assignment inside a lazy-init block, depending on how the surrounding
+    // modules get grouped. Match the assignment itself so the anchor survives
+    // unrelated bundling shifts.
+    const skillsDirIndex = source.search(/(?:var\s+)?SKILLS_DIR2 = /);
     const helperIndex = source.lastIndexOf('function getPackageDir', skillsDirIndex);
     const snippet = helperIndex === -1 ? '' : source.slice(helperIndex, helperIndex + 1400);
 
@@ -102,7 +106,7 @@ describe('package dir resolution regression (#1322, #1324)', () => {
   });
 
   it('loadAgentPrompt resolves prompts even when cwd is unrelated', () => {
-    const sandboxDir = mkdtempSync(join(tmpdir(), 'omq-agents-path-resolution-'));
+    const sandboxDir = mkdtempSync(join(tmpdir(), 'omc-agents-path-resolution-'));
     process.chdir(sandboxDir);
 
     const prompt = loadAgentPrompt('architect');
@@ -112,7 +116,7 @@ describe('package dir resolution regression (#1322, #1324)', () => {
 
 
   it('builtin skills resolve skills directory and load skills even when cwd is unrelated', () => {
-    const sandboxDir = mkdtempSync(join(tmpdir(), 'omq-builtin-skills-path-resolution-'));
+    const sandboxDir = mkdtempSync(join(tmpdir(), 'omc-builtin-skills-path-resolution-'));
     process.chdir(sandboxDir);
 
     const skillsDir = getSkillsDir();
@@ -125,7 +129,7 @@ describe('package dir resolution regression (#1322, #1324)', () => {
   });
 
   it('getValidAgentRoles resolves agents directory even when cwd is unrelated', async () => {
-    const sandboxDir = mkdtempSync(join(tmpdir(), 'omq-agent-roles-path-resolution-'));
+    const sandboxDir = mkdtempSync(join(tmpdir(), 'omc-agent-roles-path-resolution-'));
     process.chdir(sandboxDir);
 
     const { getValidAgentRoles } = await import('../agents/prompt-helpers.js');
@@ -137,7 +141,7 @@ describe('package dir resolution regression (#1322, #1324)', () => {
   });
 
   it('bridge/team.js imports cleanly from an unrelated cwd without agents ENOENT', () => {
-    const sandboxDir = mkdtempSync(join(tmpdir(), 'omq-bridge-team-import-'));
+    const sandboxDir = mkdtempSync(join(tmpdir(), 'omc-bridge-team-import-'));
     const command = `import(${JSON.stringify(`file://${join(REPO_ROOT, 'bridge', 'team.js')}`)})`;
     const result = spawnSync(process.execPath, ['--input-type=module', '-e', command], {
       cwd: sandboxDir,

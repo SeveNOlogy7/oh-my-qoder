@@ -1,7 +1,7 @@
 /**
  * Auto-Update System
  *
- * Provides version checking and auto-update functionality for oh-my-qoder.
+ * Provides version checking and auto-update functionality for oh-my-claudecode.
  *
  * Features:
  * - Check for new versions from GitHub releases
@@ -15,35 +15,315 @@ import { join, dirname } from 'path';
 import { execSync, execFileSync } from 'child_process';
 import { TaskTool } from '../hooks/beads-context/types.js';
 import {
-  install as installOmq,
+  install as installOmc,
   HOOKS_DIR,
   isProjectScopedPlugin,
   isRunningAsPlugin,
   copyPluginSyncPayload,
   syncInstalledPluginPayload,
 } from '../installer/index.js';
-import { getQoderConfigDir } from '../utils/config-dir.js';
-import { purgeStalePluginCacheVersions, getPluginCacheBase } from '../utils/paths.js';
+import { getClaudeConfigDir } from '../utils/config-dir.js';
+import { purgeStalePluginCacheVersions } from '../utils/paths.js';
 import type { NotificationConfig } from '../notifications/types.js';
 import { isAutoUpdateDisabled } from '../lib/security-config.js';
 import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
 
 /** GitHub repository information */
-export const REPO_OWNER = 'qoder-plugins';
-export const REPO_NAME = 'oh-my-qoder';
+export const REPO_OWNER = 'Yeachan-Heo';
+export const REPO_NAME = 'oh-my-claudecode';
 export const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
 export const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}`;
 
+const CLAUDE_CODE_NPM_PACKAGE = '@anthropic-ai/claude-code';
 
+interface GlobalClaudeCodeInstall {
+  status: 'present' | 'absent' | 'unknown';
+  version?: string;
+  installMethod?: 'npm' | 'native' | 'manual';
+  binaryPath?: string;
+  error?: string;
+}
 
+function npmExecOptions(verbose: boolean = false): {
+  encoding: 'utf-8';
+  stdio: 'inherit' | 'pipe';
+  timeout: number;
+  windowsHide?: boolean;
+} {
+  return {
+    encoding: 'utf-8',
+    stdio: verbose ? 'inherit' : 'pipe',
+    timeout: 120000,
+    ...(process.platform === 'win32' ? { windowsHide: true } : {}),
+  };
+}
 
+function assertSafeNpmPackageSpec(packageSpec: string): void {
+  if (!/^[A-Za-z0-9@._~+/-]+$/.test(packageSpec)) {
+    throw new Error(`Unsafe npm package spec: ${packageSpec}`);
+  }
+}
 
+function npmInstallGlobalPackage(packageSpec: string, verbose: boolean = false): void {
+  assertSafeNpmPackageSpec(packageSpec);
+  if (process.platform === 'win32') {
+    execSync(`npm install -g ${packageSpec}`, npmExecOptions(verbose));
+    return;
+  }
 
+  execFileSync('npm', ['install', '-g', packageSpec], npmExecOptions(verbose));
+}
 
+function parseClaudeCodeVersion(output: string): string | undefined {
+  const trimmed = output.trim();
+  if (!trimmed) {
+    return undefined;
+  }
 
+  return trimmed.match(/\b(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/)?.[1];
+}
 
+function getFirstResolvedBinaryPath(output: string, binaryName: string): string {
+  const resolved = output
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(Boolean);
 
+  if (!resolved) {
+    throw new Error(`Unable to resolve ${binaryName} binary path`);
+  }
 
+  return resolved;
+}
+
+function resolveClaudeBinaryPath(): string | undefined {
+  try {
+    if (process.platform === 'win32') {
+      return getFirstResolvedBinaryPath(execFileSync('where.exe', ['claude'], {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        timeout: 5000,
+        windowsHide: true,
+      }), 'claude');
+    }
+
+    return getFirstResolvedBinaryPath(execSync('command -v claude 2>/dev/null || which claude 2>/dev/null', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      timeout: 5000,
+    }), 'claude');
+  } catch {
+    return undefined;
+  }
+}
+
+function detectClaudeCodeFromBinary(npmRoot?: string): GlobalClaudeCodeInstall {
+  try {
+    const versionOutput = String(execFileSync('claude', ['--version'], {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      timeout: 10000,
+      ...(process.platform === 'win32' ? { shell: true, windowsHide: true } : {}),
+    }) ?? '');
+    const binaryPath = resolveClaudeBinaryPath();
+    const version = parseClaudeCodeVersion(versionOutput);
+    if (!version && !binaryPath) {
+      return { status: 'unknown', error: 'claude --version returned no parseable version and binary path could not be resolved' };
+    }
+
+    const normalizedBinaryPath = binaryPath?.replace(/\\/g, '/').toLowerCase();
+    const normalizedNpmRoot = npmRoot?.replace(/\\/g, '/').toLowerCase();
+    const isNpmBinary = Boolean(
+      normalizedBinaryPath &&
+      normalizedNpmRoot &&
+      normalizedBinaryPath.startsWith(normalizedNpmRoot.replace(/\/node_modules$/, '')),
+    );
+
+    return {
+      status: 'present',
+      version,
+      installMethod: isNpmBinary ? 'npm' : process.platform === 'win32' ? 'native' : 'manual',
+      binaryPath,
+    };
+  } catch (error) {
+    return {
+      status: 'unknown',
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function detectGlobalClaudeCodeInstall(): GlobalClaudeCodeInstall {
+  let npmRoot: string | undefined;
+
+  try {
+    npmRoot = String(execSync('npm root -g', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      timeout: 10000,
+      ...(process.platform === 'win32' ? { windowsHide: true } : {}),
+    }) ?? '').trim();
+    if (!npmRoot) {
+      const binaryInstall = detectClaudeCodeFromBinary();
+      return binaryInstall.status === 'present'
+        ? binaryInstall
+        : { status: 'unknown', error: 'npm root -g returned an empty path' };
+    }
+
+    const packageJsonPath = join(npmRoot, '@anthropic-ai', 'claude-code', 'package.json');
+    if (!existsSync(packageJsonPath)) {
+      const binaryInstall = detectClaudeCodeFromBinary(npmRoot);
+      return binaryInstall.status === 'present' ? binaryInstall : { status: 'absent' };
+    }
+
+    const packageJson = JSON.parse(String(readFileSync(packageJsonPath, 'utf-8') ?? '')) as {
+      version?: unknown;
+    };
+    return {
+      status: 'present',
+      version: typeof packageJson.version === 'string' && packageJson.version.trim()
+        ? packageJson.version.trim()
+        : undefined,
+      installMethod: 'npm',
+    };
+  } catch (error) {
+    const binaryInstall = detectClaudeCodeFromBinary(npmRoot);
+    if (binaryInstall.status === 'present') {
+      return binaryInstall;
+    }
+
+    return {
+      status: 'unknown',
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function restoreGlobalClaudeCodeIfNeeded(
+  beforeUpdate: GlobalClaudeCodeInstall,
+  verbose: boolean = false,
+): { restored: boolean } {
+  if (beforeUpdate.status !== 'present' || beforeUpdate.installMethod !== 'npm') {
+    return { restored: false };
+  }
+
+  if (detectGlobalClaudeCodeInstall().status === 'present') {
+    return { restored: false };
+  }
+
+  const versionSuffix = beforeUpdate.version ? `@${beforeUpdate.version}` : '@latest';
+  const packageSpec = `${CLAUDE_CODE_NPM_PACKAGE}${versionSuffix}`;
+
+  if (verbose) {
+    console.log(`[omc update] Restoring global ${packageSpec} after npm update...`);
+  }
+
+  npmInstallGlobalPackage(packageSpec, verbose);
+
+  const afterRestore = detectGlobalClaudeCodeInstall();
+  if (afterRestore.status !== 'present') {
+    throw new Error(`Global ${CLAUDE_CODE_NPM_PACKAGE} was present before update but is still missing after restore`);
+  }
+
+  if (verbose) {
+    console.log(`[omc update] Restored global ${CLAUDE_CODE_NPM_PACKAGE}`);
+  }
+
+  return { restored: true };
+}
+
+/**
+ * Best-effort sync of the Claude Code marketplace clone.
+ * The marketplace clone at ~/.claude/plugins/marketplaces/omc/ is used by
+ * Claude Code to populate the plugin cache. If it's stale, `/plugin install`
+ * and cache rebuilds reinstall old versions. (See #506)
+ */
+function syncMarketplaceClone(verbose: boolean = false): { ok: boolean; message: string } {
+  const marketplacePath = join(getClaudeConfigDir(), 'plugins', 'marketplaces', 'omc');
+  if (!existsSync(marketplacePath)) {
+    return { ok: true, message: 'Marketplace clone not found; skipping' };
+  }
+
+  const stdio = verbose ? 'inherit' : 'pipe';
+  const execOpts = { encoding: 'utf-8' as const, stdio: stdio as any, timeout: 60000, windowsHide: true };
+  const queryExecOpts = { encoding: 'utf-8' as const, stdio: 'pipe' as const, timeout: 60000, windowsHide: true };
+
+  try {
+    execFileSync('git', ['-C', marketplacePath, 'fetch', '--all', '--prune'], execOpts);
+  } catch (err) {
+    return { ok: false, message: `Failed to fetch marketplace clone: ${err instanceof Error ? err.message : err}` };
+  }
+
+  try {
+    execFileSync('git', ['-C', marketplacePath, 'checkout', 'main'], { ...execOpts, timeout: 15000 });
+  } catch {
+    // Fall through to explicit branch verification below.
+  }
+
+  let currentBranch = '';
+  try {
+    currentBranch = String(
+      execFileSync('git', ['-C', marketplacePath, 'rev-parse', '--abbrev-ref', 'HEAD'], queryExecOpts) ?? ''
+    ).trim();
+  } catch (err) {
+    return { ok: false, message: `Failed to inspect marketplace clone branch: ${err instanceof Error ? err.message : err}` };
+  }
+
+  if (currentBranch !== 'main') {
+    return {
+      ok: false,
+      message: `Skipped marketplace clone update: expected branch main but found ${currentBranch || 'unknown'}`,
+    };
+  }
+
+  let statusOutput = '';
+  try {
+    statusOutput = String(
+      execFileSync('git', ['-C', marketplacePath, 'status', '--porcelain', '--untracked-files=normal'], queryExecOpts) ?? ''
+    ).trim();
+  } catch (err) {
+    return { ok: false, message: `Failed to inspect marketplace clone status: ${err instanceof Error ? err.message : err}` };
+  }
+
+  if (statusOutput.length > 0) {
+    return {
+      ok: false,
+      message: 'Skipped marketplace clone update: repo has local modifications; commit, stash, or clean it first',
+    };
+  }
+
+  let aheadCount = 0;
+  let behindCount = 0;
+  try {
+    const revListOutput = String(
+      execFileSync('git', ['-C', marketplacePath, 'rev-list', '--left-right', '--count', 'HEAD...origin/main'], queryExecOpts) ?? ''
+    ).trim();
+    const [aheadRaw = '0', behindRaw = '0'] = revListOutput.split(/\s+/);
+    aheadCount = Number.parseInt(aheadRaw, 10) || 0;
+    behindCount = Number.parseInt(behindRaw, 10) || 0;
+  } catch (err) {
+    return { ok: false, message: `Failed to inspect marketplace clone divergence: ${err instanceof Error ? err.message : err}` };
+  }
+
+  if (aheadCount > 0) {
+    return {
+      ok: false,
+      message: 'Skipped marketplace clone update: repo has local commits on main; manual reconciliation required',
+    };
+  }
+
+  if (behindCount === 0) {
+    return { ok: true, message: 'Marketplace clone already up to date' };
+  }
+
+  try {
+    execFileSync('git', ['-C', marketplacePath, 'merge', '--ff-only', 'origin/main'], execOpts);
+  } catch (err) {
+    return { ok: false, message: `Failed to fast-forward marketplace clone: ${err instanceof Error ? err.message : err}` };
+  }
+
+  return { ok: true, message: 'Marketplace clone updated' };
+}
 
 function replaceLastPathSegmentPreservingSeparators(pathValue: string, nextSegment: string): string {
   const trimmed = pathValue.trim();
@@ -69,7 +349,7 @@ function deriveUpdatedPluginInstallPath(
 ): string {
   if (existingInstallPath?.trim()) {
     const normalized = existingInstallPath.replace(/\\/g, '/').toLowerCase();
-    if (normalized.includes('/plugins/cache/') && normalized.includes('/oh-my-qoder/')) {
+    if (normalized.includes('/plugins/cache/') && normalized.includes('/oh-my-claudecode/')) {
       return replaceLastPathSegmentPreservingSeparators(existingInstallPath, newVersion);
     }
   }
@@ -96,7 +376,7 @@ function syncInstalledPluginRegistryVersion(
   newVersion: string,
   fallbackInstallPath: string,
 ): { updated: boolean; errors: string[] } {
-  const installedPluginsPath = join(getQoderConfigDir(), 'plugins', 'installed_plugins.json');
+  const installedPluginsPath = join(getClaudeConfigDir(), 'plugins', 'installed_plugins.json');
   if (!existsSync(installedPluginsPath)) {
     return { updated: false, errors: [] };
   }
@@ -119,9 +399,9 @@ function syncInstalledPluginRegistryVersion(
 
     for (const [pluginId, entriesValue] of Object.entries(plugins)) {
       const normalizedPluginId = pluginId.toLowerCase();
-      const isOmqPlugin = normalizedPluginId === 'oh-my-qoder@omq'
-        || normalizedPluginId === 'oh-my-qoder';
-      if (!isOmqPlugin || !Array.isArray(entriesValue)) {
+      const isOmcPlugin = normalizedPluginId === 'oh-my-claudecode@omc'
+        || normalizedPluginId === 'oh-my-claudecode';
+      if (!isOmcPlugin || !Array.isArray(entriesValue)) {
         continue;
       }
 
@@ -155,7 +435,7 @@ function syncActivePluginCache(): { synced: boolean; errors: string[] } {
   const result = syncInstalledPluginPayload();
 
   if (result.synced) {
-    console.log('[omq update] Synced plugin cache');
+    console.log('[omc update] Synced plugin cache');
   }
 
   return result;
@@ -171,7 +451,7 @@ export function shouldBlockStandaloneUpdateInCurrentSession(): boolean {
     return true;
   }
 
-  const sessionId = process.env.QODER_SESSION_ID?.trim() || process.env.CLAUDECODE_SESSION_ID?.trim();
+  const sessionId = process.env.CLAUDE_SESSION_ID?.trim() || process.env.CLAUDECODE_SESSION_ID?.trim();
   if (sessionId) {
     return true;
   }
@@ -180,7 +460,7 @@ export function shouldBlockStandaloneUpdateInCurrentSession(): boolean {
 }
 
 export function syncPluginCache(verbose: boolean = false): { synced: boolean; skipped: boolean; errors: string[] } {
-  const pluginCacheRoot = getPluginCacheBase();
+  const pluginCacheRoot = join(getClaudeConfigDir(), 'plugins', 'cache', 'omc', 'oh-my-claudecode');
   if (!existsSync(pluginCacheRoot)) {
     return { synced: false, skipped: true, errors: [] };
   }
@@ -197,7 +477,7 @@ export function syncPluginCache(verbose: boolean = false): { synced: boolean; sk
       throw new Error('npm root -g returned an empty path');
     }
 
-    const sourceRoot = join(npmRoot, 'oh-my-qoder');
+    const sourceRoot = join(npmRoot, 'oh-my-claude-sisyphus');
     const packageJsonPath = join(sourceRoot, 'package.json');
     const packageJsonRaw = String(readFileSync(packageJsonPath, 'utf-8') ?? '');
     const packageMetadata = JSON.parse(packageJsonRaw) as { version?: unknown };
@@ -213,39 +493,39 @@ export function syncPluginCache(verbose: boolean = false): { synced: boolean; sk
 
     if (result.errors.length > 0) {
       for (const error of result.errors) {
-        console.warn(`[omq update] Plugin cache sync warning: ${error}`);
+        console.warn(`[omc update] Plugin cache sync warning: ${error}`);
       }
     }
 
     if (result.synced && result.errors.length === 0) {
-      // Keep Qoder CLI's plugin registry update after a successful cache copy.
+      // Keep Claude Code's plugin registry update after a successful cache copy.
       // If copying fails, installed_plugins.json is left untouched so sessions do
       // not point at a partially refreshed version directory.
       const registryResult = syncInstalledPluginRegistryVersion(version, versionedPluginCacheRoot);
       result.errors.push(...registryResult.errors);
       if (registryResult.updated && verbose) {
-        console.log('[omq update] Updated Claude plugin registry');
+        console.log('[omc update] Updated Claude plugin registry');
       }
     }
 
     if (result.synced) {
-      console.log('[omq update] Plugin cache synced');
+      console.log('[omc update] Plugin cache synced');
     }
 
     return { ...result, skipped: false };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (verbose) {
-      console.warn(`[omq update] Plugin cache sync warning: ${message}`);
+      console.warn(`[omc update] Plugin cache sync warning: ${message}`);
     } else {
-      console.warn('[omq update] Plugin cache sync warning:', message);
+      console.warn('[omc update] Plugin cache sync warning:', message);
     }
     return { synced: false, skipped: false, errors: [message] };
   }
 }
 
 /** Installation paths (respects QODER_CONFIG_DIR env var) */
-export const QODER_CONFIG_DIR = getQoderConfigDir();
+export const QODER_CONFIG_DIR = getClaudeConfigDir();
 export const VERSION_FILE = join(QODER_CONFIG_DIR, '.omq-version.json');
 export const CONFIG_FILE = join(QODER_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
 
@@ -306,9 +586,9 @@ export interface StopHookCallbacksConfig {
 }
 
 /**
- * OMQ configuration (stored in .omq-config.json)
+ * OMC configuration (stored in .omq-config.json)
  */
-export interface OMQConfig {
+export interface OMCConfig {
   /** Whether silent auto-updates are enabled (opt-in for security) */
   silentAutoUpdate: boolean;
   /** When the configuration was set */
@@ -345,9 +625,9 @@ export interface OMQConfig {
 }
 
 /**
- * Read the OMQ configuration
+ * Read the OMC configuration
  */
-export function getOMQConfig(): OMQConfig {
+export function getOMCConfig(): OMCConfig {
   if (!existsSync(CONFIG_FILE)) {
     // No config file = disabled by default for security
     return { silentAutoUpdate: false };
@@ -355,7 +635,7 @@ export function getOMQConfig(): OMQConfig {
 
   try {
     const content = readFileSync(CONFIG_FILE, 'utf-8');
-    const config = JSON.parse(content) as OMQConfig;
+    const config = JSON.parse(content) as OMCConfig;
     return {
       silentAutoUpdate: config.silentAutoUpdate ?? false,
       configuredAt: config.configuredAt,
@@ -382,7 +662,7 @@ export function getOMQConfig(): OMQConfig {
  */
 export function isSilentAutoUpdateEnabled(): boolean {
   if (isAutoUpdateDisabled()) return false;
-  return getOMQConfig().silentAutoUpdate;
+  return getOMCConfig().silentAutoUpdate;
 }
 
 /**
@@ -390,13 +670,13 @@ export function isSilentAutoUpdateEnabled(): boolean {
  * Returns true by default - users must explicitly opt out
  */
 export function isAutoUpgradePromptEnabled(): boolean {
-  return getOMQConfig().autoUpgradePrompt !== false;
+  return getOMCConfig().autoUpgradePrompt !== false;
 }
 
 /**
  * Check if team feature is enabled
  * Returns false by default - requires explicit opt-in
- * Checks ~/.qoder/settings.json first, then env var fallback
+ * Checks ~/.claude/settings.json first, then env var fallback
  */
 export function isTeamEnabled(): boolean {
   try {
@@ -480,15 +760,15 @@ export function getInstalledVersion(): VersionMetadata | null {
     // Try to detect version from package.json if installed via npm
     try {
       // Check if we can find the package in node_modules
-      const result = execSync('npm list -g oh-my-qoder --json', {
+      const result = execSync('npm list -g oh-my-claude-sisyphus --json', {
         encoding: 'utf-8',
         timeout: 5000,
         stdio: 'pipe'
       });
       const data = JSON.parse(result);
-      if (data.dependencies?.['oh-my-qoder']?.version) {
+      if (data.dependencies?.['oh-my-claude-sisyphus']?.version) {
         return {
-          version: data.dependencies['oh-my-qoder'].version,
+          version: data.dependencies['oh-my-claude-sisyphus'].version,
           installedAt: new Date().toISOString(),
           installMethod: 'npm'
         };
@@ -538,7 +818,7 @@ function getGitHubUpdateToken(): string | null {
 function getGitHubReleaseHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'oh-my-qoder-updater'
+    'User-Agent': 'oh-my-claudecode-updater'
   };
 
   const token = getGitHubUpdateToken();
@@ -606,7 +886,7 @@ export async function fetchLatestRelease(): Promise<ReleaseInfo> {
     // No releases found - try to get version from package.json in repo
     const pkgResponse = await fetch(`${GITHUB_RAW_URL}/main/package.json`, {
       headers: {
-        'User-Agent': 'oh-my-qoder-updater'
+        'User-Agent': 'oh-my-claudecode-updater'
       }
     });
 
@@ -693,8 +973,8 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
 
   const projectScopedPlugin = isProjectScopedPlugin();
   // Plugin installs execute hooks from <pluginRoot>/hooks/hooks.json. Re-running
-  // the standalone settings.json hook merge during `omq update` re-injects the
-  // legacy ~/.qoder/hooks/* entries and causes duplicate hook execution.
+  // the standalone settings.json hook merge during `omc update` re-injects the
+  // legacy ~/.claude/hooks/* entries and causes duplicate hook execution.
   //
   // Reconciliation should still refresh shared installer artifacts (CLAUDE.md,
   // HUD, MCP registry, statusLine, etc.), but it must leave settings.json hook
@@ -714,7 +994,7 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
   }
 
   try {
-    const installResult = installOmq({
+    const installResult = installOmc({
       force: true,
       verbose: options?.verbose ?? false,
       skipQoderCheck: true,
@@ -736,7 +1016,7 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
       errors.push(...pluginSyncResult.errors.map(err => `Plugin cache sync failed: ${err}`));
       if (options?.verbose) {
         for (const err of pluginSyncResult.errors) {
-          console.warn(`[omq] Plugin cache sync error: ${err}`);
+          console.warn(`[omc] Plugin cache sync error: ${err}`);
         }
       }
     }
@@ -744,7 +1024,7 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
     const message = error instanceof Error ? error.message : String(error);
     errors.push(`Plugin cache sync failed: ${message}`);
     if (options?.verbose) {
-      console.warn(`[omq] Plugin cache sync error: ${message}`);
+      console.warn(`[omc] Plugin cache sync error: ${message}`);
     }
   }
 
@@ -752,12 +1032,22 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
   try {
     const purgeResult = purgeStalePluginCacheVersions({ skipGracePeriod: options?.skipGracePeriod });
     if (purgeResult.removed > 0 && options?.verbose) {
-      console.log(`[omq] Purged ${purgeResult.removed} stale plugin cache version(s)`);
+      console.log(`[omc] Purged ${purgeResult.removed} stale plugin cache version(s)`);
     }
-    if (purgeResult.errors.length > 0 && options?.verbose) {
-      for (const err of purgeResult.errors) {
-        console.warn(`[omq] Cache purge warning: ${err}`);
-      }
+    if (purgeResult.restored > 0 && options?.verbose) {
+      console.log(`[omc] Restored ${purgeResult.restored} plugin cache version(s) from an interrupted relink`);
+    }
+    // Always surface purge errors and skipped backups, even without --verbose.
+    // Both leave a version path that live sessions resolve through, so a silent
+    // line here reads as a successful update while hooks are broken: a skipped
+    // backup keeps the pinned path unusable for as long as its owner runs, and
+    // forever if that pid was recycled by an unrelated process.
+    // Kept non-fatal — reconciliation must not fail on best-effort cleanup.
+    for (const skipped of purgeResult.skippedPaths) {
+      console.warn(`[omc] Cache purge warning: left a backup to its running owner: ${skipped}`);
+    }
+    for (const err of purgeResult.errors) {
+      console.warn(`[omc] Cache purge warning: ${err}`);
     }
   } catch {
     // Cache purge is best-effort; never block reconciliation
@@ -777,6 +1067,22 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
   };
 }
 
+function resolveOmcBinaryPath(): string {
+  if (process.platform === 'win32') {
+    return getFirstResolvedBinaryPath(execFileSync('where.exe', ['omc.cmd'], {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      timeout: 5000,
+      windowsHide: true,
+    }), 'omc');
+  }
+
+  return getFirstResolvedBinaryPath(execSync('which omc 2>/dev/null || where omc 2>NUL', {
+    encoding: 'utf-8',
+    stdio: 'pipe',
+    timeout: 5000,
+  }), 'omc');
+}
 
 /**
  * Download and execute the install script to perform an update
@@ -790,27 +1096,132 @@ export async function performUpdate(options?: {
   const installed = getInstalledVersion();
   const previousVersion = installed?.version ?? null;
 
-  if (shouldBlockStandaloneUpdateInCurrentSession() && !options?.standalone) {
+  try {
+    // Block npm update only from active Claude Code/plugin sessions.
+    // Standalone terminals may inherit CLAUDE_PLUGIN_ROOT and should still update.
+    if (shouldBlockStandaloneUpdateInCurrentSession() && !options?.standalone) {
+      return {
+        success: false,
+        previousVersion,
+        newVersion: 'unknown',
+        message: 'Running inside an active Claude Code plugin session. Use "/plugin install oh-my-claudecode" to update, or pass --standalone to force npm update.',
+      };
+    }
+
+    // Fetch the latest release to get the version
+    const release = await fetchLatestRelease();
+    const newVersion = release.tag_name.replace(/^v/, '');
+    const claudeCodeBeforeUpdate = detectGlobalClaudeCodeInstall();
+
+    // Use npm for updates on all platforms (install.sh was removed)
+    try {
+      execSync('npm install -g oh-my-claude-sisyphus@latest', npmExecOptions(options?.verbose ?? false));
+
+      try {
+        restoreGlobalClaudeCodeIfNeeded(claudeCodeBeforeUpdate, options?.verbose ?? false);
+      } catch (restoreError) {
+        return {
+          success: false,
+          previousVersion,
+          newVersion,
+          message: `Updated to ${newVersion}, but failed to restore global ${CLAUDE_CODE_NPM_PACKAGE}`,
+          errors: [restoreError instanceof Error ? restoreError.message : String(restoreError)],
+        };
+      }
+
+      // Sync Claude Code marketplace clone so plugin cache picks up new version (#506)
+      const marketplaceSync = syncMarketplaceClone(options?.verbose ?? false);
+      if (!marketplaceSync.ok && options?.verbose) {
+        console.warn(`[omc update] ${marketplaceSync.message}`);
+      }
+
+      const pluginCacheSync = syncPluginCache(options?.verbose ?? false);
+      if (pluginCacheSync.errors.length > 0 && options?.verbose) {
+        for (const error of pluginCacheSync.errors) {
+          console.warn(`[omc update] Plugin cache sync warning: ${error}`);
+        }
+      }
+
+      // CRITICAL FIX: After npm updates the global package, the current process
+      // still has OLD code loaded in memory. We must re-exec to run reconciliation
+      // with the NEW code. Otherwise, installOmc() runs OLD logic against NEW files.
+      if (!process.env.OMQ_UPDATE_RECONCILE) {
+        // Set flag to prevent infinite loop
+        process.env.OMQ_UPDATE_RECONCILE = '1';
+
+        // Find the omc binary path
+        const omcPath = resolveOmcBinaryPath();
+
+        // Re-exec with reconcile subcommand
+        try {
+          execFileSync(omcPath, ['update-reconcile', ...(options?.clean ? ['--skip-grace-period'] : [])], {
+            encoding: 'utf-8',
+            stdio: options?.verbose ? 'inherit' : 'pipe',
+            timeout: 60000,
+            env: { ...process.env, OMQ_UPDATE_RECONCILE: '1' },
+            ...(process.platform === 'win32' ? { windowsHide: true, shell: true } : {}),
+          });
+        } catch (reconcileError) {
+          return {
+            success: false,
+            previousVersion,
+            newVersion,
+            message: `Updated to ${newVersion}, but runtime reconciliation failed`,
+            errors: [reconcileError instanceof Error ? reconcileError.message : String(reconcileError)],
+          };
+        }
+
+        // Update version metadata after reconciliation succeeds
+        saveVersionMetadata({
+          version: newVersion,
+          installedAt: new Date().toISOString(),
+          installMethod: 'npm',
+          lastCheckAt: new Date().toISOString()
+        });
+
+        return {
+          success: true,
+          previousVersion,
+          newVersion,
+          message: `Successfully updated from ${previousVersion ?? 'unknown'} to ${newVersion}`
+        };
+      } else {
+        // We're in the re-exec'd process - run reconciliation directly
+        const reconcileResult = reconcileUpdateRuntime({ verbose: options?.verbose, skipGracePeriod: options?.clean });
+        if (!reconcileResult.success) {
+          return {
+            success: false,
+            previousVersion,
+            newVersion,
+            message: `Updated to ${newVersion}, but runtime reconciliation failed`,
+            errors: reconcileResult.errors?.map(e => `Reconciliation failed: ${e}`),
+          };
+        }
+        return {
+          success: true,
+          previousVersion,
+          newVersion,
+          message: 'Reconciliation completed successfully'
+        };
+      }
+    } catch (npmError) {
+      throw new Error(
+        'Auto-update via npm failed. Please run manually:\n' +
+        '  npm install -g oh-my-claude-sisyphus@latest\n' +
+        'Or use: /plugin install oh-my-claudecode\n' +
+        `Error: ${npmError instanceof Error ? npmError.message : npmError}`
+      );
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,
       previousVersion,
-      newVersion: "unknown",
-      message: "Running inside an active Qoder CLI plugin session. Use \"/plugin install oh-my-qoder\" to update.",
+      newVersion: 'unknown',
+      message: `Update failed: ${errorMessage}`,
+      errors: [errorMessage]
     };
   }
-
-  // There is no npm channel to update from: `oh-my-qoder` is not published on the
-  // public registry, so `npm install -g oh-my-qoder@latest` could only install
-  // whichever third party claims that name. Treat a missing channel as a refusal,
-  // not as something to retry - the caller reports the failure to the user.
-  return {
-    success: false,
-    previousVersion,
-    newVersion: "unknown",
-    message:
-      "No update channel is configured for this install. Update with \"/plugin install oh-my-qoder\" in Qoder, " +
-      "or reinstall from a checkout (git pull && npm run install:local).",
-  };
 }
 
 /**
@@ -818,19 +1229,19 @@ export async function performUpdate(options?: {
  */
 export function formatUpdateNotification(checkResult: UpdateCheckResult): string {
   if (!checkResult.updateAvailable) {
-    return `oh-my-qoder is up to date (v${checkResult.currentVersion ?? 'unknown'})`;
+    return `oh-my-claudecode is up to date (v${checkResult.currentVersion ?? 'unknown'})`;
   }
 
   const lines = [
     '╔═══════════════════════════════════════════════════════════╗',
-    '║           oh-my-qoder Update Available!              ║',
+    '║           oh-my-claudecode Update Available!              ║',
     '╚═══════════════════════════════════════════════════════════╝',
     '',
     `  Current version: ${checkResult.currentVersion ?? 'unknown'}`,
     `  Latest version:  ${checkResult.latestVersion}`,
     '',
     '  To update, run: /update',
-    '  Or reinstall via: /plugin install oh-my-qoder',
+    '  Or reinstall via: /plugin install oh-my-claudecode',
     ''
   ];
 
@@ -912,7 +1323,7 @@ export async function interactiveUpdate(): Promise<void> {
 
     if (result.success) {
       console.log(`\n✓ ${result.message}`);
-      console.log('\nPlease restart your Qoder CLI session to use the new version.');
+      console.log('\nPlease restart your Claude Code session to use the new version.');
     } else {
       console.error(`\n✗ ${result.message}`);
       if (result.errors) {
@@ -1143,3 +1554,6 @@ export function initSilentAutoUpdate(config: SilentUpdateConfig = {}): void {
     // Silently ignore any errors - they're already logged
   });
 }
+
+// Ancestor-spelling alias; the function reads no brand-specific path itself.
+export const getOMQConfig = getOMCConfig;

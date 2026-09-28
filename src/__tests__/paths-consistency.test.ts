@@ -34,10 +34,10 @@ describe('paths consistency — TS constants vs. non-TS template files', () => {
     const template = existsSync(TEMPLATE_TXT) ? readFileSync(TEMPLATE_TXT, 'utf8') : '';
 
     it(`contains the plugin root env var pattern used in the template`, () => {
-      // The template currently uses OMC_PLUGIN_ROOT (pre-migration name).
+      // The template currently uses OMQ_PLUGIN_ROOT (pre-migration name).
       // This assertion tracks the actual template content rather than the
       // canonical TS constant so the test stays green while both coexist.
-      expect(template).toContain('OMC_PLUGIN_ROOT');
+      expect(template).toContain('OMQ_PLUGIN_ROOT');
     });
 
     it(`contains OMQ_PLUGIN_MARKETPLACE_SLUG ("${OMQ_PLUGIN_MARKETPLACE_SLUG}") and OMQ_PLUGIN_PACKAGE_NAME ("${OMQ_PLUGIN_PACKAGE_NAME}")`, () => {

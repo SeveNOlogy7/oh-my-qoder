@@ -51,7 +51,26 @@ Not the GitHub compare API, which caps files at 300.
 | Milestone | Scope | State | Evidence |
 |-----------|-------|-------|----------|
 | M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done | this baseline commit |
-| M1 Conflict ledger | 28 named conflicts + negative-control carriers | not started | not measured |
-| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | not started | not measured |
+| M1 Conflict ledger | 28 named conflicts + negative-control carriers | done | 13 lanes, 12 with a VALID negative-control carrier (`docs/negative-control/`), gate wired to the `test`/`windows-test` jobs |
+| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | adoption `344176f`, install surface `01f323e`+`ece6d26`, predicates `ffef454`, on-disk brand tokens `b24a046`, shipped install doc `57c42e4` |
 | M3 Upstream contributions | 2-4 named PRs to shrink rename surface | not started | not measured |
 | M4 Pipeline gate | Triggered only if backport demand > 10/quarter | not started | not measured |
+
+## Presentation surface the hop added, and its disposition
+
+The hop also brought repo-presentation files that ship nothing but are still test-enforced,
+so they cannot be pruned on aesthetics. Measured at `b24a046`:
+
+| Path | Files | Held by | Disposition |
+|------|-------|---------|-------------|
+| `receipts/epic-3698/**` | 15 | `scripts/verify-epic-3698-closure.mjs` + `tests/integration/epic-3698-closure-verifier.test.ts` | keep - deleting breaks a green test |
+| `README.<lang>.md` | 11 | `src/__tests__/tier0-docs-consistency.test.ts` | keep - each still carries the upstream install block that `README.md` lost in `57c42e4`; fixing them is part of the docs pass |
+| `seminar/**` | 12 (1.8 MB) | nothing but `inventory/inventory-graph.json` | delete **together with** regenerating that artifact (Lane 3) - pruning it first widens an already-red drift gate |
+| root `CLAUDE.md` | 1 | `tests/lint/fable-routing-docs.test.ts` (byte-equal to `docs/CLAUDE.md`) | keep, branded |
+
+Two identity claims survive in tracked content and are Lane 3 work, not M0-M2:
+`inventory/inventory-graph.json` declares `repository: Yeachan-Heo/oh-my-claudecode` (its
+generator hardcodes it at `scripts/generate-inventory-graph.mjs:34`, and
+`tests/lint/inventory-graph-drift.test.ts:165` pins the wrong value as expected). The
+`Yeachan-Heo` strings in `src/__tests__/release-generation.test.ts` are unrelated - they are
+synthetic git-log and pull-request fixtures for the changelog generator and must stay.

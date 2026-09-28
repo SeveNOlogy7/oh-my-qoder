@@ -25,7 +25,7 @@ const json = process.argv.includes('--json');
 const requireAttribution = process.argv.includes('--require-attribution');
 const target = resolve(args[0] ?? repoRoot);
 
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'coverage', '.omq', '.omc', '.qoder']);
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'coverage', '.omq', '.omq', '.qoder']);
 const TEXT_EXT = /\.(ts|mjs|cjs|js|md|json|sh|txt|yml|yaml)$/i;
 
 function readPkg(dir) {
