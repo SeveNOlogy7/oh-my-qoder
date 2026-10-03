@@ -5,6 +5,10 @@ import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
 
+// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// // the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
+
 function makeTempProject(): string {
   const tempDir = mkdtempSync(join(tmpdir(), 'wf-gate-'));
   execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
@@ -90,6 +94,7 @@ function readRootWorkflowLedger(tempDir: string): {
 }
 
 describe('workflow-gating: kill switches (spec i)', () => {
+  useDefaultStateRoot();
   let savedDisableOmq: string | undefined;
   let savedSkipHooks: string | undefined;
 
@@ -145,6 +150,7 @@ describe('workflow-gating: kill switches (spec i)', () => {
 });
 
 describe('workflow-gating: tombstoned slot suppresses stale mode files (spec j)', () => {
+  useDefaultStateRoot();
   it('tombstoned ralph slot suppresses ralph-state.json check', async () => {
     const sessionId = 'tomb-ralph-01';
     const tempDir = makeTempProject();
@@ -285,6 +291,7 @@ describe('workflow-gating: tombstoned slot suppresses stale mode files (spec j)'
 });
 
 describe('workflow-gating: terminal mode state tombstones stale workflow slots (issue #2960)', () => {
+  useDefaultStateRoot();
   it('tombstones a live autopilot slot when autopilot state is terminal', async () => {
     const sessionId = 'terminal-autopilot-2960';
     const tempDir = makeTempProject();
@@ -364,6 +371,7 @@ describe('workflow-gating: terminal mode state tombstones stale workflow slots (
 });
 
 describe('workflow-gating: authority-first ordering for nested skills (spec f)', () => {
+  useDefaultStateRoot();
   it('returns shouldBlock=false when no active mode state files exist regardless of empty ledger', async () => {
     const sessionId = 'auth-empty-01';
     const tempDir = makeTempProject();

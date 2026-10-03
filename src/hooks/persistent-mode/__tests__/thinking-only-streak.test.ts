@@ -4,6 +4,10 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
+
+// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// // the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 import type { StopContext } from '../../todo-continuation/index.js';
 
 // Active-mode worktree so a Stop would normally block (and could loop). We use
@@ -79,6 +83,7 @@ function ctx(transcriptPath?: string): StopContext {
 }
 
 describe('thinking-only streak guard (issue #3280)', () => {
+  useDefaultStateRoot();
   it('increments the streak and bails out after 3 consecutive thinking-only turns', async () => {
     const sessionId = 'streak-bailout';
     const tempDir = makeRalphWorktree(sessionId);

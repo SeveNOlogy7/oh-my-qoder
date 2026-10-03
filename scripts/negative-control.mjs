@@ -29,11 +29,21 @@
  *
  * Exit codes:
  *   0  The observation turned RED after reverting the fix (expected -- the
- *      test is a valid negative control).
+ *      test is a valid negative control).  Also: NOT-APPLICABLE lanes (file
+ *      added by the adoption commit, nothing to revert).
  *   1  The observation stayed GREEN after reverting (the test does NOT detect
  *      the regression -- this is a loud warning).
  *   2  Harness error (bad lane name, git failure, etc.).
  *   3  A scratch worktree survived cleanup.
+ *
+ * Verdicts:
+ *   VALID           -- reverting the fix turned the observation RED.
+ *   INVALID         -- the observation stayed GREEN (test does not catch the regression).
+ *   INCONCLUSIVE    -- no observation was green before the revert.
+ *   NOT-APPLICABLE  -- the patched file does not exist in the base commit (it was
+ *                      added by the adoption commit itself, so there is nothing
+ *                      to revert).  Excluded from --gate verdicts.
+ *   HARNESS ERROR   -- infrastructure failure (git error, worktree leak, etc.).
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -104,8 +114,78 @@ function git(argv, cwd) {
     const stdout = err.stdout?.toString().trim() ?? '';
     const error = new Error(`git ${argv.join(' ')} failed\n${stderr || stdout}`);
     error.status = err.status;
+    error.stderr = stderr;
     throw error;
   }
+}
+
+/**
+ * Classify whether a file path has pre-fix content in a base commit.
+ *
+ * Returns one of:
+ *   'AVAILABLE'       -- the path exists in <baseCommit> and `git show` can retrieve it
+ *   'NOT-APPLICABLE'  -- the path does not exist in <baseCommit> (it was added by the
+ *                        adoption commit itself, so there is nothing to revert to)
+ *   'HARNESS-ERROR'   -- the probe failed for a reason other than "path absent"
+ *                        (missing object, corrupt repo, timeout, etc.)
+ *
+ * The probe uses `git cat-file -e <base>:<path>`, which exits 0 when the blob
+ * exists and non-zero with a specific fatal when it does not.  Any other failure
+ * mode is reported as a harness error so that real infrastructure problems are
+ * never silently swallowed.
+ */
+export function classifyPreFixAvailability(baseCommit, filePath, cwd) {
+  try {
+    execFileSync('git', ['cat-file', '-e', `${baseCommit}:${filePath}`], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    return 'AVAILABLE';
+  } catch (err) {
+    const stderr = err.stderr?.toString().trim() ?? '';
+    // git cat-file -e emits exactly this fatal when the path is absent from the tree.
+    if (/path '.*' exists on disk, but not in '/.test(stderr) ||
+        /path '.*' does not exist/.test(stderr)) {
+      return 'NOT-APPLICABLE';
+    }
+    return 'HARNESS-ERROR';
+  }
+}
+
+/**
+ * Decide whether a lane has anything left to judge at all.
+ *
+ * `revertTo` points at the pre-adoption fork blob, so a lane whose file currently holds the
+ * adoption commit's own content has no fork patch in the tree: reverting it restores text nobody
+ * shipped and turns nothing red. Reporting that as INVALID counts a superseded row as a missing
+ * test, and the real blind spots get buried. Compare blob identities rather than file bytes so a
+ * dirty working tree cannot change the verdict -- this is what CI's committed state says.
+ */
+export function classifyForkDeltaPresence(adoptionCommit, filePath, cwd) {
+  const blobOf = (rev) => {
+    try {
+      return execFileSync('git', ['rev-parse', '--verify', `${rev}:${filePath}`], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }).trim();
+    } catch (err) {
+      const stderr = err.stderr?.toString().trim() ?? '';
+      // A missing path in a real commit is a fact about the tree; a broken rev is a harness fault.
+      if (/exists on disk, but not in|does not exist|known to the repository|Not a valid object/.test(stderr)) {
+        return null;
+      }
+      return 'HARNESS-ERROR';
+    }
+  };
+  const head = blobOf('HEAD');
+  if (head === 'HARNESS-ERROR' || head === null) return 'HARNESS-ERROR';
+  const adoption = blobOf(adoptionCommit);
+  if (adoption === 'HARNESS-ERROR') return 'HARNESS-ERROR';
+  // Absent at the adoption commit means it arrived later, which is itself a fork delta.
+  if (adoption === null) return 'FORK-DELTA-PRESENT';
+  return adoption === head ? 'SUPERSEDED-BY-ADOPTION' : 'FORK-DELTA-PRESENT';
 }
 
 function subjectOf(sha) {
@@ -231,6 +311,83 @@ function runLane(lane, { retryAlternates }) {
   // harness leaked registered-but-undeleted worktrees. Record the code instead
   // and exit once cleanup has had its turn.
   let exitCode = 0;
+
+  // 0. Before creating any worktree, check whether the patched file even existed
+  //    in the base commit.  Files ADDED by the adoption commit have no pre-fix
+  //    blob to revert to -- that is NOT-APPLICABLE, not a harness error.
+  //    This probe uses `git cat-file -e` against the main repo (no worktree needed).
+  try {
+    const availability = classifyPreFixAvailability(
+      `${lane.fixCommit}^`, lane.scriptFile, repoRoot,
+    );
+    if (availability === 'NOT-APPLICABLE') {
+      const result = {
+        lane: laneName,
+        fixCommit: lane.fixCommit,
+        patchedFile: lane.scriptFile,
+        description: lane.description,
+        observation: lane.observation,
+        namedObservation: lane.observation,
+        verified: false,
+        attempts: [],
+        beforeRevert: { exitCode: -1, green: false },
+        afterRevert: { exitCode: -1, red: false },
+        verdict: 'NOT-APPLICABLE',
+        reason: `path '${lane.scriptFile}' does not exist in ${lane.fixCommit}^ (added by the adoption commit)`,
+      };
+      if (!json) {
+        console.log(`\n=== Negative Control: ${laneName} ===`);
+        console.log(`Patched file: ${lane.scriptFile} -- NOT-APPLICABLE (file added by adoption commit)`);
+      }
+      exitCode = 0;
+      outcome = { exitCode, result };
+      return outcome;
+    }
+    if (availability === 'HARNESS-ERROR') {
+      throw new Error(
+        `git cat-file -e ${lane.fixCommit}^:${lane.scriptFile} failed for an unexpected reason`,
+      );
+    }
+  } catch (err) {
+    console.error(`Harness error in lane ${laneName}: ${err.message}`);
+    return { exitCode: 2, result: { lane: laneName, verdict: `HARNESS ERROR: ${err.message}` } };
+  }
+
+  // 0b. The file existed pre-hop, but does the tree still carry our patch? Where the adoption
+  //     commit's own content survived untouched, reverting restores text nobody shipped and no
+  //     observation can go red -- that is NOT-APPLICABLE too, or a superseded ledger row reads
+  //     as a missing test and buries the lanes that really are blind.
+  try {
+    const delta = classifyForkDeltaPresence(
+      process.env.OMQ_ADOPTION_COMMIT ?? '344176f', lane.scriptFile, repoRoot,
+    );
+    if (delta === 'SUPERSEDED-BY-ADOPTION') {
+      const result = {
+        lane: laneName,
+        fixCommit: lane.fixCommit,
+        patchedFile: lane.scriptFile,
+        description: lane.description,
+        observation: lane.observation,
+        namedObservation: lane.observation,
+        verified: false,
+        attempts: [],
+        beforeRevert: { exitCode: -1, green: false },
+        afterRevert: { exitCode: -1, red: false },
+        verdict: 'NOT-APPLICABLE',
+        reason: `HEAD:${lane.scriptFile} is byte-identical to the adoption commit -- the fork patch this row describes is no longer in the tree`,
+      };
+      if (!json) {
+        console.log(`\n=== Negative Control: ${laneName} ===`);
+        console.log(`Patched file: ${lane.scriptFile} -- NOT-APPLICABLE (adoption content still in place, nothing of ours to revert)`);
+      }
+      exitCode = 0;
+      outcome = { exitCode, result };
+      return outcome;
+    }
+  } catch (err) {
+    console.error(`Harness error in lane ${laneName}: ${err.message}`);
+    return { exitCode: 2, result: { lane: laneName, verdict: `HARNESS ERROR: ${err.message}` } };
+  }
 
   try {
     // 1. Ensure the worktrees directory exists.
@@ -424,6 +581,10 @@ function runLane(lane, { retryAlternates }) {
 /*  Driver                                                             */
 /* ------------------------------------------------------------------ */
 
+const isMain = process.argv[1] &&
+  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+
+if (isMain) {
 let lanes;
 if (singleLaneName) {
   if (!LANES[singleLaneName]) usageAndBail();
@@ -447,16 +608,50 @@ for (const lane of lanes) {
   worst = Math.max(worst, exitCode);
 }
 
+// Classify each outcome into a canonical bucket for the tally.
+function verdictBucket(verdict) {
+  if (verdict === 'VALID') return 'VALID';
+  if (verdict === 'NOT-APPLICABLE') return 'NOT-APPLICABLE';
+  if (typeof verdict === 'string' && verdict.startsWith('HARNESS ERROR')) return 'HARNESS-ERROR';
+  if (typeof verdict === 'string' && verdict.startsWith('INVALID')) return 'INVALID';
+  if (typeof verdict === 'string' && verdict.startsWith('INCONCLUSIVE')) return 'INCONCLUSIVE';
+  return 'OTHER';
+}
+
+const tally = { VALID: 0, INVALID: 0, INCONCLUSIVE: 0, 'NOT-APPLICABLE': 0, 'HARNESS-ERROR': 0, OTHER: 0 };
+for (const o of outcomes) {
+  const bucket = verdictBucket(o.verdict);
+  tally[bucket] = (tally[bucket] ?? 0) + 1;
+}
+
 if (json) {
   console.log(JSON.stringify(lanes.length === 1 ? outcomes[0] : outcomes, null, 2));
 } else {
-  console.log(`\n=== ${lanes.length} lane(s): ${outcomes.filter((o) => o.verdict === 'VALID').length} VALID ===`);
+  const parts = Object.entries(tally)
+    .filter(([, count]) => count > 0)
+    .map(([bucket, count]) => `${count} ${bucket}`)
+    .join(' / ');
+  console.log(`\n=== ${lanes.length} lane(s): ${parts || 'no outcomes'} ===`);
   for (const outcome of outcomes) {
-    console.log(`${outcome.verdict === 'VALID' ? 'ok  ' : 'FAIL'}  ${outcome.lane}  ${outcome.verdict}`);
+    const bucket = verdictBucket(outcome.verdict);
+    const icon = bucket === 'VALID' ? 'ok  ' : bucket === 'NOT-APPLICABLE' ? 'n/a ' : 'FAIL';
+    console.log(`${icon}  ${outcome.lane}  ${outcome.verdict}`);
   }
 }
 
 // Without --gate an observation that did not bite is recorded, not fatal: M1's
 // job is to find out which lanes have no test yet.  A harness error (2) or a
 // leaked worktree (3) is always fatal.
+// With --gate, INVALID and HARNESS-ERROR fail the run; NOT-APPLICABLE lanes are
+// excluded from the verdict (they contribute to the tally but not to the exit code).
+if (gate) {
+  const hasInvalid = tally.INVALID > 0;
+  const hasHarnessError = tally['HARNESS-ERROR'] > 0;
+  const leaked = worst === 3;
+  if (hasInvalid || hasHarnessError || leaked) {
+    process.exit(hasHarnessError ? 2 : leaked ? 3 : 1);
+  }
+  process.exit(0);
+}
 process.exit(worst === 1 && !gate ? 0 : worst);
+} // end isMain

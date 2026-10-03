@@ -31,6 +31,9 @@ import {
   resetTodoContinuationAttempts
 } from '../hooks/persistent-mode/index.js';
 import { processHook, type HookInput } from '../hooks/bridge.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 function writeTranscriptWithContext(filePath: string, contextWindow: number, inputTokens: number): void {
   writeFileSync(
@@ -44,6 +47,7 @@ function writeTranscriptWithContext(filePath: string, contextWindow: number, inp
 }
 
 describe('Keyword Detector', () => {
+  useDefaultStateRoot();
   describe('extractPromptText', () => {
     it('should extract text from text parts', () => {
       const parts = [
@@ -537,6 +541,7 @@ describe('Keyword Detector', () => {
 });
 
 describe('Team staged workflow integration', () => {
+  useDefaultStateRoot();
   let testDir: string;
   const sessionId = 'team-session-test';
 
@@ -900,6 +905,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
 });
 
 describe('Persistent-mode reply cleanup behavior', () => {
+  useDefaultStateRoot();
   const originalHome = process.env.HOME;
   const originalUserProfile = process.env.USERPROFILE;
   let testDir: string;
@@ -955,6 +961,7 @@ describe('Persistent-mode reply cleanup behavior', () => {
 });
 
 describe('Todo Continuation', () => {
+  useDefaultStateRoot();
   describe('formatTodoStatus', () => {
     it('should format when all tasks complete', () => {
       const result: IncompleteTodosResult = {
@@ -1208,6 +1215,7 @@ describe('Todo Continuation', () => {
 });
 
 describe('Hook Output Structure', () => {
+  useDefaultStateRoot();
   describe('JSON output format', () => {
     it('should create valid hook output with continue flag', () => {
       const output = {
@@ -1313,6 +1321,7 @@ describe('Hook Output Structure', () => {
 });
 
 describe('Integration: Keyword Detection with Code Blocks', () => {
+  useDefaultStateRoot();
   it('should detect keywords outside code and ignore inside', () => {
     const text = `
 Please search the codebase
@@ -1357,6 +1366,7 @@ Now deep analyze the bug
 });
 
 describe('Edge Cases', () => {
+  useDefaultStateRoot();
   describe('Empty and null inputs', () => {
     it('should handle empty prompt parts', () => {
       expect(extractPromptText([])).toBe('');
@@ -1420,6 +1430,7 @@ describe('Edge Cases', () => {
 });
 
 describe('Persistent Mode - Max Attempts Counter', () => {
+  useDefaultStateRoot();
   const testSessionId = 'test-session-123';
 
   beforeEach(() => {
@@ -1450,6 +1461,7 @@ describe('Persistent Mode - Max Attempts Counter', () => {
 });
 
 describe('Skill-active state lifecycle', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {

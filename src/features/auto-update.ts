@@ -627,7 +627,7 @@ export interface OMCConfig {
 /**
  * Read the OMC configuration
  */
-export function getOMCConfig(): OMCConfig {
+export function getOMQConfig(): OMCConfig {
   if (!existsSync(CONFIG_FILE)) {
     // No config file = disabled by default for security
     return { silentAutoUpdate: false };
@@ -662,7 +662,7 @@ export function getOMCConfig(): OMCConfig {
  */
 export function isSilentAutoUpdateEnabled(): boolean {
   if (isAutoUpdateDisabled()) return false;
-  return getOMCConfig().silentAutoUpdate;
+  return getOMQConfig().silentAutoUpdate;
 }
 
 /**
@@ -670,7 +670,7 @@ export function isSilentAutoUpdateEnabled(): boolean {
  * Returns true by default - users must explicitly opt out
  */
 export function isAutoUpgradePromptEnabled(): boolean {
-  return getOMCConfig().autoUpgradePrompt !== false;
+  return getOMQConfig().autoUpgradePrompt !== false;
 }
 
 /**
@@ -1555,5 +1555,5 @@ export function initSilentAutoUpdate(config: SilentUpdateConfig = {}): void {
   });
 }
 
-// Ancestor-spelling alias; the function reads no brand-specific path itself.
-export const getOMQConfig = getOMCConfig;
+// Ancestor-spelling alias; vendored ancestor modules and fixtures still call this name.
+export const getOMCConfig = getOMQConfig;

@@ -111,9 +111,14 @@ export function isPathAllowed(
   filePath: string,
   workingDirectory: string
 ): boolean {
-  // Normalize to relative path
+  // Normalize to relative path. The glob dialect here is POSIX-only (matchGlob
+  // treats '/' as the separator, and SECURE_DENY_DEFAULTS plus any configured
+  // pattern use '/'), while relative() returns native separators on Windows --
+  // without this fold `.git\config` stops matching `.git/**` and the secure deny
+  // defaults silently fail open. Same normalization rules-injector/matcher.ts:57
+  // already applies before its own matchGlob loop.
   const absPath = resolve(workingDirectory, filePath);
-  const relPath = relative(workingDirectory, absPath);
+  const relPath = relative(workingDirectory, absPath).replace(/\\/g, '/');
 
   // If path escapes working directory, always deny
   if (relPath.startsWith('..')) return false;
@@ -253,7 +258,7 @@ export function findPermissionViolations(
     if (!isPathAllowed(permissions, filePath, cwd)) {
       // Determine which deny pattern matched for the reason
       const absPath = resolve(cwd, filePath);
-      const relPath = relative(cwd, absPath);
+      const relPath = relative(cwd, absPath).replace(/\\/g, '/');
 
       let reason: string;
       if (relPath.startsWith('..')) {

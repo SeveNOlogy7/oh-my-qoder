@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -79,6 +79,18 @@ describe('synchronous publication short writes', () => {
 
     expect(atomicWrite.withStateFileLockSync(statePath, () => 'held')).toEqual({ acquired: true, value: 'held' });
     expect(() => readFileSync(`${statePath}.mutation.lock`, 'utf8')).toThrow(/ENOENT/);
-    expect(fsControl.calls).toBeGreaterThan(Buffer.byteLength(content, 'utf8') / 2);
+    // The strict lower bound rides on the lock-owner publication's own short
+    // writes, which only exist where an exclusive flock can be taken. Without
+    // it the observed calls are exactly the state publication's minimal
+    // short-write loop, which must still have completed every byte.
+    const contentBytes = Buffer.byteLength(content, 'utf8');
+    const exclusiveLockAvailable = process.platform === 'linux' &&
+      process.env.OMQ_TEST_FLOCK_AVAILABLE !== '0' &&
+      (existsSync('/usr/bin/flock') || existsSync('/bin/flock'));
+    if (exclusiveLockAvailable) {
+      expect(fsControl.calls).toBeGreaterThan(contentBytes / 2);
+    } else {
+      expect(fsControl.calls).toBeGreaterThanOrEqual(Math.ceil(contentBytes / 2));
+    }
   });
 });

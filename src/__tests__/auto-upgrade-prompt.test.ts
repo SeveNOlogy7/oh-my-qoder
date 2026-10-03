@@ -29,7 +29,7 @@ vi.mock('fs', async () => {
 
 import { existsSync, readFileSync } from 'fs';
 import {
-  getOMCConfig,
+  getOMQConfig,
   isAutoUpgradePromptEnabled,
   isSilentAutoUpdateEnabled,
 } from '../features/auto-update.js';
@@ -45,7 +45,7 @@ describe('auto-upgrade prompt config', () => {
   it('defaults autoUpgradePrompt to true when config file does not exist', () => {
     mockedExistsSync.mockReturnValue(false);
 
-    const config = getOMCConfig();
+    const config = getOMQConfig();
     expect(config.autoUpgradePrompt).toBeUndefined();
     expect(isAutoUpgradePromptEnabled()).toBe(true);
   });
@@ -56,7 +56,7 @@ describe('auto-upgrade prompt config', () => {
       silentAutoUpdate: false,
     }));
 
-    const config = getOMCConfig();
+    const config = getOMQConfig();
     expect(config.autoUpgradePrompt).toBeUndefined();
     expect(isAutoUpgradePromptEnabled()).toBe(true);
   });
@@ -69,7 +69,7 @@ describe('auto-upgrade prompt config', () => {
     }));
 
     expect(isAutoUpgradePromptEnabled()).toBe(true);
-    expect(getOMCConfig().autoUpgradePrompt).toBe(true);
+    expect(getOMQConfig().autoUpgradePrompt).toBe(true);
   });
 
   it('returns false when autoUpgradePrompt is explicitly false', () => {
@@ -80,7 +80,7 @@ describe('auto-upgrade prompt config', () => {
     }));
 
     expect(isAutoUpgradePromptEnabled()).toBe(false);
-    expect(getOMCConfig().autoUpgradePrompt).toBe(false);
+    expect(getOMQConfig().autoUpgradePrompt).toBe(false);
   });
 
   it('autoUpgradePrompt and silentAutoUpdate are independent', () => {

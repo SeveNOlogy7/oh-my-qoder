@@ -62,10 +62,13 @@ describe('BUG 1: session summary spawn guard with PID tracking', () => {
   it('guard returns early before spawn when within window', async () => {
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
+    // Normalize the checkout's line endings: the 800-char byte budget assumes
+    // LF, and a CRLF working tree otherwise pushes the guard body out of the
+    // window before its pins are reached.
     const source = readFileSync(
       join(process.cwd(), 'src/hud/index.ts'),
       'utf-8',
-    );
+    ).replace(/\r\n/g, '\n');
 
     // The function should return early if within the window
     const fnStart = source.indexOf('function spawnSessionSummaryScript');

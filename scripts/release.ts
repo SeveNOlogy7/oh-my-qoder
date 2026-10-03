@@ -233,7 +233,7 @@ function bumpVersionFiles(newVersion: string, dryRun: boolean): string[] {
     changes.push(`package.json: ${pkg.version} → ${newVersion}`);
   }
 
-  const pluginPath = join(ROOT, '.claude-plugin/plugin.json');
+  const pluginPath = join(ROOT, '.qoder-plugin/plugin.json');
   if (existsSync(pluginPath)) {
     const content = readFileSync(pluginPath, 'utf-8');
     const updated = content.replace(/"version":\s*"[^"]*"/, `"version": "${newVersion}"`);
@@ -243,7 +243,7 @@ function bumpVersionFiles(newVersion: string, dryRun: boolean): string[] {
     }
   }
 
-  const marketPath = join(ROOT, '.claude-plugin/marketplace.json');
+  const marketPath = join(ROOT, '.qoder-plugin/marketplace.json');
   if (existsSync(marketPath)) {
     const content = readFileSync(marketPath, 'utf-8');
     const updated = content.replace(/"version":\s*"[^"]*"/g, `"version": "${newVersion}"`);
@@ -302,7 +302,7 @@ function releaseNextSteps(version: string): string {
   npm run build
   npm run plugin:shipping:verify
   npm run plugin:shipping:stage
-  git add -- package.json package-lock.json .claude-plugin/plugin.json .claude-plugin/marketplace.json docs/CLAUDE.md CHANGELOG.md README.md docs/REFERENCE.md .github/CLAUDE.md docs/ARCHITECTURE.md .github/release-body.md
+  git add -- package.json package-lock.json .qoder-plugin/plugin.json .qoder-plugin/marketplace.json docs/CLAUDE.md CHANGELOG.md README.md docs/REFERENCE.md .github/CLAUDE.md docs/ARCHITECTURE.md .github/release-body.md
   git commit -S -m "chore(release): bump version to v${version}"
   git push origin HEAD:release/v${version}
   # Open a release PR from release/v${version} to dev. The signed commit is required; do not push or merge a protected branch directly.

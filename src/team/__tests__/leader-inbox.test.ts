@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, readFileSync, rmSync, existsSync, realpathSync } from 'fs';
-import { join } from 'path';
+import { join, sep } from 'path';
 import { tmpdir } from 'os';
 import {
   leaderInboxPath,
@@ -35,7 +35,7 @@ describe('leaderInboxPath', () => {
     const p = leaderInboxPath('my team!', TEST_CWD);
     expect(p).not.toContain('!');
     expect(p).not.toContain(' ');
-    expect(p).toContain('leader/inbox.md');
+    expect(p).toContain(join('leader', 'inbox.md'));
   });
 
   it('prevents traversal via team name: dots and slashes stripped', () => {
@@ -174,9 +174,11 @@ describe('extendLeaderBootstrapPrompt', () => {
   it('path in prompt matches leaderInboxPath relative segment', () => {
     const prompt = extendLeaderBootstrapPrompt(TEST_TEAM);
     const fullPath = leaderInboxPath(TEST_TEAM, TEST_CWD);
-    // The prompt uses relative path; fullPath has cwd prefix
+    // The prompt uses a workspace-relative POSIX literal while leaderInboxPath()
+    // returns a host-shaped absolute path, so the two only agree once the
+    // separators are folded -- on POSIX that fold is the identity.
     const relSegment = `.omq/state/team/my-team/leader/inbox.md`;
-    expect(fullPath).toContain(relSegment);
+    expect(fullPath.split(sep).join('/')).toContain(relSegment);
     expect(prompt).toContain(relSegment);
   });
 });

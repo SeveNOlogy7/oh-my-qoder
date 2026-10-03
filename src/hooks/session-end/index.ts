@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { runSessionEndDeferredAction } from './callbacks.js';
-import { getOMCConfig } from '../../features/auto-update.js';
+import { getOMQConfig } from '../../features/auto-update.js';
 import { buildConfigFromEnv, getEnabledPlatforms, getNotificationConfig } from '../../notifications/config.js';
 import type { NotificationPlatform } from '../../notifications/types.js';
 import { cleanupBridgeSessions } from '../../tools/python-repl/bridge-manager.js';
@@ -87,7 +87,7 @@ export function resolveSessionEndCleanupBudgetMs(env: NodeJS.ProcessEnv = proces
 
 
 function hasExplicitNotificationConfig(profileName?: string): boolean {
-  const config = getOMCConfig();
+  const config = getOMQConfig();
 
   if (profileName) {
     const profile = config.notificationProfiles?.[profileName];

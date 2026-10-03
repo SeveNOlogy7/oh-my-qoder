@@ -64,15 +64,18 @@ describe('alias-retirement registry', () => {
     }
   });
 
-  it('built-in loader exposes 33 entries (31 canonical + 2 aliases) after the 5.0.0 retirement', () => {
+  it('built-in loader exposes 45 entries (43 canonical + 2 aliases) for the payload this fork ships', () => {
     // This is the baseline that retirement must not silently change without an eligibility receipt.
     // Raised 37 -> 40 canonical when execute/review/research shipped as real
     // skill directories; this is an addition, not an alias retirement.
+    // The loader enumerates skills/ on disk, so canonical == the 43 skill directories
+    // this fork ships -- the same count the durable inventory graph derives from
+    // `git ls-files`, and the same one workflow/registry.ts now has to cover.
     const all = createBuiltinSkills();
-    expect(all).toHaveLength(33);
+    expect(all).toHaveLength(45);
     const canonical = all.filter((s) => !s.aliasOf);
     const aliases = all.filter((s) => !!s.aliasOf);
-    expect(canonical).toHaveLength(31);
+    expect(canonical).toHaveLength(43);
     expect(aliases).toHaveLength(2);
     expect(aliases.map((s) => s.name).sort()).toEqual(['cancel-ralph', 'psm'].sort());
   });

@@ -296,6 +296,22 @@ describe('inventory-graph drift enforcement (#3702)', () => {
     expect(m.graph.edges.some((e) => e.from === 'src/features/delegation-categories/index.ts' && e.kind.endsWith('-unresolved'))).toBe(false);
   });
 
+  it('a fresh generation on this host resolves the call graph, not just the committed one', () => {
+    const result = spawnSync('node', [GENERATOR], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8' as const,
+      maxBuffer: 50 * 1024 * 1024,
+    });
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    const fresh = JSON.parse(result.stdout as unknown as string) as Manifest;
+    const edgeKeys = new Set(fresh.graph.edges.map((e) => `${e.from} -> ${e.to} [${e.kind}]`));
+    // The committed baseline above can only prove the artifact was generated somewhere that
+    // could resolve paths. Candidates built with a Windows drive root silently miss every file.
+    expect(edgeKeys.has('src/agents/index.ts -> src/agents/definitions.ts [exports]')).toBe(true);
+    expect(fresh.graph.edges.some((e) => e.kind === 'exports-unresolved')).toBe(false);
+    expect(fresh.graph.edges.some((e) => e.from === 'src/features/delegation-categories/index.ts' && e.kind.endsWith('-unresolved'))).toBe(false);
+  });
+
   it('generator is deterministic (two consecutive runs yield identical manifest modulo head/generatedAt)', () => {
     const opts = { cwd: REPO_ROOT, encoding: 'utf8' as const, maxBuffer: 20 * 1024 * 1024 };
     const r1 = spawnSync('node', [GENERATOR], opts);

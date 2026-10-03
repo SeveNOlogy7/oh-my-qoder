@@ -6,6 +6,9 @@ import { tmpdir } from 'os';
 import { createWorkerWorktree } from '../git-worktree.js';
 import { awaitWorkerLaunchAcknowledgement, prepareWorkerLaunchAttempt } from '../worker-launch-ack.js';
 import { currentProcessStartIdentity } from '../team-owner-epoch.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const tmuxMocks = vi.hoisted(() => ({
   killWorkerPanes: vi.fn(async () => undefined),
@@ -55,6 +58,7 @@ async function prepareAcceptedLaunch(cwd: string, teamName: string, workerName: 
 }
 
 describe('shutdownTeamV2 detached worktree cleanup', () => {
+  useDefaultStateRoot();
   let repoDir: string;
 
   beforeEach(() => {

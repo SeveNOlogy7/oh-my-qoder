@@ -3,12 +3,17 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { resolve } from 'path';
+import { isAbsolute, resolve } from 'path';
 import { resolvePluginDirArg } from '../plugin-dir.js';
 
 describe('resolvePluginDirArg', () => {
   it('returns an absolute path unchanged', () => {
-    expect(resolvePluginDirArg('/tmp/foo')).toBe(resolve('/tmp/foo'));
+    // The contract is "unchanged", so the expectation is the input itself.
+    // resolve('/tmp/foo') happened to equal the input on POSIX and rewrote it to
+    // '<cwdDrive>:\tmp\foo' on Windows -- an expectation that contradicted the
+    // title it belonged to rather than a product difference.
+    expect(isAbsolute('/tmp/foo')).toBe(true);
+    expect(resolvePluginDirArg('/tmp/foo')).toBe('/tmp/foo');
   });
 
   it('resolves a relative path to absolute', () => {

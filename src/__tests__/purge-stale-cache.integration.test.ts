@@ -166,7 +166,7 @@ describe('purgeStalePluginCacheVersions on a real filesystem', () => {
       ['Thumbs.db'],
       ['scripts', 'partial.txt'],
       ['hooks', 'hooks.json'],
-      ['.claude-plugin', 'plugin.json'],
+      ['.qoder-plugin', 'plugin.json'],
       ['scripts', 'run.cjs'],
     ];
     for (const junk of junkShapes) {

@@ -20,16 +20,16 @@ import {
   UltragoalError,
 } from '../../ultragoal/artifacts.js';
 
-export const ULTRAGOAL_HELP = `omc ultragoal - Durable repo-native multi-goal workflow with Claude Code /goal handoff
+export const ULTRAGOAL_HELP = `omq ultragoal - Durable repo-native multi-goal workflow with Claude Code /goal handoff
 
 Usage:
-  omc ultragoal create-goals [--brief <text> | --brief-file <path> | --from-stdin] [--goal <title::objective>] [--claude-goal-mode <aggregate|per-story>] [--force] [--plan-id <id> | --auto-plan-id] [--json]
-  omc ultragoal complete-goals [<goal-id>] [--retry-failed] [--plan-id <id>] [--json]
-  omc ultragoal add-goal --title <title> --objective <text> [--evidence <text>] [--plan-id <id>] [--json]
-  omc ultragoal record-review-blockers --goal-id <id> --title <title> --objective <text> --evidence <review-findings> --claude-goal-json <active-json-or-path> [--plan-id <id>] [--json]
-  omc ultragoal checkpoint --goal-id <id> --status <complete|failed|blocked> [--evidence <text>] [--claude-goal-json <json-or-path>] [--quality-gate-json <json-or-path>] [--plan-id <id>] [--json]
-  omc ultragoal status [--claude-goal-json <json-or-path>] [--plan-id <id>] [--json]
-  omc ultragoal list-plans [--json]
+  omq ultragoal create-goals [--brief <text> | --brief-file <path> | --from-stdin] [--goal <title::objective>] [--claude-goal-mode <aggregate|per-story>] [--force] [--plan-id <id> | --auto-plan-id] [--json]
+  omq ultragoal complete-goals [<goal-id>] [--retry-failed] [--plan-id <id>] [--json]
+  omq ultragoal add-goal --title <title> --objective <text> [--evidence <text>] [--plan-id <id>] [--json]
+  omq ultragoal record-review-blockers --goal-id <id> --title <title> --objective <text> --evidence <review-findings> --claude-goal-json <active-json-or-path> [--plan-id <id>] [--json]
+  omq ultragoal checkpoint --goal-id <id> --status <complete|failed|blocked> [--evidence <text>] [--claude-goal-json <json-or-path>] [--quality-gate-json <json-or-path>] [--plan-id <id>] [--json]
+  omq ultragoal status [--claude-goal-json <json-or-path>] [--plan-id <id>] [--json]
+  omq ultragoal list-plans [--json]
 
 Aliases:
   create -> create-goals, complete|next|start-next -> complete-goals
@@ -57,7 +57,7 @@ Claude /goal integration:
   and prints a model-facing handoff that tells the active Claude agent when to invoke
   /goal <condition>, when to clear it, and what snapshot JSON to share back.
   New plans default to aggregate mode: one Claude /goal covers the whole ultragoal run
-  while OMC checkpoints G001/G002 stories in the durable ledger.
+  while OMQ checkpoints G001/G002 stories in the durable ledger.
   Final completion is mandatory-gated: run ai-slop-cleaner, rerun verification,
   run $code-review, and pass --quality-gate-json with APPROVE + CLEAR evidence.
   Non-clean final review must use record-review-blockers before clearing the /goal.

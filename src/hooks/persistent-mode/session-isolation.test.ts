@@ -1,12 +1,24 @@
 import { createHash } from "crypto";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { execSync } from "child_process";
 import { checkPersistentModes, createHookOutput } from "./index.js";
 import { activateUltrawork, deactivateUltrawork } from "../ultrawork/index.js";
 import { initAutopilot } from "../autopilot/index.js";
+
+// Mirror of mode-state-io's exclusive mutation-lock availability: a
+// target-bearing cancel signal is honored only where an exclusive lock can
+// actually be taken ("A target-bearing signal must hold both locks"); without
+// it the signal is deliberately not honored and the stop stays blocked.
+const exclusiveLockAvailable = () =>
+  process.platform === "linux" &&
+  process.env.OMQ_TEST_FLOCK_AVAILABLE !== "0" &&
+  (existsSync("/usr/bin/flock") || existsSync("/bin/flock"));
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 function writePendingTodo(tempDir: string, content: string): void {
   mkdirSync(join(tempDir, '.claude'), { recursive: true });
@@ -25,6 +37,7 @@ function writePendingTodo(tempDir: string, content: string): void {
 }
 
 describe("Persistent Mode Session Isolation (Issue #311)", () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {
@@ -167,9 +180,12 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
         signalPath,
         JSON.stringify(signal(createHash("sha256").update(JSON.stringify(currentState)).digest("hex"))),
       );
+      // With the exact digest the cancellation is honored into a no-block —
+      // but only where the exclusive lock contract can be met at all.
+      const digestHonored = exclusiveLockAvailable();
       await expect(checkPersistentModes(sessionId, tempDir)).resolves.toMatchObject({
-        shouldBlock: false,
-        mode: "none",
+        shouldBlock: !digestHonored,
+        mode: digestHonored ? "none" : "autopilot",
       });
     });
 
@@ -294,9 +310,12 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
         target_state_sha256: createHash('sha256').update(JSON.stringify(state)).digest('hex'),
       }));
 
+      // A fresh exact-digest signal honors the cancellation only where the
+      // exclusive lock contract can be met; stale/future signals block everywhere.
+      const expectBlock = shouldBlock || !exclusiveLockAvailable();
       await expect(checkPersistentModes(sessionId, tempDir)).resolves.toMatchObject({
-        shouldBlock,
-        mode: shouldBlock ? 'autopilot' : 'none',
+        shouldBlock: expectBlock,
+        mode: expectBlock ? 'autopilot' : 'none',
       });
     });
 
@@ -641,7 +660,7 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
 
       expect(output.decision).toBe("block");
       expect(output.reason).toContain("AUTOPILOT");
-      expect(output.reason).not.toContain('/oh-my-claudecode:cancel');
+      expect(output.reason).not.toContain('/oh-my-qoder:cancel');
     });
 
     it("should include cancel guidance only for session-owned autopilot state", () => {
@@ -669,7 +688,7 @@ describe("Persistent Mode Session Isolation (Issue #311)", () => {
       });
 
       expect(output.decision).toBe("block");
-      expect(output.reason).toContain('/oh-my-claudecode:cancel');
+      expect(output.reason).toContain('/oh-my-qoder:cancel');
       expect(output.reason).toContain("this session's autopilot state files");
     });
   });

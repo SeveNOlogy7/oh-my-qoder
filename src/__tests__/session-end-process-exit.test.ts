@@ -4,6 +4,9 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+// Spawns run.cjs/session-end hooks that must resolve state through the DEFAULT
+// branch over temp fixtures (#42): lift the per-file OMQ_STATE_DIR pin per test.
+import { useDefaultStateRoot } from './helpers/default-state-root.js';
 
 const REPO_ROOT = process.cwd();
 const RUN_CJS = join(REPO_ROOT, 'scripts', 'run.cjs');
@@ -103,6 +106,8 @@ async function waitForTerminalCallback(cwd: string, sessionId: string): Promise<
 }
 
 describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
+  useDefaultStateRoot();
+
   const tempDirs: string[] = [];
 
   afterEach(() => {

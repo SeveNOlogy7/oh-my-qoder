@@ -157,13 +157,17 @@ describe('cross-platform path utilities', () => {
       process.env = { ...originalEnv };
     });
 
+    // These cases fake process.platform to exercise the Linux/Unix branches while
+    // the test host may be Windows, where join()/normalize() still emit "\" paths.
+    // toForwardSlash() is the module's own normaliser, so the expected POSIX values
+    // below are compared in the same shape production is allowed to return.
     it('should use XDG config root for global OMQ config on Linux', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
       process.env.XDG_CONFIG_HOME = '/custom/config';
       delete process.env.OMQ_HOME;
 
-      expect(getGlobalOmqConfigRoot()).toBe('/custom/config/omq');
-      expect(getGlobalOmqConfigPath('config.json')).toBe('/custom/config/omq/config.json');
+      expect(toForwardSlash(getGlobalOmqConfigRoot())).toBe('/custom/config/omq');
+      expect(toForwardSlash(getGlobalOmqConfigPath('config.json'))).toBe('/custom/config/omq/config.json');
     });
 
     it('should use XDG state root for global OMQ state on Linux', () => {
@@ -171,8 +175,8 @@ describe('cross-platform path utilities', () => {
       process.env.XDG_STATE_HOME = '/custom/state';
       delete process.env.OMQ_HOME;
 
-      expect(getGlobalOmqStateRoot()).toBe('/custom/state/omq');
-      expect(getGlobalOmqStatePath('daemon.json')).toBe('/custom/state/omq/daemon.json');
+      expect(toForwardSlash(getGlobalOmqStateRoot())).toBe('/custom/state/omq');
+      expect(toForwardSlash(getGlobalOmqStatePath('daemon.json'))).toBe('/custom/state/omq/daemon.json');
     });
 
     it('should keep OMQ_HOME authoritative for config and state roots', () => {
@@ -181,15 +185,15 @@ describe('cross-platform path utilities', () => {
       process.env.XDG_CONFIG_HOME = '/custom/config';
       process.env.XDG_STATE_HOME = '/custom/state';
 
-      expect(getGlobalOmqConfigRoot()).toBe('/override/omq');
-      expect(getGlobalOmqStateRoot()).toBe('/override/omq/state');
+      expect(toForwardSlash(getGlobalOmqConfigRoot())).toBe('/override/omq');
+      expect(toForwardSlash(getGlobalOmqStateRoot())).toBe('/override/omq/state');
     });
 
     it('should keep explicit OMQ_HOME state candidates backward compatible', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
       process.env.OMQ_HOME = '/override/omq';
 
-      expect(getGlobalOmqStateCandidates('mcp-registry-state.json')).toEqual([
+      expect(getGlobalOmqStateCandidates('mcp-registry-state.json').map(toForwardSlash)).toEqual([
         '/override/omq/state/mcp-registry-state.json',
         '/override/omq/mcp-registry-state.json',
       ]);
@@ -201,8 +205,8 @@ describe('cross-platform path utilities', () => {
       delete process.env.XDG_CONFIG_HOME;
       delete process.env.XDG_STATE_HOME;
 
-      expect(getGlobalOmqConfigRoot()).toBe(getLegacyOmqDir());
-      expect(getGlobalOmqStateRoot()).toBe(`${getLegacyOmqDir()}/state`);
+      expect(toForwardSlash(getGlobalOmqConfigRoot())).toBe(toForwardSlash(getLegacyOmqDir()));
+      expect(toForwardSlash(getGlobalOmqStateRoot())).toBe(`${toForwardSlash(getLegacyOmqDir())}/state`);
     });
 
     it('should include legacy fallback candidates for config and state paths', () => {
@@ -211,13 +215,13 @@ describe('cross-platform path utilities', () => {
       process.env.XDG_STATE_HOME = '/custom/state';
       delete process.env.OMQ_HOME;
 
-      expect(getGlobalOmqConfigCandidates('config.json')).toEqual([
+      expect(getGlobalOmqConfigCandidates('config.json').map(toForwardSlash)).toEqual([
         '/custom/config/omq/config.json',
-        `${getLegacyOmqDir()}/config.json`,
+        `${toForwardSlash(getLegacyOmqDir())}/config.json`,
       ]);
-      expect(getGlobalOmqStateCandidates('reply-session-registry.jsonl')).toEqual([
+      expect(getGlobalOmqStateCandidates('reply-session-registry.jsonl').map(toForwardSlash)).toEqual([
         '/custom/state/omq/reply-session-registry.jsonl',
-        `${getLegacyOmqDir()}/state/reply-session-registry.jsonl`,
+        `${toForwardSlash(getLegacyOmqDir())}/state/reply-session-registry.jsonl`,
       ]);
     });
   });

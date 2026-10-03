@@ -18,13 +18,22 @@ const STALE_PIPELINE_SNIPPETS = [
 ];
 
 function runKeywordHook(scriptPath: string, prompt: string) {
-  return JSON.parse(
-    execFileSync('node', [scriptPath], {
-      cwd: packageRoot,
-      input: JSON.stringify({ prompt }),
-      encoding: 'utf-8',
-    }),
-  ) as Record<string, unknown>;
+  // Run against a throwaway cwd with the per-file OMQ_STATE_DIR pin lifted
+  // (#42): the keyword hook writes activation state under its resolution root,
+  // which historically was this repository's real .omq/state/.
+  const fixture = mkdtempSync(join(tmpdir(), 'hook-template-keyword-'));
+  try {
+    return JSON.parse(
+      execFileSync('node', [scriptPath], {
+        cwd: fixture,
+        input: JSON.stringify({ prompt, cwd: fixture }),
+        encoding: 'utf-8',
+        env: { ...process.env, OMQ_STATE_DIR: undefined },
+      }),
+    ) as Record<string, unknown>;
+  } finally {
+    rmSync(fixture, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+  }
 }
 
 function runPreToolHook(scriptPath: string, command: string) {
@@ -39,14 +48,25 @@ function runPreToolPayload(
   payload: Record<string, unknown>,
   env: Record<string, string | undefined> = {},
 ) {
-  return JSON.parse(
-    execFileSync('node', [scriptPath], {
-      cwd: packageRoot,
-      input: JSON.stringify(payload),
-      encoding: 'utf-8',
-      env: { ...process.env, ...env },
-    }),
-  ) as Record<string, unknown>;
+  // Run against a throwaway cwd with the per-file OMQ_STATE_DIR pin lifted
+  // (#42): hooks without an explicit payload cwd used to fall back to this
+  // repository's real .omq/state/ both for reads and for routing writes.
+  const fixture = payload.cwd === undefined ? mkdtempSync(join(tmpdir(), 'hook-template-pretool-')) : undefined;
+  const effective = fixture === undefined ? payload : { cwd: fixture, ...payload };
+  try {
+    return JSON.parse(
+      execFileSync('node', [scriptPath], {
+        cwd: fixture ?? packageRoot,
+        input: JSON.stringify(effective),
+        encoding: 'utf-8',
+        env: { ...process.env, OMQ_STATE_DIR: undefined, ...env },
+      }),
+    ) as Record<string, unknown>;
+  } finally {
+    if (fixture !== undefined) {
+      rmSync(fixture, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    }
+  }
 }
 
 describe('keyword-detector packaged artifacts', () => {
@@ -93,7 +113,7 @@ describe('keyword-detector packaged artifacts', () => {
       const context = JSON.stringify(result);
 
       expect(context).toContain('[MAGIC KEYWORD: RALPH]');
-      expect(context).toContain('Preferred invocation: /oh-my-claudecode:ralph');
+      expect(context).toContain('Preferred invocation: /oh-my-qoder:ralph');
       expect(context).toContain('Read fallback:');
       expect(context).not.toContain('name: ralph');
       expect(context).not.toContain('[RALPH + ULTRAWORK');
@@ -156,7 +176,7 @@ describe('keyword-detector packaged artifacts', () => {
         execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
         execFileSync('node', [scriptPath], {
           cwd: packageRoot,
-          env: { ...process.env, HOME: fakeHome },
+          env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome },
           input: JSON.stringify({
             prompt: 'ralph fix the regression in src/hooks/bridge.ts after issue #1795',
             directory: tempDir,
@@ -197,7 +217,7 @@ describe('keyword-detector packaged artifacts', () => {
 
       execFileSync('node', [templatePath], {
         cwd: packageRoot,
-        env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
+        env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
         input: JSON.stringify({ prompt: 'autopilot fix the regression', directory: projectA, cwd: projectA, session_id: 'project-a-session' }),
         encoding: 'utf-8',
       });
@@ -210,7 +230,7 @@ describe('keyword-detector packaged artifacts', () => {
       writeFileSync(malformedJournalPath, '{not-json');
       execFileSync('node', [templatePath], {
         cwd: packageRoot,
-        env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
+        env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
         input: JSON.stringify({ prompt: 'autopilot fix another regression', directory: projectA, cwd: projectA, session_id: 'project-a-session-2' }),
         encoding: 'utf-8',
       });
@@ -293,7 +313,7 @@ OMC Ultrawork = "특수부대 작전 반"
       JSON.parse(
         execFileSync('node', [scriptPath], {
           cwd: packageRoot,
-          env: { ...process.env, XDG_CONFIG_HOME: emptyXdg },
+          env: { ...process.env, OMQ_STATE_DIR: undefined, XDG_CONFIG_HOME: emptyXdg },
           input: JSON.stringify({ prompt, cwd: dir, directory: dir }),
           encoding: 'utf-8',
         }),
@@ -340,6 +360,9 @@ OMC Ultrawork = "특수부대 작전 반"
       execFileSync('node', [scriptPath], {
         cwd: packageRoot,
         env: {
+          // Lift the per-file OMQ_STATE_DIR pin (#42): these hooks must
+          // resolve state through the DEFAULT branch via payload cwd.
+          OMQ_STATE_DIR: undefined,
           ...process.env,
           HOME: fakeHome,
           XDG_CONFIG_HOME: join(fakeHome, '.xdg'),
@@ -465,7 +488,7 @@ OMC Ultrawork = "특수부대 작전 반"
         const result = JSON.parse(
           execFileSync('node', [scriptPath], {
             cwd: packageRoot,
-            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
+            env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
             input: JSON.stringify({ prompt: 'autopilot build me a CLI', cwd: projectDir, directory: projectDir, session_id: `autopilot-${basename(scriptPath)}` }),
             encoding: 'utf-8',
           }),
@@ -479,7 +502,7 @@ OMC Ultrawork = "특수부대 작전 반"
         const result = JSON.parse(
           execFileSync('node', [scriptPath], {
             cwd: packageRoot,
-            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
+            env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
             input: JSON.stringify({ prompt: '/ralph-loop fix the parser', cwd: projectDir, directory: projectDir, session_id: `ralphloop-cmd-${basename(scriptPath)}` }),
             encoding: 'utf-8',
           }),
@@ -813,7 +836,7 @@ describe('pre-tool-use packaged artifacts', () => {
         expect(denied.continue).toBe(true);
         expect(deniedHook.permissionDecision).toBe('deny');
         expect(reason).toContain('[SKILL vs AGENT]');
-        expect(reason).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+        expect(reason).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
         expect(reason).toContain('closest match');
 
         const allowed = runPreToolPayload(
@@ -853,7 +876,7 @@ describe('pre-tool-use packaged artifacts', () => {
           expect(visible.continue).toBe(true);
           expect(visibleHook.permissionDecision).toBe('deny');
           expect(String(visibleHook.permissionDecisionReason ?? '')).toContain(
-            `Skill(skill="oh-my-claudecode:${skill}")`,
+            `Skill(skill="oh-my-qoder:${skill}")`,
           );
         }
       }
@@ -956,7 +979,7 @@ describe('pre-tool-use packaged artifacts', () => {
       expect(denied.continue).toBe(true);
       expect(deniedHook.permissionDecision).toBe('deny');
       expect(String(deniedHook.permissionDecisionReason ?? '')).toContain(
-        'Skill(skill="oh-my-claudecode:ai-slop-cleaner")',
+        'Skill(skill="oh-my-qoder:ai-slop-cleaner")',
       );
 
       const allowed = runPreToolPayload(
@@ -1046,5 +1069,42 @@ describe('workflow profile runtime packaged artifacts (#3487)', () => {
       expect(payload).toContain('advanceWorkflowOnStop');
       expect(payload).toContain('pipelineTracking?.trackingRevision');
     }
+  });
+  // Family prefix convention: matchers accept all four namespace prefixes.
+  // The fork's own /omq: and /oh-my-qoder: spellings used to be invisible to
+  // the packaged keyword-detector copies; both sides must behave identically,
+  // and each relaxation carries a negative control (never "match anything").
+  it('delegates /omq:ask on BOTH packaged keyword-detector copies (fork prefix union)', () => {
+    const templatePath = join(packageRoot, 'templates', 'hooks', 'keyword-detector.mjs');
+    const pluginPath = join(packageRoot, 'scripts', 'keyword-detector.mjs');
+
+    for (const scriptPath of [templatePath, pluginPath]) {
+      const result = runKeywordHook(scriptPath, '/omq:ask claude review this ralplan plan');
+      expect(result.continue).toBe(true);
+      expect(result.suppressOutput).toBe(true);
+    }
+  });
+
+  it('negative control: /omq:askew is not an ask delegation on either copy', () => {
+    const templatePath = join(packageRoot, 'templates', 'hooks', 'keyword-detector.mjs');
+    const pluginPath = join(packageRoot, 'scripts', 'keyword-detector.mjs');
+
+    for (const scriptPath of [templatePath, pluginPath]) {
+      const result = runKeywordHook(scriptPath, '/omq:askew claude run ralph now');
+      expect(JSON.stringify(result)).toContain('[MAGIC KEYWORD: RALPH]');
+    }
+  });
+
+  it('keeps SKILL_AGENT_NAMESPACE_PREFIXES identical between pre-tool-use template and enforcer', () => {
+    const extract = (filePath: string): string[] => {
+      const source = readFileSync(filePath, 'utf-8');
+      const match = source.match(/const SKILL_AGENT_NAMESPACE_PREFIXES = \[([^\]]+)\];/);
+      expect(match, `constant missing in ${filePath}`).toBeTruthy();
+      return (match as RegExpMatchArray)[1].split(',').map((entry) => entry.trim().replace(/^'|'$/g, ''));
+    };
+
+    const expected = ['oh-my-qoder:', 'omq:', 'oh-my-claudecode:', 'omc:'];
+    expect(extract(join(packageRoot, 'templates', 'hooks', 'pre-tool-use.mjs'))).toEqual(expected);
+    expect(extract(join(packageRoot, 'scripts', 'pre-tool-enforcer.mjs'))).toEqual(expected);
   });
 });

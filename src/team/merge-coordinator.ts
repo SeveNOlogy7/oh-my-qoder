@@ -33,7 +33,14 @@ export function validateBranchName(branch: string): void {
  * fan-out collides on them (`UU AGENTS.md`) even when the actual task files
  * are disjoint. See issue #3224.
  */
-export const HARNESS_MERGE_PATHS = ['AGENTS.md', '.claude/**'] as const;
+/**
+ * Harness overlay files that OMQ writes into every worker worktree
+ * (AGENTS.md and the `.qoder/` settings overlay). They are infrastructure,
+ * never task output, so a worker's copy must never win a merge. `.claude/**`
+ * stays listed because a worktree of a project carried over from the ancestor
+ * toolchain still has that directory and the same rule applies to it.
+ */
+export const HARNESS_MERGE_PATHS = ['AGENTS.md', '.qoder/**', '.claude/**'] as const;
 
 /**
  * Configure a trivial `merge=ours` driver for harness overlay files so the

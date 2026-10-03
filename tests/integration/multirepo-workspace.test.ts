@@ -26,6 +26,10 @@ describe('multi-repo workspace anchor', () => {
 
   beforeEach(() => {
     clearWorktreeCache();
+    // The marker/fallback tests below exercise the DEFAULT resolution chain in
+    // a controlled temp fixture (#42) — lift the per-file OMQ_STATE_DIR pin
+    // here; afterEach restores whatever the worker held.
+    delete process.env.OMQ_STATE_DIR;
     // Fresh temp parent dir per test — no .git, no .omq-workspace yet
     parent = mkdtempSync(join(tmpdir(), 'omc-multirepo-'));
     repoA = join(parent, 'repoA');

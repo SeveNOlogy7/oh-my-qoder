@@ -10,7 +10,7 @@ import { dirname, normalize } from 'path';
 import { homedir } from 'os';
 import type { SessionMetrics } from './index.js';
 import {
-  getOMCConfig,
+  getOMQConfig,
   type StopCallbackFileConfig,
   type StopCallbackTelegramConfig,
   type StopCallbackDiscordConfig,
@@ -134,7 +134,7 @@ async function sendDiscord(config: StopCallbackDiscordConfig, message: string, s
 
 
 async function runLegacyCallbacks(metrics: SessionMetrics, options: TriggerStopCallbacksOptions, signal: AbortSignal): Promise<void> {
-  const callbacks = getOMCConfig().stopHookCallbacks;
+  const callbacks = getOMQConfig().stopHookCallbacks;
   if (!callbacks) return;
   const skipPlatforms = new Set(options.skipPlatforms ?? []);
   const idempotencyKey = options.idempotencyKey ?? `session-end:${metrics.session_id}:legacy-callback`;

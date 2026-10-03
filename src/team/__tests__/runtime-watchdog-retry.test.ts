@@ -34,6 +34,9 @@ import { tmpdir } from 'os';
 import type { TeamRuntime } from '../runtime.js';
 import { watchdogCliWorkers } from '../runtime.js';
 import { DEFAULT_MAX_TASK_RETRIES, readTaskFailure, writeTaskFailure } from '../task-file-ops.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const tmuxMocks = vi.hoisted(() => ({
   isWorkerAlive: vi.fn(),
@@ -105,6 +108,7 @@ async function runTick(): Promise<void> {
 }
 
 describe('watchdogCliWorkers dead-pane retry behavior', () => {
+  useDefaultStateRoot();
   let cwd: string;
   let warnSpy: ReturnType<typeof vi.spyOn>;
 

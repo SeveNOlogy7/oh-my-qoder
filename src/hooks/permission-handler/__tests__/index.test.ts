@@ -12,6 +12,9 @@ import {
   processPermissionRequest,
 } from '../index.js';
 import type { PermissionRequestInput } from '../index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 function initializeGitRepo(directory: string): void {
   execFileSync('git', ['init', '--quiet'], {
@@ -21,6 +24,7 @@ function initializeGitRepo(directory: string): void {
 }
 
 describe('permission-handler', () => {
+  useDefaultStateRoot();
   describe('isSafeCommand', () => {
     describe('safe commands', () => {
       const safeCases = [

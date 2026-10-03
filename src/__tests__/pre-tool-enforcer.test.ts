@@ -23,13 +23,17 @@ function runPreToolEnforcerWithEnv(
 ): Record<string, unknown> {
   const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
   const homeDir = join(cwd, '.test-home');
+  // Lift the per-file OMQ_STATE_DIR pin (#42): this suite exercises the
+  // DEFAULT state-root resolution against its temp fixtures. Explicit
+  // per-test OMQ_STATE_DIR values still win via `...env` below.
+  const { OMQ_STATE_DIR: _pinnedStateDir, ...parentEnv } = process.env;
   const stdout = execFileSync(process.execPath, [SCRIPT_PATH], {
     cwd,
     input: JSON.stringify(input),
     encoding: 'utf-8',
     timeout: 5000,
     env: {
-      ...process.env,
+      ...parentEnv,
       HOME: homeDir,
       QODER_CONFIG_DIR: join(homeDir, '.claude'),
       NODE_ENV: 'test',
@@ -336,7 +340,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Fix type errors',
         prompt: 'Fix all type errors in src/auth/',
       },
@@ -372,7 +376,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         name: 'worker-1',
         description: 'Fix type errors',
         prompt: 'Fix all type errors in src/auth/',
@@ -402,7 +406,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Agent',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Fix type errors',
         prompt: 'Fix all type errors in src/auth/',
       },
@@ -436,7 +440,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Agent',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         name: 'worker-1',
         description: 'Fix type errors',
         prompt: 'Fix all type errors in src/auth/',
@@ -471,7 +475,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Fix type errors',
         prompt: 'Fix all type errors in src/auth/',
       },
@@ -517,7 +521,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Agent',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Fix type errors',
         prompt: 'Fix all type errors in src/auth/',
       },
@@ -527,7 +531,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
 
     const hookSpecificOutput = output.hookSpecificOutput as Record<string, unknown>;
     expect(output.continue).toBe(true);
-    expect(String(hookSpecificOutput.additionalContext)).toContain('Spawning agent: oh-my-claudecode:executor');
+    expect(String(hookSpecificOutput.additionalContext)).toContain('Spawning agent: oh-my-qoder:executor');
   });
 
   it('reads team state from legacy path when session_id is absent', () => {
@@ -539,7 +543,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Fix something',
         prompt: 'Fix it',
       },
@@ -575,7 +579,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Fix type errors',
         prompt: 'Fix all type errors in src/auth/',
       },
@@ -602,7 +606,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Fix something',
         prompt: 'Fix it',
       },
@@ -691,7 +695,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Task',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:executor',
+          subagent_type: 'oh-my-qoder:executor',
           description: 'Fix type errors',
           prompt: 'Fix all type errors in src/auth/',
         },
@@ -710,7 +714,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Task',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:executor',
+          subagent_type: 'oh-my-qoder:executor',
           description: 'Fix type errors',
           prompt: 'Fix all type errors in src/auth/',
         },
@@ -727,7 +731,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Implement a fallback',
         prompt: 'Add a workaround if the normal architecture is hard.',
       },
@@ -812,7 +816,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Implement fallback routing',
         prompt: 'Please implement a fallback layer for the flaky API.',
       },
@@ -829,7 +833,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Skip architecture for flaky API failures',
         prompt: 'Please work around flaky API failures by skipping the normal architecture.',
       },
@@ -846,7 +850,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Add API fallback',
         prompt: 'If the API fails, fall back on cached responses.',
       },
@@ -863,7 +867,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Add API fallback',
         prompt: 'If the API fails, fallback to cached responses.',
       },
@@ -880,7 +884,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Implement fallback routing',
         prompt: [
           '## Implementation',
@@ -945,7 +949,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       const output = runPreToolEnforcer({
         tool_name: 'Task',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:executor',
+          subagent_type: 'oh-my-qoder:executor',
           description: 'Handle benign fallback documentation',
           prompt,
         },
@@ -963,7 +967,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Preserve benign fallback and reject risky routing fallback',
         prompt: 'Preserve the fail-soft fallback value, and fallback to weaker model if the preferred agent is unavailable.',
       },
@@ -980,7 +984,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Review quoted technical phrases',
         prompt: [
           'Review the quoted phrase "fallback to default config" in the migration notes.',
@@ -1031,7 +1035,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Task',
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'Implement primary dual-secret token fetch',
         prompt: [
           'Implement the primary dual-secret path using extraSecretFetch.',
@@ -1058,7 +1062,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       const output = runPreToolEnforcer({
         tool_name: 'Task',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:executor',
+          subagent_type: 'oh-my-qoder:executor',
           description: 'Implement risky fallback',
           prompt,
         },
@@ -1136,7 +1140,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcer({
       tool_name: 'Skill',
       toolInput: {
-        skill: 'oh-my-claudecode:ralph',
+        skill: 'oh-my-qoder:ralph',
       },
       cwd: tempDir,
       session_id: sessionId,
@@ -1160,7 +1164,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:architect', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:architect', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-alias',
       },
@@ -1181,7 +1185,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:architect', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:architect', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-default-sonnet',
       },
@@ -1200,7 +1204,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:architect', model: 'opus' },
+        toolInput: { subagent_type: 'oh-my-qoder:architect', model: 'opus' },
         cwd: tempDir,
         session_id: 'session-tier-default-opus',
       },
@@ -1219,7 +1223,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'haiku' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'haiku' },
         cwd: tempDir,
         session_id: 'session-tier-default-haiku',
       },
@@ -1238,7 +1242,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:architect', model: 'fable' },
+        toolInput: { subagent_type: 'oh-my-qoder:architect', model: 'fable' },
         cwd: tempDir,
         session_id: 'session-tier-default-fable',
       },
@@ -1257,7 +1261,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'fable' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'fable' },
         cwd: tempDir,
         session_id: 'session-tier-fable-cc-bedrock-env',
       },
@@ -1276,7 +1280,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:architect', model: 'fable' },
+        toolInput: { subagent_type: 'oh-my-qoder:architect', model: 'fable' },
         cwd: tempDir,
         session_id: 'session-tier-fable-no-env',
       },
@@ -1299,7 +1303,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: tier },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: tier },
         cwd: tempDir,
         session_id: sessionId,
       },
@@ -1319,7 +1323,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-proxy-empty',
       },
@@ -1338,7 +1342,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-proxy-invalid-bedrock-var',
       },
@@ -1362,7 +1366,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-config-proxy-default',
       },
@@ -1381,7 +1385,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-env-force-normal-claude-proxy-default',
       },
@@ -1401,7 +1405,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:architect', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:architect', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-priority',
       },
@@ -1426,7 +1430,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-default-lm',
       },
@@ -1445,7 +1449,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-cc-bedrock-env',
       },
@@ -1467,7 +1471,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-omc-model-fallback',
       },
@@ -1490,7 +1494,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-omc-model-only',
       },
@@ -1511,7 +1515,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:architect', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:architect', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-alias-no-env',
       },
@@ -1539,7 +1543,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -1565,7 +1569,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'sonnet' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'sonnet' },
         cwd: tempDir,
         session_id: 'session-tier-alias-bare',
       },
@@ -1583,7 +1587,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'opus' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'opus' },
         cwd: tempDir,
         session_id: 'session-tier-alias-lm',
       },
@@ -1602,7 +1606,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
-        toolInput: { subagent_type: 'oh-my-claudecode:executor', model: 'claude-sonnet-4-6' },
+        toolInput: { subagent_type: 'oh-my-qoder:executor', model: 'claude-sonnet-4-6' },
         cwd: tempDir,
         session_id: 'session-bare-anthropic',
       },
@@ -1631,7 +1635,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -1665,7 +1669,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Task',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:executor',
+          subagent_type: 'oh-my-qoder:executor',
           description: 'Implement feature',
           prompt: 'Do the thing',
         },
@@ -1698,7 +1702,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -1723,7 +1727,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           model: 'opus',
           description: 'Review spec',
           prompt: 'Review this spec',
@@ -1746,7 +1750,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           model: 'opus',
           description: 'Review spec',
           prompt: 'Review this spec',
@@ -1770,7 +1774,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -1792,7 +1796,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -1858,7 +1862,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -1888,7 +1892,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:critic',
+          subagent_type: 'oh-my-qoder:critic',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -1920,7 +1924,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:body-hr-agent',
+          subagent_type: 'oh-my-qoder:body-hr-agent',
           description: 'Some task',
           prompt: 'Do something',
         },
@@ -1953,7 +1957,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:body-model-agent',
+          subagent_type: 'oh-my-qoder:body-model-agent',
           description: 'Some task',
           prompt: 'Do something',
         },
@@ -1986,7 +1990,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:quoted-model-agent',
+          subagent_type: 'oh-my-qoder:quoted-model-agent',
           description: 'Review spec',
           prompt: 'Review this spec',
         },
@@ -2022,7 +2026,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:bedrock-quoted-agent',
+          subagent_type: 'oh-my-qoder:bedrock-quoted-agent',
           description: 'Do something',
           prompt: 'Do it',
         },
@@ -2054,7 +2058,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:bom-agent',
+          subagent_type: 'oh-my-qoder:bom-agent',
           description: 'BOM test',
           prompt: 'Test BOM handling',
         },
@@ -2102,7 +2106,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:nonexistent-agent-xyz',
+          subagent_type: 'oh-my-qoder:nonexistent-agent-xyz',
           description: 'Some task',
           prompt: 'Do something',
         },
@@ -2135,6 +2139,42 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(
       existsSync(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json')),
     ).toBe(false);
+  });
+
+  it('accepts the pre-rename omc-plan spelling as plan-skill protection inbound (#37)', () => {
+    const sessionId = 'session-omc-plan-inbound';
+
+    const output = runPreToolEnforcer({
+      tool_name: 'Skill',
+      toolInput: {
+        skill: 'oh-my-qoder:omc-plan',
+      },
+      cwd: tempDir,
+      session_id: sessionId,
+    });
+
+    expect(output).toEqual({ continue: true, suppressOutput: true });
+    const statePath = join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json');
+    expect(existsSync(statePath)).toBe(true);
+    expect(readFileSync(statePath, 'utf-8')).toContain('"skill_name": "omc-plan"');
+  });
+
+  it('applies plan-skill protection to the registered omq-plan spelling (#37)', () => {
+    const sessionId = 'session-omq-plan-inbound';
+
+    const output = runPreToolEnforcer({
+      tool_name: 'Skill',
+      toolInput: {
+        skill: 'oh-my-qoder:omq-plan',
+      },
+      cwd: tempDir,
+      session_id: sessionId,
+    });
+
+    expect(output).toEqual({ continue: true, suppressOutput: true });
+    const statePath = join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json');
+    expect(existsSync(statePath)).toBe(true);
+    expect(readFileSync(statePath, 'utf-8')).toContain('"skill_name": "omq-plan"');
   });
 });
 
@@ -2515,7 +2555,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     expect(hookOutput.permissionDecisionReason as string).toContain('ai-slop-cleaner');
     // Names the correct tool and identifier — no generic "Agent type not found".
     expect(hookOutput.permissionDecisionReason as string).toContain(
-      'Skill(skill="oh-my-claudecode:ai-slop-cleaner")',
+      'Skill(skill="oh-my-qoder:ai-slop-cleaner")',
     );
     // Forbids closest-match substitution (code-simplifier is the attractive wrong answer).
     expect(hookOutput.permissionDecisionReason as string).toContain('closest match');
@@ -2529,16 +2569,16 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     expect(hookOutput.permissionDecision).toBe('deny');
     // Recovery must be unambiguous: always the plugin-namespaced form, never a
     // bare skill name that could resolve to a different project/user skill.
-    expect(denyReason(output)).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+    expect(denyReason(output)).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
     expect(denyReason(output)).not.toContain('Skill(skill="ai-slop-cleaner")');
   });
 
-  it('recognizes the omc: namespace alias and suggests the canonical oh-my-claudecode: identifier', () => {
+  it('recognizes the omc: namespace alias and suggests this plugin\'s canonical oh-my-qoder: identifier', () => {
     const output = runTask('omc:ai-slop-cleaner');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
-    expect(denyReason(output)).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+    expect(denyReason(output)).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
   });
 
   it('denies skill-as-agent even when an explicit model is present (guard precedes model routing)', () => {
@@ -2563,16 +2603,16 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
 
     expect(hookOutput.permissionDecision).toBe('deny');
     expect(denyReason(output)).toContain('alias of "cancel"');
-    expect(denyReason(output)).toContain('Skill(skill="oh-my-claudecode:cancel")');
+    expect(denyReason(output)).toContain('Skill(skill="oh-my-qoder:cancel")');
   });
 
-  it('recognizes the renamed plan skill dir through its registered name omc-plan', () => {
+  it('recognizes the renamed plan skill dir through its registered name omq-plan', () => {
     const output = runTask('oh-my-claudecode:plan');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
-    expect(denyReason(output)).toContain('omc-plan');
-    expect(denyReason(output)).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+    expect(denyReason(output)).toContain('omq-plan');
+    expect(denyReason(output)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
   });
 
 
@@ -2617,7 +2657,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
         session_id: 'session-3667-collision',
         transcript_path: '',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:wiki',
+          subagent_type: 'oh-my-qoder:wiki',
           description: 'Some task',
           prompt: 'Do something',
         },
@@ -2649,7 +2689,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
-    expect(denyReason(output)).toContain('Skill(skill="oh-my-claudecode:wiki")');
+    expect(denyReason(output)).toContain('Skill(skill="oh-my-qoder:wiki")');
   });
 
   it('does NOT deny non-string or empty subagent_type values', () => {
@@ -2664,7 +2704,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       const output = runTask(`oh-my-claudecode:${skill}`, 'Task', {}, { USER_TYPE: '' });
       expect(output.continue).toBe(true);
       expect((output.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(output)).toContain(`Skill(skill="oh-my-claudecode:${skill}")`);
+      expect(denyReason(output)).toContain(`Skill(skill="oh-my-qoder:${skill}")`);
     },
   );
 
@@ -2675,7 +2715,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
       expect(hookOutput.permissionDecision).toBe('deny');
-      expect(denyReason(output)).toContain(`Skill(skill="oh-my-claudecode:${hiddenSkill}")`);
+      expect(denyReason(output)).toContain(`Skill(skill="oh-my-qoder:${hiddenSkill}")`);
     },
   );
 
@@ -2684,7 +2724,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     const remember = runTask('oh-my-claudecode:remember', 'Task', {}, { USER_TYPE: '' });
 
     expect((visible.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-    expect(denyReason(visible)).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+    expect(denyReason(visible)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
     expect((remember.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
   });
   describe('case-insensitive identifier folding (Windows/macOS semantics, issue #3667)', () => {
@@ -2716,18 +2756,18 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       const ant = run('oh-my-claudecode:Remember', { USER_TYPE: 'ant' });
 
       expect((nonAnt.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(nonAnt)).toContain('Skill(skill="oh-my-claudecode:remember")');
+      expect(denyReason(nonAnt)).toContain('Skill(skill="oh-my-qoder:remember")');
       expect((nonAntLower.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       // Canonical lowercase output spelling is preserved for every user.
       expect((ant.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(ant)).toContain('Skill(skill="oh-my-claudecode:remember")');
+      expect(denyReason(ant)).toContain('Skill(skill="oh-my-qoder:remember")');
     });
 
     it.each([
-      ['oh-my-claudecode:Plan', 'oh-my-claudecode:omc-plan'],
-      ['oh-my-claudecode:AI-Slop-Cleaner', 'oh-my-claudecode:ai-slop-cleaner'],
-      ['oh-my-claudecode:Cancel-Ralph', 'oh-my-claudecode:cancel'],
-      ['oh-my-claudecode:PSM', 'oh-my-claudecode:project-session-manager'],
+      ['oh-my-claudecode:Plan', 'oh-my-qoder:omq-plan'],
+      ['oh-my-claudecode:AI-Slop-Cleaner', 'oh-my-qoder:ai-slop-cleaner'],
+      ['oh-my-claudecode:Cancel-Ralph', 'oh-my-qoder:cancel'],
+      ['oh-my-claudecode:PSM', 'oh-my-qoder:project-session-manager'],
     ])('denies mixed-case %s with the canonical namespaced identifier %s', (input, expected) => {
       const output = runTask(input, 'Task', {}, { USER_TYPE: '' });
       const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
@@ -2740,7 +2780,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       (skill) => {
         const output = runTask(`oh-my-claudecode:${skill}`, 'Task', {}, { USER_TYPE: '' });
         expect((output.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-        expect(denyReason(output)).toContain(`Skill(skill="oh-my-claudecode:${skill.toLowerCase()}")`);
+        expect(denyReason(output)).toContain(`Skill(skill="oh-my-qoder:${skill.toLowerCase()}")`);
       },
     );
 
@@ -2749,15 +2789,15 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       const fullUpper = runTask('OH-MY-CLAUDECODE:Remember', 'Task', {}, { USER_TYPE: '' });
 
       expect((omcUpper.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(omcUpper)).toContain('Skill(skill="oh-my-claudecode:ai-slop-cleaner")');
+      expect(denyReason(omcUpper)).toContain('Skill(skill="oh-my-qoder:ai-slop-cleaner")');
       expect((fullUpper.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(fullUpper)).toContain('Skill(skill="oh-my-claudecode:remember")');
+      expect(denyReason(fullUpper)).toContain('Skill(skill="oh-my-qoder:remember")');
     });
 
     it('applies case folding before explicit-model and force-inherit routing', () => {
       const withModel = runTask('oh-my-claudecode:Plan', 'Task', { model: 'sonnet' }, { USER_TYPE: '' });
       expect((withModel.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(withModel)).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+      expect(denyReason(withModel)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
 
       const forceInheritVisible = runTask(
         'oh-my-claudecode:Plan',
@@ -2766,7 +2806,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
         { USER_TYPE: '', OMQ_ROUTING_FORCE_INHERIT: 'true' },
       );
       expect((forceInheritVisible.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(forceInheritVisible)).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+      expect(denyReason(forceInheritVisible)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
 
       const forceInheritRemember = runTask(
         'oh-my-claudecode:Remember',
@@ -2775,7 +2815,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
         { USER_TYPE: '', OMQ_ROUTING_FORCE_INHERIT: 'true' },
       );
       expect((forceInheritRemember.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(forceInheritRemember)).toContain('Skill(skill="oh-my-claudecode:remember")');
+      expect(denyReason(forceInheritRemember)).toContain('Skill(skill="oh-my-qoder:remember")');
     });
   });
   describe('native/session-defined bare agent boundary (issue #3667 P1)', () => {
@@ -2788,22 +2828,30 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       },
     );
 
-    it('denies the plugin-namespaced plan identifier while preserving bare plan', () => {
+    it('denies the plan identifier under every namespace this plugin uses, while preserving bare plan', () => {
       const namespaced = runTask('oh-my-claudecode:plan', 'Task', {}, { USER_TYPE: '' });
       const omcAlias = runTask('omc:plan', 'Task', {}, { USER_TYPE: '' });
+      const forkNamespaced = runTask('oh-my-qoder:plan', 'Task', {}, { USER_TYPE: '' });
+      const forkAlias = runTask('omq:plan', 'Task', {}, { USER_TYPE: '' });
       const bare = runTask('plan', 'Task', {}, { USER_TYPE: '' });
 
       expect((namespaced.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(namespaced)).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+      expect(denyReason(namespaced)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
       expect((omcAlias.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(omcAlias)).toContain('Skill(skill="oh-my-claudecode:omc-plan")');
+      expect(denyReason(omcAlias)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
+      // The plugin's own spelling is the form its prompts now emit, so a guard that
+      // only recognizes the ancestor namespace protects nothing that actually runs.
+      expect((forkNamespaced.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
+      expect(denyReason(forkNamespaced)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
+      expect((forkAlias.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
+      expect(denyReason(forkAlias)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
       expect((bare.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBeUndefined();
     });
 
-    it('still denies bare canonical-registry skill claims (omc-plan, ai-slop-cleaner)', () => {
+    it('still denies bare canonical-registry skill claims (omq-plan, ai-slop-cleaner)', () => {
       for (const [input, expected] of [
-        ['omc-plan', 'oh-my-claudecode:omc-plan'],
-        ['ai-slop-cleaner', 'oh-my-claudecode:ai-slop-cleaner'],
+        ['omq-plan', 'oh-my-qoder:omq-plan'],
+        ['ai-slop-cleaner', 'oh-my-qoder:ai-slop-cleaner'],
       ] as const) {
         const output = runTask(input, 'Task', {}, { USER_TYPE: '' });
         const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
@@ -2840,7 +2888,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
       cwd: tempDir,
       session_id: sessionId,
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'issue #3732 regression',
       },
     });
@@ -2850,8 +2898,8 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     const sessionId = 'session-3732-scoped';
     writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: [
-        { agent_id: 'a1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
-        { agent_id: 'a2', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'a1', agent_type: 'oh-my-qoder:executor', status: 'running' },
+        { agent_id: 'a2', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 203,
       total_completed: 185,
@@ -2868,7 +2916,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     const sessionId = 'session-3732-precedence';
     writeJson(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: [
-        { agent_id: 'a1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'a1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 203,
       total_completed: 185,
@@ -2893,7 +2941,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     const sessionId = 'session-3732-legacy';
     writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: [
-        { agent_id: 'b1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'b1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 7,
       total_completed: 2,
@@ -2913,7 +2961,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     // resolveSessionStatePathsForHook and honor this name too.
     writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking-state.json'), {
       agents: [
-        { agent_id: 'c1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'c1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 11,
       total_completed: 10,
@@ -2932,7 +2980,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     const stateRoot = join(centralRoot, `${basename(tempDir)}-${createHash('sha256').update(tempDir).digest('hex').slice(0, 16)}`);
     writeJson(join(stateRoot, 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
       agents: [
-        { agent_id: 'z1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'z1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 4,
       total_completed: 3,
@@ -2946,7 +2994,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
         cwd: tempDir,
         session_id: sessionId,
         toolInput: {
-          subagent_type: 'oh-my-claudecode:executor',
+          subagent_type: 'oh-my-qoder:executor',
           description: 'issue #3732 centralized regression',
         },
       },
@@ -2968,15 +3016,15 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     // and reported counters from the unrelated file below.
     writeJson(join(tempDir, '.omq', 'state', 'evil', 'subagent-tracking-state.json'), {
       agents: [
-        { agent_id: 'x1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
-        { agent_id: 'x2', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'x1', agent_type: 'oh-my-qoder:executor', status: 'running' },
+        { agent_id: 'x2', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 99,
       last_updated: new Date().toISOString(),
     });
     writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: [
-        { agent_id: 'l1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'l1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 7,
       last_updated: new Date().toISOString(),
@@ -3000,7 +3048,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     });
     writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking.json'), {
       agents: [
-        { agent_id: 'l1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'l1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 7,
       last_updated: new Date().toISOString(),
@@ -3022,7 +3070,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     });
     writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking-state.json'), {
       agents: [
-        { agent_id: 'c1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'c1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 11,
       last_updated: new Date().toISOString(),
@@ -3040,7 +3088,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
     // `-state.json` name and silently skipped it).
     writeJson(join(tempDir, '.omq', 'state', 'subagent-tracking-state.json'), {
       agents: [
-        { agent_id: 'c1', agent_type: 'oh-my-claudecode:executor', status: 'running' },
+        { agent_id: 'c1', agent_type: 'oh-my-qoder:executor', status: 'running' },
       ],
       total_spawned: 11,
       last_updated: new Date().toISOString(),
@@ -3050,7 +3098,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
       tool_name: 'Task',
       cwd: tempDir,
       toolInput: {
-        subagent_type: 'oh-my-claudecode:executor',
+        subagent_type: 'oh-my-qoder:executor',
         description: 'issue #3732 no-session regression',
       },
     });

@@ -22,9 +22,14 @@ import {
   refreshNamedWorkflowBoundaryForCommit,
   validateNamedWorkflowState,
   validateNamedWorkflowStateStructure,
+  namedWorkflowRuntimeSupported,
 } from "../named-workflow-resume-validator.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe("workflow descriptor integrity enforcement (#3487)", () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {
@@ -112,7 +117,10 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
     expect(readFileSync(statePath)).toEqual(before);
   });
 
-  it("dispatches a valid named state without legacy mutation", async () => {
+  // Dispatch requires the no-follow runtime (O_NOFOLLOW + /proc/self/fd);
+  // elsewhere checkAutopilot fails closed with the UNSUPPORTED notice by
+  // contract, which the structural-failure cases above already pin.
+  it.skipIf(!namedWorkflowRuntimeSupported())("dispatches a valid named state without legacy mutation", async () => {
     const sessionId = "named-reader-session";
     const base = initAutopilot(testDir, "ship the release", sessionId)!;
     const descriptor = createWorkflowDescriptor("release-flow", {
@@ -318,7 +326,7 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
     });
   });
 
-  it("authenticates an exact named completion signal and advances without legacy state", async () => {
+  it.skipIf(!namedWorkflowRuntimeSupported())("authenticates an exact named completion signal and advances without legacy state", async () => {
     const sessionId = "named-advance-session";
     const base = initAutopilot(testDir, "ship the release", sessionId)!;
     const descriptor = createWorkflowDescriptor("release-flow", {

@@ -2,21 +2,24 @@
  * Session-id resolution for multi-repo workspaces (Wave A).
  *
  * Two callers consume this:
- *  - CLI commands (autopilot, ralph, ultragoal, etc.) running in a
+ *  - CLI commands (autopilot, ralph, ultraqa, ultragoal, etc.) running in a
  *    shell where the only signal is the `OMQ_SESSION_ID` env var.
  *  - Hooks (session-start, post-tool-use-failure, etc.) running with a
- *    `data.session_id` payload from Claude Code.
+ *    `data.session_id` payload from Qoder CLI.
  *
  * Precedence is INTENTIONALLY asymmetric:
  *  - In CLI contexts the env var is authoritative — the user controls it
  *    explicitly per-shell, and a stale payload from a previous run must not
  *    override the active terminal's intent.
- *  - In hook contexts the payload is authoritative — Claude Code is the
+ *  - In hook contexts the payload is authoritative — Qoder CLI is the
  *    source of truth for the current session, and the env var may belong to
  *    a different shell.
  *
- * Skill docs (Wave C) must document this asymmetry verbatim.
+ * When neither source supplies a value, falls back to a process-scoped
+ * session id so state is always session-isolated.
  */
+
+import { getProcessSessionId } from './worktree-paths.js';
 
 export type SessionIdContext = 'cli' | 'hook';
 
@@ -37,16 +40,16 @@ function readPayload(payload: ResolveSessionIdInput['hookPayload']): string | un
 }
 
 /**
- * Resolve the active session id given the caller's context. Returns undefined
- * when neither source supplies a value (back-compat legacy mode — caller
- * should fall back to global state path).
+ * Resolve the active session id given the caller's context. Always returns
+ * a session id — falls back to a process-scoped id when neither env var
+ * nor hook payload supplies one.
  */
-export function resolveSessionId(input: ResolveSessionIdInput): string | undefined {
+export function resolveSessionId(input: ResolveSessionIdInput): string {
   const env = readEnv();
   const payload = readPayload(input.hookPayload);
   if (input.context === 'cli') {
-    return env ?? payload;
+    return env ?? payload ?? getProcessSessionId();
   }
   // hook
-  return payload ?? env;
+  return payload ?? env ?? getProcessSessionId();
 }

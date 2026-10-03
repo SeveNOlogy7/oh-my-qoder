@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Skills are reusable workflow templates that can be invoked via `/oh-my-claudecode:skill-name`. Each skill provides:
+Skills are reusable workflow templates that can be invoked via `/oh-my-qoder:skill-name`. Each skill provides:
 - Structured prompts for specific workflows
 - Activation triggers (manual or automatic)
 - Integration with execution modes
@@ -27,7 +27,7 @@ Skills are reusable workflow templates that can be invoked via `/oh-my-claudecod
 
 | File | Skill | Purpose |
 |-----------|-------|---------|
-| `plan/SKILL.md` | omc-plan | Strategic planning with interview workflow |
+| `plan/SKILL.md` | omq-plan | Strategic planning with interview workflow |
 | `ralplan/SKILL.md` | ralplan | Iterative planning (Planner+Architect+Critic) with RALPLAN-DR structured deliberation (`--deliberate` for high-risk) |
 | `deep-interview/SKILL.md` | deep-interview | Socratic deep interview with mathematical ambiguity gating (Ouroboros-inspired) |
 | `ralph-init/SKILL.md` | ralph-init | Initialize PRD for structured ralph |
@@ -52,7 +52,7 @@ Skills are reusable workflow templates that can be invoked via `/oh-my-claudecod
 | `ai-slop-cleaner/SKILL.md` | ai-slop-cleaner | Regression-safe cleanup workflow for AI-generated code slop |
 | `skillify/SKILL.md` | skillify | Extract reusable skill from session |
 | `learner/SKILL.md` | learner | Deprecated compatibility alias/internal implementation history for skillify |
-| `ask/SKILL.md` | ask | Ask Claude, Codex, or Gemini via `omc ask` and capture an artifact |
+| `ask/SKILL.md` | ask | Ask Claude, Codex, or Gemini via `omq ask` and capture an artifact |
 | `note/SKILL.md` | note | Save notes for compaction resilience |
 | `cancel/SKILL.md` | cancel | Cancel any active OMC mode |
 | `hud/SKILL.md` | hud | Configure HUD display |
@@ -113,10 +113,10 @@ Any configurable options.
 
 ```bash
 # Manual invocation
-/oh-my-claudecode:skill-name
+/oh-my-qoder:skill-name
 
 # With arguments
-/oh-my-claudecode:skill-name arg1 arg2
+/oh-my-qoder:skill-name arg1 arg2
 
 # Auto-detected from keywords
 "autopilot build me a REST API"  # Triggers autopilot skill
@@ -157,7 +157,7 @@ If `pipeline` / `next-skill` metadata is present, OMC appends a standardized **S
 ### Testing Requirements
 
 - Skills are verified via integration tests
-- Test skill invocation with `/oh-my-claudecode:skill-name`
+- Test skill invocation with `/oh-my-qoder:skill-name`
 - Verify trigger keywords activate correct skill
 - For git-related skills, follow `templates/rules/git-workflow.md`
 
@@ -177,7 +177,7 @@ None - pure markdown files.
 |----------|--------|------------------|
 | Execution | autopilot, ultrawork, ralph, team | "autopilot", "ulw", "ralph", "team" |
 | Cleanup | ai-slop-cleaner | "deslop", "anti-slop", cleanup/refactor + slop smells |
-| Planning | omc-plan, ralplan, deep-interview, ralph-init | "plan this", "interview me", "ouroboros" |
+| Planning | omq-plan, ralplan, deep-interview, ralph-init | "plan this", "interview me", "ouroboros" |
 | Exploration | deepinit, sciomc, external-context | "deepinit", "research" |
 | Utility | skillify, learner (deprecated alias), note, cancel, hud, setup, omc-doctor, omc-setup, omc-help, mcp-setup | "stop", "cancel" |
 | Domain | psm, writer-memory, release | psm context |

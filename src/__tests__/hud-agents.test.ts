@@ -341,7 +341,7 @@ describe('Agents Element', () => {
   describe('Model tier color coding', () => {
     it('should use magenta for opus tier', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-claudecode:architect', 'opus'),
+        createAgent('oh-my-claudecode:architect', 'high'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain(MAGENTA);
@@ -349,7 +349,7 @@ describe('Agents Element', () => {
 
     it('should use yellow for sonnet tier', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-claudecode:executor', 'sonnet'),
+        createAgent('oh-my-claudecode:executor', 'medium'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain(YELLOW);
@@ -357,7 +357,7 @@ describe('Agents Element', () => {
 
     it('should use green for haiku tier', () => {
       const agents: ActiveAgent[] = [
-        createAgent('oh-my-claudecode:explore', 'haiku'),
+        createAgent('oh-my-claudecode:explore', 'low'),
       ];
       const result = renderAgentsCoded(agents);
       expect(result).toContain(GREEN);

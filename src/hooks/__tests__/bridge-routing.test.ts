@@ -20,6 +20,14 @@ import {
 } from '../bridge.js';
 import { flushPendingWrites } from '../subagent-tracker/index.js';
 import { readDispatchTelemetryTail } from '../registry/cutover.js';
+// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// // the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
+// Anchors process.cwd()-resolving writers (hud state, session-end jobs,
+// alias telemetry) at a per-test temp dir instead of the real .omq/state.
+import { useCwdFixture } from '../../__tests__/helpers/cwd-fixture.js';
+
+useCwdFixture();
 
 function writeCanonicalTeamState(tempDir: string, sessionId: string, teamName: string, phase: string): void {
   const canonicalTeamDir = join(tempDir, '.omq', 'state', 'team', teamName);
@@ -53,6 +61,7 @@ function writeCanonicalTeamState(tempDir: string, sessionId: string, teamName: s
 // ============================================================================
 
 describe('processHook - Routing Matrix', () => {
+  useDefaultStateRoot();
   const originalEnv = process.env;
 
   beforeEach(() => {

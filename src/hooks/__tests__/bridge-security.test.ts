@@ -27,6 +27,9 @@ import {
 import { validatePath } from '../../lib/worktree-paths.js';
 import { normalizeHookInput, SENSITIVE_HOOKS, isAlreadyCamelCase, HookInputSchema } from '../bridge-normalize.js';
 import { readAutopilotState } from '../autopilot/state.js';
+// Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 function initializeGitRepo(directory: string): void {
   execFileSync('git', ['init', '--quiet'], {
@@ -146,6 +149,7 @@ describe('Path Traversal Protection', () => {
 // ============================================================================
 
 describe('State Poisoning Resilience', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {

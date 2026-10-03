@@ -12,6 +12,9 @@ import {
   getToolErrorRetryGuidance,
   type ToolErrorState
 } from '../index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 // Mock fs module
 vi.mock('fs', async () => {
@@ -27,6 +30,7 @@ vi.mock('fs', async () => {
 // Functions are now imported from ../index.js
 
 describe('readLastToolError', () => {
+  useDefaultStateRoot();
   const testDir = resolve('/test');
   const errorPath = join(testDir, '.omq', 'state', 'last-tool-error.json');
 
@@ -125,6 +129,7 @@ describe('readLastToolError', () => {
 });
 
 describe('clearToolErrorState', () => {
+  useDefaultStateRoot();
   const testDir = resolve('/test');
   const errorPath = join(testDir, '.omq', 'state', 'last-tool-error.json');
 
@@ -173,6 +178,7 @@ describe('clearToolErrorState', () => {
 });
 
 describe('getToolErrorRetryGuidance', () => {
+  useDefaultStateRoot();
   it('returns empty string for null input', () => {
     const result = getToolErrorRetryGuidance(null);
 
@@ -285,6 +291,7 @@ describe('getToolErrorRetryGuidance', () => {
 });
 
 describe('Integration: Continuation message with tool error', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -360,6 +367,7 @@ describe('Integration: Continuation message with tool error', () => {
 });
 
 describe('Edge cases and error handling', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     vi.clearAllMocks();
   });

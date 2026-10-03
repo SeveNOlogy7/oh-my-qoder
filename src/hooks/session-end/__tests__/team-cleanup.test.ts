@@ -71,8 +71,12 @@ vi.mock('../../../lib/worktree-paths.js', async () => {
 });
 
 import { cleanupSessionOwnedTeams } from '../index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('processSessionEnd team cleanup (#1632)', () => {
+  useDefaultStateRoot();
   let tmpDir: string;
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-session-end-team-cleanup-'));

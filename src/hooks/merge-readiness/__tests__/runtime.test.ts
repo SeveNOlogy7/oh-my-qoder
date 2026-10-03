@@ -17,6 +17,9 @@ import {
   setMergeReadinessContent,
 } from "../index.js";
 import type { MergeReadinessMCQQuestion } from "../mcq.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 // Forces writeModeState to return false (read-only FS / full-disk analog) so
 // persistOrFailClosed's fail-closed path is exercised without throwing. Other
@@ -58,6 +61,7 @@ function makeQuestion(
 }
 
 describe("merge-readiness runtime", () => {
+  useDefaultStateRoot();
   let tempDir: string;
   const sessionId = "merge-readiness-session";
   const originalPrincipal = process.env.OMQ_MERGE_READINESS_AUTHENTICATED_PRINCIPAL;

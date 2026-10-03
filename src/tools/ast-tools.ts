@@ -12,7 +12,7 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from "fs";
 import { join, extname, resolve, normalize, relative, isAbsolute } from "path";
 import { createRequire } from "module";
 import { getGitTopLevel } from "../lib/worktree-paths.js";
-import { isToolPathRestricted } from "../lib/security-config.js";
+import { isToolPathRestricted, PROJECT_SECURITY_CONFIG_PATH } from "../lib/security-config.js";
 
 // Dynamic import for @ast-grep/napi
 // Graceful degradation: if the module is not available (e.g., in bundled/plugin context),
@@ -81,7 +81,7 @@ export function validateToolPath(inputPath: string): string {
   if (rel.startsWith("..") || isAbsolute(rel)) {
     throw new Error(
       `Path restricted: '${inputPath}' is outside the project root '${projectRoot}'. ` +
-        `Disable via security.restrictToolPaths in .claude/omc.jsonc or unset OMQ_SECURITY.`,
+        `Disable via security.restrictToolPaths in ${PROJECT_SECURITY_CONFIG_PATH} or unset OMQ_SECURITY.`,
     );
   }
 

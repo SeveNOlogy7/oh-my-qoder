@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { publishCacheOccupancy, readOccupiedPluginRoots } from '../cache-occupancy.js';
+import { publishCacheOccupancy, readOccupiedPluginRoots, pathIdentity } from '../cache-occupancy.js';
 
 describe('cache occupancy registry', () => {
   let dir: string;
@@ -15,7 +15,10 @@ describe('cache occupancy registry', () => {
     expect(await publishCacheOccupancy(root, dir)).toBe(true);
     const result = readOccupiedPluginRoots(dir);
     expect(result.unavailable).toBe(false);
-    expect(result.roots).toEqual(new Set([root]));
+    // The reader surfaces roots through pathIdentity, which folds case on the
+    // case-insensitive win32 filesystems; pin that exact contract instead of
+    // the raw literal.
+    expect(result.roots).toEqual(new Set([pathIdentity(root)]));
     const files = readdirSync(join(dir, '.omq', 'cache-occupancy'));
     expect(files).toHaveLength(1);
     expect(files[0]).toMatch(/^[a-f0-9]{64}\.json$/);

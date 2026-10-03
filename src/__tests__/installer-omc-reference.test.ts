@@ -79,14 +79,14 @@ function writeMinimallyCompletePluginPayload(pluginRoot: string): void {
   mkdirSync(join(pluginRoot, 'hooks'), { recursive: true });
   writeFileSync(join(pluginRoot, 'hooks', 'hooks.json'), '{}\n');
   mkdirSync(join(pluginRoot, 'commands'), { recursive: true });
-  writeFileSync(join(pluginRoot, 'commands', 'omc-setup.md'), 'Read skills/omc-setup/SKILL.md.\n');
+  writeFileSync(join(pluginRoot, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md.\n');
   mkdirSync(join(pluginRoot, 'skills', 'ultragoal'), { recursive: true });
   writeFileSync(join(pluginRoot, 'skills', 'ultragoal', 'SKILL.md'), 'name: ultragoal\n');
-  mkdirSync(join(pluginRoot, '.claude-plugin'), { recursive: true });
+  mkdirSync(join(pluginRoot, '.qoder-plugin'), { recursive: true });
   writeFileSync(
-    join(pluginRoot, '.claude-plugin', 'plugin.json'),
+    join(pluginRoot, '.qoder-plugin', 'plugin.json'),
     JSON.stringify({
-      name: 'oh-my-claudecode',
+      name: 'oh-my-qoder',
       commands: './commands/',
       skills: ['./skills/ultragoal/'],
     }, null, 2)
@@ -157,11 +157,11 @@ describe('installer bundled + standalone skill sync', () => {
       'autopilot/SKILL.md',
       'ralplan/SKILL.md',
       'team/SKILL.md',
-      'omc-plan/SKILL.md',
+      'omq-plan/SKILL.md',
     ]));
 
     for (const skillName of [
-      'autopilot', 'ralplan', 'team', 'ultragoal', 'execute', 'omc-plan',
+      'autopilot', 'ralplan', 'team', 'ultragoal', 'execute', 'omq-plan',
       'remember', 'verify', 'debug',
     ]) {
       const installedSkillPath = join(claudeConfigDir, 'skills', skillName, 'SKILL.md');
@@ -187,7 +187,7 @@ describe('installer bundled + standalone skill sync', () => {
     expect(result.success).toBe(true);
     const bundledSkillNames = getBundledSkillNames();
     expect(result.installedSkills.length).toBeGreaterThanOrEqual(bundledSkillNames.length - 4);
-    expect(result.installedSkills).toContain('omc-plan/SKILL.md');
+    expect(result.installedSkills).toContain('omq-plan/SKILL.md');
 
     for (const skillName of ['execute', 'ultragoal', 'team']) {
       const installedSkillPath = join(claudeConfigDir, 'skills', skillName, 'SKILL.md');
@@ -195,7 +195,7 @@ describe('installer bundled + standalone skill sync', () => {
       expect(readFileSync(installedSkillPath, 'utf-8')).toContain(`name: ${skillName}`);
     }
 
-    expect(existsSync(join(claudeConfigDir, 'skills', 'omc-setup', 'phases', '04-welcome.md'))).toBe(true);
+    expect(existsSync(join(claudeConfigDir, 'skills', 'omq-setup', 'phases', '04-welcome.md'))).toBe(true);
   });
 
   it('skips bundled skill sync when an installed plugin already provides skills', async () => {

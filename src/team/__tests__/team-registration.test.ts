@@ -8,6 +8,9 @@ import {
 } from '../team-registration.js';
 import { getQoderConfigDir } from '../../utils/config-dir.js';
 import type { ConfigProbeResult } from '../types.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const TEST_DIR = join(tmpdir(), '__test_team_reg__');
 const TEST_TEAM = 'test-team-reg-team';
@@ -25,6 +28,7 @@ afterEach(() => {
 });
 
 describe('probeResult', () => {
+  useDefaultStateRoot();
   it('writes and reads probe result', () => {
     const result: ConfigProbeResult = { probeResult: 'pass', probedAt: '2026-01-01', version: '1.0' };
     writeProbeResult(TEST_DIR, result);
@@ -37,6 +41,7 @@ describe('probeResult', () => {
 });
 
 describe('getRegistrationStrategy', () => {
+  useDefaultStateRoot();
   it('returns shadow when not probed', () => {
     expect(getRegistrationStrategy(TEST_DIR)).toBe('shadow');
   });
@@ -58,6 +63,7 @@ describe('getRegistrationStrategy', () => {
 });
 
 describe('registerMcpWorker / unregisterMcpWorker', () => {
+  useDefaultStateRoot();
   it('registers worker in shadow registry', () => {
     registerMcpWorker(TEST_TEAM, 'w1', 'codex', 'gpt-5', 'sess1', '/cwd', TEST_DIR);
     const workers = listMcpWorkers(TEST_TEAM, TEST_DIR);
@@ -95,6 +101,7 @@ describe('registerMcpWorker / unregisterMcpWorker', () => {
 });
 
 describe('isMcpWorker', () => {
+  useDefaultStateRoot();
   it('returns true for tmux backend', () => {
     expect(isMcpWorker({ backendType: 'tmux' })).toBe(true);
   });

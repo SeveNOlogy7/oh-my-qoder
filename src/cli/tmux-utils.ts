@@ -1,6 +1,6 @@
 /**
- * tmux utility functions for omc native shell launch
- * Adapted from oh-my-codex patterns for omc
+ * tmux utility functions for omq native shell launch
+ * Adapted from oh-my-codex patterns for omq
  */
 
 import {
@@ -23,7 +23,7 @@ import { promisify } from 'util';
 export interface TmuxExecOptions {
   /** Strip TMUX env var so the command targets the default tmux server.
    *  Default: false — preserves TMUX (targets the current server).
-   *  Set to true for OMC-owned background sessions and cross-session scans. */
+   *  Set to true for OMQ-owned background sessions and cross-session scans. */
   stripTmux?: boolean;
 }
 
@@ -217,21 +217,6 @@ export function isTmuxAvailable(): boolean {
 }
 
 /**
- * Check if claude CLI is available on the system
- */
-export function isClaudeAvailable(): boolean {
-  try {
-    execFileSync('claude', ['--version'], {
-      stdio: 'ignore',
-      shell: process.platform === 'win32',
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Options for `resolveLaunchPolicy`. `requireTmux=true` makes
  * CMUX_SURFACE_ID stop demoting to 'direct'. The caller is responsible for
  * gating on platform/flag combinations (e.g. macOS + --madmax).
@@ -270,8 +255,8 @@ export function resolveLaunchPolicy(
 
 /**
  * Build tmux session name from directory, git branch, and UTC timestamp
- * Format: omc-{dir}-{branch}-{utctimestamp}
- * e.g.  omc-myproject-dev-20260221143052
+ * Format: omq-{dir}-{branch}-{utctimestamp}
+ * e.g.  omq-myproject-dev-20260221143052
  */
 export function buildTmuxSessionName(cwd: string): string {
   const dirToken = sanitizeTmuxToken(basename(cwd));
@@ -301,7 +286,7 @@ export function buildTmuxSessionName(cwd: string): string {
     `${pad(now.getUTCMinutes())}` +
     `${pad(now.getUTCSeconds())}`;
 
-  const name = `omc-${dirToken}-${branchToken}-${utcTimestamp}`;
+  const name = `omq-${dirToken}-${branchToken}-${utcTimestamp}`;
   return name.length > 120 ? name.slice(0, 120) : name;
 }
 

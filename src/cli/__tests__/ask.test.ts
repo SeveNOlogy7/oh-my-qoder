@@ -1029,7 +1029,7 @@ describe('resolveAskAdvisorScriptPath', () => {
   it('resolves canonical env and supports package-root relative paths', () => {
     const packageRoot = '/tmp/pkg-root';
     expect(resolveAskAdvisorScriptPath(packageRoot, { OMQ_ASK_ADVISOR_SCRIPT: 'scripts/custom.js' } as NodeJS.ProcessEnv))
-      .toBe('/tmp/pkg-root/scripts/custom.js');
+      .toBe(join(packageRoot, 'scripts', 'custom.js'));
     expect(resolveAskAdvisorScriptPath(packageRoot, { OMQ_ASK_ADVISOR_SCRIPT: '/opt/custom.js' } as NodeJS.ProcessEnv))
       .toBe('/opt/custom.js');
   });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   readRalphStateForHud,
   readUltraworkStateForHud,
@@ -25,13 +25,27 @@ function writeJson(path: string, data: unknown, mtimeMs = Date.now()): void {
 
 describe('hud omq state session scoping', () => {
   const tempDirs: string[] = [];
+  // These tests exercise the DEFAULT state-root branch (no OMQ_STATE_DIR) with
+  // explicit temp worktrees (#42). Lift the per-file pin for each test and
+  // restore it afterwards, so the unset never leaks into the shared worker and
+  // the fallback drill stays inside the controlled fixture.
+  let pinnedStateDir: string | undefined;
+
+  beforeEach(() => {
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
+  });
 
   afterEach(() => {
     for (const dir of tempDirs) {
       rmSync(dir, { recursive: true, force: true });
     }
     tempDirs.length = 0;
-    delete process.env.OMQ_STATE_DIR;
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
   });
 
   function createWorktree(): string {

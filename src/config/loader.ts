@@ -2,8 +2,8 @@
  * Configuration Loader
  *
  * Handles loading and merging configuration from multiple sources:
- * - User config: ~/.config/claude-omc/config.jsonc
- * - Project config: .claude/omc.jsonc
+ * - User config: ~/.config/qoder-omq/config.jsonc
+ * - Project config: .qoder/omq.jsonc
  * - Environment variables
  */
 
@@ -214,8 +214,8 @@ export function getConfigPaths(): { user: string; project: string } {
   const userConfigDir = getConfigDir();
 
   return {
-    user: join(userConfigDir, "claude-omc", "config.jsonc"),
-    project: join(process.cwd(), ".claude", "omc.jsonc"),
+    user: join(userConfigDir, "qoder-omq", "config.jsonc"),
+    project: join(process.cwd(), ".qoder", "omq.jsonc"),
   };
 }
 
@@ -412,7 +412,11 @@ export function loadEnvConfig(): Partial<PluginConfig> {
     if (
       policy === "provider_chain" ||
       policy === "cross_provider" ||
-      policy === "claude_only"
+      policy === "claude_only" ||
+      // Same policy under two names: this fork defaults to a Qwen host, so
+      // `qwen_only` is what its own published config schema advertises. Both
+      // spellings must be accepted here or the value is dropped in silence.
+      policy === "qwen_only"
     ) {
       externalModelsFallback.onModelFailure = policy;
     }

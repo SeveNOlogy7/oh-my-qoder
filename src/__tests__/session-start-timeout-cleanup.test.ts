@@ -20,14 +20,17 @@ describe('BUG 4: session-start hooks clear timeout in finally', () => {
   it('scripts/session-start.mjs uses finally for clearTimeout', async () => {
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
+    // Normalize the checkout's line endings so the byte-budgeted windows below
+    // carry the same content on LF and CRLF working trees.
     const source = readFileSync(
       join(process.cwd(), 'scripts/session-start.mjs'),
       'utf-8',
-    );
+    ).replace(/\r\n/g, '\n');
 
     // The checkForUpdates function should use finally for clearTimeout
-    // Look for the GitHub fetch section
-    const fetchSection = source.indexOf('raw.githubusercontent.com');
+    // Anchor on the npm-registry update fetch (the update source since the
+    // upstream adoption; the earlier raw.githubusercontent.com anchor drifted).
+    const fetchSection = source.indexOf('registry.npmjs.org');
     expect(fetchSection).toBeGreaterThan(-1);
 
     // Find the surrounding try/finally block

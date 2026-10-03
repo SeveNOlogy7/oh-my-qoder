@@ -26,6 +26,9 @@ import {
 } from '../storage.js';
 import { WIKI_SCHEMA_VERSION } from '../types.js';
 import type { WikiPage } from '../types.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 function makePage(overrides: Partial<WikiPage> = {}): WikiPage {
   return {
@@ -47,6 +50,7 @@ function makePage(overrides: Partial<WikiPage> = {}): WikiPage {
 }
 
 describe('Wiki Storage', () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(async () => {

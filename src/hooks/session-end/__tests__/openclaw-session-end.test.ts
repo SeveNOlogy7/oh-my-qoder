@@ -16,7 +16,7 @@ vi.mock("../../../notifications/index.js", () => ({
 }));
 
 vi.mock("../../../features/auto-update.js", () => ({
-  getOMCConfig: vi.fn(() => ({})),
+  getOMQConfig: vi.fn(() => ({})),
 }));
 
 vi.mock("../../../notifications/config.js", () => ({

@@ -14,7 +14,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from 'fs';
-import { getClaudeConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir } from '../utils/config-dir.js';
 import { join, dirname } from 'path';
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
@@ -177,6 +177,23 @@ export function isZaiHost(urlString: string): boolean {
 }
 
 /**
+ * The provider endpoint and credential the HUD queries.
+ *
+ * The DashScope-shaped names are first because that is what this fork's own
+ * configuration surface uses -- ssrf-guard validates DASHSCOPE_BASE_URL and
+ * delegation-enforcer passes it through to children. The ancestor's ANTHROPIC_*
+ * pair is still honored because the kimi and minimax paths document those names,
+ * so reading only one of the two would make a real configuration invisible here.
+ */
+function getProviderBaseUrl(): string | undefined {
+  return process.env.DASHSCOPE_BASE_URL || process.env.ANTHROPIC_BASE_URL;
+}
+
+function getProviderAuthToken(): string | undefined {
+  return process.env.DASHSCOPE_AUTH_TOKEN || process.env.ANTHROPIC_AUTH_TOKEN;
+}
+
+/**
  * Check if a URL points to MiniMax.
  * Matches all known MiniMax domains:
  *   - minimax.io / *.minimax.io  (international)
@@ -300,14 +317,14 @@ interface MinimaxCodingPlanResponse {
  * Get the legacy (pre-split) cache file path
  */
 function getLegacyCachePath(): string {
-  return join(getClaudeConfigDir(), 'plugins', 'oh-my-claudecode', '.usage-cache.json');
+  return join(getQoderConfigDir(), 'plugins', 'oh-my-qoder', '.usage-cache.json');
 }
 
 /**
  * Get the provider-specific cache file path
  */
 function getCachePath(source: UsageSource): string {
-  return join(getClaudeConfigDir(), 'plugins', 'oh-my-claudecode', `.usage-cache-${source}.json`);
+  return join(getQoderConfigDir(), 'plugins', 'oh-my-qoder', `.usage-cache-${source}.json`);
 }
 
 /**
@@ -630,7 +647,7 @@ function readKeychainCredentials(): OAuthCredentials | null {
  */
 function readFileCredentials(): OAuthCredentials | null {
   try {
-    const credPath = join(getClaudeConfigDir(), '.credentials.json');
+    const credPath = join(getQoderConfigDir(), '.credentials.json');
     if (!existsSync(credPath)) return null;
 
     const content = readFileSync(credPath, 'utf-8');
@@ -815,8 +832,8 @@ function fetchUsageFromApi(accessToken: string): Promise<FetchResult<UsageApiRes
  */
 function fetchUsageFromZai(): Promise<FetchResult<ZaiQuotaResponse>> {
   return new Promise((resolve) => {
-    const baseUrl = process.env.ANTHROPIC_BASE_URL;
-    const authToken = process.env.ANTHROPIC_AUTH_TOKEN;
+    const baseUrl = getProviderBaseUrl();
+    const authToken = getProviderAuthToken();
 
     if (!baseUrl || !authToken) {
       resolve({ data: null });
@@ -951,7 +968,7 @@ function writeBackCredentials(creds: OAuthCredentials): void {
   }
 
   try {
-    const credPath = join(getClaudeConfigDir(), '.credentials.json');
+    const credPath = join(getQoderConfigDir(), '.credentials.json');
     if (!existsSync(credPath)) return;
 
     const content = readFileSync(credPath, 'utf-8');
@@ -1339,7 +1356,7 @@ export function parseZaiResponse(response: ZaiQuotaResponse): RateLimits | null 
  */
 function fetchUsageFromMinimax(apiKey: string): Promise<FetchResult<MinimaxCodingPlanResponse>> {
   return new Promise((resolve) => {
-    const baseUrl = process.env.ANTHROPIC_BASE_URL;
+    const baseUrl = getProviderBaseUrl();
 
     if (!baseUrl) {
       resolve({ data: null });
@@ -1465,7 +1482,7 @@ export function parseMinimaxResponse(response: MinimaxCodingPlanResponse): RateL
  */
 function fetchUsageFromKimi(apiKey: string): Promise<FetchResult<KimiUsageResponse>> {
   return new Promise((resolve) => {
-    const baseUrl = process.env.ANTHROPIC_BASE_URL;
+    const baseUrl = getProviderBaseUrl();
 
     if (!baseUrl) {
       resolve({ data: null });
@@ -1785,8 +1802,8 @@ async function fetchAndCacheUsage<T>(opts: {
  *   - 'rate_limited': API returned 429; stale data served if available, with exponential backoff
  */
 export async function getUsage(): Promise<UsageResult> {
-  const baseUrl = process.env.ANTHROPIC_BASE_URL;
-  const authToken = process.env.ANTHROPIC_AUTH_TOKEN;
+  const baseUrl = getProviderBaseUrl();
+  const authToken = getProviderAuthToken();
   const isMinimax = baseUrl != null && isMinimaxHost(baseUrl);
   const isKimi = baseUrl != null && isKimiHost(baseUrl);
   const isZai = baseUrl != null && isZaiHost(baseUrl);

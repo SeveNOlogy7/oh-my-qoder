@@ -15,6 +15,9 @@ import {
   resolveToWorktreeRoot,
   validateSessionId,
 } from "../../../lib/worktree-paths.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 const isWin32 = process.platform === "win32";
 const BS = String.fromCharCode(92); // backslash, shell-safe
@@ -36,6 +39,7 @@ function makeRepo(): string {
 }
 
 describe("merge-readiness Windows cross-platform contract", () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {

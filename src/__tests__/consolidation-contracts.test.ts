@@ -40,11 +40,13 @@ describe('Consolidation contracts', () => {
       expect(swarm).toBeUndefined();
     });
 
-    it('keeps native-command collisions prefixed to omc-* names', () => {
+    it('keeps native-command collisions prefixed', () => {
       const names = listBuiltinSkillNames();
 
-      expect(names).toContain('omc-plan');
-      expect(names).toContain('omc-doctor');
+      // Asserted as the catalog loads them today: the collision prefix is the
+      // fork's own `omq-` spelling since #37 (skills/plan declares `omq-plan`).
+      expect(names).toContain('omq-plan');
+      expect(names).toContain('omq-doctor');
       expect(names).not.toContain('plan');
       expect(names).not.toContain('doctor');
       expect(names).not.toContain('help');
@@ -93,11 +95,11 @@ describe('Consolidation contracts', () => {
       const researcherRoute = resolveDelegation({ agentRole: 'researcher' });
       const tddGuideRoute = resolveDelegation({ agentRole: 'tdd-guide' });
 
-      expect(researcherRoute.provider).toBe('claude');
+      expect(researcherRoute.provider).toBe('qwen');
       expect(researcherRoute.tool).toBe('Task');
       expect(researcherRoute.agentOrModel).toBe('document-specialist');
 
-      expect(tddGuideRoute.provider).toBe('claude');
+      expect(tddGuideRoute.provider).toBe('qwen');
       expect(tddGuideRoute.tool).toBe('Task');
       expect(tddGuideRoute.agentOrModel).toBe('test-engineer');
     });

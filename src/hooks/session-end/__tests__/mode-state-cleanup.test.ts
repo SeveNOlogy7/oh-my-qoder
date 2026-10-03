@@ -31,8 +31,12 @@ vi.mock('../../../lib/worktree-paths.js', async () => {
 });
 
 import { processSessionEnd } from '../index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('processSessionEnd mode state cleanup (issue #1427)', () => {
+  useDefaultStateRoot();
   let tmpDir: string;
   let transcriptPath: string;
 

@@ -685,9 +685,9 @@ describe('unified MCP registry sync', () => {
       },
     });
 
-    expect(result.registryPath).toBe(join(testRoot, '.config', 'omc', 'mcp-registry.json'));
-    expect(existsSync(join(testRoot, '.config', 'omc', 'mcp-registry.json'))).toBe(true);
-    expect(existsSync(join(testRoot, '.state', 'omc', 'mcp-registry-state.json'))).toBe(true);
+    expect(result.registryPath).toBe(join(testRoot, '.config', 'omq', 'mcp-registry.json'));
+    expect(existsSync(join(testRoot, '.config', 'omq', 'mcp-registry.json'))).toBe(true);
+    expect(existsSync(join(testRoot, '.state', 'omq', 'mcp-registry-state.json'))).toBe(true);
   });
 
   it('falls back to legacy ~/.omq registry when the XDG registry does not exist', () => {

@@ -47,7 +47,16 @@ psm_bootstrap_review_dependencies() {
 
     cmp -s "$source_package_json" "$target_package_json" || return 0
 
-    ln -s "$source_node_modules" "$target_node_modules" 2>/dev/null || true
+    # Git Bash's MSYS ln -s silently degrades to a full recursive copy, which
+    # for node_modules defeats the whole point of reuse; a directory junction
+    # needs no admin rights and reads back as a symlink to Node.
+    local host_uname
+    host_uname="$(uname -s 2>/dev/null || echo unknown)"
+    if [[ "$host_uname" == MINGW* || "$host_uname" == MSYS* ]]; then
+        cmd //c mklink //J "$(cygpath -w "$target_node_modules")" "$(cygpath -w "$source_node_modules")" >/dev/null 2>&1 || true
+    else
+        ln -s "$source_node_modules" "$target_node_modules" 2>/dev/null || true
+    fi
     return 0
 }
 

@@ -13,6 +13,9 @@ import * as nodeFs from 'fs';
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+// Seeds {project}/.omq and spawns hooks that must resolve through the DEFAULT
+// state-root branch (#42): lift the per-file OMQ_STATE_DIR pin per test.
+import { useDefaultStateRoot } from './helpers/default-state-root.js';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -168,6 +171,8 @@ function parseContext(stdout: string): string {
 }
 
 describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => {
+  useDefaultStateRoot();
+
   let tempDir: string;
   let home: string;
   let project: string;
@@ -183,7 +188,12 @@ describe('session-start.mjs PreCompact checkpoint restore (issue #3730)', () => 
     try {
       rmSync(tempDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
     } catch (error) {
-      if (process.platform !== 'win32' || (error as NodeJS.ErrnoException).code !== 'EBUSY') throw error;
+      // The spawned/detached hook workers can hold the temp dir for a
+      // heartbeat after the test body ends; on Windows that surfaces as EBUSY
+      // or EPERM on the root removal. Both are the same file-lock family —
+      // never let cleanup fail an assertion that already passed (#42).
+      const code = (error as NodeJS.ErrnoException).code;
+      if (process.platform !== 'win32' || (code !== 'EBUSY' && code !== 'EPERM')) throw error;
     }
   });
 

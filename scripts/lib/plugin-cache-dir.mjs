@@ -2,10 +2,11 @@
 /**
  * Resolve where the installed oh-my-qoder plugin cache lives.
  *
- * The marketplace segment varies: an `omq` marketplace install lands in
+ * The marketplace segment varies: a marketplace install can land in
  * `plugins/cache/omq/oh-my-qoder`, while `qoderclicn plugins install <dir>`
  * lands in `plugins/cache/local/oh-my-qoder`. Anything that assumes one of them
- * reports the other as missing, so scan instead.
+ * reports the other as missing, so scan instead. The canonical slug (tie-break
+ * and fallback) is `local` — the MEASURED layout (#44, 2026-10-01).
  *
  * Mirrors resolvePluginCacheBase() in src/utils/paths.ts; scripts/*.mjs cannot
  * import from dist/, so the two must be changed together. Nothing enforces that
@@ -15,7 +16,7 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const MARKETPLACE_SLUG = 'omq';
+export const MARKETPLACE_SLUG = 'local';
 export const PACKAGE_NAME = 'oh-my-qoder';
 
 const VERSION_DIR = /^\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.-]+)?$/;

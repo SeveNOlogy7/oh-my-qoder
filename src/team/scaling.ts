@@ -25,6 +25,7 @@ import {
   validateWorkerLaunchDescriptor,
   type CliAgentType,
 } from './model-contract.js';
+import { CLI_WORKER_AGENT_TYPES } from './cli-agent-types.js';
 import { CANONICAL_TEAM_ROLES } from '../shared/types.js';
 import type { CanonicalTeamRole } from '../shared/types.js';
 import { normalizeDelegationRole } from '../features/delegation-routing/types.js';
@@ -69,7 +70,6 @@ import { loadWorkerLaunchAttempt, retireAndCleanupCurrentWorkerLaunchAttempt } f
 // ── Environment gate ──────────────────────────────────────────────────────────
 
 const OMQ_TEAM_SCALING_ENABLED_ENV = 'OMQ_TEAM_SCALING_ENABLED';
-const CLI_AGENT_TYPES = new Set<CliAgentType>(['claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity']);
 
 export function isScalingEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   const raw = env[OMQ_TEAM_SCALING_ENABLED_ENV];
@@ -87,12 +87,12 @@ function assertScalingEnabled(env: NodeJS.ProcessEnv = process.env): void {
 }
 
 function asCliAgentType(agentType: string): CliAgentType {
-  if (CLI_AGENT_TYPES.has(agentType as CliAgentType)) {
+  if (CLI_WORKER_AGENT_TYPES.has(agentType as CliAgentType)) {
     return agentType as CliAgentType;
   }
 
   throw new Error(
-    `Unknown agent type: ${agentType}. Supported: ${Array.from(CLI_AGENT_TYPES).join(', ')}`,
+    `Unknown agent type: ${agentType}. Supported: ${Array.from(CLI_WORKER_AGENT_TYPES).join(', ')}`,
   );
 }
 
@@ -536,7 +536,7 @@ export async function scaleUpOwned(
       if (routedPair) {
         const { primary } = routedPair;
         const primaryProvider = primary.provider as CliAgentType;
-        if (CLI_AGENT_TYPES.has(primaryProvider)) {
+        if (CLI_WORKER_AGENT_TYPES.has(primaryProvider)) {
           workerAgentType = primaryProvider;
           workerModel = primary.model;
         }

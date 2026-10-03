@@ -3,9 +3,14 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
+// Seeds {fixture}/.omq and expects the DEFAULT state-root branch (#42): lift
+// the per-file OMQ_STATE_DIR pin for every test here.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 import { checkPersistentModes } from '../index.js';
 
 describe('persistent-mode ralph max iteration handling (#635)', () => {
+  useDefaultStateRoot();
+
   it('extends max iterations and keeps ralph blocking instead of silently stopping', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'ralph-max-iter-'));
     const sessionId = 'session-635';

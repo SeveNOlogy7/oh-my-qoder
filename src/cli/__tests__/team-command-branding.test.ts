@@ -12,4 +12,17 @@ describe('team command branding', () => {
     expect(cliIndexSource).toContain('omq team api');
     expect(cliIndexSource).not.toContain('omx team api');
   });
+
+  it('names this plugin and its own setup skill in the installed-version footer', () => {
+    const cliIndexSource = readFileSync(join(__dirname, '..', 'index.ts'), 'utf-8');
+
+    // The old string combined this fork's namespace with a skill name it does not
+    // ship (`omc-setup`), and named a host that is not this one, so it read as
+    // correct to any check that only looked for the ancestor namespace prefix.
+    expect(cliIndexSource).toContain(
+      "Start Qoder CLI and use /oh-my-qoder:omq-setup for interactive setup.",
+    );
+    expect(cliIndexSource).not.toContain('/oh-my-qoder:omc-setup');
+    expect(cliIndexSource).not.toContain('Start Claude Code and use');
+  });
 });

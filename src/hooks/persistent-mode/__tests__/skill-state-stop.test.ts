@@ -4,6 +4,9 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
+// Reads seeded skill state through the DEFAULT state-root branch over temp
+// projects (#42): lift the per-file OMQ_STATE_DIR pin for every test here.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 function makeTempProject(): string {
   const tempDir = mkdtempSync(join(tmpdir(), 'skill-stop-'));
@@ -66,6 +69,8 @@ function writeSubagentTrackingState(
 }
 
 describe('persistent-mode skill-state stop integration (issue #1033)', () => {
+  useDefaultStateRoot();
+
   it('blocks stop when a skill is actively executing', async () => {
     const sessionId = 'session-skill-1033-block';
     const tempDir = makeTempProject();

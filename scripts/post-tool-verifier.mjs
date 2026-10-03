@@ -536,7 +536,7 @@ function getSkillInvocationArgs(toolInput) {
 function isConsensusPlanningSkillInvocation(skillName, toolInput) {
   if (!skillName) return false;
   if (skillName === 'ralplan') return true;
-  if (skillName !== 'plan' && skillName !== 'omc-plan') return false;
+  if (skillName !== 'plan' && skillName !== 'omq-plan') return false;
   return getSkillInvocationArgs(toolInput).toLowerCase().includes('--consensus');
 }
 
@@ -1059,7 +1059,7 @@ async function main() {
       const currentState = readSkillActiveState(directory, sessionId);
       const completingSkill = (skillName ?? '')
         .toLowerCase()
-        .replace(/^oh-my-claudecode:/, '');
+        .replace(/^oh-my-qoder:/, '');
       if (!currentState || !currentState.active || currentState.skill_name === completingSkill) {
         clearSkillActiveState(directory, sessionId);
       }

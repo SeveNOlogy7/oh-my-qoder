@@ -10,7 +10,10 @@ const root = join(__dirname, '..', '..');
 describe('HUD build/load guidance', () => {
   it('session-start checks legacy hud script name and build guidance', () => {
     const content = readFileSync(join(root, 'scripts', 'session-start.mjs'), 'utf-8');
-    expect(content).toContain("const hudScriptLegacy = join(hudDir, 'omq-hud.js');");
+    // The installed/checked pair settled on omc-hud.* in the upstream adoption
+    // (installer/index.ts installs omc-hud.mjs; session-start checks it plus
+    // the omc-hud.js legacy name), so pin the legacy name production checks.
+    expect(content).toContain("const hudScriptLegacy = join(hudDir, 'omc-hud.js');");
     expect(content).toContain('HUD plugin cache is not built. Run: cd');
     expect(content).toContain('npm install && npm run build');
   });
@@ -19,7 +22,7 @@ describe('HUD build/load guidance', () => {
     // Both install paths now read from this single source of truth
     // (plan: binary-weaving-mountain).
     const content = readFileSync(join(root, 'scripts', 'lib', 'hud-wrapper-template.txt'), 'utf-8');
-    expect(content).toContain('join(configDir, "plugins", "marketplaces", "omq", "dist/hud/index.js")');
+    expect(content).toContain('join(configDir, "plugins", "marketplaces", "local", "dist/hud/index.js")');
     expect(content).toContain('pathToFileURL(marketplaceHudPath).href');
     expect(content).toContain('"oh-my-qoder/dist/hud/index.js"');
     expect(content).toContain('"oh-my-qoder/dist/hud/index.js"');
@@ -30,7 +33,7 @@ describe('HUD build/load guidance', () => {
   it('shared HUD wrapper template keeps latest-installed fallback context and marketplace resolution', () => {
     const content = readFileSync(join(root, 'scripts', 'lib', 'hud-wrapper-template.txt'), 'utf-8');
     expect(content).toContain('const latestInstalledVersion = sortedVersions[0];');
-    expect(content).toContain('join(configDir, "plugins", "marketplaces", "omq", "dist/hud/index.js")');
+    expect(content).toContain('join(configDir, "plugins", "marketplaces", "local", "dist/hud/index.js")');
     expect(content).toContain('pathToFileURL(marketplaceHudPath).href');
     expect(content).toContain('"oh-my-qoder/dist/hud/index.js"');
     expect(content).toContain('"oh-my-qoder/dist/hud/index.js"');

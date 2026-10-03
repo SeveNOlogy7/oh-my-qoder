@@ -204,36 +204,67 @@ describe('Contract 2: no unguarded $HOME/.claude in shell/script files', () => {
 // before destination redirection and write through temp files.
 
 describe('Contract 2b: setup jq writes are guarded against truncation', () => {
-  const SETUP_MUTATION_FILES = [
-    join(REPO_ROOT, 'skills', 'omc-setup', 'phases', '02-configure.md'),
-    join(REPO_ROOT, 'skills', 'omc-setup', 'phases', '03-integrations.md'),
-    join(REPO_ROOT, 'scripts', 'setup-progress.sh'),
-  ];
+  // This fork ships the setup skill as skills/omq-setup; the file list was
+  // hardcoded to skills/omc-setup, so readFileSync threw ENOENT while the
+  // describe body ran and vitest discarded the whole file -- every contract in
+  // it stopped asserting, on both platforms. Phase documents are discovered
+  // instead, so a rename cannot silently disarm the guard again.
+  function setupMutationFiles(): string[] {
+    const skillsRoot = join(REPO_ROOT, 'skills');
+    const phaseFiles = existsSync(skillsRoot)
+      ? readdirSync(skillsRoot, { withFileTypes: true })
+        .filter(entry => entry.isDirectory() && entry.name.endsWith('-setup'))
+        .flatMap(entry => {
+          const phasesDir = join(skillsRoot, entry.name, 'phases');
+          if (!existsSync(phasesDir)) return [];
+          return readdirSync(phasesDir)
+            .filter(name => name.endsWith('.md'))
+            .map(name => join(phasesDir, name));
+        })
+      : [];
+    return [...phaseFiles, join(REPO_ROOT, 'scripts', 'setup-progress.sh')]
+      .filter(file => existsSync(file));
+  }
 
-  const directJqRedirectViolations: { file: string; command: string }[] = [];
-  const missingPreflightViolations: string[] = [];
+  function scanSetupMutationFiles(): {
+    directJqRedirectViolations: { file: string; command: string }[];
+    missingPreflightViolations: string[];
+  } {
+    const directJqRedirectViolations: { file: string; command: string }[] = [];
+    const missingPreflightViolations: string[] = [];
 
-  for (const file of SETUP_MUTATION_FILES) {
-    const content = readFileSync(file, 'utf-8');
-    const rel = relPath(file);
-
-    if (content.includes('jq') && !/command -v jq/.test(content)) {
-      missingPreflightViolations.push(rel);
-    }
-
-    const logicalCommands = content.replace(/\\\r?\n/g, ' ');
     const directRedirectPattern =
       /(?:echo|printf|cat|jq)\b[^;\n]*\bjq\b[^;\n]*>\s*(?:"\$(?:\{)?(?:CONFIG_FILE|SETTINGS_FILE)(?:\})?"|\$\{(?:CONFIG_FILE|SETTINGS_FILE)\})/g;
 
-    for (const match of logicalCommands.matchAll(directRedirectPattern)) {
-      directJqRedirectViolations.push({
-        file: rel,
-        command: match[0].trim(),
-      });
+    for (const file of setupMutationFiles()) {
+      const content = readFileSync(file, 'utf-8');
+      const rel = relPath(file);
+
+      if (content.includes('jq') && !/command -v jq/.test(content)) {
+        missingPreflightViolations.push(rel);
+      }
+
+      const logicalCommands = content.replace(/\\\r?\n/g, ' ');
+
+      for (const match of logicalCommands.matchAll(directRedirectPattern)) {
+        directJqRedirectViolations.push({
+          file: rel,
+          command: match[0].trim(),
+        });
+      }
     }
+
+    return { directJqRedirectViolations, missingPreflightViolations };
   }
 
+  it('reads the setup phase documents it claims to guard', () => {
+    const files = setupMutationFiles();
+    expect(files.some(file => file.endsWith('setup-progress.sh'))).toBe(true);
+    expect(files.filter(file => file.endsWith('.md')).length).toBeGreaterThanOrEqual(2);
+  });
+
   it('preflights jq before setup files use it for JSON mutation', () => {
+    const { missingPreflightViolations } = scanSetupMutationFiles();
     if (missingPreflightViolations.length > 0) {
       expect.fail(
         `Setup files use jq without a command -v jq preflight:\n` +
@@ -243,6 +274,7 @@ describe('Contract 2b: setup jq writes are guarded against truncation', () => {
   });
 
   it('does not redirect jq output directly to live setup config/settings files', () => {
+    const { directJqRedirectViolations } = scanSetupMutationFiles();
     if (directJqRedirectViolations.length > 0) {
       expect.fail(
         `Found destructive jq redirects that can truncate live setup files:\n` +
@@ -427,7 +459,7 @@ describe('Contract 5: no hardcoded ~/.claude in LLM-consumed artifacts', () => {
   });
 });
 
-// ── Contract 9: hooks/hooks.json commands use $CLAUDE_PLUGIN_ROOT, no absolute paths ──
+// ── Contract 9: hooks/hooks.json commands use $QODER_PLUGIN_ROOT, no absolute paths ──
 // Issue #2348 — plugin hook delivery must be portable
 
 describe('Contract 9: hooks/hooks.json portability', () => {
@@ -437,7 +469,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
   // restore hooks/hooks.json from git here: hook portability hotfixes intentionally
   // change that source file, and a checkout would hide the working-tree contract.
 
-  it('all hook commands reference $CLAUDE_PLUGIN_ROOT', () => {
+  it('all hook commands reference $QODER_PLUGIN_ROOT', () => {
     if (!existsSync(HOOKS_JSON_PATH)) return;
 
     const hooksJson = JSON.parse(readFileSync(HOOKS_JSON_PATH, 'utf-8'));
@@ -447,7 +479,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
       for (const hookGroup of eventHooks as Array<{ hooks: Array<{ type: string; command: string }> }>) {
         for (const hook of hookGroup.hooks) {
           if (hook.type !== 'command') continue;
-          if (!hook.command.includes('$CLAUDE_PLUGIN_ROOT')) {
+          if (!hook.command.includes('$QODER_PLUGIN_ROOT')) {
             violations.push({ event: eventType, command: hook.command });
           }
         }
@@ -457,8 +489,8 @@ describe('Contract 9: hooks/hooks.json portability', () => {
     if (violations.length > 0) {
       const details = violations.map(v => `  ${v.event}: ${v.command}`).join('\n');
       expect.fail(
-        `Found hook commands not using $CLAUDE_PLUGIN_ROOT:\n${details}\n\n` +
-        `All plugin hook commands must reference $CLAUDE_PLUGIN_ROOT for portability.`
+        `Found hook commands not using $QODER_PLUGIN_ROOT:\n${details}\n\n` +
+        `All plugin hook commands must reference $QODER_PLUGIN_ROOT for portability.`
       );
     }
   });
@@ -501,7 +533,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
       for (const hookGroup of eventHooks as Array<{ hooks: Array<{ type: string; command: string }> }>) {
         for (const hook of hookGroup.hooks) {
           if (hook.type !== 'command') continue;
-          if (!hook.command.startsWith('node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs ')) {
+          if (!hook.command.startsWith('node "$QODER_PLUGIN_ROOT"/scripts/run.cjs ')) {
             violations.push({ event: eventType, command: hook.command, reason: 'not direct node run.cjs' });
           }
           if (/^(?:"\/bin\/sh"|sh)\s/.test(hook.command) || hook.command.includes('find-node.sh')) {
@@ -515,7 +547,7 @@ describe('Contract 9: hooks/hooks.json portability', () => {
       const details = violations.map(v => `  ${v.event} (${v.reason}): ${v.command}`).join('\n');
       expect.fail(
         `Found non-Windows-safe source hook commands in hooks.json:\n${details}\n\n` +
-        `Source plugin manifest commands must be direct: node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs ...`
+        `Source plugin manifest commands must be direct: node "$QODER_PLUGIN_ROOT"/scripts/run.cjs ...`
       );
     }
   });
@@ -608,14 +640,14 @@ describe('Contract 10: installer manages stale OMC-created agents and skills', (
 
 describe('OMC setup Ralph Ruby dependency guidance (issue #2969)', () => {
   it('checks Ruby during setup with product-facing Ralph remediation', () => {
-    const phasePath = join(REPO_ROOT, 'skills', 'omc-setup', 'phases', '02-configure.md');
+    const phasePath = join(REPO_ROOT, 'skills', 'omq-setup', 'phases', '02-configure.md');
     const content = readFileSync(phasePath, 'utf-8');
 
     expect(content).toContain('Step 2.0: Check Ralph Ruby Dependency');
     expect(content).toContain('command -v ruby');
     expect(content).toContain('Ralph workflows require Ruby');
     expect(content).toContain('sudo apt update && sudo apt install ruby-full');
-    expect(content).toContain('restart Claude Code');
+    expect(content).toContain('restart Qoder CLI');
   });
 });
 
@@ -666,8 +698,8 @@ describe('Contract 11: SessionEnd hooks are async (issue #3240)', () => {
       .filter(hook => hook.type === 'command')
       .map(hook => hook.command);
 
-    expect(commands).toContain('node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/session-end.mjs');
-    expect(commands).toContain('node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/wiki-session-end.mjs');
+    expect(commands).toContain('node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/session-end.mjs');
+    expect(commands).toContain('node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/wiki-session-end.mjs');
   });
 
   it('non-SessionEnd hooks do not unconditionally carry async:true', () => {

@@ -19,8 +19,10 @@ const REPO_ROOT = join(__dirname, '..', '..', '..');
 function extractNodeEScripts(content: string): string[] {
   const scripts: string[] = [];
 
-  // Single-line: node -e "..."
-  const singleLine = /^node -e "(.+)"$/gm;
+  // Single-line: node -e "..." — either at line start or embedded in a
+  // $( ) command substitution (the omq-setup plugin-root resolver embeds it
+  // mid-line), so the scan must not be line-anchored.
+  const singleLine = /node -e "([^"]+)"/g;
   let m: RegExpExecArray | null;
   while ((m = singleLine.exec(content)) !== null) {
     scripts.push(m[1]);

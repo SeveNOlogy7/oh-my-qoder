@@ -36,7 +36,7 @@ const SUPPORTED_API_OPERATIONS = new Set([
 ] as const);
 const TEAM_API_USAGE = `
 Usage:
-  omc team api <operation> --input '<json>' [--json] [--cwd DIR]
+  omq team api <operation> --input '<json>' [--json] [--cwd DIR]
 
 Supported operations:
   ${Array.from(SUPPORTED_API_OPERATIONS).join(', ')}
@@ -152,8 +152,8 @@ interface TeamPanesFile {
 }
 
 function getTeamWorkerIdentityFromEnv(env: NodeJS.ProcessEnv = process.env): string | null {
-  const omc = typeof env.OMQ_TEAM_WORKER === 'string' ? env.OMQ_TEAM_WORKER.trim() : '';
-  if (omc) return omc;
+  const omq = typeof env.OMQ_TEAM_WORKER === 'string' ? env.OMQ_TEAM_WORKER.trim() : '';
+  if (omq) return omq;
   const omx = typeof env.OMX_TEAM_WORKER === 'string' ? env.OMX_TEAM_WORKER.trim() : '';
   return omx || null;
 }
@@ -370,7 +370,7 @@ function autoTeamName(task: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 24) || 'task';
-  return `omc-${slug}-${Date.now().toString(36).slice(-4)}`;
+  return `omq-${slug}-${Date.now().toString(36).slice(-4)}`;
 }
 
 function parseJsonInput(inputRaw: string | undefined): Record<string, unknown> {
@@ -737,7 +737,7 @@ export async function executeTeamApiOperation(
       operation,
       error: {
         code: 'UNSUPPORTED_OPERATION',
-        message: `Unsupported omc team api operation: ${operation}`,
+        message: `Unsupported omq team api operation: ${operation}`,
       },
     };
   }
@@ -821,14 +821,14 @@ export async function teamCleanupCommand(
 
 export const TEAM_USAGE = `
 Usage:
-  omc team start --agent <claude|codex|gemini|cursor|grok|antigravity>[,<agent>...] --task "<task>" [--count N] [--name TEAM] [--cwd DIR] [--new-window] [--auto-merge] [--json]
-  omc team status <job_id|team_name> [--json] [--cwd DIR]
-  omc team wait <job_id> [--timeout-ms MS] [--json]
-  omc team cleanup <job_id> [--grace-ms MS] [--json]
-  omc team resume <team_name> [--json] [--cwd DIR]
-  omc team shutdown <team_name> [--force] [--json] [--cwd DIR]
-  omc team api <operation> [--input '<json>'] [--json] [--cwd DIR]
-  omc team [ralph] <N:agent-type[:role]> "task" [--json] [--cwd DIR] [--new-window]
+  omq team start --agent <claude|codex|gemini|cursor|grok|antigravity>[,<agent>...] --task "<task>" [--count N] [--name TEAM] [--cwd DIR] [--new-window] [--auto-merge] [--json]
+  omq team status <job_id|team_name> [--json] [--cwd DIR]
+  omq team wait <job_id> [--timeout-ms MS] [--json]
+  omq team cleanup <job_id> [--grace-ms MS] [--json]
+  omq team resume <team_name> [--json] [--cwd DIR]
+  omq team shutdown <team_name> [--force] [--json] [--cwd DIR]
+  omq team api <operation> [--input '<json>'] [--json] [--cwd DIR]
+  omq team [ralph] <N:agent-type[:role]> "task" [--json] [--cwd DIR] [--new-window]
 
 Worktrees:
   Native per-worker git worktree mode is opt-in/config-gated with team.ops.worktreeMode or OMQ_TEAM_WORKTREE_MODE=detached|named.
@@ -836,19 +836,19 @@ Worktrees:
 
 Auto-merge (v2-only):
   --auto-merge          Enable per-commit auto-merge to leader and auto-rebase fanout.
-                        Each worker runs in a dedicated git worktree on omc-team/{team}/{worker}.
+                        Each worker runs in a dedicated git worktree on omq-team/{team}/{worker}.
                         Bursts of rapid worker commits coalesce to a single merge of HEAD.
                         Requires OMQ_RUNTIME_V2=1. Leader branch must not be 'main' or 'master'.
                         Equivalent to OMQ_TEAMS_AUTO_MERGE=1.
 
 Examples:
-  omc team start --agent codex --count 2 --task "review auth flow" --new-window
-  omc team status omc-abc123
-  omc team status auth-review
-  omc team resume auth-review
-  omc team shutdown auth-review --force
-  omc team api list-tasks --input '{"teamName":"auth-review"}' --json
-  omc team 3:codex "refactor launch command"
+  omq team start --agent codex --count 2 --task "review auth flow" --new-window
+  omq team status omq-abc123
+  omq team status auth-review
+  omq team resume auth-review
+  omq team shutdown auth-review --force
+  omq team api list-tasks --input '{"teamName":"auth-review"}' --json
+  omq team 3:codex "refactor launch command"
 
 Worktree mode:
   Native worker worktrees are opt-in/config-gated for runtime-v2.
@@ -991,7 +991,7 @@ function parseStartArgs(args: string[]): StartArgsParsed {
       continue;
     }
 
-    throw new Error(`Unknown argument for "omc team start": ${token}`);
+    throw new Error(`Unknown argument for "omq team start": ${token}`);
   }
 
   if (count < 1) throw new Error('--count must be >= 1');
@@ -1109,11 +1109,11 @@ function parseCommonJobArgs(args: string[], command: 'status' | 'wait' | 'cleanu
       }
     }
 
-    throw new Error(`Unknown argument for "omc team ${command}": ${token}`);
+    throw new Error(`Unknown argument for "omq team ${command}": ${token}`);
   }
 
   if (!target) {
-    throw new Error(`Missing required target for "omc team ${command}".`);
+    throw new Error(`Missing required target for "omq team ${command}".`);
   }
 
   return {
@@ -1163,11 +1163,11 @@ function parseTeamTargetArgs(args: string[], command: 'resume' | 'shutdown'): {
       continue;
     }
 
-    throw new Error(`Unknown argument for "omc team ${command}": ${token}`);
+    throw new Error(`Unknown argument for "omq team ${command}": ${token}`);
   }
 
   if (!teamName) {
-    throw new Error(`Missing required <team_name> for "omc team ${command}".`);
+    throw new Error(`Missing required <team_name> for "omq team ${command}".`);
   }
 
   return {
@@ -1222,11 +1222,11 @@ function parseApiArgs(args: string[]): {
       continue;
     }
 
-    throw new Error(`Unknown argument for "omc team api": ${token}`);
+    throw new Error(`Unknown argument for "omq team api": ${token}`);
   }
 
   if (!operation) {
-    throw new Error(`Missing required <operation> for "omc team api"\n\n${TEAM_API_USAGE}`);
+    throw new Error(`Missing required <operation> for "omq team api"\n\n${TEAM_API_USAGE}`);
   }
 
   return {
@@ -1317,7 +1317,7 @@ function parseLegacyStartAlias(args: string[]): TeamLegacyStartArgs | null {
       ralph = approvedHintOutcome.hint.linkedRalph === true ? true : ralph;
     }
   } else {
-    const command = `omc team ${ralph ? 'ralph ' : ''}${spec} ${JSON.stringify(task)}`;
+    const command = `omq team ${ralph ? 'ralph ' : ''}${spec} ${JSON.stringify(task)}`;
     const approvedHintOutcome = readApprovedExecutionLaunchHintOutcome(cwd, 'team', {
       task,
       command,

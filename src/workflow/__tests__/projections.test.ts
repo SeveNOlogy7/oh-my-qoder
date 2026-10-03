@@ -43,9 +43,11 @@ describe('registry projections — canonical JSON and digest', () => {
 describe('registry projections — drift check against installed surfaces', () => {
   it('matches the repository skills/ and commands/ surface exactly', () => {
     const installed = enumerateInstalledSurfaces(process.cwd());
-    // 41 + execute/review/research, which now ship as real skill directories.
-    expect(installed.skills.length).toBe(31);
-    expect(installed.commands.length).toBe(21);
+    // Census of this fork's payload: 43 skill directories and 28 command files. The
+    // same two numbers are what `git ls-files` yields to scripts/generate-inventory-graph.mjs,
+    // so the durable inventory graph and this assertion cannot drift apart silently.
+    expect(installed.skills.length).toBe(43);
+    expect(installed.commands.length).toBe(28);
     const drift = checkProjectionDrift(installed);
     expect(drift.unregistered).toEqual([]);
     expect(drift.missing).toEqual([]);

@@ -4,8 +4,12 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { recordTaskCompletionUsage } from '../mcp-team-bridge.js';
 import type { BridgeConfig } from '../types.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('mcp-team-bridge usage recording', () => {
+  useDefaultStateRoot();
   it('records usage on task completion', () => {
     const workingDirectory = mkdtempSync(join(tmpdir(), 'omq-team-usage-'));
     const promptFile = join(workingDirectory, 'prompt.md');

@@ -17,6 +17,9 @@ import { tmpdir } from 'os';
 import { getTeamStatus } from '../team-status.js';
 import { atomicWriteJson } from '../fs-utils.js';
 import type { TaskFile, McpWorkerMember } from '../types.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 // ============================================================
 // Test fixtures
@@ -111,6 +114,7 @@ function shouldAutoCleanup(teamName: string, workDir: string): boolean {
 // ============================================================
 
 describe('auto-cleanup when all tasks complete', () => {
+  useDefaultStateRoot();
   it('should trigger shutdown when all tasks are completed', () => {
     writeWorkerRegistry([makeWorker('w1')]);
     writeTask(makeTask('1', 'w1', 'completed'));

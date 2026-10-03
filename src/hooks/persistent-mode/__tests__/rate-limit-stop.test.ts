@@ -13,7 +13,12 @@ import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
 
+// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// // the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
+
 describe('persistent-mode rate-limit stop guard (fix #777)', () => {
+  useDefaultStateRoot();
   function makeRalphWorktree(sessionId: string): string {
     const tempDir = mkdtempSync(join(tmpdir(), 'ralph-rate-limit-'));
     execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });

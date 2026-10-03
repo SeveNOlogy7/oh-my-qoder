@@ -5,6 +5,9 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { clearWorktreeCache } from '../../lib/worktree-paths.js';
+// Drives real artifact writers through the DEFAULT state-root branch over temp
+// repos (#42): lift the per-file OMQ_STATE_DIR pin for every test in this file.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 import {
   addUltragoalGoal,
   buildClaudeGoalInstruction,
@@ -34,6 +37,8 @@ function cleanQualityGate(): object {
 }
 
 describe('ultragoal artifacts', () => {
+  useDefaultStateRoot();
+
   it('creates brief, goals, and ledger artifacts under .omq/ultragoal', async () => {
     await withTempRepo(async (cwd) => {
       const plan = await createUltragoalPlan(cwd, {

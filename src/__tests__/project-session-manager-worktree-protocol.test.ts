@@ -6,7 +6,22 @@ import { join } from 'node:path';
 
 const WORKTREE_LIB_PATH = join(process.cwd(), 'skills', 'project-session-manager', 'lib', 'worktree.sh');
 const PSM_PATH = join(process.cwd(), 'skills', 'project-session-manager', 'psm.sh');
-const REAL_GIT = execFileSync('bash', ['-lc', 'command -v git'], { encoding: 'utf-8' }).trim();
+// Under Git Bash `command -v git` answers in the MSYS namespace (/mingw64/bin/git), which
+// win32 CreateProcess cannot launch -- execFileSync died with ENOENT before any fixture ran.
+// cygpath gives the native spelling; the path travels as $1 so a Git directory with spaces or
+// quotes survives, and hosts without cygpath keep the raw answer (macOS/Linux are unchanged).
+function resolveNativeGitPath(): string {
+  const found = execFileSync('bash', ['-lc', 'command -v git'], { encoding: 'utf-8' }).trim();
+  if (!found || process.platform !== 'win32') return found;
+  return (
+    execFileSync(
+      'bash',
+      ['-lc', 'if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; fi', 'psm-fixture', found],
+      { encoding: 'utf-8' },
+    ).trim() || found
+  );
+}
+const REAL_GIT = resolveNativeGitPath();
 
 function commandExit(script: string, env: NodeJS.ProcessEnv): { status: number; stderr: string } {
   try {

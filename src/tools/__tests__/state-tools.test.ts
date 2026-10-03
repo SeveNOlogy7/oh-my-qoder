@@ -11,8 +11,11 @@ import {
   stateGetStatusTool,
 } from '../state-tools.js';
 import { emergencyMutateStateFileIf } from '../../lib/mode-state-io.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
-const TEST_DIR = '/tmp/state-tools-test';
+const TEST_DIR = join(tmpdir(), 'state-tools-test');
 
 // Mock validateWorkingDirectory to allow test directory
 vi.mock('../../lib/worktree-paths.js', async () => {
@@ -95,6 +98,7 @@ function completedPortableWorkflowState(sessionId: string): Record<string, unkno
 }
 
 describe('state-tools', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     mkdirSync(join(TEST_DIR, '.omq', 'state'), { recursive: true });
   });
@@ -1470,7 +1474,11 @@ describe('state-tools', () => {
         workingDirectory: TEST_DIR,
       });
 
+      // The title asks for the cross-session view, so it must request it:
+      // resolveSessionId() always resolves (falling back to a process id), which
+      // makes an omitted session_id mean "current session" by contract.
       const result = await stateListActiveTool.handler({
+        all: true,
         workingDirectory: TEST_DIR,
       });
 
@@ -1479,14 +1487,19 @@ describe('state-tools', () => {
     });
 
     it('should include team mode when team state is active', async () => {
+      // Both calls must observe the same session. These cases passed on one host and failed on another
+      // while relying on each call resolving it implicitly, so the session is now named on both sides.
+      const sessionId = 'listing-team';
       await stateWriteTool.handler({
         mode: 'team',
         active: true,
+        session_id: sessionId,
         state: { phase: 'team-exec' },
         workingDirectory: TEST_DIR,
       });
 
       const result = await stateListActiveTool.handler({
+        session_id: sessionId,
         workingDirectory: TEST_DIR,
       });
 
@@ -1494,14 +1507,17 @@ describe('state-tools', () => {
     });
 
     it('should include autoresearch mode when autoresearch state is active', async () => {
+      const sessionId = 'listing-autoresearch';
       await stateWriteTool.handler({
         mode: 'autoresearch',
         active: true,
+        session_id: sessionId,
         state: { phase: 'running' },
         workingDirectory: TEST_DIR,
       });
 
       const result = await stateListActiveTool.handler({
+        session_id: sessionId,
         workingDirectory: TEST_DIR,
       });
 
@@ -1509,14 +1525,17 @@ describe('state-tools', () => {
     });
 
     it('should include deep-interview mode when deep-interview state is active', async () => {
+      const sessionId = 'listing-deep-interview';
       await stateWriteTool.handler({
         mode: 'deep-interview',
         active: true,
+        session_id: sessionId,
         state: { phase: 'questioning' },
         workingDirectory: TEST_DIR,
       });
 
       const result = await stateListActiveTool.handler({
+        session_id: sessionId,
         workingDirectory: TEST_DIR,
       });
 
@@ -1524,14 +1543,17 @@ describe('state-tools', () => {
     });
 
     it('should include self-improve mode when self-improve state is active', async () => {
+      const sessionId = 'listing-self-improve';
       await stateWriteTool.handler({
         mode: 'self-improve',
         active: true,
+        session_id: sessionId,
         state: { tournament_round: 1 },
         workingDirectory: TEST_DIR,
       });
 
       const result = await stateListActiveTool.handler({
+        session_id: sessionId,
         workingDirectory: TEST_DIR,
       });
 

@@ -21,6 +21,7 @@ function normalizePathForAssert(path: string): string {
 describe('session history search', () => {
   const repoRoot = process.cwd();
   const originalConfigDir = process.env.QODER_CONFIG_DIR;
+  const originalStateDir = process.env.OMQ_STATE_DIR;
   let tempRoot: string;
   let claudeDir: string;
   let otherProject: string;
@@ -81,7 +82,11 @@ describe('session history search', () => {
     } else {
       process.env.QODER_CONFIG_DIR = originalConfigDir;
     }
-    delete process.env.OMQ_STATE_DIR;
+    if (originalStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = originalStateDir;
+    }
     rmSync(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     rmSync(tildeClaudeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });

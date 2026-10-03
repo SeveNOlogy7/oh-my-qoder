@@ -9,6 +9,9 @@ import {
   refreshMissionBoardState,
 } from '../../hud/mission-board.js';
 import { resolveSessionStatePaths } from '../../lib/worktree-paths.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const tempDirs: string[] = [];
 
@@ -27,6 +30,7 @@ afterEach(() => {
 });
 
 describe('mission board state tracking', () => {
+  useDefaultStateRoot();
   it('records session-scoped agent starts and completions', () => {
     const cwd = makeTempDir();
 

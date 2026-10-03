@@ -14,8 +14,17 @@ import {
   getReplaySummary,
   resetSessionStartTimes,
 } from '../session-replay.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
+// Anchors process.cwd()-resolving writers (hud state, session-end jobs,
+// alias telemetry) at a per-test temp dir instead of the real .omq/state.
+import { useCwdFixture } from '../../../__tests__/helpers/cwd-fixture.js';
+
+useCwdFixture();
 
 describe('session-replay', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {
