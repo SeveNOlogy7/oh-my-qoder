@@ -13,6 +13,9 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { clearWorktreeCache } from '../../lib/worktree-paths.js';
+// These tests drive real artifact writers through the workspace-marker branch
+// of getOmqRoot() (#42): lift the per-file OMQ_STATE_DIR pin for every test.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 import {
   createUltragoalPlan,
   startNextUltragoal,
@@ -29,6 +32,8 @@ function cleanQualityGate(): object {
 }
 
 describe('ultragoal artifacts — multi-repo workspace anchor', () => {
+  useDefaultStateRoot();
+
   it('writes artifacts to workspace anchor .omq/ when .omq-workspace marker is in a parent dir', async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'omq-multirepo-anchor-'));
     try {

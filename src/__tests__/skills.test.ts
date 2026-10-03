@@ -69,10 +69,12 @@ describe('Builtin Skills', () => {
   });
 
   describe('createBuiltinSkills()', () => {
-    it('should return correct number of skills (31 canonical + 2 aliases)', () => {
+    it('should return correct number of skills (43 canonical + 2 aliases)', () => {
       const skills = createBuiltinSkills();
-      // 33 entries: 31 canonical skills + 2 aliases (cancel-ralph, psm)
-      expect(skills).toHaveLength(33);
+      // 45 entries: the 43 skill directories this fork ships + 2 aliases
+      // (cancel-ralph, psm). The loader enumerates skills/, so a count that moves
+      // here means a directory was added or removed -- that needs a receipt.
+      expect(skills).toHaveLength(45);
     });
 
     it('should return an array of BuiltinSkill objects', () => {
@@ -137,10 +139,10 @@ describe('Builtin Skills', () => {
         'execute',
         'external-context',
         'hud',
-        'omc-doctor',
-        'omc-plan',
-        'omc-review',
-        'omc-setup',
+        'omq-doctor',
+        'omq-plan',
+        'omq-review',
+        'omq-setup',
         'project-session-manager',
         'psm',
         'ralph',
@@ -220,7 +222,7 @@ describe('Builtin Skills', () => {
       expect(skill).toBeDefined();
       expect(skill?.description).toContain('Worktree-first');
       expect(skill?.template).toContain('Quick Start (worktree-first)');
-      expect(skill?.template).toContain('`omc teleport`');
+      expect(skill?.template).toContain('`omq teleport`');
     });
 
     it('should keep ask as the canonical process-first advisor wrapper', () => {
@@ -247,7 +249,7 @@ describe('Builtin Skills', () => {
 
 
 
-    it('should expose approval-gated pipeline metadata for deep-interview handoff into omc-plan', () => {
+    it('should expose approval-gated pipeline metadata for deep-interview handoff into omq-plan', () => {
       const skill = getBuiltinSkill('deep-interview');
       expect(skill?.pipeline).toEqual({
         steps: ['deep-interview', 'plan'],
@@ -263,7 +265,7 @@ describe('Builtin Skills', () => {
       expect(skill?.template).not.toContain('Pipeline: `deep-interview → plan → autopilot`');
       expect(skill?.template).not.toContain('Next skill: `plan`');
       expect(skill?.template).not.toContain('3. Invoke Skill("oh-my-claudecode:plan")');
-      expect(skill?.template).toContain('Only after the user selects this option, invoke `Skill("oh-my-claudecode:plan")`');
+      expect(skill?.template).toContain('Only after the user selects this option, invoke `Skill("oh-my-qoder:plan")`');
       expect(skill?.template).toContain('do not automatically invoke autopilot or any other execution skill');
       expect(skill?.template).toContain('`.omq/specs/deep-interview-{slug}.md`');
       expect(skill?.template).toContain('Why now: {one_sentence_targeting_rationale}');
@@ -272,7 +274,7 @@ describe('Builtin Skills', () => {
       expect(skill?.template).toContain('Every round explicitly names the weakest dimension and why it is the next target');
       expect(skill?.argumentHint).toContain('--autoresearch');
       expect(skill?.template).toContain('zero-learning-curve setup lane for the stateful `autoresearch` skill');
-      expect(skill?.template).toContain('Skill("oh-my-claudecode:autoresearch")');
+      expect(skill?.template).toContain('Skill("oh-my-qoder:autoresearch")');
     });
 
     it('documents deep-interview Round 0 topology locking and multi-component scoring (issue #2919)', () => {
@@ -344,6 +346,53 @@ describe('Builtin Skills', () => {
       );
     });
 
+    it('reads the deep-interview threshold from the project settings directory this CLI actually uses', () => {
+      const profileDir = mkdtempSync(join(tmpdir(), 'omq-skill-profile-'));
+      const projectDir = mkdtempSync(join(tmpdir(), 'omq-skill-project-'));
+      tempDirs.push(profileDir, projectDir);
+
+      process.env.QODER_CONFIG_DIR = profileDir;
+      mkdirSync(join(projectDir, '.qoder'), { recursive: true });
+      writeFileSync(
+        join(projectDir, '.qoder', 'settings.json'),
+        JSON.stringify({ omq: { deepInterview: { ambiguityThreshold: 0.18 } } }),
+      );
+
+      process.chdir(projectDir);
+      clearSkillsCache();
+
+      const skill = getBuiltinSkill('deep-interview');
+      expect(skill?.template).toContain('Deep Interview threshold: 18% (source: ./.qoder/settings.json)');
+      expect(skill?.template).toContain('"threshold_source": "./.qoder/settings.json",');
+    });
+
+    it('prefers the fork settings spelling over the ancestor one in both directory and key', () => {
+      const projectDir = mkdtempSync(join(tmpdir(), 'omq-skill-precedence-'));
+      tempDirs.push(projectDir);
+
+      mkdirSync(join(projectDir, '.qoder'), { recursive: true });
+      mkdirSync(join(projectDir, '.claude'), { recursive: true });
+      // Both project directories configure a threshold, and the .qoder file carries
+      // both spellings: the fork directory and the fork key must win.
+      writeFileSync(
+        join(projectDir, '.qoder', 'settings.json'),
+        JSON.stringify({
+          omq: { deepInterview: { ambiguityThreshold: 0.18 } },
+          omc: { deepInterview: { ambiguityThreshold: 0.31 } },
+        }),
+      );
+      writeFileSync(
+        join(projectDir, '.claude', 'settings.json'),
+        JSON.stringify({ omc: { deepInterview: { ambiguityThreshold: 0.12 } } }),
+      );
+
+      process.chdir(projectDir);
+      clearSkillsCache();
+
+      const skill = getBuiltinSkill('deep-interview');
+      expect(skill?.template).toContain('Deep Interview threshold: 18% (source: ./.qoder/settings.json)');
+    });
+
     it('refreshes cached deep-interview output when the configured threshold changes without requiring manual cache clearing', () => {
       const projectDir = mkdtempSync(join(tmpdir(), 'omc-skill-cache-refresh-'));
       tempDirs.push(projectDir);
@@ -391,9 +440,9 @@ describe('Builtin Skills', () => {
       const t = skill!.template;
 
       // Previously-fixed references (regression guard)
-      expect(t).toContain('Deep Interview threshold: 15% (source: [$QODER_CONFIG_DIR|~/.claude]/settings.json)');
+      expect(t).toContain('Deep Interview threshold: 15% (source: [$QODER_CONFIG_DIR|~/.qoder[-cn]]/settings.json)');
       expect(t).toContain('"threshold": 0.15,');
-      expect(t).toContain('"threshold_source": "[$QODER_CONFIG_DIR|~/.claude]/settings.json",');
+      expect(t).toContain('"threshold_source": "[$QODER_CONFIG_DIR|~/.qoder[-cn]]/settings.json",');
       expect(t).toContain('drops below 15%.');
 
       expect(t).toContain('resolved threshold for this run'); // Purpose/Execution_Policy
@@ -414,9 +463,9 @@ describe('Builtin Skills', () => {
     it('ships a config-aware deep-interview SKILL.md for native skill-loader paths (issues #2723, #3030)', () => {
       const raw = readFileSync(join(originalCwd, 'skills', 'deep-interview', 'SKILL.md'), 'utf-8');
       expect(raw).toContain('Native Plugin Invocation Guard (Issue #3030)');
-      expect(raw).toContain('`/oh-my-claudecode:deep-interview` or `Skill("oh-my-claudecode:deep-interview")`');
+      expect(raw).toContain('`/oh-my-qoder:deep-interview` or `Skill("oh-my-qoder:deep-interview")`');
       expect(raw).toContain('The user-facing preferred invocation is `/deep-interview`');
-      expect(raw).toContain('do not recommend or advertise `/oh-my-claudecode:deep-interview`');
+      expect(raw).toContain('do not recommend or advertise `/oh-my-qoder:deep-interview`');
       expect(raw).toContain('Phase 0 below remains blocking');
       expect(raw).toContain('must resolve `omc.deepInterview.ambiguityThreshold` from settings');
       expect(raw).toContain('Phase 0: Resolve Ambiguity Threshold (blocking prerequisite)');
@@ -543,7 +592,7 @@ describe('Builtin Skills', () => {
         expect(deepInterviewSkill?.template)
           .toContain('zero-learning-curve setup lane for the stateful `autoresearch` skill');
         expect(deepInterviewSkill?.template)
-          .toContain('Skill("oh-my-claudecode:autoresearch")');
+          .toContain('Skill("oh-my-qoder:autoresearch")');
         expect(askSkill?.template)
           .toContain('node "$CLAUDE_PLUGIN_ROOT"/bridge/cli.cjs ask {{ARGUMENTS}}');
       } finally {
@@ -567,8 +616,8 @@ describe('Builtin Skills', () => {
       expect(skill?.template).toContain('markdown decision logs');
     });
 
-    it('should expose approval-gated omc-plan metadata without an unconditional autopilot handoff', () => {
-      const skill = getBuiltinSkill('omc-plan');
+    it('should expose approval-gated omq-plan metadata without an unconditional autopilot handoff', () => {
+      const skill = getBuiltinSkill('omq-plan');
       expect(skill?.pipeline).toEqual({
         steps: ['deep-interview'],
         nextSkill: undefined,
@@ -577,7 +626,7 @@ describe('Builtin Skills', () => {
         handoffRequiresApproval: true,
       });
       expect(skill?.template).toContain('## Skill Pipeline');
-      expect(skill?.template).toContain('Pipeline: `deep-interview → omc-plan`');
+      expect(skill?.template).toContain('Pipeline: `deep-interview → omq-plan`');
       expect(skill?.template).toContain('This stage is approval-gated');
       expect(skill?.template).toContain('unless the user explicitly approves that next step');
       expect(skill?.template).not.toContain('Next skill: `autopilot`');
@@ -631,7 +680,7 @@ describe('Builtin Skills', () => {
       expect(skill?.template).toContain('only when the Claude CLI is resolvable');
       expect(skill?.template).toContain('no runnable fallback exists');
       expect(skill?.template).toContain('orchestration/startup is unavailable');
-      expect(skill?.template).toContain('omc doctor --team-routing');
+      expect(skill?.template).toContain('omq doctor --team-routing');
     });
 
 
@@ -658,7 +707,7 @@ describe('Builtin Skills', () => {
     it('should return canonical skill names by default', () => {
       const names = listBuiltinSkillNames();
 
-      expect(names).toHaveLength(31);
+      expect(names).toHaveLength(43);
       expect(names).toContain('ai-slop-cleaner');
       expect(names).toContain('ask');
       expect(names).toContain('autopilot');
@@ -668,12 +717,14 @@ describe('Builtin Skills', () => {
       expect(names).toContain('execute');
       expect(names).toContain('self-improve');
       expect(names).toContain('ultragoal');
-      expect(names).toContain('omc-plan');
+      expect(names).toContain('omq-plan');
       expect(names).toContain('deepinit');
       expect(names).toContain('release');
-      expect(names).toContain('omc-doctor');
+      expect(names).toContain('omq-doctor');
       expect(names).toContain('hud');
-      expect(names).toContain('omc-setup');
+      expect(names).toContain('omq-setup');
+      expect(names).toContain('omq-reference');
+      expect(names).toContain('omq-teams');
       expect(names).toContain('trace');
       expect(names).toContain('visual-verdict');
       expect(names).toContain('wiki');
@@ -691,8 +742,9 @@ describe('Builtin Skills', () => {
     it('should include aliases when explicitly requested', () => {
       const names = listBuiltinSkillNames({ includeAliases: true });
 
-      // swarm alias removed in #1131; learner retired in 5.0.0; cancel-ralph and psm remain
-      expect(names).toHaveLength(33);
+      // swarm alias removed in #1131; cancel-ralph and psm remain. learner is a
+      // retired-in-5.0.0 name upstream but still ships here as a wrapper directory.
+      expect(names).toHaveLength(45);
       expect(names).toContain('ai-slop-cleaner');
       expect(names).toContain('autoresearch');
       expect(names).toContain('self-improve');

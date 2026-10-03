@@ -55,6 +55,9 @@ import { wakeOpenClaw } from "../index.js";
 import { getOpenClawConfig, resolveGateway } from "../config.js";
 import { wakeGateway } from "../dispatcher.js";
 import type { OpenClawConfig } from "../types.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const TEST_CONFIG: OpenClawConfig = {
   enabled: true,
@@ -78,6 +81,7 @@ const PROJECT_PATH = "/home/user/project";
 const STATE_DIR = join(PROJECT_PATH, ".omq", "state");
 
 describe("dead-pane guard in wakeOpenClaw (issue #2562)", () => {
+  useDefaultStateRoot();
   let origTmux: string | undefined;
   let origTmuxPane: string | undefined;
 

@@ -256,6 +256,19 @@ describe('scaleUp duplicate worker guard', () => {
     ]);
   });
 
+  it('accepts the qwen provider, the CLI this fork actually ships', async () => {
+    const result = await scaleUp(
+      'demo-team',
+      1,
+      'qwen',
+      [{ subject: 'demo', description: 'demo task' }],
+      cwd,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+    );
+
+    expect(result).toMatchObject({ ok: true, newWorkerCount: 2 });
+  });
+
   it('keeps the active scale-up fence revision aligned through normal worker reservation and commit', async () => {
     config = makeConfig({ state_revision: 4, next_worker_index: 2, worktree_mode: 'disabled' });
     const snapshots: TeamConfig[] = [];

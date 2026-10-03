@@ -19,7 +19,7 @@ import { parseSkillPipelineMetadata, renderSkillPipelineGuidance } from '../../u
 import { renderSkillResourcesGuidance } from '../../utils/skill-resources.js';
 import { renderSkillRuntimeGuidance } from './runtime-guidance.js';
 import { isSkininthegamebrosUser } from '../../utils/skininthegamebros-user.js';
-import { getClaudeConfigDir } from '../../utils/config-dir.js';
+import { getQoderConfigDir } from '../../utils/config-dir.js';
 import entitlementManifest from '../../config/builtin-skill-entitlements.json' with { type: 'json' };
 
 function getPackageDir(): string {
@@ -53,8 +53,8 @@ function getPackageDir(): string {
 const SKILLS_DIR = join(getPackageDir(), 'skills');
 
 /**
- * Claude Code native commands that must not be shadowed by OMC skill short names.
- * Skills with these names will still load but their name will be prefixed with 'omc-'
+ * Qoder CLI native commands that must not be shadowed by OMQ skill short names.
+ * Skills with these names will still load but their name will be prefixed with 'omq-'
  * to avoid overriding built-in /review, /plan, /security-review etc.
  */
 const CC_NATIVE_COMMANDS = new Set([
@@ -79,7 +79,7 @@ const DEFAULT_DEEP_INTERVIEW_AMBIGUITY_THRESHOLD = 0.2;
 function toSafeSkillName(name: string): string {
   const normalized = name.trim();
   return CC_NATIVE_COMMANDS.has(normalized.toLowerCase())
-    ? `omc-${normalized}`
+    ? `omq-${normalized}`
     : normalized;
 }
 
@@ -98,22 +98,30 @@ function readJsonObject(path: string): Record<string, unknown> | null {
   }
 }
 
-function readDeepInterviewThresholdFromSettings(path: string): number | null {
+function readDeepInterviewThresholdFromSettings(
+  path: string,
+  source: string,
+): DeepInterviewThresholdResolution | null {
   const settings = readJsonObject(path);
-  const omc = settings?.omc;
-  if (!omc || typeof omc !== 'object' || Array.isArray(omc)) {
-    return null;
+  if (!settings) return null;
+
+  // 'omq' is this product's own section name inside the CLI's settings.json; 'omc'
+  // is kept as a fallback so pre-hop configuration still resolves. Same shape as
+  // hud/state.ts's `settings.omqHud ?? settings.omcHud`.
+  for (const sectionKey of ['omq', 'omc'] as const) {
+    const section = settings[sectionKey];
+    if (!section || typeof section !== 'object' || Array.isArray(section)) continue;
+
+    const deepInterview = (section as Record<string, unknown>).deepInterview;
+    if (!deepInterview || typeof deepInterview !== 'object' || Array.isArray(deepInterview)) continue;
+
+    const threshold = (deepInterview as Record<string, unknown>).ambiguityThreshold;
+    if (typeof threshold === 'number' && Number.isFinite(threshold) && threshold >= 0 && threshold <= 1) {
+      return { threshold, source };
+    }
   }
 
-  const deepInterview = (omc as Record<string, unknown>).deepInterview;
-  if (!deepInterview || typeof deepInterview !== 'object' || Array.isArray(deepInterview)) {
-    return null;
-  }
-
-  const threshold = (deepInterview as Record<string, unknown>).ambiguityThreshold;
-  return typeof threshold === 'number' && Number.isFinite(threshold) && threshold >= 0 && threshold <= 1
-    ? threshold
-    : null;
+  return null;
 }
 
 type DeepInterviewThresholdResolution = {
@@ -121,19 +129,29 @@ type DeepInterviewThresholdResolution = {
   source: string;
 };
 
+// Project settings live under .qoder for this CLI; .claude is read afterwards so
+// worktrees configured before the hop keep working.
+const PROJECT_SETTINGS_CANDIDATES: ReadonlyArray<{ dir: string; source: string }> = [
+  { dir: '.qoder', source: './.qoder/settings.json' },
+  { dir: '.claude', source: './.claude/settings.json' },
+];
+
 function getDeepInterviewAmbiguityThresholdResolution(): DeepInterviewThresholdResolution {
-  const profileSettingsPath = join(getClaudeConfigDir(), 'settings.json');
-  const projectSettingsPath = join(process.cwd(), '.claude', 'settings.json');
-  const profileThreshold = readDeepInterviewThresholdFromSettings(profileSettingsPath);
-  const projectThreshold = readDeepInterviewThresholdFromSettings(projectSettingsPath);
+  const profileSettingsPath = join(getQoderConfigDir(), 'settings.json');
 
-  if (projectThreshold !== null) {
-    return { threshold: projectThreshold, source: './.claude/settings.json' };
+  for (const candidate of PROJECT_SETTINGS_CANDIDATES) {
+    const resolved = readDeepInterviewThresholdFromSettings(
+      join(process.cwd(), candidate.dir, 'settings.json'),
+      candidate.source,
+    );
+    if (resolved) return resolved;
   }
 
-  if (profileThreshold !== null) {
-    return { threshold: profileThreshold, source: '[$QODER_CONFIG_DIR|~/.claude]/settings.json' };
-  }
+  const profileThreshold = readDeepInterviewThresholdFromSettings(
+    profileSettingsPath,
+    '[$QODER_CONFIG_DIR|~/.qoder[-cn]]/settings.json',
+  );
+  if (profileThreshold) return profileThreshold;
 
   return { threshold: DEFAULT_DEEP_INTERVIEW_AMBIGUITY_THRESHOLD, source: 'default' };
 }
@@ -195,7 +213,7 @@ function applyDeepInterviewRuntimeSettings(template: string): string {
     : withResolvedPlaceholders.replace(
       '4. **Initialize state** via `state_write(mode="deep-interview")`:',
       [
-        `3.5. **Load runtime settings** from \`~/.claude/settings.json\` and \`./.claude/settings.json\` before state init (project overrides profile). For this run, use \`ambiguityThreshold = ${threshold}\`.`,
+        `3.5. **Load runtime settings** from \`./.qoder/settings.json\` (legacy fallback \`./.claude/settings.json\`) and the profile \`settings.json\` before state init (project overrides profile). For this run, use \`ambiguityThreshold = ${threshold}\`.`,
         '4. **Initialize state** via `state_write(mode="deep-interview")`:',
       ].join('\n'),
     );

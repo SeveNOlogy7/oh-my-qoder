@@ -3,8 +3,9 @@
 // PostToolUse hook installer + fs-watch fallback poller for worker auto-commit cadence.
 //
 // Two commit-cadence mechanisms:
-//   hook   — writes {worktreePath}/.claude/settings.json with a PostToolUse hook that
-//             auto-commits after every Write/Edit/MultiEdit tool use (Claude Code only).
+//   hook   — writes {worktreePath}/.qoder/settings.json (Qoder CLI harness) or
+//             {worktreePath}/.claude/settings.json (Claude Code) with a
+//             PostToolUse hook that auto-commits after every Write/Edit/MultiEdit.
 //   fallback-poll — uses node:fs.watch with a 3 s debounce to detect filesystem changes
 //             and auto-commit (for codex/gemini workers that lack PostToolUse support).
 //
@@ -61,6 +62,27 @@ const SENTINEL_FILENAME = '.hook-paused';
 
 /** PostToolUse hook matcher pattern. */
 const HOOK_MATCHER = 'Write|Edit|MultiEdit';
+
+/**
+ * Settings directory that carries the PostToolUse auto-commit hook, per
+ * harness — the provider-aware source shared by the installer, the uninstaller
+ * and the installCommitCadence gate (#48). The Qoder CLI harness reads
+ * `.qoder/settings.json` (PostToolUse is a first-class event there — see the
+ * qoderclicn behavior reference), while Claude Code reads
+ * `.claude/settings.json`. Agents with no PostToolUse harness (codex, gemini,
+ * cursor, grok, antigravity) return null and use the fallback fs-watch poller.
+ *
+ * b37141e carried this pair half-translated (gate on the Qoder agent, write
+ * into `.claude/`), which pointed qwen workers at a settings file their
+ * harness never reads; HEAD's `!== 'claude'` gate "fixed" it by demoting qwen
+ * to the poller. This pairing restores the real mechanism: gate and write
+ * path come from this one function.
+ */
+function getHookSettingsDir(agentType: WorkerCadenceContext['agentType']): '.qoder' | '.claude' | null {
+  if (agentType === 'qwen') return '.qoder';
+  if (agentType === 'claude') return '.claude';
+  return null;
+}
 
 /** Default debounce interval for the fallback poller (ms). */
 const DEFAULT_POLL_DEBOUNCE_MS = 3000;
@@ -178,14 +200,17 @@ async function mergeSettingsWithHook(
 // ---------------------------------------------------------------------------
 
 /**
- * Writes `{worktreePath}/.claude/settings.json` containing a PostToolUse hook
- * that auto-commits after every Write/Edit/MultiEdit.
+ * Writes `{worktreePath}/<settingsDir>/settings.json` containing a PostToolUse
+ * hook that auto-commits after every Write/Edit/MultiEdit. The directory is
+ * provider-aware (`getHookSettingsDir`): `.qoder` for the Qoder CLI harness,
+ * `.claude` for Claude Code.
  *
  * Skips installation if the .hook-paused sentinel is present.
  */
 export async function installPostToolUseHook(
   worktreePath: string,
   workerName: string,
+  settingsDir: '.qoder' | '.claude' = '.qoder',
 ): Promise<void> {
   // Validate up-front so callers cannot pass an injectable name that would
   // later land in the shell hook body. Throws synchronously on bad input.
@@ -195,10 +220,10 @@ export async function installPostToolUseHook(
     return;
   }
 
-  const claudeDir = join(worktreePath, '.claude');
-  await mkdir(claudeDir, { recursive: true });
+  const settingsDirPath = join(worktreePath, settingsDir);
+  await mkdir(settingsDirPath, { recursive: true });
 
-  const settingsPath = join(claudeDir, 'settings.json');
+  const settingsPath = join(settingsDirPath, 'settings.json');
   const hookCommand = buildHookCommand(workerName);
   const merged = await mergeSettingsWithHook(settingsPath, hookCommand);
 
@@ -320,8 +345,14 @@ export function startFallbackPoller(
 
 /**
  * Installs the appropriate commit cadence for the worker agent type.
- * - claude  → PostToolUse hook in .claude/settings.json
- * - codex / gemini / cursor / antigravity → fallback fs-watch poller (caller owns the handle)
+ * - qwen   → PostToolUse hook in .qoder/settings.json (Qoder CLI harness)
+ * - claude → PostToolUse hook in .claude/settings.json (Claude Code)
+ * - codex / gemini / cursor / grok / antigravity → fallback fs-watch poller
+ *   (caller owns the handle)
+ *
+ * The gate reads the same provider-aware mapping (getHookSettingsDir) that
+ * decides the write path, so a harness hook can never be pointed at a settings
+ * file its harness does not read (#48).
  *
  * Returns the chosen method. The fallback-poll handle is NOT started here;
  * callers that need the poller should call startFallbackPoller directly.
@@ -334,17 +365,19 @@ export async function installCommitCadence(
     return { method: 'none' };
   }
 
-  if (ctx.agentType === 'claude') {
-    await installPostToolUseHook(ctx.worktreePath, ctx.workerName);
+  const settingsDir = getHookSettingsDir(ctx.agentType);
+  if (settingsDir) {
+    await installPostToolUseHook(ctx.worktreePath, ctx.workerName, settingsDir);
     return { method: 'hook' };
   }
 
-  // codex / gemini / cursor / antigravity: no PostToolUse hook; caller starts the fallback poller.
+  // No PostToolUse harness; caller starts the fallback poller.
   return { method: 'fallback-poll' };
 }
 
 /**
- * Removes the auto-commit PostToolUse hook from .claude/settings.json.
+ * Removes the auto-commit PostToolUse hook from the worker harness's settings
+ * file (same provider-aware directory the installer used).
  * For fallback-poll workers the caller is responsible for stopping the poller handle.
  */
 export async function uninstallCommitCadence(
@@ -355,12 +388,13 @@ export async function uninstallCommitCadence(
   const owner = cadenceOwners.get(ctx.worktreePath);
   const ownsRegisteredGeneration = owner && ctx.serviceGeneration !== undefined
     && owner.serviceGeneration === ctx.serviceGeneration && owner.attemptId === ctx.attemptId;
-  if (ctx.agentType !== 'claude') {
+  const settingsDir = getHookSettingsDir(ctx.agentType);
+  if (!settingsDir) {
     if (ownsRegisteredGeneration) cadenceOwners.delete(ctx.worktreePath);
     return;
   }
 
-  const settingsPath = join(ctx.worktreePath, '.claude', 'settings.json');
+  const settingsPath = join(ctx.worktreePath, settingsDir, 'settings.json');
   let raw: string;
   try {
     raw = await io.readFile(settingsPath, 'utf-8');

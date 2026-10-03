@@ -4,8 +4,12 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { logAuditEvent, readAuditLog, rotateAuditLog } from '../audit-log.js';
 import type { AuditEvent } from '../audit-log.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('audit-log', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {

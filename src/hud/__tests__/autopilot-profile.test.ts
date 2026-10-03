@@ -9,6 +9,16 @@ import { renderAutopilot } from '../elements/autopilot.js';
 import { redactAutopilotPublicState } from '../../tools/state-tools.js';
 import { formatAutopilotRuntimeInsight } from '../../hooks/autopilot/runtime-insight.js';
 import { writeHudState } from '../state.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
+// Anchors the redaction test hud-state write: its in-repo .tmp fixture
+// would be normalized up to the repo toplevel by validateWorkingDirectory
+// (#576) and land in the real .omq/state. Under the per-test cwd fixture
+// it resolves inside the throwaway dir instead (T16b).
+import { useCwdFixture } from '../../__tests__/helpers/cwd-fixture.js';
+
+useCwdFixture();
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -29,7 +39,10 @@ const profileHash = createHash('sha256').update(canonicalJson({
 
 function workflowState(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const sessionId = '11111111-1111-4111-8111-111111111111';
-  const transcriptRoot = '/tmp/omc-autopilot-profile-transcripts';
+  // Platform-absolute root: the structural validator requires transcriptPath
+  // to BE a resolved absolute path, and a POSIX-literal '/tmp/...' string is
+  // not one on win32 (drive-relative resolution).
+  const transcriptRoot = join(tmpdir(), 'omc-autopilot-profile-transcripts');
   const initialIdentity = {
     device: 0,
     inode: 0,
@@ -40,7 +53,7 @@ function workflowState(overrides: Record<string, unknown> = {}): Record<string, 
   };
   const stableIdentity = { ...initialIdentity, size: 1, contentSha256: '1'.repeat(64) };
   const activationBoundary = {
-    transcriptPath: `${transcriptRoot}/${sessionId}.jsonl`,
+    transcriptPath: join(transcriptRoot, `${sessionId}.jsonl`),
     transcriptRoot,
     transcriptBasename: `${sessionId}.jsonl`,
     sessionId,
@@ -96,6 +109,7 @@ function workflowState(overrides: Record<string, unknown> = {}): Record<string, 
 }
 
 describe('autopilot workflow profile observability', () => {
+  useDefaultStateRoot();
   const directories: string[] = [];
 
   afterEach(() => {

@@ -185,12 +185,12 @@ describe('HUD Windows Compatibility', () => {
       });
     });
 
-    it('getPluginCacheBase should prefer the marketplace slug over a local install', () => {
+    it('getPluginCacheBase should prefer the measured local install over the marketplace slug (#44)', () => {
       withCache(['local', 'omq'], (configRoot) => {
         const previous = process.env.QODER_CONFIG_DIR;
         process.env.QODER_CONFIG_DIR = configRoot;
         try {
-          expect(getPluginCacheBase()).toBe(normalize(join(configRoot, 'plugins', 'cache', 'omq', 'oh-my-qoder')));
+          expect(getPluginCacheBase()).toBe(normalize(join(configRoot, 'plugins', 'cache', 'local', 'oh-my-qoder')));
         } finally {
           if (previous === undefined) delete process.env.QODER_CONFIG_DIR;
           else process.env.QODER_CONFIG_DIR = previous;

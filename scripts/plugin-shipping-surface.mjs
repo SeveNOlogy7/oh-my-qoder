@@ -1,10 +1,15 @@
-#!/usr/bin/env node
 /**
  * Verify and stage the generated runtime files a plugin checkout must carry.
  *
  * The closure starts from plugin/runtime entrypoints and explicit package payloads.
  * It never treats the existing generated tree as an entrypoint and never stages a
  * generated directory.
+ *
+ * No shebang: this script is only ever run via `node scripts/...` (no direct
+ * ./ execution site exists), and a leading `#!` line makes vitest's raw-source
+ * module evaluator throw "Invalid or unexpected token" for every suite that
+ * imports it (npm-package-bin-surface, plugin-shipping-surface,
+ * release-guidance).
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -20,7 +25,6 @@ const DECLARATION_EXTENSION = '.d.ts';
 const RESOLVABLE_EXTENSIONS = ['.js', '.cjs', '.mjs', '.json', '.d.ts'];
 const OPTIONAL_BRIDGE_PAYLOADS = Object.freeze([
   'bridge/gyoshu_bridge.py',
-  'bridge/run-mcp-server.sh',
 ]);
 
 function fail(message) {
@@ -54,9 +58,17 @@ function containedRegularFile(root, repoPath, label = repoPath) {
   let current = rootReal;
   for (const segment of normalized.split('/')) {
     current = join(current, segment);
-    if (!existsSync(current)) fail(`required generated runtime file is missing: ${normalized}`);
-    const stat = lstatSync(current);
-    if (stat.isSymbolicLink()) fail(`${label} must not traverse a symbolic link: ${normalized}`);
+    // lstat() first: a symbolic link is present as a directory entry even when its target
+    // does not resolve, and existsSync() follows the target -- so ordering existsSync before
+    // the link check made an escaping link on Windows report "missing" instead of the
+    // traversal refusal. ENOENT here still means genuinely absent.
+    let entryStat;
+    try {
+      entryStat = lstatSync(current);
+    } catch {
+      fail(`required generated runtime file is missing: ${normalized}`);
+    }
+    if (entryStat.isSymbolicLink()) fail(`${label} must not traverse a symbolic link: ${normalized}`);
   }
   if (!lstatSync(current).isFile()) fail(`${label} must be a regular file: ${normalized}`);
   if (!isInside(rootReal, realpathSync(current))) fail(`${label} escapes package root: ${normalized}`);

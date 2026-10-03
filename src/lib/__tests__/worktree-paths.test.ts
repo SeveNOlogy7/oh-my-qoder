@@ -50,15 +50,26 @@ try {
 const TEST_DIR = join(tmpdir(), 'worktree-paths-test');
 
 describe('worktree-paths', () => {
+  // This suite asserts the DEFAULT resolution branch (marker > git > cwd) in a
+  // controlled temp fixture, so the per-file OMQ_STATE_DIR pin from
+  // tests/setup/pin-state-root.ts (#42) is lifted per test and restored
+  // afterwards — the unset can never leak into the shared worker.
+  let pinnedStateDir: string | undefined;
   beforeEach(() => {
     clearWorktreeCache();
     clearDualDirWarnings();
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     mkdirSync(TEST_DIR, { recursive: true });
   });
 
   afterEach(() => {
     rmSync(TEST_DIR, { recursive: true, force: true });
-    delete process.env.OMQ_STATE_DIR;
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
   });
 
   describe('validatePath', () => {

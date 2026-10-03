@@ -1,5 +1,5 @@
 /**
- * Native tmux shell launch for omc
+ * Native tmux shell launch for omq
  * Launches Claude Code with tmux session management
  */
 
@@ -24,7 +24,7 @@ import { atomicWriteJsonSync } from '../lib/atomic-write.js';
 import { lockPathFor, withFileLockSync } from '../lib/file-lock.js';
 import { resolvePluginDirArg } from '../lib/plugin-dir.js';
 import { stripRetiredTeamMcpServers } from '../installer/mcp-registry.js';
-import { getClaudeConfigDir } from '../utils/config-dir.js';
+import { getClaudeConfigDir, isDefaultQoderConfigDir } from '../utils/config-dir.js';
 import {
   resolveLaunchPolicy,
   buildTmuxSessionName,
@@ -32,11 +32,12 @@ import {
   buildTmuxShellCommandWithEnv,
   isNativeWindowsShell,
   wrapWithLoginShell,
-  isClaudeAvailable,
+  isQoderCliAvailable,
   isTmuxAvailable,
   quoteShellArg,
   tmuxExec,
 } from './tmux-utils.js';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { configureTmuxClipboardForCurrentSession, configureTmuxClipboardForSession } from './tmux-clipboard.js';
 import { OMQ_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
 import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
@@ -598,12 +599,8 @@ export function prepareOmcLaunchConfigDir(baseConfigDir = getClaudeConfigDir()):
   }, { timeoutMs: 5000, retryDelayMs: 50 });
 }
 
-function isDefaultClaudeConfigDirPath(configDir: string): boolean {
-  return configDir === join(homedir(), '.claude');
-}
-
 /**
- * Extract the OMC-specific --notify flag from launch args.
+ * Extract the OMQ-specific --notify flag from launch args.
  * --notify false  → disable notifications (OMQ_NOTIFY=0)
  * --notify true   → enable notifications (default)
  * This flag must be stripped before passing args to Claude CLI.
@@ -635,7 +632,7 @@ export function extractNotifyFlag(args: string[]): { notifyEnabled: boolean; rem
 }
 
 /**
- * Extract the OMC-specific --openclaw flag from launch args.
+ * Extract the OMQ-specific --openclaw flag from launch args.
  * Purely presence-based (like --madmax/--yolo):
  *   --openclaw        -> enable OpenClaw (OMQ_OPENCLAW=1)
  *   --openclaw=true   -> enable OpenClaw
@@ -670,7 +667,7 @@ export function extractOpenClawFlag(args: string[]): { openclawEnabled: boolean 
 }
 
 /**
- * Extract the OMC-specific --telegram flag from launch args.
+ * Extract the OMQ-specific --telegram flag from launch args.
  * Purely presence-based:
  *   --telegram        -> enable Telegram notifications (OMQ_TELEGRAM=1)
  *   --telegram=true   -> enable
@@ -697,7 +694,7 @@ export function extractTelegramFlag(args: string[]): { telegramEnabled: boolean 
 }
 
 /**
- * Extract the OMC-specific --discord flag from launch args.
+ * Extract the OMQ-specific --discord flag from launch args.
  * Purely presence-based:
  *   --discord        -> enable Discord notifications (OMQ_DISCORD=1)
  *   --discord=true   -> enable
@@ -724,7 +721,7 @@ export function extractDiscordFlag(args: string[]): { discordEnabled: boolean | 
 }
 
 /**
- * Extract the OMC-specific --slack flag from launch args.
+ * Extract the OMQ-specific --slack flag from launch args.
  * Purely presence-based:
  *   --slack        -> enable Slack notifications (OMQ_SLACK=1)
  *   --slack=true   -> enable
@@ -751,7 +748,7 @@ export function extractSlackFlag(args: string[]): { slackEnabled: boolean | unde
 }
 
 /**
- * Extract the OMC-specific --webhook flag from launch args.
+ * Extract the OMQ-specific --webhook flag from launch args.
  * Purely presence-based:
  *   --webhook        -> enable Webhook notifications (OMQ_WEBHOOK=1)
  *   --webhook=true   -> enable
@@ -835,7 +832,7 @@ export function isPrintMode(args: string[]): boolean {
 
 /**
  * Detect raw --madmax / --yolo tokens in launch args. Used before
- * normalizeClaudeLaunchArgs strips them so we can apply OMC-specific
+ * normalizeClaudeLaunchArgs strips them so we can apply OMQ-specific
  * launch contracts (e.g. tmux-mandatory on macOS).
  */
 export function hasMadmaxFlag(args: string[]): boolean {
@@ -851,10 +848,10 @@ class MadmaxTmuxRequiredError extends Error {
 
 function abortMadmaxRequiresTmux(reason: 'missing' | 'launch-failed'): never {
   if (reason === 'missing') {
-    console.error('[omc] Error: --madmax/--yolo on macOS requires tmux, but tmux is not installed.');
+    console.error('[omq] Error: --madmax/--yolo on macOS requires tmux, but tmux is not installed.');
     console.error('  Install it with: brew install tmux');
   } else {
-    console.error('[omc] Error: --madmax/--yolo on macOS requires tmux, but launching tmux failed.');
+    console.error('[omq] Error: --madmax/--yolo on macOS requires tmux, but launching tmux failed.');
     console.error('  Verify tmux works: tmux -V && tmux new-session -d -s _omc_probe \\; kill-session -t _omc_probe');
   }
   process.exit(1);
@@ -933,7 +930,7 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
 
   // Launch Claude in current pane
   try {
-    execFileSync('claude', args, {
+    execFileSync(qoderCliBinary(), args, {
       cwd,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -941,10 +938,10 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { status?: number | null };
     if (err.code === 'ENOENT') {
-      console.error('[omc] Error: claude CLI not found in PATH.');
+      console.error(`[omq] Error: ${qoderCliBinary()} not found in PATH.`);
       process.exit(1);
     }
-    // Propagate Claude's exit code so omc does not swallow failures
+    // Propagate Claude's exit code so omq does not swallow failures
     process.exit(typeof err.status === 'number' ? err.status : 1);
   }
 }
@@ -997,8 +994,8 @@ function runClaudeOutsideTmux(
       .filter(([, value]) => value !== undefined),
   ) as Record<string, string>;
   const rawClaudeCmd = isNativeWindowsShell()
-    ? buildTmuxShellCommandWithEnv('claude', args, forwardedEnv)
-    : buildTmuxShellCommand('claude', args);
+    ? buildTmuxShellCommandWithEnv(qoderCliBinary(), args, forwardedEnv)
+    : buildTmuxShellCommand(qoderCliBinary(), args);
   const envPrefix = !isNativeWindowsShell() && Object.keys(forwardedEnv).length > 0
     ? buildEnvExportPrefix(TMUX_ENV_FORWARD)
     : '';
@@ -1060,7 +1057,7 @@ function runClaudeOutsideTmux(
  */
 function runClaudeDirect(cwd: string, args: string[]): void {
   try {
-    execFileSync('claude', args, {
+    execFileSync(qoderCliBinary(), args, {
       cwd,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -1068,10 +1065,10 @@ function runClaudeDirect(cwd: string, args: string[]): void {
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { status?: number | null };
     if (err.code === 'ENOENT') {
-      console.error('[omc] Error: claude CLI not found in PATH.');
+      console.error(`[omq] Error: ${qoderCliBinary()} not found in PATH.`);
       process.exit(1);
     }
-    // Propagate Claude's exit code so omc does not swallow failures
+    // Propagate Claude's exit code so omq does not swallow failures
     process.exit(typeof err.status === 'number' ? err.status : 1);
   }
 }
@@ -1125,13 +1122,13 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env[OMQ_PLUGIN_ROOT_ENV] = pluginDir;
   }
 
-  // Extract OMC-specific --notify flag before passing remaining args to Claude CLI
+  // Extract OMQ-specific --notify flag before passing remaining args to Claude CLI
   const { notifyEnabled, remainingArgs } = extractNotifyFlag(args);
   if (!notifyEnabled) {
     process.env.OMQ_NOTIFY = '0';
   }
 
-  // Extract OMC-specific --openclaw flag (presence-based, no value consumption)
+  // Extract OMQ-specific --openclaw flag (presence-based, no value consumption)
   const { openclawEnabled, remainingArgs: argsAfterOpenclaw } = extractOpenClawFlag(remainingArgs);
   if (openclawEnabled === true) {
     process.env.OMQ_OPENCLAW = '1';
@@ -1139,7 +1136,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_OPENCLAW = '0';
   }
 
-  // Extract OMC-specific --telegram flag (presence-based)
+  // Extract OMQ-specific --telegram flag (presence-based)
   const { telegramEnabled, remainingArgs: argsAfterTelegram } = extractTelegramFlag(argsAfterOpenclaw);
   if (telegramEnabled === true) {
     process.env.OMQ_TELEGRAM = '1';
@@ -1147,7 +1144,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_TELEGRAM = '0';
   }
 
-  // Extract OMC-specific --discord flag (presence-based)
+  // Extract OMQ-specific --discord flag (presence-based)
   const { discordEnabled, remainingArgs: argsAfterDiscord } = extractDiscordFlag(argsAfterTelegram);
   if (discordEnabled === true) {
     process.env.OMQ_DISCORD = '1';
@@ -1155,7 +1152,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_DISCORD = '0';
   }
 
-  // Extract OMC-specific --slack flag (presence-based)
+  // Extract OMQ-specific --slack flag (presence-based)
   const { slackEnabled, remainingArgs: argsAfterSlack } = extractSlackFlag(argsAfterDiscord);
   if (slackEnabled === true) {
     process.env.OMQ_SLACK = '1';
@@ -1163,7 +1160,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_SLACK = '0';
   }
 
-  // Extract OMC-specific --webhook flag (presence-based)
+  // Extract OMQ-specific --webhook flag (presence-based)
   const { webhookEnabled, remainingArgs: argsAfterWebhook } = extractWebhookFlag(argsAfterSlack);
   if (webhookEnabled === true) {
     process.env.OMQ_WEBHOOK = '1';
@@ -1175,33 +1172,33 @@ export async function launchCommand(args: string[]): Promise<void> {
 
   // Pre-flight: check for nested session
   if (process.env.CLAUDECODE) {
-    console.error('[omc] Error: Already inside a Claude Code session. Nested launches are not supported.');
+    console.error('[omq] Error: Already inside a Claude Code session. Nested launches are not supported.');
     process.exit(1);
   }
 
-  // Pre-flight: check claude CLI availability
-  if (!isClaudeAvailable()) {
-    console.error('[omc] Error: claude CLI not found. Install Claude Code first:');
-    console.error('  https://code.claude.com/docs/en/setup');
+  // Pre-flight: check the host CLI availability
+  if (!isQoderCliAvailable()) {
+    console.error(`[omq] Error: ${qoderCliBinary()} not found. Install Qoder CLI first:`);
+    console.error('  curl -fsSL https://qoder.com/install | bash');
     process.exit(1);
   }
 
   const launchConfigDir = prepareOmcLaunchConfigDir();
-  if (isDefaultClaudeConfigDirPath(launchConfigDir)) {
+  if (isDefaultQoderConfigDir(launchConfigDir)) {
     delete process.env.QODER_CONFIG_DIR;
   } else {
     process.env.QODER_CONFIG_DIR = launchConfigDir;
   }
 
   const normalizedArgs = normalizeClaudeLaunchArgs(argsAfterWebhook);
-  const sessionId = `omc-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
+  const sessionId = `omq-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
 
   // Phase 1: preLaunch
   try {
     await preLaunch(cwd, sessionId);
   } catch (err) {
     // preLaunch errors must NOT prevent Claude from starting
-    console.error(`[omc] preLaunch warning: ${err instanceof Error ? err.message : err}`);
+    console.error(`[omq] preLaunch warning: ${err instanceof Error ? err.message : err}`);
   }
 
   // Phase 2: run

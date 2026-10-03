@@ -20,7 +20,7 @@ import {
   getHooksSettingsConfig,
 } from './hooks.js';
 import { getRuntimePackageVersion } from '../lib/version.js';
-import { getQoderConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir, getDefaultConfigDirShellPath, isDefaultQoderConfigDir } from '../utils/config-dir.js';
 import { resolveNodeBinary } from '../utils/resolve-node.js';
 import { parseFrontmatter } from '../utils/frontmatter.js';
 import { isSkininthegamebrosUser } from '../utils/skininthegamebros-user.js';
@@ -184,7 +184,12 @@ function getNewestInstalledVersionHint(): string | null {
 
   const claudeCandidates = [
     join(QODER_CONFIG_DIR, 'CLAUDE.md'),
+    // This host's installed doc name is AGENTS.md (pluginDirMode installs
+    // AGENTS.md, and setup-agents-md.sh manages it), so an install that only
+    // ever wrote the marker there must still feed the downgrade guard.
+    join(QODER_CONFIG_DIR, 'AGENTS.md'),
     join(homedir(), 'CLAUDE.md'),
+    join(homedir(), 'AGENTS.md'),
   ];
 
   for (const candidatePath of claudeCandidates) {
@@ -221,15 +226,18 @@ function canonicalizeExistingPath(value: string): string {
   }
 }
 
-function isDefaultClaudeConfigDirPath(configDir: string): boolean {
-  return normalizePath(configDir) === normalizePath(join(homedir(), '.claude'));
-}
-
 function quoteShellArg(value: string): string {
   return `"${value.replace(/"/g, '\\"')}"`;
 }
 
-function buildStatusLineCommand(
+// The statusline fallback root is expressed by getDefaultConfigDirShellPath()
+// (#49) — the same distribution-aware default (`.qoder` vs `.qoder-cn`) that
+// isDefaultQoderConfigDir compares against, so the guarded
+// `${QODER_CONFIG_DIR:-…}` form is emitted exactly when the installed config
+// dir IS that default; a custom config dir keeps absolute paths. The previous
+// hardcoded `$HOME/.claude` fallback was an ancestor leftover that pointed the
+// statusline at a directory this fork never installs into.
+export function buildStatusLineCommand(
   nodeBin: string,
   hudScriptPath: string,
   findNodePath?: string,
@@ -242,19 +250,19 @@ function buildStatusLineCommand(
   const normalizedHudScriptPath = hudScriptPath.replace(/\\/g, '/');
 
   if (cacheWrapperPath) {
-    if (isDefaultClaudeConfigDirPath(QODER_CONFIG_DIR)) {
-      return 'sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud-cache.sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
+    if (isDefaultQoderConfigDir(QODER_CONFIG_DIR)) {
+      return `sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud-cache.sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud.mjs`;
     }
 
     return `sh ${quoteShellArg(cacheWrapperPath.replace(/\\/g, '/'))} ${quoteShellArg(normalizedHudScriptPath)}`;
   }
 
-  if (isDefaultClaudeConfigDirPath(QODER_CONFIG_DIR)) {
+  if (isDefaultQoderConfigDir(QODER_CONFIG_DIR)) {
     if (findNodePath) {
-      return 'sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/find-node.sh ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
+      return `sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/find-node.sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud.mjs`;
     }
 
-    return 'node ${QODER_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs';
+    return `node \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud.mjs`;
   }
 
   if (findNodePath) {
@@ -559,21 +567,21 @@ export function isClaudeInstalled(): boolean {
 }
 
 /**
- * Check if we're running in Claude Code plugin context
+ * Check if we're running in plugin context
  *
  * When installed as a plugin, we should NOT copy files to ~/.claude/
- * because the plugin system already handles file access via ${CLAUDE_PLUGIN_ROOT}.
+ * because the plugin system already handles file access via the plugin root.
  *
  * Detection method:
- * - Check if CLAUDE_PLUGIN_ROOT environment variable is set (primary method)
- * - This env var is set by the Claude Code plugin system when running plugin hooks
+ * - QODER_PLUGIN_ROOT is what this host exports; CLAUDE_PLUGIN_ROOT is still read
+ *   because manifests and skill shims adopted from the ancestor carry that name.
+ *   The same pair is accepted by isHookCommandOurs() and resolveInstalledOmcPluginRoots().
  *
  * @returns true if running in plugin context, false otherwise
  */
 export function isRunningAsPlugin(): boolean {
-  // Check for CLAUDE_PLUGIN_ROOT env var (set by plugin system)
-  // This is the most reliable indicator that we're running as a plugin
-  return !!process.env.CLAUDE_PLUGIN_ROOT;
+  // Either root means the plugin system launched us.
+  return !!process.env.QODER_PLUGIN_ROOT || !!process.env.CLAUDE_PLUGIN_ROOT;
 }
 
 /**
@@ -588,7 +596,7 @@ export function isRunningAsPlugin(): boolean {
  * @returns true if running as a project-scoped plugin, false otherwise
  */
 export function isProjectScopedPlugin(): boolean {
-  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+  const pluginRoot = process.env.QODER_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT;
   if (!pluginRoot) {
     return false;
   }
@@ -1168,9 +1176,9 @@ export function cleanupStaleSkills(
   const currentSkillNames = new Set<string>();
 
   // The keep-set must contain only the directory names the *current* install
-  // mode actually writes. Holding both the raw and `omc-`prefixed variants
-  // stranded the pre-rename copy whenever a skill collided with a Claude Code
-  // native command (e.g. `plan` -> `omc-plan`), leaving both installed.
+  // mode actually writes. Holding both the raw and `omq-`prefixed variants
+  // stranded the pre-rename copy whenever a skill collided with a Qoder CLI
+  // native command (e.g. `plan` -> `omq-plan`), leaving both installed.
   const usesSafeNames = options?.safeStandaloneNames === true;
 
   if (existsSync(packageSkillsDir)) {
@@ -1336,15 +1344,34 @@ type PluginRootResolution =
 
 type PluginRegistry = Record<string, unknown>;
 
-const OMQ_PLUGIN_IDS = new Set(['oh-my-claudecode', 'oh-my-claudecode@omc', 'oh-my-claudecode@oh-my-claudecode']);
+// Registry ids the host may use for this plugin. Enumerated, never a prefix
+// match: `plugins install <dir>` registers `oh-my-qoder@local` while a
+// marketplace channel registers `oh-my-qoder@omq`, but an arbitrary
+// `oh-my-qoder@<anyone>` must not become official just by sharing the name --
+// unknown spellings fall through to the lookalike path and fail closed.
+const OMQ_PLUGIN_IDS = new Set([
+  'oh-my-qoder',
+  'oh-my-qoder@omq',
+  'oh-my-qoder@local',
+  'oh-my-qoder@oh-my-qoder',
+  'oh-my-claudecode',
+  'oh-my-claudecode@omc',
+  'oh-my-claudecode@oh-my-claudecode',
+]);
 const OMQ_PLUGIN_MANIFEST_NAME = 'oh-my-claudecode';
+// The name this fork's own manifest declares (.qoder-plugin/plugin.json). The
+// payload guard accepts either spelling for the same reason isOmqPluginId() does:
+// an install carried over from the ancestor keeps the old name on disk.
+const FORK_PLUGIN_MANIFEST_NAME = 'oh-my-qoder';
+const OMQ_PLUGIN_NAME_MARKERS = [FORK_PLUGIN_MANIFEST_NAME, OMQ_PLUGIN_MANIFEST_NAME];
 
 function isOfficialOmcPluginId(pluginId: string): boolean {
   return OMQ_PLUGIN_IDS.has(pluginId.toLowerCase());
 }
 
 function isOmcPluginLookalike(pluginId: string): boolean {
-  return pluginId.toLowerCase().includes(OMQ_PLUGIN_MANIFEST_NAME);
+  const lowered = pluginId.toLowerCase();
+  return OMQ_PLUGIN_NAME_MARKERS.some(marker => lowered.includes(marker));
 }
 
 function resolveInstalledOmcPluginRoots(): PluginRootResolution {
@@ -1430,7 +1457,7 @@ const PLUGIN_SYNC_PAYLOAD = [
   'commands',
   'templates',
   'docs',
-  '.claude-plugin',
+  '.qoder-plugin',
   '.mcp.json',
   'README.md',
   'LICENSE',
@@ -1438,20 +1465,19 @@ const PLUGIN_SYNC_PAYLOAD = [
 ] as const;
 
 const REQUIRED_PLUGIN_PAYLOAD_FILES = [
-  '.claude-plugin/plugin.json',
+  '.qoder-plugin/plugin.json',
   'package.json',
   'dist/hooks/skill-bridge.cjs',
-  'bridge/claude-md-coordinator.cjs',
   'bridge/cli.cjs',
   'hooks/hooks.json',
 ] as const;
 
 const REQUIRED_PLUGIN_COMMAND_FILES = [
-  'commands/omc-setup.md',
+  'commands/omq-setup.md',
 ] as const;
 
 function readPluginManifest(root: string): { manifest: Record<string, unknown> | null; errors: string[] } {
-  const manifestPath = join(root, '.claude-plugin', 'plugin.json');
+  const manifestPath = join(root, '.qoder-plugin', 'plugin.json');
   if (!existsSync(manifestPath)) {
     return { manifest: null, errors: [] };
   }
@@ -1459,12 +1485,12 @@ function readPluginManifest(root: string): { manifest: Record<string, unknown> |
   try {
     const parsed = JSON.parse(readFileSync(manifestPath, 'utf-8')) as unknown;
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { manifest: null, errors: ['Invalid plugin manifest: .claude-plugin/plugin.json must be a JSON object'] };
+      return { manifest: null, errors: ['Invalid plugin manifest: .qoder-plugin/plugin.json must be a JSON object'] };
     }
     return { manifest: parsed as Record<string, unknown>, errors: [] };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { manifest: null, errors: [`Invalid plugin manifest: .claude-plugin/plugin.json: ${message}`] };
+    return { manifest: null, errors: [`Invalid plugin manifest: .qoder-plugin/plugin.json: ${message}`] };
   }
 }
 
@@ -1487,20 +1513,20 @@ function validatePluginManifestSchema(root: string, manifest: Record<string, unk
     return errors;
   }
 
-  if (manifest.name !== OMQ_PLUGIN_MANIFEST_NAME) {
-    errors.push(`Invalid plugin manifest: .claude-plugin/plugin.json name must be ${OMQ_PLUGIN_MANIFEST_NAME}`);
+  if (manifest.name !== OMQ_PLUGIN_MANIFEST_NAME && manifest.name !== FORK_PLUGIN_MANIFEST_NAME) {
+    errors.push(`Invalid plugin manifest: .qoder-plugin/plugin.json name must be ${FORK_PLUGIN_MANIFEST_NAME}`);
   }
 
   if (typeof manifest.commands !== 'string' || manifest.commands.trim().length === 0) {
-    errors.push('Invalid plugin manifest: .claude-plugin/plugin.json commands must be a non-empty relative path');
+    errors.push('Invalid plugin manifest: .qoder-plugin/plugin.json commands must be a non-empty relative path');
   } else if (!isSafePluginRelPath(manifest.commands)) {
-    errors.push('Invalid plugin manifest: .claude-plugin/plugin.json commands must stay inside the plugin root');
+    errors.push('Invalid plugin manifest: .qoder-plugin/plugin.json commands must stay inside the plugin root');
   } else if (!directoryHasMarkdownFiles(join(root, normalizePluginRelPath(manifest.commands)))) {
     errors.push(`Missing declared plugin command markdown files in ${normalizePluginRelPath(manifest.commands)}/`);
   }
 
   if (!Array.isArray(manifest.skills) || manifest.skills.length === 0) {
-    errors.push('Invalid plugin manifest: .claude-plugin/plugin.json skills must be a non-empty array');
+    errors.push('Invalid plugin manifest: .qoder-plugin/plugin.json skills must be a non-empty array');
   }
 
   return errors;
@@ -1516,7 +1542,7 @@ function validateDeclaredPluginSkills(root: string, manifest: Record<string, unk
 
   for (const declaredSkill of declaredSkills) {
     if (typeof declaredSkill !== 'string' || declaredSkill.trim().length === 0) {
-      errors.push('Invalid plugin skill declaration in .claude-plugin/plugin.json');
+      errors.push('Invalid plugin skill declaration in .qoder-plugin/plugin.json');
       continue;
     }
 
@@ -2026,8 +2052,28 @@ export function hasPluginProvidedHookFiles(): boolean {
   );
 }
 
+/**
+ * Plugin ids that count as this product's own plugin inside settings.json.
+ *
+ * Both brand spellings are accepted on purpose, the same convention
+ * isHookCommandOurs() documents above: a Qoder install enables `oh-my-qoder@...`,
+ * while settings and manifests carried over from an ancestor install still say
+ * `oh-my-claudecode`. Narrowing this list is only safe once the shipped
+ * hooks/hooks.json manifest and the plugin-root readers move to the fork
+ * spelling together -- those three disagree today.
+ */
+const OMQ_PLUGIN_ID_MARKERS = ['oh-my-qoder', 'oh-my-claudecode'];
+
+function isOmqPluginId(value: string): boolean {
+  const lowered = value.toLowerCase();
+  return OMQ_PLUGIN_ID_MARKERS.some((marker) => lowered.includes(marker));
+}
+
 export function hasEnabledOmqPlugin(): boolean {
-  if (process.env.CLAUDE_PLUGIN_ROOT?.trim()) {
+  // Both plugin-root spellings are accepted on purpose, the same convention
+  // isHookCommandOurs() documents above: the Qoder host exports QODER_PLUGIN_ROOT,
+  // while manifests and fixtures carried over from the ancestor export CLAUDE_PLUGIN_ROOT.
+  if (process.env.QODER_PLUGIN_ROOT?.trim() || process.env.CLAUDE_PLUGIN_ROOT?.trim()) {
     return true;
   }
 
@@ -2037,26 +2083,26 @@ export function hasEnabledOmqPlugin(): boolean {
 
   try {
     const settings = JSON.parse(readFileSync(SETTINGS_FILE, 'utf-8')) as {
-      // Modern Claude Code 1.x format. The canonical field name.
+      // Modern Qoder CLI 1.x format. The canonical field name.
       enabledPlugins?: unknown;
       // Legacy field name kept for backward compatibility with older
-      // Claude Code installs that wrote `plugins` instead of `enabledPlugins`.
+      // Qoder CLI installs that wrote `plugins` instead of `enabledPlugins`.
       plugins?: unknown;
     };
 
     // Prefer `enabledPlugins` (modern), fall back to `plugins` (legacy).
     // Returning on the first hit short-circuits the check whenever we find
-    // an enabled OMC plugin entry in either field.
+    // an enabled OMQ plugin entry in either field.
     for (const candidate of [settings.enabledPlugins, settings.plugins]) {
       if (Array.isArray(candidate)) {
         if (candidate.some(plugin =>
-          typeof plugin === 'string' && plugin.toLowerCase().includes('oh-my-claudecode')
+          typeof plugin === 'string' && isOmqPluginId(plugin)
         )) {
           return true;
         }
       } else if (candidate && typeof candidate === 'object') {
         if (Object.entries(candidate as Record<string, unknown>).some(([pluginId, value]) =>
-          pluginId.toLowerCase().includes('oh-my-claudecode') && value !== false
+          isOmqPluginId(pluginId) && value !== false
         )) {
           return true;
         }
@@ -2073,13 +2119,13 @@ function isOmcPluginEnabledInSettings(settings: Record<string, unknown>): boolea
   for (const candidate of [settings.enabledPlugins, settings.plugins]) {
     if (Array.isArray(candidate)) {
       if (candidate.some(plugin =>
-        typeof plugin === 'string' && plugin.toLowerCase().includes('oh-my-claudecode')
+        typeof plugin === 'string' && isOmqPluginId(plugin)
       )) {
         return true;
       }
     } else if (candidate && typeof candidate === 'object') {
       if (Object.entries(candidate as Record<string, unknown>).some(([pluginId, value]) =>
-        pluginId.toLowerCase().includes('oh-my-claudecode') && value !== false
+        isOmqPluginId(pluginId) && value !== false
       )) {
         return true;
       }
@@ -2179,7 +2225,7 @@ function loadCommandDefinitions(): Record<string, string> {
 function toSafeStandaloneSkillName(name: string): string {
   const normalized = name.trim();
   return CC_NATIVE_COMMANDS.has(normalized.toLowerCase())
-    ? `omc-${normalized}`
+    ? `omq-${normalized}`
     : normalized;
 }
 

@@ -9,17 +9,17 @@ level: 2
 
 `psm` is the compatibility alias for this canonical skill entrypoint.
 
-> **Quick Start (worktree-first):** Start with `omc teleport` when you want an isolated issue/PR/feature worktree before adding any tmux/session orchestration:
+> **Quick Start (worktree-first):** Start with `omq teleport` when you want an isolated issue/PR/feature worktree before adding any tmux/session orchestration:
 > ```bash
-> omc teleport #123          # Create worktree for issue/PR
-> omc teleport my-feature    # Create worktree for feature
-> omc teleport list          # List worktrees
+> omq teleport #123          # Create worktree for issue/PR
+> omq teleport my-feature    # Create worktree for feature
+> omq teleport list          # List worktrees
 > ```
 > See [Teleport Command](#teleport-command) below for details.
 
 Automate isolated development environments using git worktrees and tmux sessions with Claude Code. Enables parallel work across multiple tasks, projects, and repositories.
 
-Canonical slash command: `/oh-my-claudecode:project-session-manager` (alias: `/oh-my-claudecode:psm`).
+Canonical slash command: `/oh-my-qoder:project-session-manager` (alias: `/oh-my-qoder:psm`).
 
 ## Commands
 
@@ -27,7 +27,7 @@ Canonical slash command: `/oh-my-claudecode:project-session-manager` (alias: `/o
 |---------|-------------|---------|
 | `review <ref>` | PR review session | `/psm review omc#123` |
 | `fix <ref>` | Issue fix session | `/psm fix omc#42` |
-| `feature <proj> <name>` | Feature development | `/psm feature omc add-webhooks` |
+| `feature <proj> <name>` | Feature development | `/psm feature omq add-webhooks` |
 | `list [project]` | List active sessions | `/psm list` |
 | `attach <session>` | Attach to session | `/psm attach omc:pr-123` |
 | `kill <session>` | Kill session | `/psm kill omc:pr-123` |
@@ -490,25 +490,25 @@ Parse `{{ARGUMENTS}}` to determine:
 
 ## Teleport Command
 
-The `omc teleport` command provides a lightweight alternative to full PSM sessions. It creates git worktrees without tmux session management — ideal for quick, isolated development.
+The `omq teleport` command provides a lightweight alternative to full PSM sessions. It creates git worktrees without tmux session management — ideal for quick, isolated development.
 
 ### Usage
 
 ```bash
 # Create worktree for an issue or PR
-omc teleport #123
-omc teleport owner/repo#123
-omc teleport https://github.com/owner/repo/issues/42
+omq teleport #123
+omq teleport owner/repo#123
+omq teleport https://github.com/owner/repo/issues/42
 
 # Create worktree for a feature
-omc teleport my-feature
+omq teleport my-feature
 
 # List existing worktrees
-omc teleport list
+omq teleport list
 
 # Remove a worktree
-omc teleport remove issue/my-repo-123
-omc teleport remove --force feat/my-repo-my-feature
+omq teleport remove issue/my-repo-123
+omq teleport remove --force feat/my-repo-my-feature
 ```
 
 ### Options
@@ -516,14 +516,14 @@ omc teleport remove --force feat/my-repo-my-feature
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--worktree` | Create worktree (default, kept for compatibility) | `true` |
-| `--path <path>` | Custom worktree root directory | `~/Workspace/omc-worktrees/` |
+| `--path <path>` | Custom worktree root directory | `~/Workspace/omq-worktrees/` |
 | `--base <branch>` | Base branch to create from | `main` |
 | `--json` | Output as JSON | `false` |
 
 ### Worktree Layout
 
 ```
-~/Workspace/omc-worktrees/
+~/Workspace/omq-worktrees/
 ├── issue/
 │   └── my-repo-123/        # Issue worktrees
 ├── pr/

@@ -11,14 +11,25 @@ import { clearWorktreeCache, getOmcRoot } from "../worktree-paths.js";
 const mockedExecFileSync = vi.mocked(execFileSync);
 
 describe("resolveSuperprojectRoot cache", () => {
+  // Asserts the DEFAULT on-disk branch (getOmcRoot(root) === join(root, ".omq"))
+  // over temp fixture roots, so the per-file OMQ_STATE_DIR pin (#42) is lifted
+  // per test and restored afterwards.
+  let pinnedStateDir: string | undefined;
   beforeEach(() => {
     clearWorktreeCache();
     mockedExecFileSync.mockReset();
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
   });
 
   afterEach(() => {
     clearWorktreeCache();
     vi.restoreAllMocks();
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
   });
 
   it("caches repeated explicit non-git root probes, including null results, without changing the literal root", () => {

@@ -90,6 +90,32 @@ export function collapsedFailLines(output) {
 }
 
 /**
+ * FAIL lines vitest printed but did not count as failed tests, identified by the file's own
+ * tally line: `src/x.test.ts (8 tests | 8 skipped)` reports zero failed tests, so the suite-level
+ * FAIL above it belongs to no test. Two shapes reach this: a hook that throws before any test
+ * runs (the whole file skips), and a test that fails, retries and then passes.
+ *
+ * Both are real signals and neither is a failed test, so the completeness equation must account
+ * for them separately instead of refusing to judge drift. Measured on the win32 workstation run
+ * behind 931 parsed entries vs 923 failed + 7 collection.
+ */
+export function uncountedFailEntries(output) {
+  const lines = stripAnsi(output).split('\n').map((l) => stripRunnerPrefix(l).trim());
+  const failedByFile = new Map();
+  for (const line of lines) {
+    const m = line.match(/^[❯✓×]\s+(\S+\.test\.ts)\s+\(\d+ tests?(?:\s*\|\s*([^)]*))?\)/);
+    if (!m) continue;
+    const failed = /(\d+) failed/.exec(m[2] ?? '');
+    failedByFile.set(m[1].replace(/\\/g, '/'), failed ? Number(failed[1]) : 0);
+  }
+  return parseVitestOutput(output).filter((entry) => {
+    const file = entry.split(' > ')[0];
+    // Absent from the map means a collection error, which vitest counts on its own side.
+    return failedByFile.get(file) === 0 && !entry.includes(' [ ');
+  });
+}
+
+/**
  * vitest's own tally of the same run. The parsed FAIL-line count must equal
  * failed tests plus module-level collection errors, or the log this tool read
  * is not the whole run: a tee that dropped its tail, a truncated artifact, or a
@@ -208,10 +234,12 @@ function main() {
           + ` (tests=${tally.tests} files=${tally.files}) -- cannot prove this log is complete.`);
         process.exit(2);
       }
-      if (tally.tests !== null && actualFailures.length !== tally.tests + tally.collection) {
+      const uncounted = uncountedFailEntries(vitestOutput);
+      if (tally.tests !== null && actualFailures.length !== tally.tests + tally.collection + uncounted.length) {
         console.error(`\n❌ Incomplete parse: ${actualFailures.length} FAIL entries read, but vitest reported`
           + ` ${tally.tests} failed tests + ${tally.collection} module-level collection errors`
-          + ` = ${tally.tests + tally.collection}. The log is truncated or the parser stopped matching.`);
+          + ` + ${uncounted.length} uncounted FAIL line(s) = ${tally.tests + tally.collection + uncounted.length}.`
+          + ` The log is truncated or the parser stopped matching.`);
         process.exit(1);
       }
       const parsedFiles = new Set(actualFailures.map(f => f.split(' > ')[0])).size;
@@ -226,6 +254,11 @@ function main() {
       const collapsed = collapsedFailLines(vitestOutput);
       if (collapsed) {
         console.log(`Note:    ${collapsed} duplicate FAIL line(s) collapsed -- retried attempts, or two tests sharing a title.`);
+      }
+      if (uncounted.length) {
+        console.log(`Note:    ${uncounted.length} FAIL line(s) belong to a file whose own tally reports 0 failed tests`
+          + ` (a hook that skipped the file, or a test that passed on retry):`);
+        uncounted.forEach((f) => console.log(`  - ${f}`));
       }
       // Blind spot, stated rather than hidden: vitest's `Errors` line reports
       // unhandled rejections that print no FAIL line, so they exist in neither

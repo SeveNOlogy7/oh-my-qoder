@@ -2,6 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const NODE = process.execPath;
 const REPO_ROOT = resolve(join(__dirname, '..', '..'));
@@ -32,6 +35,7 @@ function runHook(input: Record<string, unknown>, extraEnv?: Record<string, strin
 }
 
 describe('post-tool-use-failure.mjs', () => {
+  useDefaultStateRoot();
   const tempDirs: string[] = [];
 
   afterEach(() => {

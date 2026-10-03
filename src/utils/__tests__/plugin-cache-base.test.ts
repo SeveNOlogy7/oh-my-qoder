@@ -47,13 +47,17 @@ describe('resolvePluginCacheBase', () => {
   });
 
   it('prefers the canonical slug when two marketplaces hold the same version', () => {
+    // #44 / Loren 2026-10-01 (dossier item 6c): the canonical slug is the
+    // MEASURED install layout — `qoderclicn plugins install <dir>` registers
+    // under `local/oh-my-qoder/<version>` (observed on this machine under
+    // ~/.qoder-cn/plugins/cache), so `local` outranks `omq` on a tie.
     cacheDir('local', '0.1.0');
     cacheDir('omq', '0.1.0');
-    expect(resolvePluginCacheBase(configDir)).toBe(join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder'));
+    expect(resolvePluginCacheBase(configDir)).toBe(join(configDir, 'plugins', 'cache', 'local', 'oh-my-qoder'));
   });
 
   it('falls back to the canonical slug when nothing is installed', () => {
-    expect(resolvePluginCacheBase(configDir)).toBe(join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder'));
+    expect(resolvePluginCacheBase(configDir)).toBe(join(configDir, 'plugins', 'cache', 'local', 'oh-my-qoder'));
   });
 
   it('ignores marketplace dirs that hold no version directory', () => {
@@ -77,6 +81,6 @@ describe('resolvePluginCacheBase', () => {
   it('survives an unreadable cache tree', () => {
     mkdirSync(join(configDir, 'plugins'), { recursive: true });
     writeFileSync(join(configDir, 'plugins', 'cache'), 'not a directory');
-    expect(resolvePluginCacheBase(configDir)).toBe(join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder'));
+    expect(resolvePluginCacheBase(configDir)).toBe(join(configDir, 'plugins', 'cache', 'local', 'oh-my-qoder'));
   });
 });

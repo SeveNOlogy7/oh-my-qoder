@@ -25,6 +25,9 @@ vi.mock('../runtime.js', async (importOriginal) => {
 });
 
 import { executeTeamApiOperation } from '../api-interop.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 async function writeJson(cwd: string, relativePath: string, value: unknown): Promise<void> {
   const fullPath = join(cwd, relativePath);
@@ -55,6 +58,7 @@ async function expectCleanupBlockedAndStatePreserved(cwd: string, teamName: stri
 }
 
 describe('team api cleanup', () => {
+  useDefaultStateRoot();
   let cwd = '';
 
   afterEach(async () => {

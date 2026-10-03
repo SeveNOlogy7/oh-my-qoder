@@ -11,6 +11,9 @@ import {
   promptModeRecoveryRequiresProgressEvidence,
   waitForStartupEvidenceBudget,
 } from '../runtime-v2.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const mocks = vi.hoisted(() => ({
   createTeamSession: vi.fn(),
@@ -168,6 +171,7 @@ vi.mock('../worker-commit-cadence.js', () => ({
 }));
 
 describe('runtime v2 startup inbox dispatch', () => {
+  useDefaultStateRoot();
   let cwd: string;
   const originalCwd = process.cwd();
 
@@ -975,9 +979,9 @@ describe('runtime v2 startup inbox dispatch', () => {
 
   it('routes inferred review work through alias-keyed resolved snapshot entries', async () => {
     cwd = await mkdtemp(join(tmpdir(), 'omc-runtime-v2-alias-routing-'));
-    await mkdir(join(cwd, '.claude'), { recursive: true });
+    await mkdir(join(cwd, '.qoder'), { recursive: true });
     await writeFile(
-      join(cwd, '.claude', 'omc.jsonc'),
+      join(cwd, '.qoder', 'omq.jsonc'),
       JSON.stringify({
         team: {
           roleRouting: {

@@ -34,8 +34,15 @@ describe('npm package hook surface regression', () => {
     ).toBeLessThan(
       packageJson.scripts?.build?.indexOf('npm run build:claude-md-coordinator') ?? -1,
     );
-    for (const entrypoint of ['test', 'test:ui', 'test:run', 'test:coverage']) {
-      expect(packageJson.scripts?.[entrypoint], entrypoint).not.toContain(
+    // Guard the contamination, not a fixed script list: this fork ships `test` and
+    // `test:run` only (b37141e and HEAD agree), while the ancestor's package.json also has
+    // test:ui/test:coverage. Enumerating the ancestor's four names asserted against undefined
+    // values, which vitest rejects rather than passing.
+    const testEntrypoints = Object.entries(packageJson.scripts ?? {})
+      .filter(([name]) => name === 'test' || name.startsWith('test:'));
+    expect(testEntrypoints.map(([name]) => name).sort()).toEqual(['test', 'test:run']);
+    for (const [name, script] of testEntrypoints) {
+      expect(script, name).not.toContain(
         'build:claude-md-coordinator',
       );
     }
@@ -43,7 +50,7 @@ describe('npm package hook surface regression', () => {
     expect(packageJson.scripts?.prepublishOnly).toBe('npm run build');
     expect(packageJson.files).toEqual(
       expect.arrayContaining([
-        '.claude-plugin',
+        '.qoder-plugin',
         '.mcp.json',
         'hooks',
         'scripts',
@@ -65,7 +72,10 @@ describe('npm package hook surface regression', () => {
     expect(Object.values(readPluginMcpServers())).toEqual([
       {
         command: 'node',
-        args: ['${CLAUDE_PLUGIN_ROOT}/bridge/mcp-server.cjs'],
+        // The host's env var spelling is QODER_PLUGIN_ROOT (35dc3f5 measured
+        // the installed manifest at all-QODER/0-CLAUDE); the former CLAUDE
+        // pin predated that sweep and never matched the shipped .mcp.json.
+        args: ['${QODER_PLUGIN_ROOT}/bridge/mcp-server.cjs'],
       },
     ]);
   });
@@ -73,7 +83,7 @@ describe('npm package hook surface regression', () => {
   it('keeps the complete hook dependency and template payload source-controlled', () => {
     const requiredFiles = listSourceControlledPackageFiles();
 
-    expect(requiredFiles).toContain('commands/omc-setup.md');
+    expect(requiredFiles).toContain('commands/omq-setup.md');
     expect(requiredFiles).not.toHaveLength(0);
     expect(
       requiredFiles.filter((file) => !existsSync(join(PACKAGE_ROOT, file))),

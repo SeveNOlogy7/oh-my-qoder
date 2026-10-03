@@ -220,7 +220,7 @@ function isSkillVisibleToUser(skillName: string): boolean {
  * precedence wins before any directory shortcut. `learner` therefore resolves
  * to its canonical owner `skillify` (deprecated alias claimed before the
  * legacy skills/learner directory), while dir-only names such as `plan` fall
- * back to their registered name (`omc-plan`). The same visibility/entitlement
+ * back to their registered name (`omq-plan`). The same visibility/entitlement
  * filter as the runtime loader applies, failing closed for runtime-hidden
  * skills.
  * Exact match only — no fuzzy substitution.
@@ -247,7 +247,7 @@ function resolveBundledSkillPrimary(
   // Bare (un-namespaced) identifiers stop here: the directory shortcut is
   // reserved for the pinned plugin namespace so native/session-defined agents
   // (e.g. Claude Code's built-in `Plan` vs the skills/plan dir registering
-  // omc-plan) are never mistaken for skills (issue #3667 P1, JS/TS parity).
+  // omq-plan) are never mistaken for skills (issue #3667 P1, JS/TS parity).
   const wasNamespaced = typeof originalSubagentType === 'string'
     && /^(?:oh-my-qoder|omc):/i.test(originalSubagentType.trim());
   if (!wasNamespaced) {
@@ -259,7 +259,7 @@ function resolveBundledSkillPrimary(
     return null;
   }
   // Directory shortcut parity with the hook: names that exist as skill
-  // directories but are not canonical claims (e.g. plan -> omc-plan).
+  // directories but are not canonical claims (e.g. plan -> omq-plan).
   const directPath = join(getSkillsDir(), stripped, 'SKILL.md');
   if (!existsSync(directPath)) {
     return null;

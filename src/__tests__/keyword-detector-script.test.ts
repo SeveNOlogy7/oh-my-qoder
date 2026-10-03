@@ -9,7 +9,7 @@ const NODE = process.execPath;
 
 function runKeywordDetector(
   prompt: string,
-  cwd = process.cwd(),
+  cwd = mkdtempSync(join(tmpdir(), 'keyword-detector-default-')),
   sessionId = 'session-2053',
   env: NodeJS.ProcessEnv = {},
 ) {
@@ -25,6 +25,12 @@ function runKeywordDetector(
       ...process.env,
       NODE_ENV: 'test',
       OMQ_SKIP_HOOKS: '',
+      // Lift the per-file OMQ_STATE_DIR pin (#42): the hook must resolve state
+      // through the DEFAULT branch so its writes land under the caller-supplied
+      // (fixture) cwd, which is what the assertions read back. A leaked repo
+      // cwd here used to write activation state into the real .omq/state/.
+      // Node drops undefined values, so the pin is absent from the child env.
+      OMQ_STATE_DIR: undefined,
       ...env,
     },
     timeout: 15000,
@@ -136,7 +142,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
     const context = output.hookSpecificOutput?.additionalContext ?? '';
 
     expect(context).toContain('[MAGIC KEYWORD: RALPLAN]');
-    expect(context).toContain('Preferred invocation: /oh-my-claudecode:ralplan');
+    expect(context).toContain('Preferred invocation: /oh-my-qoder:ralplan');
     expect(context).not.toContain('name: ralplan');
   });
 
@@ -1191,7 +1197,7 @@ describe('keyword-detector.mjs keywordDetector.disabled opt-out', () => {
 
 describe('keyword-detector.mjs global disable values', () => {
   it.each(['1', 'true'])('short-circuits only for DISABLE_OMQ=%s', (value) => {
-    const output = runKeywordDetector('deepsearch this codebase', process.cwd(), 'keyword-disable', {
+    const output = runKeywordDetector('deepsearch this codebase', mkdtempSync(join(tmpdir(), 'keyword-detector-om-')), 'keyword-disable', {
       DISABLE_OMQ: value,
     });
 
@@ -1199,10 +1205,73 @@ describe('keyword-detector.mjs global disable values', () => {
   });
 
   it.each(['', '0', 'false', 'TRUE', 'yes'])('does not treat DISABLE_OMQ=%s as a global disable', (value) => {
-    const output = runKeywordDetector('deepsearch this codebase', process.cwd(), 'keyword-not-disabled', {
+    const output = runKeywordDetector('deepsearch this codebase', mkdtempSync(join(tmpdir(), 'keyword-detector-om-')), 'keyword-not-disabled', {
       DISABLE_OMQ: value,
     });
 
     expect(output.hookSpecificOutput?.additionalContext).toContain('<search-mode>');
+  });
+});
+
+// Family prefix convention (ledger :405/:419/:497): inbound text is accepted
+// under all four prefixes — this fork's `oh-my-qoder:`/`omq:` plus the
+// ancestor `oh-my-claudecode:`/`omc:` forms. The matchers below used to accept
+// only the ancestor spelling, so the fork's own commands were invisible.
+// Every relaxation carries a negative control: widening must not become
+// "match anything".
+describe('keyword-detector.mjs — four-prefix union matchers', () => {
+  it('activates ralplan for the fork /omq:ralplan spelling', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'kd-union-omq-ralplan-'));
+    const sid = 'sess-union-omq-ralplan';
+
+    runKeywordDetector('/omq:ralplan fix issue #2053', cwd, sid);
+
+    expect(existsSync(getRalplanStatePath(cwd, sid))).toBe(true);
+  });
+
+  it('activates ralplan for the fork /oh-my-qoder:ralplan spelling', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'kd-union-full-ralplan-'));
+    const sid = 'sess-union-full-ralplan';
+
+    runKeywordDetector('/oh-my-qoder:ralplan fix issue #2053', cwd, sid);
+
+    expect(existsSync(getRalplanStatePath(cwd, sid))).toBe(true);
+  });
+
+  it('negative control: /omq:ralplanx does NOT activate ralplan', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'kd-union-neg-suffix-'));
+    const sid = 'sess-union-neg-suffix';
+
+    runKeywordDetector('/omq:ralplanx fix issue #2053', cwd, sid);
+
+    expect(existsSync(getRalplanStatePath(cwd, sid))).toBe(false);
+  });
+
+  it('ancestor /oh-my-claudecode:ralplan spelling still activates (union is additive)', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'kd-union-ancestor-ralplan-'));
+    const sid = 'sess-union-ancestor-ralplan';
+
+    runKeywordDetector('/oh-my-claudecode:ralplan fix issue #2053', cwd, sid);
+
+    expect(existsSync(getRalplanStatePath(cwd, sid))).toBe(true);
+  });
+
+  it('delegates /omq:ask <provider> without activating local modes', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'kd-union-omq-ask-'));
+    const sid = 'sess-union-omq-ask';
+
+    const output = runKeywordDetector('/omq:ask claude review this ralplan plan', cwd, sid);
+
+    expect(output.continue).toBe(true);
+    expect(output.suppressOutput).toBe(true);
+    expect(existsSync(getRalplanStatePath(cwd, sid))).toBe(false);
+  });
+
+  it('negative control: /omq:askew is not an ask delegation', () => {
+    const output = runKeywordDetector('/omq:askew claude run ralph now', mkdtempSync(join(tmpdir(), 'kd-union-neg-ask-')), 'sess-union-neg-ask');
+
+    // Not delegated: the inner ralph keyword fires normally, proving the ask
+    // relaxation did not widen into "any /omq:<word> delegates".
+    expect(output.hookSpecificOutput?.additionalContext).toContain('[MAGIC KEYWORD: RALPH]');
   });
 });

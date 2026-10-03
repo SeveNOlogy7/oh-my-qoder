@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { execSync } from 'child_process';
 import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
 import { isPythonSandboxEnabled, clearSecurityConfigCache } from '../../../lib/security-config.js';
 
@@ -31,7 +32,7 @@ describe('python-repl sandbox env propagation', () => {
 });
 
 function executeBridgeCode(code: string, sandboxEnv = false): { success: boolean; stdout: string; error?: { type: string; message: string } } {
-  const bridgePath = new URL('../../../../bridge/gyoshu_bridge.py', import.meta.url).pathname;
+  const bridgePath = fileURLToPath(new URL('../../../../bridge/gyoshu_bridge.py', import.meta.url));
   const tmpScript = join(tmpdir(), `omc-bridge-exec-test-${process.pid}-${Date.now()}.py`);
   const script = [
     'import importlib.util, json, os',
@@ -181,7 +182,7 @@ interface BridgeLifecycleResult {
 // and runs identically on macOS, Linux, and Windows; the Windows-specific TCP
 // socket fallback is covered separately by tcp-fallback.test.ts.
 function runBridgeLifecycle(seedCode: string): BridgeLifecycleResult {
-  const bridgePath = new URL('../../../../bridge/gyoshu_bridge.py', import.meta.url).pathname;
+  const bridgePath = fileURLToPath(new URL('../../../../bridge/gyoshu_bridge.py', import.meta.url));
   const tmpScript = join(tmpdir(), `omc-bridge-lifecycle-${process.pid}-${Date.now()}.py`);
   const script = [
     'import importlib.util, json',

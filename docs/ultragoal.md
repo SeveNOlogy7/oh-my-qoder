@@ -1,6 +1,6 @@
-# omc ultragoal
+# omq ultragoal
 
-`omc ultragoal` is a durable, repo-native multi-goal workflow that pairs with
+`omq ultragoal` is a durable, repo-native multi-goal workflow that pairs with
 the Claude Code `/goal` slash command. It stores plan/ledger artifacts under
 `.omq/ultragoal/` and prints model-facing handoff text that tells the active
 Claude agent when to invoke `/goal <condition>`, when to clear it, and what
@@ -38,20 +38,20 @@ The plan stores a `claudeGoalMode`:
 ## Commands
 
 ```
-omc ultragoal create-goals  [--brief <text> | --brief-file <path> | --from-stdin]
+omq ultragoal create-goals  [--brief <text> | --brief-file <path> | --from-stdin]
                             [--goal <title::objective>]...
                             [--claude-goal-mode <aggregate|per-story>] [--force] [--json]
-omc ultragoal complete-goals  [--retry-failed] [--json]
-omc ultragoal add-goal       --title <title> --objective <text> [--evidence <text>] [--json]
-omc ultragoal record-review-blockers
+omq ultragoal complete-goals  [--retry-failed] [--json]
+omq ultragoal add-goal       --title <title> --objective <text> [--evidence <text>] [--json]
+omq ultragoal record-review-blockers
                             --goal-id <id> --title <title> --objective <text>
                             --evidence <review-findings>
                             --claude-goal-json <active-json-or-path> [--json]
-omc ultragoal checkpoint    --goal-id <id> --status <complete|failed|blocked>
+omq ultragoal checkpoint    --goal-id <id> --status <complete|failed|blocked>
                             [--evidence <text>]
                             [--claude-goal-json <json-or-path>]
                             [--quality-gate-json <json-or-path>] [--json]
-omc ultragoal status        [--claude-goal-json <json-or-path>] [--json]
+omq ultragoal status        [--claude-goal-json <json-or-path>] [--json]
 ```
 
 Aliases: `create` → `create-goals`, `complete|next|start-next` →
@@ -88,7 +88,7 @@ rerun verification, then run `$code-review`, and finally pass
 ```
 
 If the final review is not clean, the model should call
-`omc ultragoal record-review-blockers` instead of trying to mark the goal
+`omq ultragoal record-review-blockers` instead of trying to mark the goal
 complete. That records the unresolved review findings, appends a blocker
 story, and keeps the Claude `/goal` active.
 

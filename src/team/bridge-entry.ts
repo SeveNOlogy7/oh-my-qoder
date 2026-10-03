@@ -28,16 +28,23 @@ import { sanitizeName } from './tmux-session.js';
 export function validateConfigPath(configPath: string, homeDir: string, claudeConfigDir: string): boolean {
   // Resolve to canonical absolute path to defeat ".." traversal
   const resolved = resolve(configPath);
+  // Compare in forward-slash form: resolve(), realpathSync() and homedir() all yield
+  // backslash paths on Windows, so every `+ '/'` prefix test and the '/.omq/' probes
+  // below matched nothing there, and no legitimate Windows config path could pass.
+  // Only the comparison is normalised -- traversal is still defeated by resolve() above.
+  const toPosix = (p: string) => p.replace(/\\/g, '/');
+  const resolvedKey = toPosix(resolved);
+  const homeKey = toPosix(homeDir);
 
-  const isUnderHome = resolved.startsWith(homeDir + '/') || resolved === homeDir;
-  const normalizedConfigDir = resolve(claudeConfigDir);
-  const normalizedOmqDir = resolve(homeDir, '.omq');
-  const hasOmqComponent = resolved.includes('/.omq/') || resolved.endsWith('/.omq');
+  const isUnderHome = resolvedKey.startsWith(homeKey + '/') || resolvedKey === homeKey;
+  const normalizedConfigDir = toPosix(resolve(claudeConfigDir));
+  const normalizedOmqDir = toPosix(resolve(homeDir, '.omq'));
+  const hasOmqComponent = resolvedKey.includes('/.omq/') || resolvedKey.endsWith('/.omq');
   const isTrustedSubpath =
-    resolved === normalizedConfigDir ||
-    resolved.startsWith(normalizedConfigDir + '/') ||
-    resolved === normalizedOmqDir ||
-    resolved.startsWith(normalizedOmqDir + '/') ||
+    resolvedKey === normalizedConfigDir ||
+    resolvedKey.startsWith(normalizedConfigDir + '/') ||
+    resolvedKey === normalizedOmqDir ||
+    resolvedKey.startsWith(normalizedOmqDir + '/') ||
     hasOmqComponent;
   if (!isUnderHome || !isTrustedSubpath) return false;
 
@@ -45,8 +52,8 @@ export function validateConfigPath(configPath: string, homeDir: string, claudeCo
   // to defeat symlink attacks where the parent is a symlink outside home
   try {
     const parentDir = resolve(resolved, '..');
-    const realParent = realpathSync(parentDir);
-    if (!realParent.startsWith(homeDir + '/') && realParent !== homeDir) {
+    const realParent = toPosix(realpathSync(parentDir));
+    if (!realParent.startsWith(homeKey + '/') && realParent !== homeKey) {
       return false;
     }
   } catch {
@@ -62,7 +69,7 @@ export function validateConfigPath(configPath: string, homeDir: string, claudeCo
  * - Must resolve (via realpathSync) to a path under the user's home directory
  * - Must be inside a git worktree
  */
-function validateBridgeWorkingDirectory(workingDirectory: string): void {
+export function validateBridgeWorkingDirectory(workingDirectory: string): void {
   // Check exists and is directory
   let stat;
   try {
@@ -77,7 +84,13 @@ function validateBridgeWorkingDirectory(workingDirectory: string): void {
   // Resolve symlinks and verify under homedir
   const resolved = realpathSync(workingDirectory);
   const home = homedir();
-  if (!resolved.startsWith(home + '/') && resolved !== home) {
+  // Compare in forward-slash form: realpathSync() and homedir() both return backslashes on
+  // Windows, so `home + '/'` matched nothing there and every legitimate working directory --
+  // including one directly inside the user's home -- was rejected as outside home.
+  const toPosix = (p: string) => p.replace(/\\/g, '/');
+  const resolvedKey = toPosix(resolved);
+  const homeKey = toPosix(home);
+  if (!resolvedKey.startsWith(homeKey + '/') && resolvedKey !== homeKey) {
     throw new Error(`workingDirectory is outside home directory: ${resolved}`);
   }
 

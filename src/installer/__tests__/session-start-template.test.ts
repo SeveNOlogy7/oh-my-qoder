@@ -33,6 +33,10 @@ describe('session-start template guard for same-root parallel sessions (#1744)',
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        // Lift the per-file OMQ_STATE_DIR pin (#42): the hook must resolve
+        // state through the DEFAULT branch via input.cwd (fakeProject fixture).
+        // Node drops undefined values, so the pin is absent from the child env.
+        OMQ_STATE_DIR: undefined,
         ...extraEnv,
       },
       timeout: 15000,
@@ -328,6 +332,10 @@ describe('session-start PID-aware liveness (#E2)', () => {
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        // Lift the per-file OMQ_STATE_DIR pin (#42): the hook must resolve
+        // state through the DEFAULT branch via input.cwd (fakeProject fixture).
+        // Node drops undefined values, so the pin is absent from the child env.
+        OMQ_STATE_DIR: undefined,
         ...extraEnv,
       },
       timeout: 15000,

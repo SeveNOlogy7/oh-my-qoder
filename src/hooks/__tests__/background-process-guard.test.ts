@@ -49,7 +49,12 @@ const mockedLoadConfig = vi.mocked(loadConfig);
 
 describe('Background Process Guard (issue #302)', () => {
   const originalEnv = process.env;
-  const resolvedDirectory = process.cwd();
+  // resolveToWorktreeRoot() hands back the git worktree root, and git prints that with
+  // forward slashes on Windows (measured here: `git rev-parse --show-toplevel` yields
+  // E:/Oh-My-Qoder/omq-m0 while process.cwd() yields E:\Oh-My-Qoder\omq-m0). The
+  // assertions below are about which directory was passed, not how it is spelled, so
+  // compare in git's shape instead of the host's.
+  const resolvedDirectory = process.cwd().replace(/\\/g, '/');
   let claudeConfigDir: string;
 
   const writeClaudePermissions = (allow: string[] = [], ask: string[] = []): void => {

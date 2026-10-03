@@ -123,12 +123,16 @@ describe('release generation', () => {
       'v4.10.1',
     );
 
-    expect(body).toContain('The npm CLI and the Claude Code marketplace/plugin are separate install tracks');
-    expect(body).toContain('if you have both installed, update both');
-    expect(body).toContain('CLI-dependent skill paths such as `ask`, `ccg`, and CLI-backed `team` require the `omc` CLI');
-    expect(body).toContain('npm install -g oh-my-claude-sisyphus@4.10.2');
-    expect(body).toContain('/plugin marketplace update omc');
-    expect(body).toContain('https://github.com/Yeachan-Heo/oh-my-claudecode/compare/v4.10.1...v4.10.2');
+    expect(body).toContain('git clone https://github.com/qoder-plugins/oh-my-qoder.git');
+    expect(body).toContain('qodercli plugins install "$(pwd)"');
+    expect(body).toContain('/plugins reload');
+    expect(body).toContain('https://github.com/qoder-plugins/oh-my-qoder/compare/v4.10.1...v4.10.2');
+    // The generated release body is an outbound artifact: naming the ancestor's npm
+    // package or its Claude Code marketplace entry would send this fork's users to a
+    // package they cannot install (no npm publication for oh-my-qoder).
+    expect(body).not.toContain('oh-my-claude-sisyphus');
+    expect(body).not.toContain('/plugin marketplace update omc');
+    expect(body).not.toContain('Yeachan-Heo/oh-my-claudecode');
     expect(body).toContain('@blue-int @DdangJin @Yeachan-Heo');
     expect(body.match(/## Contributors/g)).toHaveLength(1);
   });

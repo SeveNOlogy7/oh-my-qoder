@@ -9,3 +9,19 @@ package-lock.json text eol=lf
 CLAUDE.md text eol=lf
 docs/CLAUDE.md text eol=lf
 tests/fixtures/prompt-projection/** text eol=lf
+
+# Same hazard for the installer's stale-agent cleanup: src/installer/index.ts
+# recognises the historical agent files by their exact bytes, and the suite feeds
+# those fixtures straight off disk. A CRLF checkout makes every fixture differ
+# from the shipped LF bytes, so cleanupStaleAgents() matches nothing and reports
+# "nothing stale" -- 9 win32-only failures that look like a broken installer.
+src/installer/__tests__/fixtures/historical-agents/** text eol=lf
+
+# Every tracked shell script is stored with LF but a `core.autocrlf=true` checkout
+# smudges 31 of the 32 of them to CRLF on Windows (only bin/omq was covered above).
+# Two consequences: the suites that read a script and match its bytes -- e.g.
+# project-session-manager-worktree-protocol, which requires `\n` immediately after
+# `<<< "$worktree_result"` -- fail on Windows alone, and a script executed by bash
+# can hit `$'\r': command not found` or a line continuation whose backslash is now
+# followed by CR. eol=lf makes the worktree bytes equal to the blob for every host.
+*.sh text eol=lf

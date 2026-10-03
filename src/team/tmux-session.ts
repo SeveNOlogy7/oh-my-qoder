@@ -1595,6 +1595,15 @@ function detectPaneTrustPromptKind(captured: string): PaneTrustPromptKind | null
   const hasDirectoryChoices = tail.some(l => /Yes,\s*continue|No,\s*quit|Press enter to continue/i.test(l));
   if (hasDirectoryQuestion && hasDirectoryChoices) return 'directory';
 
+  // The Qoder CLI renders its own folder-trust dialog, whose two action labels
+  // ("Trust folder" / "Don't trust and exit", and 信任文件夹 / 不信任并退出) are
+  // literals in the shipped bundle. Its title is locale-dependent, so the pair of
+  // choices is what identifies it — and it is required for the same reason the
+  // question+choices pair is above: neither half alone should send keystrokes.
+  const hasTrustFolderChoice = tail.some(l => /Trust folder|信任文件夹/u.test(l));
+  const hasTrustExitChoice = tail.some(l => /Don'?t trust and exit|不信任并退出/u.test(l));
+  if (hasTrustFolderChoice && hasTrustExitChoice) return 'directory';
+
   const hasHookReview = tail.some(l => /Hooks need review/i.test(l));
   const hasHookTrustChoice = tail.some(l => /Continue without trusting/i.test(l));
   const hasHookConfirm = tail.some(l => /Press enter to confirm or esc to go back/i.test(l));
@@ -1767,7 +1776,7 @@ export async function waitForStartupPaneReady(
     if (selector) {
       const providerSupportsSelector = selector === 'codex_hooks'
         ? context.provider === 'codex'
-        : context.provider === 'codex' || context.provider === 'claude';
+        : context.provider === 'codex' || context.provider === 'claude' || context.provider === 'qwen';
       if (!providerSupportsSelector) return { ok: false, reason: 'selector_unsupported' };
       if (handledSelectors.has(selector)) return { ok: false, reason: 'selector_persistent' };
       await sendLiteralPaneText(context.ownership.paneId, selector === 'directory' ? '1' : '3');

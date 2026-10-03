@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 /**
  * Tests for Gemini prompt-mode (headless) spawn flow.
@@ -182,6 +185,7 @@ function resetTmuxFailureState(): void {
 }
 
 describe('spawnWorkerForTask – prompt mode and interactive worker launch', () => {
+  useDefaultStateRoot();
   let cwd: string;
 
   beforeEach(() => {
@@ -548,6 +552,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
 });
 
 describe('spawnWorkerForTask – model passthrough from environment variables', () => {
+  useDefaultStateRoot();
   let cwd: string;
   const originalEnv = process.env;
 

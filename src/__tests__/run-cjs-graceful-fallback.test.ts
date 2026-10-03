@@ -3,6 +3,11 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSyn
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { execFileSync, spawnSync } from 'child_process';
+// Anchors process.cwd()-resolving writers (hud state, session-end jobs,
+// alias telemetry) at a per-test temp dir instead of the real .omq/state.
+import { useCwdFixture } from './helpers/cwd-fixture.js';
+
+useCwdFixture();
 
 const RUN_CJS_PATH = join(__dirname, '..', '..', 'scripts', 'run.cjs');
 const NODE = process.execPath;

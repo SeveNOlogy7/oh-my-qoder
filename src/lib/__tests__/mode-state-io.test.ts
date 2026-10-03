@@ -11,15 +11,24 @@ import { clearWorktreeCache, getProjectIdentifier } from '../worktree-paths.js';
 let tempDir: string;
 
 describe('mode-state-io', () => {
+  // Exercises the DEFAULT state-root branch against a temp fixture (#42):
+  // lift the per-file OMQ_STATE_DIR pin per test, restore afterwards.
+  let pinnedStateDir: string | undefined;
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'mode-state-io-test-'));
     clearWorktreeCache();
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
     clearWorktreeCache();
-    delete process.env.OMQ_STATE_DIR;
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
     delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
     delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
     delete process.env.OMQ_TEST_FLOCK_AVAILABLE;

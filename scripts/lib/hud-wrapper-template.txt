@@ -131,7 +131,7 @@ async function main() {
       return "";
     }
   };
-  let pluginCacheBase = join(cacheParent, "omq", "oh-my-qoder");
+  let pluginCacheBase = join(cacheParent, "local", "oh-my-qoder");
   try {
     const candidates = readdirSync(cacheParent)
       .map((slug) => ({ base: join(cacheParent, slug, "oh-my-qoder"), slug }))
@@ -139,7 +139,7 @@ async function main() {
       .sort((a, b) => {
         const byVersion = newestCacheVersion(a.base).localeCompare(newestCacheVersion(b.base), void 0, { numeric: true });
         if (byVersion !== 0) return byVersion;
-        return (a.slug === "omq" ? 1 : 0) - (b.slug === "omq" ? 1 : 0);
+        return (a.slug === "local" ? 1 : 0) - (b.slug === "local" ? 1 : 0);
       });
     if (candidates.length > 0) pluginCacheBase = candidates[candidates.length - 1].base;
   } catch { /* cache not readable; keep the canonical default */ }
@@ -224,7 +224,7 @@ async function main() {
   }
 
   // 3. Marketplace clone (for marketplace installs without a populated cache)
-  const marketplaceHudPath = join(configDir, "plugins", "marketplaces", "omq", "dist/hud/index.js");
+  const marketplaceHudPath = join(configDir, "plugins", "marketplaces", "local", "dist/hud/index.js");
   if (existsSync(marketplaceHudPath)) {
     try {
       await import(pathToFileURL(marketplaceHudPath).href);

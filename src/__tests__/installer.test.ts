@@ -95,11 +95,11 @@ describe('Installer Constants', () => {
         if (filename === 'AGENTS.md') continue;
 
         // Check for frontmatter delimiters
-        expect(content).toMatch(/^---\n/);
-        expect(content).toMatch(/\n---\n/);
+        expect(content).toMatch(/^---\r?\n/);
+        expect(content).toMatch(/\r?\n---\r?\n/);
 
         // Extract frontmatter
-        const frontmatterMatch = (content as string).match(/^---\n([\s\S]*?)\n---/);
+        const frontmatterMatch = (content as string).match(/^---\r?\n([\s\S]*?)\r?\n---/);
         expect(frontmatterMatch).toBeTruthy();
 
         const frontmatter = frontmatterMatch![1];
@@ -127,19 +127,19 @@ describe('Installer Constants', () => {
 
     it('should have consistent model assignments', () => {
       const modelExpectations: Record<string, string> = {
-        'architect.md': 'opus',
-        'executor.md': 'sonnet',
-        'designer.md': 'sonnet',
-        'writer.md': 'haiku',
-        'critic.md': 'opus',
-        'analyst.md': 'opus',
-        'planner.md': 'opus',
-        'qa-tester.md': 'sonnet',
-        'debugger.md': 'sonnet',
-        'verifier.md': 'sonnet',
-        'test-engineer.md': 'sonnet',
-        'security-reviewer.md': 'opus',
-        'git-master.md': 'sonnet',
+        'architect.md': 'performance',
+        'executor.md': 'auto',
+        'designer.md': 'auto',
+        'writer.md': 'lite',
+        'critic.md': 'performance',
+        'analyst.md': 'performance',
+        'planner.md': 'performance',
+        'qa-tester.md': 'auto',
+        'debugger.md': 'auto',
+        'verifier.md': 'auto',
+        'test-engineer.md': 'auto',
+        'security-reviewer.md': 'performance',
+        'git-master.md': 'auto',
       };
 
       for (const [filename, expectedModel] of Object.entries(modelExpectations)) {
@@ -155,7 +155,7 @@ describe('Installer Constants', () => {
 
         const modelMatch = content.match(/^model:\s+(\S+)/m);
         expect(modelMatch, `${filename} should declare a model alias`).toBeTruthy();
-        expect(modelMatch![1], `${filename} should use a tier alias`).toMatch(/^(opus|sonnet|haiku)$/);
+        expect(modelMatch![1], `${filename} should use a tier alias`).toMatch(/^(performance|auto|lite|sonnet)$/);
         expect(content, `${filename} should not pin a literal Claude model ID`).not.toMatch(/^model:\s+claude-/m);
       }
     });
@@ -638,13 +638,13 @@ describe('Installer Constants', () => {
         // Skip non-agent files
         if (filename === 'AGENTS.md') continue;
 
-        const frontmatterMatch = (content as string).match(/^---\n([\s\S]*?)\n---/);
+        const frontmatterMatch = (content as string).match(/^---\r?\n([\s\S]*?)\r?\n---/);
         expect(frontmatterMatch).toBeTruthy();
 
         const frontmatter = frontmatterMatch![1];
 
         // Each line should be key: value format (allow camelCase keys like disallowedTools)
-        const lines = frontmatter.split('\n').filter((line: string) => line.trim());
+        const lines = frontmatter.split(/\r?\n/).filter((line: string) => line.trim());
         for (const line of lines) {
           expect(line).toMatch(/^[a-zA-Z]+:\s+.+/);
         }

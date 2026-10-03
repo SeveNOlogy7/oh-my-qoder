@@ -100,7 +100,17 @@ describe('buildWorkerLaunchSpec', () => {
     expect(result).toHaveProperty('rcFile');
   });
 
+  // These three cases describe the POSIX resolution order, and
+  // buildWorkerLaunchSpec() short-circuits to /bin/sh before any of it when the
+  // host is win32 inside MSYS (tmux-session.ts:537, documented as priority 1).
+  // Running this suite from Git Bash sets MSYSTEM=MINGW64, so the cases have to
+  // name the host they mean instead of inheriting the runner's.
+  function asPosixHost(): void {
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true, writable: true });
+  }
+
   it('uses user zsh when $SHELL is zsh and binary exists', () => {
+    asPosixHost();
     vi.stubEnv('HOME', '/home/testuser');
     mockExistsSync.mockReturnValue(true);
     const result = buildWorkerLaunchSpec('/bin/zsh');
@@ -109,6 +119,7 @@ describe('buildWorkerLaunchSpec', () => {
   });
 
   it('falls back to zsh candidates when $SHELL is fish', () => {
+    asPosixHost();
     vi.stubEnv('HOME', '/home/testuser');
     mockExistsSync.mockImplementation((p: string) => p === '/usr/bin/zsh');
     const result = buildWorkerLaunchSpec('/usr/bin/fish');
@@ -117,11 +128,23 @@ describe('buildWorkerLaunchSpec', () => {
   });
 
   it('falls back to bash when zsh is missing', () => {
+    asPosixHost();
     vi.stubEnv('HOME', '/home/testuser');
     mockExistsSync.mockImplementation((p: string) => p === '/bin/bash');
     const result = buildWorkerLaunchSpec('/usr/bin/fish');
     expect(result.shell).toBe('/bin/bash');
     expect(result.rcFile).toBe('/home/testuser/.bashrc');
+  });
+
+  it('takes the MSYS short-circuit on win32 and offers no rc file', () => {
+    // Nothing else in this file proves priority 1: the two "falls back to /bin/sh"
+    // cases below get there because no candidate exists, not because of the gate.
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true, writable: true });
+    vi.stubEnv('MSYSTEM', 'MINGW64');
+    vi.stubEnv('HOME', 'C:\\Users\\testuser');
+    mockExistsSync.mockReturnValue(true);
+
+    expect(buildWorkerLaunchSpec('/bin/zsh')).toEqual({ shell: '/bin/sh', rcFile: null });
   });
 
   it('falls back to /bin/sh when no supported shell found', () => {

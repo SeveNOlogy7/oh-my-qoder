@@ -73,13 +73,13 @@ completes the canonical chain and `remember` is the target for the retired
 
 ### Installed names
 
-Two skills install under an `omc-` prefix because their names collide with
-Claude Code native commands:
+Two skills install under an `omq-` prefix because their names collide with
+Qoder CLI native commands:
 
 | Skill    | Installed as |
 | -------- | ------------ |
-| `plan`   | `omc-plan`   |
-| `review` | `omc-review` |
+| `plan`   | `omq-plan`   |
+| `review` | `omq-review` |
 
 ### Migration Steps
 

@@ -513,20 +513,20 @@ describe('cleanupStaleSkills', () => {
     mkdirSync(skillsDir, { recursive: true });
 
     // A prior install wrote `plan/`; standalone mode now installs it as
-    // `omc-plan/` because `plan` collides with a Claude Code native command.
+    // `omq-plan/` because `plan` collides with a Qoder CLI native command.
     // Both directories exist and only the renamed one is current.
     createSkillDir(skillsDir, 'plan', 'plan');
     createManagedSkillMarker(skillsDir, 'plan');
-    createSkillDir(skillsDir, 'omc-plan', 'plan');
-    createManagedSkillMarker(skillsDir, 'omc-plan');
+    createSkillDir(skillsDir, 'omq-plan', 'plan');
+    createManagedSkillMarker(skillsDir, 'omq-plan');
 
     const removed = cleanup(log, { safeStandaloneNames: true });
 
     expect(removed).toContain('plan');
     expect(existsSync(join(skillsDir, 'plan'))).toBe(false);
     // The renamed directory is the live one and must survive.
-    expect(removed).not.toContain('omc-plan');
-    expect(existsSync(join(skillsDir, 'omc-plan'))).toBe(true);
+    expect(removed).not.toContain('omq-plan');
+    expect(existsSync(join(skillsDir, 'omq-plan'))).toBe(true);
   });
 
   it('keeps unprefixed names in plugin mode where no rename occurs', async () => {
@@ -709,39 +709,39 @@ describe('prunePluginDuplicateSkills', () => {
     expect(existsSync(join(skillsDir, 'ultragoal'))).toBe(true);
   });
 
-  it('removes exact-match standalone alias duplicates like omc-plan while preserving alias lookup behavior', async () => {
+  it('removes exact-match standalone alias duplicates like omq-plan while preserving alias lookup behavior', async () => {
     vi.resetModules();
     const { prunePluginDuplicateSkills: prune, SKILLS_DIR: skillsDir } = await import('../index.js');
 
     mkdirSync(skillsDir, { recursive: true });
 
     const packagePlanSkill = readFileSync(join(process.cwd(), 'skills', 'plan', 'SKILL.md'), 'utf-8');
-    const aliasSkillDir = join(skillsDir, 'omc-plan');
+    const aliasSkillDir = join(skillsDir, 'omq-plan');
     mkdirSync(aliasSkillDir, { recursive: true });
     writeFileSync(join(aliasSkillDir, 'SKILL.md'), packagePlanSkill);
 
     const removed = prune(log);
 
-    expect(removed).toContain('omc-plan');
+    expect(removed).toContain('omq-plan');
     expect(existsSync(aliasSkillDir)).toBe(false);
   });
 
-  it('preserves user-authored standalone alias skills like omc-plan when content differs from plugin copy', async () => {
+  it('preserves user-authored standalone alias skills like omq-plan when content differs from plugin copy', async () => {
     vi.resetModules();
     const { prunePluginDuplicateSkills: prune, SKILLS_DIR: skillsDir } = await import('../index.js');
 
     mkdirSync(skillsDir, { recursive: true });
 
-    const aliasSkillDir = join(skillsDir, 'omc-plan');
+    const aliasSkillDir = join(skillsDir, 'omq-plan');
     mkdirSync(aliasSkillDir, { recursive: true });
     writeFileSync(
       join(aliasSkillDir, 'SKILL.md'),
-      '---\nname: plan\ndescription: My custom alias skill\n---\n\n# Custom omc-plan\nUser-authored content.\n',
+      '---\nname: plan\ndescription: My custom alias skill\n---\n\n# Custom omq-plan\nUser-authored content.\n',
     );
 
     const removed = prune(log);
 
-    expect(removed).not.toContain('omc-plan');
+    expect(removed).not.toContain('omq-plan');
     expect(existsSync(aliasSkillDir)).toBe(true);
   });
 

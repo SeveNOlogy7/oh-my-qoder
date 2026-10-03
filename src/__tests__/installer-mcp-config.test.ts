@@ -83,9 +83,12 @@ describe('installer MCP config ownership (issue #1802)', () => {
     vi.resetModules();
   });
 
-  it('moves legacy settings.json mcpServers into ~/.claude.json during install', async () => {
+  it('moves legacy settings.json mcpServers into the host root config during install', async () => {
     const settingsPath = join(claudeConfigDir, 'settings.json');
-    const claudeRootConfigPath = join(homeDir, '.claude.json');
+    // The sibling root-config file name derives from the fork's own config
+    // root (getQoderRootConfigFileName): <configRoot>/../.qoder.json — the
+    // ancestor's .claude.json naming is not what this resolver writes.
+    const claudeRootConfigPath = join(homeDir, '.qoder.json');
     const codexConfigPath = join(codexHome, 'config.toml');
     const registryPath = join(omcHome, 'mcp-registry.json');
 

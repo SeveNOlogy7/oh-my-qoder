@@ -115,6 +115,10 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
   let tempDir: string;
   let fakeProject: string;
   let fakeStateDir: string;
+  // These tests exercise BOTH env branches with their own fixtures and child
+  // env stripping (#42). Lift the per-file pin per test and restore it, so the
+  // unset can never leak into the shared worker.
+  let pinnedStateDir: string | undefined;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'omq-state-root-'));
@@ -124,14 +128,27 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
     // session-start validateCwd requires a real workspace anchor (.git / .omq-workspace)
     mkdirSync(join(fakeProject, '.git'), { recursive: true });
     mkdirSync(fakeStateDir, { recursive: true });
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
     delete process.env.OMQ_STATE_DIR;
     clearWorktreeCache();
   });
 
   afterEach(() => {
-    delete process.env.OMQ_STATE_DIR;
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
     clearWorktreeCache();
-    rmSync(tempDir, { recursive: true, force: true });
+    // Best-effort cleanup: the spawned hooks in this file can still hold the
+    // temp dir open for a heartbeat when afterEach fires, and on Windows that
+    // surfaces as a spurious EPERM. Never let cleanup fail an assertion that
+    // already passed — a leaked %TEMP% dir is acceptable (#42 batch evidence).
+    try {
+      rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {
+      /* non-fatal */
+    }
   });
 
   // ────────────────────────────────────────────────────────────────────────────

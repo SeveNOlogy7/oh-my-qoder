@@ -4,6 +4,9 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { canonicalizeTeamConfigWorkers } from '../../team/worker-canonicalization.js';
 import type { TeamConfig } from '../../team/types.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const mocks = vi.hoisted(() => ({
   spawn: vi.fn(),
@@ -69,6 +72,7 @@ vi.mock('../../team/git-worktree.js', async (importOriginal) => {
 });
 
 describe('team cli', () => {
+  useDefaultStateRoot();
   let jobsDir: string;
 
   beforeEach(() => {

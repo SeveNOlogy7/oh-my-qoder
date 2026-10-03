@@ -3,6 +3,9 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ultragoalCommand } from '../ultragoal.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 async function withTempCwd<T>(run: (cwd: string) => Promise<T>): Promise<T> {
   const cwd = await mkdtemp(join(tmpdir(), 'omc-ultragoal-cli-'));
@@ -36,6 +39,7 @@ function captureConsole() {
 }
 
 describe('omc ultragoal CLI', () => {
+  useDefaultStateRoot();
   let captured: ReturnType<typeof captureConsole>;
 
   beforeEach(() => {
@@ -51,7 +55,7 @@ describe('omc ultragoal CLI', () => {
   it('prints help when invoked with no subcommand', async () => {
     await ultragoalCommand([]);
     const joined = captured.out.join('\n');
-    expect(joined).toMatch(/omc ultragoal/);
+    expect(joined).toMatch(/omq ultragoal/);
     expect(joined).toMatch(/Artifacts[^\n]*[\s\S]*\.omq\/ultragoal\/brief\.md/);
     expect(joined).toMatch(/Claude \/goal integration/);
     expect(joined).not.toMatch(/\bomx\b/);
@@ -62,8 +66,8 @@ describe('omc ultragoal CLI', () => {
       await ultragoalCommand(['create-goals', '- First story\n- Second story']);
       expect(process.exitCode).toBe(0);
 
-      const goals = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { goals: Array<{ id: string }>; claudeGoalMode: string };
-      expect(goals.claudeGoalMode).toBe('aggregate');
+      const goals = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { goals: Array<{ id: string }>; qoderGoalMode: string };
+      expect(goals.qoderGoalMode).toBe('aggregate');
       expect(goals.goals.map((g) => g.id)).toEqual(['G001-first-story', 'G002-second-story']);
 
       const brief = await readFile(join(cwd, '.omq/ultragoal/brief.md'), 'utf-8');

@@ -35,7 +35,7 @@ vi.mock('fs', async () => {
 
 import { execSync, execFileSync } from 'child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { join, sep } from 'path';
 import { install, isProjectScopedPlugin, checkNodeVersion, QODER_CONFIG_DIR } from '../installer/index.js';
 import {
   reconcileUpdateRuntime,
@@ -88,8 +88,8 @@ describe('auto-update reconciliation', () => {
       const normalized = String(path).replace(/\\/g, '/');
       if (normalized.endsWith('/commands')) {
         return options && typeof options === 'object' && 'withFileTypes' in options
-          ? [{ name: 'omc-setup.md', isFile: () => true, isDirectory: () => false }] as any
-          : ['omc-setup.md'] as any;
+          ? [{ name: 'omq-setup.md', isFile: () => true, isDirectory: () => false }] as any
+          : ['omq-setup.md'] as any;
       }
       if (normalized.endsWith('/skills')) {
         return options && typeof options === 'object' && 'withFileTypes' in options
@@ -100,7 +100,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -333,7 +333,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -355,7 +355,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -374,13 +374,13 @@ describe('auto-update reconciliation', () => {
 
     expect(result.success).toBe(true);
     expect(mockedCpSync).toHaveBeenCalledWith(
-      expect.stringContaining('/dist'),
-      `${activeRoot}/dist`,
+      expect.stringContaining(`${sep}dist`),
+      join(activeRoot, 'dist'),
       expect.objectContaining({ recursive: true, force: true }),
     );
     expect(mockedCpSync).toHaveBeenCalledWith(
-      expect.stringContaining('/package.json'),
-      `${activeRoot}/package.json`,
+      expect.stringContaining(`${sep}package.json`),
+      join(activeRoot, 'package.json'),
       expect.objectContaining({ recursive: true, force: true }),
     );
     expect(mockedCpSync).not.toHaveBeenCalledWith(
@@ -398,7 +398,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -412,7 +412,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json') || normalized === activeRoot.replace(/\\/g, '/')) {
@@ -432,7 +432,7 @@ describe('auto-update reconciliation', () => {
     expect(result.success).toBe(false);
     expect(result.errors).toEqual(expect.arrayContaining([
       expect.stringContaining('Plugin cache sync failed:'),
-      expect.stringContaining('bridge/claude-md-coordinator.cjs'),
+      expect.stringContaining('dist/hooks/skill-bridge.cjs'),
     ]));
   });
 
@@ -441,7 +441,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -472,7 +472,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json') {
@@ -521,7 +521,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/oh-my-claude-sisyphus/package.json') {
@@ -566,7 +566,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json') {
@@ -611,7 +611,7 @@ describe('auto-update reconciliation', () => {
     });
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json') {
@@ -629,10 +629,10 @@ describe('auto-update reconciliation', () => {
     });
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === `${versionedCacheRoot.replace(/\\/g, '/')}/bridge/claude-md-coordinator.cjs`) {
+      if (normalized === `${versionedCacheRoot.replace(/\\/g, '/')}/hooks/hooks.json`) {
         return false;
       }
       return normalized.endsWith('/plugins/cache/omc/oh-my-claudecode')
@@ -644,7 +644,7 @@ describe('auto-update reconciliation', () => {
     const result = syncPluginCache(false);
 
     expect(result.synced).toBe(false);
-    expect(result.errors).toContain(`${versionedCacheRoot}: Missing required plugin payload file: bridge/claude-md-coordinator.cjs`);
+    expect(result.errors).toContain(`${versionedCacheRoot}: Missing required plugin payload file: hooks/hooks.json`);
     expect(mockedWriteFileSync.mock.calls.some(([path]) => String(path).includes('installed_plugins.json.tmp-'))).toBe(false);
     expect(mockedRenameSync).not.toHaveBeenCalledWith(expect.stringContaining('installed_plugins.json.tmp-'), expect.anything());
   });
@@ -652,7 +652,10 @@ describe('auto-update reconciliation', () => {
   it('syncs the plugin cache directory when cache root exists', () => {
     const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const cacheRoot = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omc', 'oh-my-claudecode');
-    const versionedCacheRoot = `${cacheRoot}/4.9.0`;
+    // Build with join() so expected paths match the production-constructed
+    // source/target roots on every platform (win32 join emits backslashes).
+    const versionedCacheRoot = join(cacheRoot, '4.9.0');
+    const npmSourceRoot = join('/usr/lib/node_modules', 'oh-my-claude-sisyphus');
 
     mockedExecSync.mockImplementation((command: string) => {
       if (command === 'npm root -g') {
@@ -663,7 +666,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json') {
@@ -681,7 +684,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === cacheRoot) {
@@ -690,14 +693,14 @@ describe('auto-update reconciliation', () => {
       if (normalized.startsWith('/usr/lib/node_modules/oh-my-claude-sisyphus/')) {
         return normalized.endsWith('/dist')
           || normalized.endsWith('/package.json')
-          || normalized.endsWith('/.claude-plugin/plugin.json')
+          || normalized.endsWith('/.qoder-plugin/plugin.json')
           || normalized.endsWith('/dist/hooks/skill-bridge.cjs')
           || normalized.endsWith('/bridge')
           || normalized.endsWith('/bridge/cli.cjs')
           || normalized.endsWith('/bridge/claude-md-coordinator.cjs')
           || normalized.endsWith('/hooks/hooks.json')
           || normalized.endsWith('/commands')
-          || normalized.endsWith('/commands/omc-setup.md')
+          || normalized.endsWith('/commands/omq-setup.md')
           || normalized.endsWith('/skills')
           || normalized.endsWith('/skills/plan/SKILL.md');
       }
@@ -714,18 +717,18 @@ describe('auto-update reconciliation', () => {
     }));
     expect(mockedMkdirSync).toHaveBeenCalledWith(versionedCacheRoot, { recursive: true });
     expect(mockedCpSync).toHaveBeenCalledWith(
-      '/usr/lib/node_modules/oh-my-claude-sisyphus/dist',
-      `${versionedCacheRoot}/dist`,
+      join(npmSourceRoot, 'dist'),
+      join(versionedCacheRoot, 'dist'),
       expect.objectContaining({ recursive: true, force: true }),
     );
     expect(mockedCpSync).toHaveBeenCalledWith(
-      '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json',
-      `${versionedCacheRoot}/package.json`,
+      join(npmSourceRoot, 'package.json'),
+      join(versionedCacheRoot, 'package.json'),
       expect.objectContaining({ recursive: true, force: true }),
     );
     expect(mockedCpSync).toHaveBeenCalledWith(
-      '/usr/lib/node_modules/oh-my-claude-sisyphus/bridge',
-      `${versionedCacheRoot}/bridge`,
+      join(npmSourceRoot, 'bridge'),
+      join(versionedCacheRoot, 'bridge'),
       expect.objectContaining({ recursive: true, force: true }),
     );
     expect(consoleLogSpy).toHaveBeenCalledWith('[omc update] Plugin cache synced');
@@ -735,10 +738,10 @@ describe('auto-update reconciliation', () => {
     const cacheRoot = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omc', 'oh-my-claudecode');
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
-      if (normalized === cacheRoot) {
+      if (normalized === cacheRoot.replace(/\\/g, '/')) {
         return false;
       }
       return true;
@@ -754,7 +757,9 @@ describe('auto-update reconciliation', () => {
   it('handles plugin cache sync errors non-fatally', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const cacheRoot = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omc', 'oh-my-claudecode');
-    const versionedCacheRoot = `${cacheRoot}/4.9.0`;
+    // Build with join() so the expected path separators match the production
+    // target root on every platform (win32 join emits backslashes).
+    const versionedCacheRoot = join(cacheRoot, '4.9.0');
 
     mockedExecSync.mockImplementation((command: string) => {
       if (command === 'npm root -g') {
@@ -765,7 +770,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/oh-my-claude-sisyphus/package.json') {
@@ -783,7 +788,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === cacheRoot) {
@@ -792,14 +797,14 @@ describe('auto-update reconciliation', () => {
       if (normalized.startsWith('/usr/lib/node_modules/oh-my-claude-sisyphus/')) {
         return normalized.endsWith('/dist')
           || normalized.endsWith('/package.json')
-          || normalized.endsWith('/.claude-plugin/plugin.json')
+          || normalized.endsWith('/.qoder-plugin/plugin.json')
           || normalized.endsWith('/dist/hooks/skill-bridge.cjs')
           || normalized.endsWith('/bridge')
           || normalized.endsWith('/bridge/cli.cjs')
           || normalized.endsWith('/bridge/claude-md-coordinator.cjs')
           || normalized.endsWith('/hooks/hooks.json')
           || normalized.endsWith('/commands')
-          || normalized.endsWith('/commands/omc-setup.md')
+          || normalized.endsWith('/commands/omq-setup.md')
           || normalized.endsWith('/skills')
           || normalized.endsWith('/skills/plan/SKILL.md');
       }
@@ -852,7 +857,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized.includes('.omq-version.json')) {
@@ -877,7 +882,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/installed_plugins.json')) {
@@ -936,7 +941,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === pluginRoot.replace(/\\/g, '/')) {
@@ -958,6 +963,10 @@ describe('auto-update reconciliation', () => {
   });
 
   it('restores global Claude Code when npm removes an existing global install during update', async () => {
+    // Pin the POSIX restore route (execFileSync npm args). The win32 route
+    // (execSync with windowsHide) is pinned by the dedicated Windows-safe
+    // restore test below; without this pin the test host's platform decides.
+    mockPlatform('linux');
     const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     process.env.OMQ_UPDATE_RECONCILE = '1';
 
@@ -977,7 +986,7 @@ describe('auto-update reconciliation', () => {
     let claudeCodePackageCheckCount = 0;
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === '/usr/lib/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -995,7 +1004,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1058,7 +1067,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === '/usr/lib/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1108,7 +1117,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/marketplaces/omc')) {
@@ -1142,6 +1151,9 @@ describe('auto-update reconciliation', () => {
   });
 
   it('restores global Claude Code when post-update detection is unknown after a known pre-update install', async () => {
+    // Pin the POSIX restore route (execFileSync npm args); see the sibling
+    // restore test above. The win32 route has its own dedicated test.
+    mockPlatform('linux');
     process.env.OMQ_UPDATE_RECONCILE = '1';
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -1159,7 +1171,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === '/usr/lib/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1177,7 +1189,7 @@ describe('auto-update reconciliation', () => {
     let claudeCodeReadCount = 0;
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === '/usr/lib/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1239,7 +1251,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1307,7 +1319,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1370,7 +1382,7 @@ describe('auto-update reconciliation', () => {
     let claudeCodePackageCheckCount = 0;
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1388,7 +1400,7 @@ describe('auto-update reconciliation', () => {
 
     mockedReadFileSync.mockImplementation((path: Parameters<typeof readFileSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return JSON.stringify({ name: 'oh-my-claudecode', commands: './commands/', skills: ['./skills/plan/'] });
       }
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1547,7 +1559,7 @@ describe('auto-update reconciliation', () => {
     expect(result.success).toBe(true);
     expect(mockedExecFileSync).toHaveBeenCalledWith(
       'git',
-      ['-C', expect.stringContaining('/plugins/marketplaces/omc'), 'status', '--porcelain', '--untracked-files=normal'],
+      ['-C', expect.stringContaining(join('plugins', 'marketplaces', 'omc')), 'status', '--porcelain', '--untracked-files=normal'],
       expect.any(Object)
     );
     expect(mockedExecFileSync).not.toHaveBeenCalledWith(
@@ -1610,7 +1622,7 @@ describe('auto-update reconciliation', () => {
     expect(result.success).toBe(true);
     expect(mockedExecFileSync).toHaveBeenCalledWith(
       'git',
-      ['-C', expect.stringContaining('/plugins/marketplaces/omc'), 'rev-list', '--left-right', '--count', 'HEAD...origin/main'],
+      ['-C', expect.stringContaining(join('plugins', 'marketplaces', 'omc')), 'rev-list', '--left-right', '--count', 'HEAD...origin/main'],
       expect.any(Object)
     );
     expect(mockedExecFileSync).not.toHaveBeenCalledWith(
@@ -1668,7 +1680,7 @@ describe('auto-update reconciliation', () => {
     expect(result.success).toBe(true);
     expect(mockedExecFileSync).toHaveBeenCalledWith(
       'git',
-      ['-C', expect.stringContaining('/plugins/marketplaces/omc'), 'merge', '--ff-only', 'origin/main'],
+      ['-C', expect.stringContaining(join('plugins', 'marketplaces', 'omc')), 'merge', '--ff-only', 'origin/main'],
       expect.any(Object)
     );
     expect(mockedExecFileSync).not.toHaveBeenCalledWith(
@@ -1685,7 +1697,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized === 'C:/Users/bellman/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/package.json') {
@@ -1758,7 +1770,7 @@ describe('auto-update reconciliation', () => {
 
     mockedExistsSync.mockImplementation((path: Parameters<typeof existsSync>[0]) => {
       const normalized = String(path).replace(/\\/g, '/');
-      if (normalized.endsWith('/.claude-plugin/plugin.json')) {
+      if (normalized.endsWith('/.qoder-plugin/plugin.json')) {
         return true;
       }
       if (normalized.endsWith('/plugins/marketplaces/omc')) {

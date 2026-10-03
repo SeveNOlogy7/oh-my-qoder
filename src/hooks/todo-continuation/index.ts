@@ -326,7 +326,7 @@ export function isExplicitCancelCommand(context?: StopContext): boolean {
 
   const prompt = (context.prompt ?? '').trim();
   if (prompt) {
-    const slashCancelPattern = /^\/(?:oh-my-claudecode:)?cancel(?:\s+--force)?\s*$/i;
+    const slashCancelPattern = /^\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?cancel(?:\s+--force)?\s*$/i;
     const keywordCancelPattern = /^(?:cancelomc|stopomc)\s*$/i;
     if (slashCancelPattern.test(prompt) || keywordCancelPattern.test(prompt)) {
       return true;

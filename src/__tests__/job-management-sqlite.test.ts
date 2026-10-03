@@ -4,6 +4,9 @@ import { join } from 'path';
 import { initJobDb, closeJobDb, upsertJob, getJob } from '../lib/job-state-db.js';
 import { handleCheckJobStatus, handleListJobs, handleKillJob } from '../mcp/job-management.js';
 import type { JobStatus } from '../mcp/prompt-persistence.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 // Mock prompt-persistence to prevent JSON file operations
 vi.mock('../mcp/prompt-persistence.js', async () => {
@@ -55,6 +58,7 @@ function createTestJob(overrides: Partial<JobStatus> = {}): JobStatus {
 }
 
 describe('job-management SQLite integration', () => {
+  useDefaultStateRoot();
   beforeEach(async () => {
     if (existsSync(TEST_DIR)) {
       rmSync(TEST_DIR, { recursive: true, force: true });

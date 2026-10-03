@@ -9,7 +9,9 @@
 
 import type { ThinkingConfig } from './types.js';
 import {
-  QWEN_FAMILY_DEFAULTS,
+  CLAUDE_FAMILY_DEFAULTS,
+  CLAUDE_FAMILY_HIGH_VARIANTS,
+  getClaudeHighVariantFromModel,
   resolveQwenFamily,
 } from '../../config/models.js';
 
@@ -38,10 +40,14 @@ function normalizeModelId(modelId: string): string {
 
 /**
  * Map of model IDs to their high-reasoning variants.
- * Qwen models use enable_thinking parameter rather than separate model IDs,
- * so they are not listed here. GPT/Gemini variants are kept for external models.
+ * Claude variants come from centralized family defaults.
+ * Qwen models use enable_thinking rather than separate model IDs, so they are not listed here.
  */
 const HIGH_VARIANT_MAP: Record<string, string> = {
+  // Claude canonical families
+  [CLAUDE_FAMILY_DEFAULTS.SONNET]: CLAUDE_FAMILY_HIGH_VARIANTS.SONNET,
+  [CLAUDE_FAMILY_DEFAULTS.OPUS]: CLAUDE_FAMILY_HIGH_VARIANTS.OPUS,
+  [CLAUDE_FAMILY_DEFAULTS.HAIKU]: CLAUDE_FAMILY_HIGH_VARIANTS.HAIKU,
   // GPT-4
   'gpt-4': 'gpt-4-high',
   'gpt-4-turbo': 'gpt-4-turbo-high',
@@ -116,6 +122,10 @@ export function getHighVariant(modelId: string): string | null {
   // Qwen models use enable_thinking parameter, not separate model IDs.
   // If it's a Qwen model, return null (no model switch needed).
   if (resolveQwenFamily(base)) return null;
+
+  // Resolve Claude families to canonical high variants.
+  const claudeHighBase = getClaudeHighVariantFromModel(base);
+  if (claudeHighBase) return prefix + claudeHighBase;
 
   // Look up exact high variant for external models
   const highBase = HIGH_VARIANT_MAP[base];

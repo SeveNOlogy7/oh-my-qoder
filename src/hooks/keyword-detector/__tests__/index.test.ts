@@ -2768,6 +2768,32 @@ This article argues that fake popularity signals damage trust in open source.`;
       expect(result!.skill).toBe('ralph');
     });
 
+    // This plugin registers as oh-my-qoder, so /omq:<skill> and
+    // /oh-my-qoder:<skill> are the spellings users of this fork actually type.
+    it('parses /omq:ralph debug this', () => {
+      const result = parseExplicitWorkflowSlashInvocation('/omq:ralph debug this');
+      expect(result).not.toBeNull();
+      expect(result!.skill).toBe('ralph');
+    });
+
+    it('parses /oh-my-qoder:ralph debug this', () => {
+      const result = parseExplicitWorkflowSlashInvocation('/oh-my-qoder:ralph debug this');
+      expect(result).not.toBeNull();
+      expect(result!.skill).toBe('ralph');
+    });
+
+    it('parses /omq:autopilot with args', () => {
+      const result = parseExplicitWorkflowSlashInvocation('/omq:autopilot ship the feature');
+      expect(result!.skill).toBe('autopilot');
+      expect(result!.args).toBe('ship the feature');
+    });
+
+    it('parses /oh-my-qoder:ultrawork with args', () => {
+      const result = parseExplicitWorkflowSlashInvocation('/oh-my-qoder:ultrawork investigate this');
+      expect(result!.skill).toBe('ultrawork');
+      expect(result!.args).toBe('investigate this');
+    });
+
     it('parses /autopilot with args', () => {
       const result = parseExplicitWorkflowSlashInvocation('/autopilot ship the feature');
       expect(result!.skill).toBe('autopilot');

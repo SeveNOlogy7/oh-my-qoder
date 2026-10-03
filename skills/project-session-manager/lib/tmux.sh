@@ -61,7 +61,7 @@ psm_create_tmux_session() {
     return 0
 }
 
-# Launch Claude Code in tmux session, optionally injecting either a context-file
+# Launch Qoder CLI in tmux session, optionally injecting either a context-file
 # trigger prompt or a literal initial prompt.
 # Usage: psm_launch_claude <session_name> [initial_context]
 # initial_context may be either:

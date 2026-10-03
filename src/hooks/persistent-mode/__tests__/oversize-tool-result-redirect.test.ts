@@ -4,6 +4,10 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
+
+// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// // the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 import { isOversizeToolResultRedirectStop, type StopContext } from '../../todo-continuation/index.js';
 
 function makeRalphWorktree(sessionId: string): string {
@@ -33,6 +37,7 @@ const redirectedToolResultMessage = [
 ].join('\n');
 
 describe('oversize tool-result redirect stop guard (issue #2988)', () => {
+  useDefaultStateRoot();
   it('classifies redirected tool-result file pointers from stop context text', () => {
     expect(isOversizeToolResultRedirectStop({
       message: redirectedToolResultMessage,

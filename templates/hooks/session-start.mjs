@@ -255,9 +255,9 @@ function formatUpdateNoticeForUser(updateInfo, options = {}) {
   const latestVersion = updateInfo?.latestVersion || 'latest';
   const currentVersion = updateInfo?.currentVersion || 'unknown';
   const action = options.autoUpgradePrompt === false
-    ? 'To update later, run: omc update'
-    : 'Run /update to upgrade now, or use /plugin install oh-my-claudecode';
-  return `[OMC UPDATE AVAILABLE] oh-my-claudecode v${latestVersion} is available (current: v${currentVersion}). ${action}`;
+    ? 'To update later: git pull && npm run build, then /plugins reload'
+    : 'Update with: git pull && npm run build, then /plugins reload';
+  return `[OMQ UPDATE AVAILABLE] oh-my-qoder v${latestVersion} is available (current: v${currentVersion}). ${action}`;
 }
 
 function buildSessionStartAdditionalContext(messages) {
@@ -393,7 +393,7 @@ const STALE_STATE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 function validateCwd(candidate) {
   if (!candidate || typeof candidate !== 'string') {
     process.stderr.write(
-      `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
+      `[OMQ] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
     );
     return null;
   }
@@ -415,7 +415,7 @@ function validateCwd(candidate) {
     cursor = parent;
   }
   process.stderr.write(
-    `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
+    `[OMQ] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
   );
   return null;
 }
@@ -571,7 +571,7 @@ async function main() {
     for (let i = 1; i <= 4; i++) {
       const candidate = join(__dirname, ...Array(i).fill('..'), 'package.json');
       const pkg = readJsonFile(candidate);
-      if ((pkg?.name === 'oh-my-claude-sisyphus' || pkg?.name === 'oh-my-claudecode') && pkg?.version) {
+      if (pkg?.name === 'oh-my-qoder' && pkg?.version) {
         currentVersion = pkg.version;
         break;
       }
@@ -587,7 +587,7 @@ async function main() {
           const stamp = readJsonFile(stampPath);
           if (stamp?.version && stamp.version !== currentVersion) {
             process.stderr.write(
-              `[omc] template version drift: installed=${stamp.version}, plugin=${currentVersion} — run /oh-my-claudecode:omc-setup to refresh\n`
+              `[omc] template version drift: installed=${stamp.version}, plugin=${currentVersion} — run /oh-my-qoder:omc-setup to refresh\n`
             );
             mkdirSync(join(driftMarkerPath, '..'), { recursive: true });
             writeFileSync(driftMarkerPath, JSON.stringify({ warnedAt: new Date().toISOString() }));

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { join } from "path";
 
 // Mock session-registry before importing notify
 const mockRegisterMessage = vi.fn();
@@ -73,6 +74,7 @@ vi.mock("https", () => {
 });
 
 import { notify } from "../index.js";
+import { getOmqRoot } from "../../lib/worktree-paths.js";
 
 /** Default discord-bot config used by most tests */
 const DEFAULT_CONFIG = {
@@ -235,7 +237,14 @@ describe("notify() -> session-registry integration", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(mockGetNewPaneTail).toHaveBeenCalledWith("%42", "/test/project/.omq/state", 23);
+    // The state dir is whatever getOmqRoot resolves for the project under the
+    // runner's pinned state root; the former '/test/project/.omq/state'
+    // literal predates the state-root isolation and never matches it.
+    expect(mockGetNewPaneTail).toHaveBeenCalledWith(
+      "%42",
+      join(getOmqRoot("/test/project"), "state"),
+      23,
+    );
     expect(mockCapturePaneContent).not.toHaveBeenCalled();
   });
 

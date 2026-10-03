@@ -23,7 +23,7 @@ vi.mock('../../lib/file-lock.js', () => ({
 
 // Mock dependencies that touch filesystem / keychain / network
 vi.mock('../../utils/paths.js', () => ({
-  getClaudeConfigDir: () => '/tmp/test-claude',
+  getQoderConfigDir: () => '/tmp/test-claude',
 }));
 
 vi.mock('fs', async (importOriginal) => {

@@ -19,34 +19,20 @@
 
 ### Winning observation output after revert (last 2000 chars)
 ```
-fixtureDir);
-    201|     expect(result.code).toBe(1);
-       |                         ^
-    202|     const parsed = JSON.parse(result.stdout);
-    203|     expect(parsed.provenance[0].reason).toContain('schemaVersion');
+ved:
+undefined
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:424:30
+    422|     expect(result.code).toBe(0);
+    423|     const parsed = JSON.parse(result.stdout);
+    424|     expect(parsed.namespace).toEqual([]);
+       |                              ^
+    425|   });
+    426|
 
- FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > rejects ATTRIBUTION.json with invalid class name
-AssertionError: expected +0 to be 1 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/19]⎯
 
-- Expected
-+ Received
-
-- 1
-+ 0
-
- ❯ src/__tests__/canonical-identity-provenance.test.ts:221:25
-    219|
-    220|     const result = runCheck(fixtureDir);
-    221|     expect(result.code).toBe(1);
-       |                         ^
-    222|     const parsed = JSON.parse(result.stdout);
-    223|     const invalid = parsed.provenance.find((v: any) => v.file === 'src…
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
-
- FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > normalises backslashes in entry paths to forward slashes
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT apply to migration docs, which name the ancestor product on purpose
 AssertionError: expected undefined to deeply equal []
 
 - Expected:
@@ -55,17 +41,17 @@ AssertionError: expected undefined to deeply equal []
 + Received:
 undefined
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:247:31
-    245|     expect(result.code).toBe(0);
-    246|     const parsed = JSON.parse(result.stdout);
-    247|     expect(parsed.provenance).toEqual([]);
-       |                               ^
-    248|   });
-    249|
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:437:30
+    435|     expect(result.code).toBe(0);
+    436|     const parsed = JSON.parse(result.stdout);
+    437|     expect(parsed.namespace).toEqual([]);
+       |                              ^
+    438|   });
+    439|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/19]⎯
 
- FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > does NOT reuse isFixturePath: test files are subject to provenance
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > flags a foreign MCP tool name in guidance
 AssertionError: expected +0 to be 1 // Object.is equality
 
 - Expected
@@ -74,22 +60,18 @@ AssertionError: expected +0 to be 1 // Object.is equality
 - 1
 + 0
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:263:25
-    261|
-    262|     const result = runCheck(fixtureDir);
-    263|     expect(result.code).toBe(1);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:448:25
+    446|
+    447|     const result = runCheck(fixtureDir);
+    448|     expect(result.code).toBe(1);
        |                         ^
-    264|     const parsed = JSON.parse(result.stdout);
-    265|     const files = parsed.provenance.map((v: any) => v.file);
+    449|     const parsed = JSON.parse(result.stdout);
+    450|     expect(parsed.namespace.length).toBe(1);
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/19]⎯
 
-
-```
-
-### Winning observation stderr after revert (last 1000 chars)
-```
-tionError: expected undefined to deeply equal []
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT flag prose that merely contains a colon inside backticks
+AssertionError: expected undefined to deeply equal []
 
 - Expected:
 []
@@ -97,17 +79,22 @@ tionError: expected undefined to deeply equal []
 + Received:
 undefined
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:247:31
-    245|     expect(result.code).toBe(0);
-    246|     const parsed = JSON.parse(result.stdout);
-    247|     expect(parsed.provenance).toEqual([]);
-       |                               ^
-    248|   });
-    249|
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:470:30
+    468|     expect(result.code).toBe(0);
+    469|     const parsed = JSON.parse(result.stdout);
+    470|     expect(parsed.namespace).toEqual([]);
+       |                              ^
+    471|   });
+    472| });
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/19]⎯
 
- FAIL  src/__tests__/canonical-identity-provenance.test.ts > ancestor provenance rule > does NOT reuse isFixturePath: test files are subject to provenance
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+ in guidance
 AssertionError: expected +0 to be 1 // Object.is equality
 
 - Expected
@@ -116,15 +103,34 @@ AssertionError: expected +0 to be 1 // Object.is equality
 - 1
 + 0
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:263:25
-    261|
-    262|     const result = runCheck(fixtureDir);
-    263|     expect(result.code).toBe(1);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:448:25
+    446|
+    447|     const result = runCheck(fixtureDir);
+    448|     expect(result.code).toBe(1);
        |                         ^
-    264|     const parsed = JSON.parse(result.stdout);
-    265|     const files = parsed.provenance.map((v: any) => v.file);
+    449|     const parsed = JSON.parse(result.stdout);
+    450|     expect(parsed.namespace.length).toBe(1);
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/19]⎯
+
+ FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT flag prose that merely contains a colon inside backticks
+AssertionError: expected undefined to deeply equal []
+
+- Expected:
+[]
+
++ Received:
+undefined
+
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:470:30
+    468|     expect(result.code).toBe(0);
+    469|     const parsed = JSON.parse(result.stdout);
+    470|     expect(parsed.namespace).toEqual([]);
+       |                              ^
+    471|   });
+    472| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/19]⎯
 
 
 ```

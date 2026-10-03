@@ -10,6 +10,9 @@ import {
 } from "./index.js";
 import { activateUltrawork, deactivateUltrawork } from "../ultrawork/index.js";
 import { getOmcRoot } from "../../lib/worktree-paths.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 function writeTranscriptWithContext(filePath: string, contextWindow: number, inputTokens: number): void {
   writeFileSync(
@@ -166,6 +169,7 @@ function resolveCentralizedStateDir(directory: string, customStateDir: string): 
 }
 
 describe("Stop Hook Blocking Contract", () => {
+  useDefaultStateRoot();
   describe("createHookOutput", () => {
     it("returns continue: false when shouldBlock is true", () => {
       const result: PersistentModeResult = {
@@ -1223,7 +1227,7 @@ describe("Stop Hook Blocking Contract", () => {
       const reason = String(output.reason || "");
       expect(output.decision).toBe("block");
       expect(reason).toContain("[ULTRAWORK #1/");
-      expect(reason).toContain("/oh-my-claudecode:cancel");
+      expect(reason).toContain("/oh-my-qoder:cancel");
       expect(reason).not.toContain("\nTask:");
     });
 
@@ -1408,6 +1412,34 @@ describe("Stop Hook Blocking Contract", () => {
       expect(output.decision).toBeUndefined();
       expect(existsSync(autopilotPath)).toBe(false);
     });
+
+    // The plugin registers as oh-my-qoder, so these are the routing echoes this
+    // fork's own command actually writes into autopilot-state.json.
+    it.each(["/omq:autopilot execute", "/oh-my-qoder:autopilot"])(
+      "cleans slash autopilot routing echo state for %s in mjs script",
+      (originalPrompt) => {
+        const sessionId = `autopilot-fork-echo-orphan-${originalPrompt.replace(/\W/g, "")}`;
+        const sessionDir = join(tempDir, ".omq", "state", "sessions", sessionId);
+        const autopilotPath = join(sessionDir, "autopilot-state.json");
+        mkdirSync(sessionDir, { recursive: true });
+        writeFileSync(
+          autopilotPath,
+          JSON.stringify({
+            active: true,
+            original_prompt: originalPrompt,
+            session_id: sessionId,
+            started_at: new Date().toISOString(),
+            last_checked_at: new Date().toISOString(),
+            reinforcement_count: 0,
+          }),
+        );
+
+        const output = runScript({ directory: tempDir, sessionId });
+        expect(output.continue).toBe(true);
+        expect(output.decision).toBeUndefined();
+        expect(existsSync(autopilotPath)).toBe(false);
+      },
+    );
 
     it("does not clear slash autopilot state once a real phase is present in mjs script", () => {
       const sessionId = "autopilot-slash-active-phase-mjs";
@@ -1810,7 +1842,7 @@ describe("Stop Hook Blocking Contract", () => {
       const reason = String(output.reason || "");
       expect(output.decision).toBe("block");
       expect(reason).toContain("[ULTRAWORK #1/");
-      expect(reason).toContain("/oh-my-claudecode:cancel");
+      expect(reason).toContain("/oh-my-qoder:cancel");
       expect(reason).not.toContain("\nTask:");
     });
 
@@ -2150,7 +2182,7 @@ describe("Stop Hook Blocking Contract", () => {
 
       expect(output.decision).toBe("block");
       expect(output.reason).toContain("AUTOPILOT");
-      expect(output.reason).not.toContain('/oh-my-claudecode:cancel');
+      expect(output.reason).not.toContain('/oh-my-qoder:cancel');
     });
 
     it("auto-deactivates ultrawork state when no incomplete work remains in cjs script", () => {

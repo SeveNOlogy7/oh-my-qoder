@@ -10,6 +10,9 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'os';
 import process from 'process';
 import { detectAnnouncedBackgroundLaunch, detectBashFailure, detectWriteFailure, isBackgroundToolInvocation, isClaudeCodeWriteSuccess, isNonZeroExitWithOutput, summarizeAgentResult } from '../../scripts/post-tool-verifier.mjs';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'post-tool-verifier.mjs');
 const TEMPLATE_HOOK_PATH = join(process.cwd(), 'templates', 'hooks', 'post-tool-use.mjs');
@@ -109,6 +112,7 @@ function writeRalplanStateFixture(tempDir, sessionId, overrides = {}) {
 }
 
 describe('detectBashFailure', () => {
+  useDefaultStateRoot();
   describe('Claude Code temp CWD false positives (issue #696)', () => {
     it('should not flag macOS temp CWD permission error as a failure', () => {
       const output = 'zsh:1: permission denied: /var/folders/xx/yyyyyyy/T/claude-abc123def-cwd';
@@ -235,6 +239,7 @@ describe('detectBashFailure', () => {
 });
 
 describe('isNonZeroExitWithOutput (issue #960)', () => {
+  useDefaultStateRoot();
   describe('should return true for non-zero exit with valid stdout', () => {
     it('gh pr checks with pending checks (exit code 8)', () => {
       const output = [
@@ -329,6 +334,7 @@ describe('isNonZeroExitWithOutput (issue #960)', () => {
 });
 
 describe('isClaudeCodeWriteSuccess', () => {
+  useDefaultStateRoot();
   it('detects canonical edit success output', () => {
     expect(isClaudeCodeWriteSuccess('The file /tmp/doc.md has been updated successfully.')).toBe(true);
   });
@@ -353,6 +359,7 @@ describe('isClaudeCodeWriteSuccess', () => {
 });
 
 describe('detectWriteFailure', () => {
+  useDefaultStateRoot();
   describe('Claude Code temp CWD false positives (issue #696)', () => {
     it('should not flag macOS temp CWD permission error as a write failure', () => {
       const output = 'zsh:1: permission denied: /var/folders/xx/yyyyyyy/T/claude-abc123def-cwd';
@@ -474,6 +481,7 @@ describe('detectWriteFailure', () => {
 });
 
 describe('agent output summarization / truncation (issue #1373)', () => {
+  useDefaultStateRoot();
   it('summarizes multi-line agent output into concise single-line context', () => {
     const output = [
       'Completed worker step A',
@@ -511,6 +519,7 @@ describe('agent output summarization / truncation (issue #1373)', () => {
 });
 
 describe('post-tool hook regression coverage (issue #2615)', () => {
+  useDefaultStateRoot();
   it('prefers canonical edit success output over embedded markdown diagnostics', () => {
     const out = runPostToolVerifier({
       tool_name: 'Edit',
@@ -599,6 +608,7 @@ describe('post-tool hook regression coverage (issue #2615)', () => {
 });
 
 describe('post-tool hook structured Write/Edit envelopes (issue #2840)', () => {
+  useDefaultStateRoot();
   it('trusts real Edit success envelopes before scanning embedded source fields', () => {
     const out = runPostToolVerifier({
       tool_name: 'Edit',
@@ -842,6 +852,7 @@ describe('post-tool hook structured Write/Edit envelopes (issue #2840)', () => {
 });
 
 describe('OMQ_QUIET hook message suppression (issue #1646)', () => {
+  useDefaultStateRoot();
   it('suppresses routine success/advice messages at OMQ_QUIET=1 while keeping failures', () => {
     const edit = runPostToolVerifier(
       {
@@ -922,6 +933,7 @@ describe('OMQ_QUIET hook message suppression (issue #1646)', () => {
 });
 
 describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
+  useDefaultStateRoot();
   it('clears session and legacy skill-active-state files for Skill completion in post-tool-verifier', () => {
     withTempDir((tempDir) => {
       const sessionId = 'skill-clear-script';
@@ -1068,6 +1080,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 });
 
 describe('background operation detection (issue #3578)', () => {
+  useDefaultStateRoot();
   const TRIGGER_WORDS = ['started', 'running', 'background', 'async', 'task_id', 'spawned'];
 
   describe('isBackgroundToolInvocation', () => {

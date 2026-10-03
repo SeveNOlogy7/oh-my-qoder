@@ -24,7 +24,14 @@ import {
   listSessionIds,
 } from '../../../lib/worktree-paths.js';
 
+// Seeds fixtures under {tempDir}/.omq and calls the production resolvers with
+// that root, i.e. the DEFAULT state-root branch (#42): lift the per-file
+// OMQ_STATE_DIR pin for every test here.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
+
 describe('Session-Scoped State Isolation', () => {
+  useDefaultStateRoot();
+
   let tempDir: string;
 
   beforeEach(() => {

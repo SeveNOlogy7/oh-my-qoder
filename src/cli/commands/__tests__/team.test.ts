@@ -3,6 +3,9 @@ import { mkdtemp, rm, mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { teamCommand, parseTeamArgs, buildStartupTasks, buildTeamLaunchTasks, resolveAvailableTeamName, resolveTeamFanoutLimit, splitTaskString, assertTeamSpawnAllowed } from '../team.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 /** Helper: capture console.log output during a callback */
 async function captureLog(fn: () => Promise<void>): Promise<string[]> {
@@ -36,14 +39,15 @@ async function initTeamState(teamName: string, wd: string): Promise<void> {
 }
 
 describe('teamCommand help output', () => {
+  useDefaultStateRoot();
   it('prints team help for --help', async () => {
     const logs = await captureLog(() => teamCommand(['--help']));
-    expect(logs[0]).toContain('omc team api <operation>');
+    expect(logs[0]).toContain('omq team api <operation>');
   });
 
   it('prints team help for help alias', async () => {
     const logs = await captureLog(() => teamCommand(['help']));
-    expect(logs[0]).toContain('omc team api <operation>');
+    expect(logs[0]).toContain('omq team api <operation>');
   });
 
   it('prints api help for omc team api --help', async () => {
@@ -55,19 +59,20 @@ describe('teamCommand help output', () => {
 
   it('prints operation-specific help for omc team api <op> --help', async () => {
     const logs = await captureLog(() => teamCommand(['api', 'send-message', '--help']));
-    expect(logs[0]).toContain('Usage: omc team api send-message');
+    expect(logs[0]).toContain('Usage: omq team api send-message');
     expect(logs[0]).toContain('from_worker');
     expect(logs[0]).toContain('to_worker');
   });
 
   it('prints operation-specific help for omc team api --help <op>', async () => {
     const logs = await captureLog(() => teamCommand(['api', '--help', 'claim-task']));
-    expect(logs[0]).toContain('Usage: omc team api claim-task');
+    expect(logs[0]).toContain('Usage: omq team api claim-task');
     expect(logs[0]).toContain('expected_version');
   });
 });
 
 describe('teamCommand api operations', () => {
+  useDefaultStateRoot();
   let wd: string;
   let previousCwd: string;
 
@@ -111,7 +116,7 @@ describe('teamCommand api operations', () => {
     const envelope = JSON.parse(logs[0]);
     expect(envelope.schema_version).toBe('1.0');
     expect(envelope.ok).toBe(true);
-    expect(envelope.command).toBe('omc team api send-message');
+    expect(envelope.command).toBe('omq team api send-message');
     expect(envelope.data.message.body).toBe('ACK');
   });
 
@@ -281,6 +286,7 @@ describe('teamCommand api operations', () => {
 });
 
 describe('parseTeamArgs comma-separated multi-type specs', () => {
+  useDefaultStateRoot();
 
   it('honors N multipliers and duplicate agent entries in comma specs', () => {
     const mixed = parseTeamArgs(['1:claude,2:codex', 'execute fixed plan']);
@@ -660,6 +666,7 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
 
 
 describe('buildStartupTasks', () => {
+  useDefaultStateRoot();
   it('adds owner-aware fanout for explicit per-worker roles', () => {
     const parsed = parseTeamArgs(['1:codex:architect,1:gemini:writer', 'draft launch plan']);
     expect(buildStartupTasks(parsed)).toEqual([

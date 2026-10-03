@@ -358,6 +358,10 @@ describe('HUD stdin rate limits', () => {
 describe('HUD stdin cache path is session-scoped', () => {
   let tmpRoot: string;
   let originalCwd: string;
+  // These tests exercise the DEFAULT state-root branch by chdir'ing into a
+  // temp git repo (#42): lift the per-file OMQ_STATE_DIR pin per test and
+  // restore it afterwards so the worker keeps its pin.
+  let pinnedStateDir: string | undefined;
   const envKeys = ['CLAUDE_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
   const savedEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
 
@@ -369,6 +373,8 @@ describe('HUD stdin cache path is session-scoped', () => {
     execSync('git init --quiet', { cwd: tmpRoot });
     originalCwd = process.cwd();
     process.chdir(tmpRoot);
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     for (const key of envKeys) {
       savedEnv[key] = process.env[key];
       delete process.env[key];
@@ -377,6 +383,11 @@ describe('HUD stdin cache path is session-scoped', () => {
 
   afterEach(() => {
     process.chdir(originalCwd);
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
     for (const key of envKeys) {
       if (savedEnv[key] === undefined) {
         delete process.env[key];
@@ -553,6 +564,9 @@ describe('HUD stdin cache path is session-scoped', () => {
 describe('readStdinCache — env-less reader fallback to most recent session cache', () => {
   let tmpRoot: string;
   let originalCwd: string;
+  // Same default-branch exercise as the describe above (#42): lift the
+  // per-file OMQ_STATE_DIR pin per test, restore afterwards.
+  let pinnedStateDir: string | undefined;
   const envKeys = ['CLAUDE_SESSION_ID', 'CLAUDECODE_SESSION_ID'] as const;
   const savedEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
 
@@ -561,6 +575,8 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
     execSync('git init --quiet', { cwd: tmpRoot });
     originalCwd = process.cwd();
     process.chdir(tmpRoot);
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     for (const key of envKeys) {
       savedEnv[key] = process.env[key];
       delete process.env[key];
@@ -569,6 +585,11 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
 
   afterEach(() => {
     process.chdir(originalCwd);
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
     for (const key of envKeys) {
       if (savedEnv[key] === undefined) {
         delete process.env[key];

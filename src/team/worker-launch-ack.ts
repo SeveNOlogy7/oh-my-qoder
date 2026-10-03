@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 
 import { captureOwnedProcessGroup, getProcessStartIdentitySync, isProcessAlive, isProcessIdentityLive, terminateOwnedProcessGroup } from '../platform/process-utils.js';
 import type { CliAgentType } from './model-contract.js';
+import { isCliWorkerAgentType } from './cli-agent-types.js';
 import { absPath, TeamPaths } from './state-paths.js';
 import { atomicWriteJson } from '../lib/atomic-write.js';
 import { lockPathFor, withFileLock } from '../lib/file-lock.js';
@@ -254,11 +255,6 @@ function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function isProvider(value: unknown): value is CliAgentType {
-  return value === 'claude' || value === 'codex' || value === 'gemini'
-    || value === 'cursor' || value === 'grok' || value === 'antigravity';
-}
-
 function identityMatches(value: unknown, expected: WorkerLaunchIdentity): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Partial<WorkerLaunchIdentity>;
@@ -281,7 +277,7 @@ function isValidIdentity(value: unknown): value is WorkerLaunchIdentity {
     && isExactText(record.team_name)
     && isExactText(record.worker_name)
     && isExactText(record.pane_id)
-    && isProvider(record.provider)
+    && isCliWorkerAgentType(record.provider)
     && typeof record.created_at === 'string'
     && Number.isFinite(Date.parse(record.created_at));
 }

@@ -8,7 +8,7 @@
  *    - "strict": all security features enabled
  *    - unset/other: per-feature defaults apply
  *
- * 2. Config file (.qoder/omq.jsonc or ~/.config/qoder-omq/config.jsonc)
+ * 2. Config file (.claude/omq.jsonc or ~/.config/qoder-omq/config.jsonc)
  *    security section — granular overrides (highest precedence)
  *
  * Precedence: config file > OMQ_SECURITY env var > defaults (all off)
@@ -60,14 +60,26 @@ const STRICT_OVERRIDES: SecurityConfig = {
 let cachedConfig: SecurityConfig | null = null;
 
 /**
+ * Project-level security config, relative to the project root. Exported so a refusal
+ * hint cannot name a file this reader never opens: both the fork and the ancestor
+ * shipped an ast-grep message pointing at a different path than the two below.
+ */
+export const PROJECT_SECURITY_CONFIG_PATH = join(".claude", "omq.jsonc");
+
+/** Config files consulted for the security block, in precedence order. */
+export function securityConfigPaths(cwd: string = process.cwd()): string[] {
+  return [
+    join(cwd, PROJECT_SECURITY_CONFIG_PATH),
+    join(getConfigDir(), "qoder-omq", "config.jsonc"),
+  ];
+}
+
+/**
  * Load the security section from config files.
  * Checks project config first, then user config.
  */
 function loadSecurityFromConfigFiles(): Partial<SecurityConfig> {
-  const paths = [
-    join(process.cwd(), ".claude", "omq.jsonc"),
-    join(getConfigDir(), "qoder-omq", "config.jsonc"),
-  ];
+  const paths = securityConfigPaths();
 
   for (const configPath of paths) {
     if (!existsSync(configPath)) continue;

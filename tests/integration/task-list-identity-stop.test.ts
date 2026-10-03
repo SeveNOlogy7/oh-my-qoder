@@ -4,6 +4,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../src/__tests__/helpers/default-state-root.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -109,6 +112,7 @@ afterEach(() => {
 describe.each(['mjs', 'cjs', 'template'] as const)(
   'Stop hook task-store identity resolution (%s)',
   (kind) => {
+  useDefaultStateRoot();
     it('counts tasks from the CLAUDE_CODE_TASK_LIST_ID override store when set and valid', () => {
       const f = makeFixture(kind);
       writeActiveUltrawork(f);
@@ -189,6 +193,7 @@ describe.each(['mjs', 'cjs', 'template'] as const)(
 );
 
 describe('Stop hook task-store identity mirror parity', () => {
+  useDefaultStateRoot();
   it('keeps the observable override/fallback contract identical across mjs, cjs, and template variants', () => {
     // The executable parity is proven by the describe.each suite above running
     // the same fixtures through each shipped variant. This structural guard
@@ -207,6 +212,7 @@ describe('Stop hook task-store identity mirror parity', () => {
 });
 
 describe('Stop hook inherited task-list override isolation (issue #3732 review)', () => {
+  useDefaultStateRoot();
   let previousOverride: string | undefined;
   let hadPrevious = false;
 

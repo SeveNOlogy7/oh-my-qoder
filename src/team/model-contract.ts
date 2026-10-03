@@ -1,6 +1,6 @@
 import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { spawnSync } from 'child_process';
-import { isAbsolute, normalize, sep, win32 as win32Path } from 'path';
+import { isAbsolute, normalize, win32 as win32Path } from 'path';
 import { validateTeamName } from './team-name.js';
 import { normalizeToCcAlias, normalizeToTierAlias } from '../features/delegation-enforcer.js';
 import { isBedrock, isVertexAI, isProviderSpecificModelId } from '../config/models.js';
@@ -54,9 +54,35 @@ const UNTRUSTED_PATH_PATTERNS: RegExp[] = [
   /^\/tmp(\/|$)/,
   /^\/var\/tmp(\/|$)/,
   /^\/dev\/shm(\/|$)/,
+  // The REAL Windows temp locations, in the forward-slash form
+  // resolveCliBinaryPath matches against (#63): C:\Windows\Temp and the
+  // per-user %LOCALAPPDATA%\Temp (= C:\Users\<u>\AppData\Local\Temp).
+  // Case-insensitive and drive-letter agnostic; the trailing boundary keeps
+  // siblings like C:\Windows\Tempx trusted.
+  /^([A-Za-z]:)\/windows\/temp(\/|$)/i,
+  /^([A-Za-z]:)\/users\/[^/]+\/appdata\/local\/temp(\/|$)/i,
 ];
 
-function getTrustedPrefixes(): string[] {
+/**
+ * Split OMQ_TRUSTED_CLI_DIRS (#63). Windows path lists are ';'-delimited and
+ * drive-letter entries contain ':' themselves, so a blind ':' split corrupts
+ * both (shredding 'C:\tools\bin' into 'C' and '\tools\bin'). Rule:
+ *   1. the value carries ';'  -> split on ';' (Windows list, or any list that
+ *      uses the Windows separator)
+ *   2. no ';' but a drive-letter path on win32 -> single entry (the colon is
+ *      the drive separator, not a list separator)
+ *   3. otherwise -> the historic ':' split, so existing POSIX colon lists are
+ *      interpreted exactly as before
+ */
+function splitTrustedDirList(raw: string, platform: NodeJS.Platform = process.platform): string[] {
+  const value = raw.trim();
+  if (!value) return [];
+  if (value.includes(';')) return value.split(';');
+  if (platform === 'win32' && /^[A-Za-z]:[\\/]/.test(value)) return [value];
+  return value.split(':');
+}
+
+function getTrustedPrefixes(platform: NodeJS.Platform = process.platform): string[] {
   const trusted = [
     '/usr/local/bin',
     '/usr/bin',
@@ -71,8 +97,7 @@ function getTrustedPrefixes(): string[] {
     trusted.push(`${home}/.grok/bin`);
   }
 
-  const custom = (process.env.OMQ_TRUSTED_CLI_DIRS ?? '')
-    .split(':')
+  const custom = splitTrustedDirList(process.env.OMQ_TRUSTED_CLI_DIRS ?? '', platform)
     .map(part => part.trim())
     .filter(Boolean)
     .filter(part => isAbsolute(part));
@@ -82,16 +107,19 @@ function getTrustedPrefixes(): string[] {
 }
 
 function isTrustedPrefix(resolvedPath: string): boolean {
-  const normalized = normalize(resolvedPath);
+  const normalized = normalize(resolvedPath).replace(/\\/g, '/');
   return getTrustedPrefixes().some(prefix => {
     // `normalize` strips trailing separators, so a plain `startsWith` would treat
     // a sibling whose name merely begins with the prefix as trusted — e.g.
     // `/usr/bin` would match `/usr/bin-malicious/grok`, and `~/.local/bin` would
     // match `~/.local/bin-evil/x`. Enforce a directory boundary: the resolved
     // path must be the trusted dir itself or a true descendant (prefix + sep).
-    const p = normalize(prefix);
+    // Comparison is done in forward-slash form because the prefix list is POSIX-shaped
+    // and win32 `normalize` would rewrite a '/usr/…' value into '\usr\…', which starts
+    // with nothing in the list.
+    const p = normalize(prefix).replace(/\\/g, '/');
     if (normalized === p) return true;
-    const withSep = p.endsWith(sep) ? p : p + sep;
+    const withSep = p.endsWith('/') ? p : p + '/';
     return normalized.startsWith(withSep);
   });
 }
@@ -129,16 +157,22 @@ export function resolveCliBinaryPath(binary: string): string {
     throw new Error(`CLI binary '${binary}' not found in PATH`);
   }
 
-  const resolvedPath = normalize(firstLine);
-  if (!isAbsolute(resolvedPath)) {
+  // Keep the finder's own spelling: win32 normalize() turned a '/usr/local/bin/claude'
+  // result into '\usr\local\bin\claude', which is a path nothing can exec.
+  const resolvedPath = firstLine;
+  // Matching happens in forward-slash form. UNTRUSTED_PATH_PATTERNS are anchored on '/',
+  // so a normalized backslash path was absolute to win32 yet matched no pattern — the
+  // untrusted-location check silently passed for /tmp, /var/tmp and /dev/shm on Windows.
+  const matchPath = resolvedPath.replace(/\\/g, '/');
+  if (!isAbsolute(resolvedPath) && !matchPath.startsWith('/')) {
     throw new Error(`Resolved CLI binary '${binary}' to relative path`);
   }
 
-  if (UNTRUSTED_PATH_PATTERNS.some(pattern => pattern.test(resolvedPath))) {
+  if (UNTRUSTED_PATH_PATTERNS.some(pattern => pattern.test(matchPath))) {
     throw new Error(`Resolved CLI binary '${binary}' to untrusted location: ${resolvedPath}`);
   }
 
-  if (!isTrustedPrefix(resolvedPath)) {
+  if (!isTrustedPrefix(matchPath)) {
     console.warn(`[omc:cli-security] CLI binary '${binary}' resolved to non-standard path: ${resolvedPath}`);
   }
 

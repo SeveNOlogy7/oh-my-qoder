@@ -18,7 +18,7 @@ Ultragoal breaks a brief into an ordered set of goals, records start/checkpoint/
 
 <Do_Not_Use_When>
 - The task is a single small change — use direct delegation or `ralph` instead
-- The user wants the assistant to literally invoke `/goal` itself from the shell — that is not possible; `omc ultragoal` only writes artifacts and prints handoff text
+- The user wants the assistant to literally invoke `/goal` itself from the shell — that is not possible; `omq ultragoal` only writes artifacts and prints handoff text
 - The user wants a planning-only artifact with no execution loop — use `plan` instead
 </Do_Not_Use_When>
 
@@ -30,11 +30,11 @@ Claude Code `/goal` is a session-scoped Stop hook: it blocks the session from st
 
 1. Create a plan from a brief:
    ```
-   omc ultragoal create-goals --brief-file plan.md
+   omq ultragoal create-goals --brief-file plan.md
    ```
    Or with explicit stories:
    ```
-   omc ultragoal create-goals --brief "ship the migration" \
+   omq ultragoal create-goals --brief "ship the migration" \
      --goal "Schema::Add new columns" \
      --goal "Backfill::Backfill rows in batches" \
      --goal "Cutover::Drop old columns and switch reads"
@@ -49,11 +49,11 @@ Claude Code `/goal` is a session-scoped Stop hook: it blocks the session from st
    Without that flag, two sessions creating goals would clobber each other.
    `--auto-plan-id` derives `{epochMs}-{slug}` from the brief title. Then thread
    the same `--plan-id <id>` through every subsequent subcommand in that session.
-   Use `omc ultragoal list-plans` to enumerate available planIds when needed.
+   Use `omq ultragoal list-plans` to enumerate available planIds when needed.
 
 2. Start (or resume) the next story:
    ```
-   omc ultragoal complete-goals [<goal-id>]
+   omq ultragoal complete-goals [<goal-id>]
    ```
    With no goal id, this preserves the default behavior of resuming the active story or starting the first pending story. With a goal id, OMC targets exactly that named eligible story (a pending story may be started out of order); it never falls through to another story. An active different story, unknown id, completed or review-blocked story, or failed story without `--retry-failed` is rejected without state mutation. An in-progress named story is resumed without changing its attempt. This prints a model-facing handoff. The active Claude agent must read it and:
    - Set the native Claude `/goal` for this session — in standalone Claude Code neither the
@@ -65,7 +65,7 @@ Claude Code `/goal` is a session-scoped Stop hook: it blocks the session from st
 
 3. Checkpoint a story:
    ```
-   omc ultragoal checkpoint --goal-id G001-... --status complete \
+   omq ultragoal checkpoint --goal-id G001-... --status complete \
      --evidence "tests/files/PR evidence" \
      --claude-goal-json '{"goal":{"objective":"...","status":"active"}}'
    ```
@@ -74,7 +74,7 @@ Claude Code `/goal` is a session-scoped Stop hook: it blocks the session from st
 
 4. If the final review is not clean, do NOT mark complete. Record blockers:
    ```
-   omc ultragoal record-review-blockers --goal-id G00X-... \
+   omq ultragoal record-review-blockers --goal-id G00X-... \
      --title "Resolve final code-review blockers" \
      --objective "Fix the listed review findings and rerun final gates" \
      --evidence "<the review findings>" \
@@ -84,7 +84,7 @@ Claude Code `/goal` is a session-scoped Stop hook: it blocks the session from st
 
 5. Inspect state at any time:
    ```
-   omc ultragoal status
+   omq ultragoal status
    ```
 
 </How_To_Use>

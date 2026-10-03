@@ -3,11 +3,16 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// Seeds {project}/.omq and spawns session-start.mjs, which must resolve
+// through the DEFAULT state-root branch (#42): lift the per-file pin per test.
+import { useDefaultStateRoot } from './helpers/default-state-root.js';
 
 const SCRIPT_PATH = join(__dirname, '..', '..', 'scripts', 'session-start.mjs');
 const NODE = process.execPath;
 
 describe('session-start.mjs regression #1386', () => {
+  useDefaultStateRoot();
+
   let tempDir: string;
   let fakeHome: string;
   let fakeProject: string;
@@ -192,21 +197,21 @@ ${'- oversized startup guidance\n'.repeat(700)}
     expect(output.continue).toBe(true);
     expect(context).toContain('[MODEL ROUTING OVERRIDE');
     expect(context).toContain('tier alias');
-    expect(context).toMatch(/\b(sonnet|opus|haiku)\b/);
+    expect(context).toMatch(/\b(high|medium|low)\b/);
     expect(context).not.toContain('Do NOT pass the `model` parameter');
     expect(context).not.toContain('Omit it entirely');
     expect(context.length).toBeLessThanOrEqual(6000);
   });
 
   it('surfaces update notices through systemMessage without injecting them into additionalContext', () => {
-    const claudeDir = join(fakeHome, '.claude');
+    const claudeDir = join(fakeHome, '.qoder');
     const pluginRoot = join(tempDir, 'plugin');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(pluginRoot, { recursive: true });
     writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '1.0.0', type: 'module' }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omc-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
@@ -228,6 +233,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        QODER_CONFIG_DIR: claudeDir,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
         OMQ_NOTIFY: '0',
       },
@@ -250,9 +256,9 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('does not show update notice when stale CLAUDE_PLUGIN_ROOT is older than plugin cache', () => {
-    const claudeDir = join(fakeHome, '.claude');
-    const stalePluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.14.4');
-    const latestPluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.14.5');
+    const claudeDir = join(fakeHome, '.qoder');
+    const stalePluginRoot = join(claudeDir, 'plugins', 'cache', 'local', 'oh-my-qoder', '4.14.4');
+    const latestPluginRoot = join(claudeDir, 'plugins', 'cache', 'local', 'oh-my-qoder', '4.14.5');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(stalePluginRoot, { recursive: true });
@@ -260,7 +266,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
     writeFileSync(join(stalePluginRoot, 'package.json'), JSON.stringify({ version: '4.14.4', type: 'module' }));
     writeFileSync(join(latestPluginRoot, 'package.json'), JSON.stringify({ version: '4.14.5', type: 'module' }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omc-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
@@ -303,8 +309,8 @@ ${'- oversized startup guidance\n'.repeat(700)}
 
 
   it('suppresses plugin update notices when npm latest is newer than the marketplace channel', () => {
-    const claudeDir = join(fakeHome, '.claude');
-    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
+    const claudeDir = join(fakeHome, '.qoder');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'local', 'oh-my-qoder', '4.15.4');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
@@ -317,7 +323,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
       version: '4.15.4',
     }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omc-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
@@ -340,6 +346,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        QODER_CONFIG_DIR: claudeDir,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
         OMQ_NOTIFY: '0',
       },
@@ -355,8 +362,8 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('does not fall back to npm notices when marketplace metadata is unavailable', () => {
-    const claudeDir = join(fakeHome, '.claude');
-    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
+    const claudeDir = join(fakeHome, '.qoder');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'local', 'oh-my-qoder', '4.15.4');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
@@ -372,7 +379,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
       plugins: [{ name: 'oh-my-claudecode', version: '999x.0.0' }],
     }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omc-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
@@ -395,6 +402,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        QODER_CONFIG_DIR: claudeDir,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
         OMQ_NOTIFY: '0',
       },
@@ -415,8 +423,8 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('treats a stable marketplace version as newer than the matching prerelease', () => {
-    const claudeDir = join(fakeHome, '.claude');
-    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.16.0-beta.1');
+    const claudeDir = join(fakeHome, '.qoder');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'local', 'oh-my-qoder', '4.16.0-beta.1');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
     mkdirSync(pluginRoot, { recursive: true });
@@ -426,7 +434,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
       plugins: [{ name: 'oh-my-claudecode', version: '4.16.0' }],
     }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omc-hud.mjs' }));
 
     const result = spawnSync(NODE, [SCRIPT_PATH], {
       input: JSON.stringify({
@@ -439,6 +447,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        QODER_CONFIG_DIR: claudeDir,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
         OMQ_NOTIFY: '0',
       },
@@ -453,8 +462,8 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('uses the marketplace clone version for plugin update notices instead of npm latest', () => {
-    const claudeDir = join(fakeHome, '.claude');
-    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.3');
+    const claudeDir = join(fakeHome, '.qoder');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'local', 'oh-my-qoder', '4.15.3');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
@@ -466,7 +475,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
       version: '4.15.4',
     }));
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omc-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
@@ -489,6 +498,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        QODER_CONFIG_DIR: claudeDir,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
         OMQ_NOTIFY: '0',
       },
@@ -506,8 +516,8 @@ ${'- oversized startup guidance\n'.repeat(700)}
   });
 
   it('does not emit npm-channel drift guidance when managed marketplace plugin is current', () => {
-    const claudeDir = join(fakeHome, '.claude');
-    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
+    const claudeDir = join(fakeHome, '.qoder');
+    const pluginRoot = join(claudeDir, 'plugins', 'cache', 'local', 'oh-my-qoder', '4.15.4');
     const marketplaceRoot = join(claudeDir, 'plugins', 'marketplaces', 'omc');
     mkdirSync(join(claudeDir, '.omq'), { recursive: true });
     mkdirSync(join(claudeDir, 'hud'), { recursive: true });
@@ -518,8 +528,9 @@ ${'- oversized startup guidance\n'.repeat(700)}
       plugins: [{ name: 'oh-my-claudecode', version: '4.15.4' }],
     }));
     writeFileSync(join(claudeDir, '.omq-version.json'), JSON.stringify({ version: '4.15.5' }));
+    writeFileSync(join(claudeDir, 'CLAUDE.md'), '<!-- OMQ:VERSION:4.15.4 -->\n');
     writeFileSync(join(claudeDir, 'hud', 'omc-hud.mjs'), '');
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.claude/hud/omc-hud.mjs' }));
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify({ statusLine: 'node ~/.qoder/hud/omc-hud.mjs' }));
     writeFileSync(
       join(claudeDir, '.omq', 'update-check.json'),
       JSON.stringify({
@@ -542,6 +553,7 @@ ${'- oversized startup guidance\n'.repeat(700)}
         ...process.env,
         HOME: fakeHome,
         USERPROFILE: fakeHome,
+        QODER_CONFIG_DIR: claudeDir,
         CLAUDE_PLUGIN_ROOT: pluginRoot,
         OMQ_NOTIFY: '0',
       },

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error - .mjs file has no type declarations
-import { stripAnsi, parseVitestOutput, compareFailures, stripRunnerPrefix } from '../../scripts/known-failures.mjs';
+import { stripAnsi, parseVitestOutput, compareFailures, stripRunnerPrefix, uncountedFailEntries } from '../../scripts/known-failures.mjs';
 
 describe('stripRunnerPrefix', () => {
   it('removes a job/step/timestamp prefix whose step name contains spaces', () => {
@@ -115,6 +115,42 @@ Test Files  1 passed | 1 total
 `;
       const failures = parseVitestOutput(output);
       expect(failures).toHaveLength(0);
+    });
+  });
+
+  describe('uncountedFailEntries', () => {
+    it('names a FAIL entry whose file reports zero failed tests -- a hook blew up and its tests skipped', () => {
+      const output = `
+ ❯ src/submodule-state-anchor.test.ts (8 tests | 8 skipped) 29038ms
+ FAIL  src/submodule-state-anchor.test.ts > submodule state anchoring (issue #3349)
+Error: hook blew up
+ Test Files  1 failed | 1 total
+      Tests  0 failed | 8 skipped (8)
+`;
+      expect(uncountedFailEntries(output)).toEqual([
+        'src/submodule-state-anchor.test.ts > submodule state anchoring (issue #3349)',
+      ]);
+    });
+
+    it('stays empty when every FAIL entry belongs to a test vitest counted as failed', () => {
+      const output = `
+ ❯ src/a.test.ts (3 tests | 2 failed) 10ms
+ FAIL  src/a.test.ts > suite > failing test 1
+ FAIL  src/a.test.ts > suite > failing test 2
+ Test Files  1 failed | 1 total
+      Tests  2 failed | 1 passed (3)
+`;
+      expect(uncountedFailEntries(output)).toEqual([]);
+    });
+
+    it('does not treat a whole-file collection failure as uncounted', () => {
+      const output = `
+ FAIL  src/a.test.ts [ src/a.test.ts ]
+Error: cannot resolve import
+ Test Files  1 failed | 1 total
+      Tests  no tests
+`;
+      expect(uncountedFailEntries(output)).toEqual([]);
     });
   });
 

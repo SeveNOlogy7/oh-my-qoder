@@ -237,7 +237,7 @@ function normalizeToTierAlias(model) {
 function readAgentDefinitionModel(subagentType) {
   // Guard: subagent_type must be a string — non-string payloads would throw on .replace()
   // and the catch block would silently return {continue:true}, bypassing enforcement.
-  const agentType = (typeof subagentType === 'string' ? subagentType : '').replace(/^oh-my-claudecode:/, '');
+  const agentType = (typeof subagentType === 'string' ? subagentType : '').replace(/^oh-my-qoder:/, '');
   if (!agentType) return null;
   // Reject path traversal: agent names are simple identifiers; no path separators allowed.
   if (!/^[a-zA-Z0-9_-]+$/.test(agentType)) return null;
@@ -272,15 +272,18 @@ function readAgentDefinitionModel(subagentType) {
 // Skill vs agent namespace guard (issue #3667)
 //
 // Task/Agent subagent_type identifiers and bundled skills share the same
-// `oh-my-claudecode:` namespace, so a caller can hand a skill name to
+// plugin namespace, so a caller can hand a skill name to
 // Task(subagent_type=...) and receive only Claude Code's generic native
-// "Agent type not found". OMC owns both registries (agents/*.md and
+// "Agent type not found". OMQ owns both registries (agents/*.md and
 // skills/*/SKILL.md), so the PreToolUse hook denies the call BEFORE the
 // native boundary with an error that names the Skill tool and the exact
 // identifier, and forbids closest-match substitution.
 // ---------------------------------------------------------------------------
 
-const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-claudecode:', 'omc:'];
+// This plugin registers as `oh-my-qoder` (.qoder-plugin/plugin.json), so its own
+// prefixes come first; the ancestor spellings stay because installed hooks, pasted
+// guidance and older sessions still send them.
+const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-qoder:', 'omq:', 'oh-my-claudecode:', 'omc:'];
 const SKILL_IDENTIFIER_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 function splitAgentNamespace(subagentType) {
@@ -349,9 +352,9 @@ function parseSkillFrontmatterIdentifiers(content) {
 }
 
 /**
- * Claude Code native command names that must not be shadowed by OMC skill
+ * Qoder CLI native command names that must not be shadowed by OMQ skill
  * short names. Mirrors src/features/builtin-skills/skills.ts:CC_NATIVE_COMMANDS
- * and toSafeSkillName (plan -> omc-plan).
+ * and toSafeSkillName (plan -> omq-plan).
  */
 const CC_NATIVE_SKILL_COMMANDS = new Set([
   'review',
@@ -368,7 +371,7 @@ const CC_NATIVE_SKILL_COMMANDS = new Set([
 
 function toSafeSkillName(name) {
   const normalized = name.trim();
-  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omc-${normalized}` : normalized;
+  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omq-${normalized}` : normalized;
 }
 /**
  * Whether a bundled skill directory is visible to the current user, mirroring
@@ -443,11 +446,11 @@ function buildCanonicalSkillRegistry() {
  * claims. The directory shortcut would otherwise mistake legitimate runtime
  * agents for skills: Claude Code's built-in `Plan` agent and session-defined
  * agents are not visible to file-based plugin/project/user agent discovery,
- * yet `skills/plan` exists (registering `omc-plan`). Bare names therefore
+ * yet `skills/plan` exists (registering `omq-plan`). Bare names therefore
  * never consult the directory shortcut; explicitly namespaced identifiers
  * (`oh-my-claudecode:` / `omc:`) are pinned to the OMC plugin namespace and
  * keep the full canonical + shortcut resolution (e.g. `oh-my-claudecode:plan`
- * -> `omc-plan`).
+ * -> `omq-plan`).
  */
 function resolveBundledSkill(subagentType, directory) {
   const { name, namespaced } = splitAgentNamespace(subagentType);
@@ -467,7 +470,7 @@ function resolveBundledSkill(subagentType, directory) {
   // are never denied (issue #3667 P1).
   if (!namespaced) return null;
   // Directory shortcut fallback only for names the canonical registry does not
-  // claim (e.g. the plan/ dir whose frontmatter registers as omc-plan).
+  // claim (e.g. the plan/ dir whose frontmatter registers as omq-plan).
   // Fail closed: a directory that is hidden from this user must never be
   // suggested as an invocable bundled skill, even though it exists on disk.
   if (!isSkillVisibleToUser(foldedName)) return null;
@@ -505,10 +508,10 @@ function evaluateSkillAsAgentCall(toolName, toolInput, directory) {
   const { name } = splitAgentNamespace(subagentType);
   // Always suggest the canonical plugin-namespaced identifier. A bare skill
   // name can resolve to a different project/user skill or fail: bundled
-  // skills are exposed under the `oh-my-claudecode:` namespace (issue #3667
-  // review), so the recovery must be unambiguous regardless of the caller's
+  // skills are exposed under this plugin's own `oh-my-qoder:` namespace (issue
+  // #3667 review), so the recovery must be unambiguous regardless of the caller's
   // input namespace form.
-  const skillIdentifier = `oh-my-claudecode:${skill.primary}`;
+  const skillIdentifier = `oh-my-qoder:${skill.primary}`;
   const isPrimaryMatch = name.toLowerCase() === skill.primary.toLowerCase();
   const queriedName = isPrimaryMatch
     ? `"${subagentType}"`
@@ -1588,7 +1591,7 @@ const SKILL_PROTECTION_MAP = {
   skill: 'light', ask: 'light', 'configure-notifications': 'light',
 
   // === Medium protection (review/planning, 5 reinforcements) ===
-  'omc-plan': 'medium', plan: 'medium',
+  'omq-plan': 'medium', 'omc-plan': 'medium', plan: 'medium',
   ralplan: 'none',  // Has first-class checkRalplan() enforcement; no skill-active needed
   'deep-interview': 'heavy',
   review: 'medium', 'external-context': 'medium',
@@ -1609,10 +1612,10 @@ function getSkillProtectionLevel(skillName, rawSkillName) {
   // Non-prefixed skills are project custom skills or other plugins — no protection.
   // See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/1581
   if (rawSkillName != null && typeof rawSkillName === 'string' &&
-      !rawSkillName.toLowerCase().startsWith('oh-my-claudecode:')) {
+      !rawSkillName.toLowerCase().startsWith('oh-my-qoder:')) {
     return 'none';
   }
-  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-claudecode:/, '');
+  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-qoder:/, '');
   return SKILL_PROTECTION_MAP[normalized] || 'none';
 }
 
@@ -1653,7 +1656,7 @@ function writeSkillActiveState(stateDir, skillName, sessionId, rawSkillName) {
 
   const config = SKILL_PROTECTION_CONFIGS[protection];
   const now = new Date().toISOString();
-  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-claudecode:/, '');
+  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-qoder:/, '');
 
   const safeSessionId = sessionId && SESSION_ID_PATTERN.test(sessionId) ? sessionId : '';
   const targetDir = safeSessionId
@@ -1942,7 +1945,7 @@ async function main() {
           if (agentDefModel && !isSubagentSafeModelId(agentDefModel) && !isTierAlias(agentDefModel)
               && hasSafeRouting) {
             const guidance = `Add model="${defTierAlias}" to this ${toolName} call — tier aliases resolve to configured provider models (${resolvedModel}).`;
-            const agentType = (toolInput.subagent_type).replace(/^oh-my-claudecode:/, '');
+            const agentType = (toolInput.subagent_type).replace(/^oh-my-qoder:/, '');
             console.log(JSON.stringify({
               continue: true,
               hookSpecificOutput: {

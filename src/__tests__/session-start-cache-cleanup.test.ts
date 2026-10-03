@@ -5,6 +5,9 @@ import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { pathIdentity, publishCacheOccupancy, readOccupiedPluginRoots } from '../utils/cache-occupancy.js';
 import { purgeStalePluginCacheVersions } from '../utils/paths.js';
+// Spawns session-start.mjs against fake-home fixtures; the hook must resolve
+// state through the DEFAULT branch (#42): lift the per-file pin per test.
+import { useDefaultStateRoot } from './helpers/default-state-root.js';
 
 const SCRIPT_PATH = join(__dirname, '..', '..', 'scripts', 'session-start.mjs');
 const NODE = process.execPath;
@@ -12,13 +15,16 @@ const NODE = process.execPath;
 /**
  * Integration tests for the plugin cache cleanup logic in session-start.mjs.
  *
- * The script's cleanup block scans ~/.claude/plugins/cache/omc/oh-my-claudecode/
- * for version directories, keeps the latest 2 real directories, and replaces
- * older versions with symlinks pointing to the latest version. This prevents
- * "Cannot find module" errors when a running session's CLAUDE_PLUGIN_ROOT
- * still points to an old (now-removed) version directory.
+ * The script's cleanup block resolves the install through the shared
+ * plugin-cache-dir helper (scanning plugins/cache/<slug>/oh-my-qoder/), keeps
+ * the latest 2 real directories, and replaces older versions with symlinks
+ * pointing to the latest version. This prevents "Cannot find module" errors
+ * when a running session's CLAUDE_PLUGIN_ROOT still points to an old
+ * (now-removed) version directory.
  */
 describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
+  useDefaultStateRoot();
+
   let tmpDir: string;
   let fakeHome: string;
   let fakeCacheBase: string;
@@ -27,7 +33,7 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'omc-cache-test-'));
     fakeHome = join(tmpDir, 'home');
-    fakeCacheBase = join(fakeHome, '.claude', 'plugins', 'cache', 'omc', 'oh-my-claudecode');
+    fakeCacheBase = join(fakeHome, '.claude', 'plugins', 'cache', 'local', 'oh-my-qoder');
     fakeProject = join(tmpDir, 'project');
 
     // Create fake project directory with .omq
@@ -50,6 +56,14 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
     writeFileSync(join(versionDir, 'scripts', 'session-start.mjs'), '// stub');
     writeFileSync(join(versionDir, 'package.json'), JSON.stringify({ version }));
     return versionDir;
+  }
+
+  // session-start.mjs links old versions with a RELATIVE symlink target on
+  // POSIX but an ABSOLUTE junction target on Windows (junctions require
+  // absolute paths, and readlinkSync reports them back absolute). Mirror that
+  // contract so the pin keeps excluding any non-latest target on both.
+  function expectedSymlinkTarget(version: string): string {
+    return process.platform === 'win32' ? join(fakeCacheBase, version) : version;
   }
 
   function runSessionStart(env: Record<string, string> = {}) {
@@ -148,7 +162,7 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
     expect(v1Stat.isSymbolicLink()).toBe(true);
 
     const target = readlinkSync(join(fakeCacheBase, '4.4.1'));
-    expect(target).toBe('4.4.3');
+    expect(target).toBe(expectedSymlinkTarget('4.4.3'));
   });
 
   it('with only 2 versions, no symlinks are created', () => {
@@ -193,10 +207,10 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
 
     // 4.4.1 and 4.4.0: symlinks to 4.4.3
     expect(lstatSync(join(fakeCacheBase, '4.4.1')).isSymbolicLink()).toBe(true);
-    expect(readlinkSync(join(fakeCacheBase, '4.4.1'))).toBe('4.4.3');
+    expect(readlinkSync(join(fakeCacheBase, '4.4.1'))).toBe(expectedSymlinkTarget('4.4.3'));
 
     expect(lstatSync(join(fakeCacheBase, '4.4.0')).isSymbolicLink()).toBe(true);
-    expect(readlinkSync(join(fakeCacheBase, '4.4.0'))).toBe('4.4.3');
+    expect(readlinkSync(join(fakeCacheBase, '4.4.0'))).toBe(expectedSymlinkTarget('4.4.3'));
   });
 
   it('updates an existing symlink pointing to a non-latest target', () => {
@@ -212,7 +226,7 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
     // 4.4.1 should now be a symlink to 4.4.3 (updated from 4.4.2)
     const v1Stat = lstatSync(join(fakeCacheBase, '4.4.1'));
     expect(v1Stat.isSymbolicLink()).toBe(true);
-    expect(readlinkSync(join(fakeCacheBase, '4.4.1'))).toBe('4.4.3');
+    expect(readlinkSync(join(fakeCacheBase, '4.4.1'))).toBe(expectedSymlinkTarget('4.4.3'));
 
     // 4.4.3 and 4.4.2 remain as real directories
     expect(lstatSync(join(fakeCacheBase, '4.4.3')).isSymbolicLink()).toBe(false);
@@ -276,17 +290,25 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
     const staleVersion = createFakeVersion('4.4.1');
     const configDir = join(fakeHome, '.claude');
     mkdirSync(join(configDir, 'plugins'), { recursive: true });
-    writeFileSync(join(configDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
-      version: 2,
-      // This resolves to staleVersion, but the historical non-Windows
-      // comparison intentionally treats the relative spelling lexically.
-      plugins: { 'other-plugin@other': [{ installPath: relative(process.cwd(), staleVersion) }] },
-    }));
 
     const originalPlatform = process.platform;
     const originalConfigDir = process.env.QODER_CONFIG_DIR;
+    const originalCwd = process.cwd();
+    // The fixture needs a genuinely RELATIVE install-path spelling that still
+    // resolves to staleVersion. On Windows tmpdir and the repo usually live on
+    // different drives, where path.relative() degrades to an absolute path and
+    // the lexical-vs-resolving distinction this test pins disappears — so pin
+    // the shell cwd to the temp drive for the duration of the test.
+    process.chdir(tmpdir());
     process.env.QODER_CONFIG_DIR = configDir;
     try {
+      writeFileSync(join(configDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
+        version: 2,
+        // This resolves to staleVersion, but the historical non-Windows
+        // comparison intentionally treats the relative spelling lexically.
+        plugins: { 'other-plugin@other': [{ installPath: relative(process.cwd(), staleVersion) }] },
+      }));
+
       Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
       const result = purgeStalePluginCacheVersions({ skipGracePeriod: true });
 
@@ -296,6 +318,7 @@ describe('session-start.mjs — plugin cache cleanup uses symlinks', () => {
       Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
       if (originalConfigDir === undefined) delete process.env.QODER_CONFIG_DIR;
       else process.env.QODER_CONFIG_DIR = originalConfigDir;
+      process.chdir(originalCwd);
     }
   });
 });

@@ -67,6 +67,12 @@ export function getStateDir(): string {
   return process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state');
 }
 
+/**
+ * XDG-aware roots place us under ~/.config/omq and ~/.local/state/omq on
+ * Linux/Unix. The directory names are the fork's (`omq`) even though the exported
+ * helper names below still say Omc: b37141e shipped these values, and a user's
+ * state on disk follows the values, not the symbol names.
+ */
 function prefersXdgOmcDirs(): boolean {
   return process.platform !== 'win32' && process.platform !== 'darwin';
 }
@@ -101,7 +107,7 @@ export function getGlobalOmcConfigRoot(): string {
   }
 
   if (prefersXdgOmcDirs()) {
-    return join(getConfigDir(), 'omc');
+    return join(getConfigDir(), 'omq');
   }
 
   return getLegacyOmcDir();
@@ -120,7 +126,7 @@ export function getGlobalOmcStateRoot(): string {
   }
 
   if (prefersXdgOmcDirs()) {
-    return join(getStateDir(), 'omc');
+    return join(getStateDir(), 'omq');
   }
 
   return join(getLegacyOmcDir(), 'state');

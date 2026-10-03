@@ -129,7 +129,7 @@ echo "Default execution mode set to: USER_CHOICE"
 
 ## Step 2.5: Install OMC CLI Tool
 
-The OMC CLI (`omc` command) provides standalone helper commands such as `omc hud`, `omc teleport`, and `omc team ...`.
+The OMQ CLI (`omq` command) provides standalone helper commands such as `omq hud`, `omq teleport`, and `omq team ...`.
 
 First, check if the CLI is already installed:
 
@@ -147,7 +147,7 @@ If `OMC_CLI_INSTALLED` is `"true"`, skip the rest of this step.
 
 If `OMC_CLI_INSTALLED` is `"false"`, use AskUserQuestion:
 
-**Question:** "Would you like to install the OMC CLI globally for standalone helper commands? (`omc`, `omc hud`, `omc teleport`)"
+**Question:** "Would you like to install the OMQ CLI globally for standalone helper commands? (`omq`, `omq hud`, `omq teleport`)"
 
 **Options:**
 1. **Yes (Recommended)** - Install `oh-my-qoder` via `npm install -g`
