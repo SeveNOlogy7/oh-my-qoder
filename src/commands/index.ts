@@ -33,10 +33,15 @@ export function getCommandsDir(): string {
  * Parse command frontmatter and content
  */
 function parseCommandFile(content: string): { description: string; template: string } {
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  // Command files ride through git checkouts, so on core.autocrlf Windows
+  // working trees (and any editor that writes CRLF) the frontmatter fences end
+  // in \r\n. Normalize before matching or the whole file degrades to an
+  // unparsed template with an empty description.
+  const normalized = content.replace(/\r\n/g, '\n');
+  const frontmatterMatch = normalized.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
 
   if (!frontmatterMatch) {
-    return { description: '', template: content };
+    return { description: '', template: normalized };
   }
 
   const frontmatter = frontmatterMatch[1];

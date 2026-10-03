@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { join } from "path";
 import {
   DEFAULT_PLAN_OUTPUT_DIRECTORY,
   DEFAULT_PLAN_OUTPUT_FILENAME_TEMPLATE,
@@ -61,8 +62,10 @@ describe("plan output helpers", () => {
       },
     };
 
+    // Built with join() because the helper joins with the host separator; the
+    // POSIX literal could only ever hold on one platform.
     expect(
       resolvePlanOutputAbsolutePath("/repo", "autopilot-impl", config),
-    ).toBe("/repo/docs/plans/autopilot-impl.plan.md");
+    ).toBe(join("/repo", "docs", "plans", "autopilot-impl.plan.md"));
   });
 });

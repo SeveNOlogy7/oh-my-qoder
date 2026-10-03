@@ -13,6 +13,7 @@ function writeJsonl(filePath: string, entries: Array<Record<string, unknown>>): 
 
 describe('session friction report', () => {
   const repoRoot = process.cwd();
+  const originalStateDir = process.env.OMQ_STATE_DIR;
   let tempRoot: string;
   let claudeDir: string;
 
@@ -58,7 +59,11 @@ describe('session friction report', () => {
 
   afterEach(() => {
     delete process.env.QODER_CONFIG_DIR;
-    delete process.env.OMQ_STATE_DIR;
+    if (originalStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = originalStateDir;
+    }
     rmSync(tempRoot, { recursive: true, force: true });
   });
 

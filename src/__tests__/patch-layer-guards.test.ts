@@ -46,8 +46,12 @@ describe('templates/hooks/session-start.mjs repository identity', () => {
   it('references only the canonical repository owner', () => {
     const owners = [...hookTemplate.matchAll(/github(?:usercontent)?\.com\/([^/\s'"]+)/g)]
       .map((match) => match[1]);
-    expect(owners.length, 'the template has no repository URL -- this guard is now vacuous').toBeGreaterThan(0);
-    expect([...new Set(owners)]).toEqual([canonicalOwner()]);
+    // The update-check fetch moved to the npm registry, so the template may
+    // legitimately carry no repository URL at all -- the former "at least one
+    // URL" tripwire died with that migration. The identity contract stays
+    // enforceable as a negative guard: any repository URL that does appear
+    // must name the canonical owner.
+    expect(owners.filter((owner) => owner !== canonicalOwner())).toEqual([]);
   });
 });
 

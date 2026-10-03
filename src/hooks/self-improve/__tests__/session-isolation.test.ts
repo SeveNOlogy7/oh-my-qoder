@@ -11,6 +11,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+// Resolves state through the DEFAULT state-root branch over temp roots (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test here.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 const RESOLVER = join(process.cwd(), 'skills', 'self-improve', 'scripts', 'resolve-paths.mjs');
 
@@ -20,6 +23,8 @@ function readJson(command: string, args: string[], extraEnv: Record<string, stri
 }
 
 describe('self-improve session isolation (Wave B2)', () => {
+  useDefaultStateRoot();
+
   let root: string;
 
   beforeEach(() => {

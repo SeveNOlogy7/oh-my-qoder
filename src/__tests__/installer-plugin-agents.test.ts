@@ -85,14 +85,14 @@ function writeCompletePluginPayload(root: string): void {
   writePluginFile(join(root, 'hooks', 'hooks.json'), '{}\n');
   writePluginFile(join(root, 'skills', 'plan', 'SKILL.md'), '# plan\n');
   writePluginFile(
-    join(root, 'commands', 'omc-setup.md'),
-    'Read skills/omc-setup/SKILL.md and pass $ARGUMENTS.\n',
+    join(root, 'commands', 'omq-setup.md'),
+    'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n',
   );
   writePluginFile(
-    join(root, '.claude-plugin', 'plugin.json'),
+    join(root, '.qoder-plugin', 'plugin.json'),
     JSON.stringify(
       {
-        name: 'oh-my-claudecode',
+        name: 'oh-my-qoder',
         commands: './commands/',
         skills: ['./skills/plan/'],
       },

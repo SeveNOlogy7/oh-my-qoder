@@ -3,8 +3,12 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync, utimesSync }
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { pruneOldStateFiles } from '../index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('pruneOldStateFiles', () => {
+  useDefaultStateRoot();
   let testDir: string;
   let stateDir: string;
 

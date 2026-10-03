@@ -28,7 +28,10 @@ describe('git-worktree removeWorkerWorktree locking', () => {
 
   it('removeWorkerWorktree uses withFileLockSync for metadata update', () => {
     const sourcePath = join(__dirname, '..', 'team', 'git-worktree.ts');
-    const source = readFileSync(sourcePath, 'utf-8');
+    // Normalize the checkout's line endings: the closing-brace probe below
+    // assumes LF, and a CRLF working tree turns '\n}\n' into '\r\n}\r\n',
+    // collapsing the extracted body to its first character.
+    const source = readFileSync(sourcePath, 'utf-8').replace(/\r\n/g, '\n');
 
     // Extract the removeWorkerWorktree function
     const fnStart = source.indexOf('export function removeWorkerWorktree');

@@ -59,7 +59,11 @@ describe('teamCommand role-only shorthand', () => {
     expect(agentUtilsMocks.loadAgentPrompt).toHaveBeenCalledWith('executor');
     expect(runtimeV2Mocks.startTeamV2).toHaveBeenCalledWith(expect.objectContaining({
       workerCount: 2,
-      agentTypes: ['qwen', 'qwen'],
+      // Role-only shorthand ("N:executor") routes through the default CLI
+      // agent type, which team.ts pins to 'claude' (as this test's own title
+      // says; the former 'qwen' pin contradicted both the title and the
+      // shipped resolver, which has hardcoded 'claude' since repo init).
+      agentTypes: ['claude', 'claude'],
       workerRoles: ['executor', 'executor'],
       roleName: 'executor',
       rolePrompt: 'prompt:executor',

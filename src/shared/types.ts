@@ -366,7 +366,7 @@ export interface ExternalModelsDefaults {
  * External models fallback policy
  */
 export interface ExternalModelsFallbackPolicy {
-  onModelFailure: "provider_chain" | "cross_provider" | "claude_only";
+  onModelFailure: "provider_chain" | "cross_provider" | "claude_only" | "qwen_only";
   allowCrossProvider?: boolean;
   crossProviderOrder?: ExternalModelProvider[];
 }

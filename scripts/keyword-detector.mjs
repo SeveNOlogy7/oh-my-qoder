@@ -203,11 +203,11 @@ function extractPrompt(input) {
 }
 
 function isExplicitRalplanSlashInvocation(prompt) {
-  return /^\s*\/(?:oh-my-claudecode:)?ralplan(?:\s|$)/i.test(prompt);
+  return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?ralplan(?:\s|$)/i.test(prompt);
 }
 
 function isExplicitAskSlashInvocation(prompt) {
-  return /^\s*\/(?:oh-my-claudecode:)?ask\s+(?:claude|codex|gemini|antigravity|agy|grok|cursor)\b/i.test(prompt);
+  return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?ask\s+(?:claude|codex|gemini|antigravity|agy|grok|cursor)\b/i.test(prompt);
 }
 
 // Sanitize text to prevent false positives from code blocks, XML tags, URLs, and file paths
@@ -432,7 +432,7 @@ const QUESTION_FOLLOWUP_PATTERNS = [
 // recognized block header. They must be stripped only in that context —
 // never standalone — because a user might legitimately start a prompt with
 // "Task: …" or similar (Codex automated review P1/P2 on #2795).
-const ECHO_CONTINUATION = '(?:\\r?\\n[ \\t]*(?:Task:\\s|When FULLY complete \\(after Architect verification\\)|run\\s+\\/oh-my-claudecode:cancel).*)*';
+const ECHO_CONTINUATION = '(?:\\r?\\n[ \\t]*(?:Task:\\s|When FULLY complete \\(after Architect verification\\)|run\\s+\\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)cancel).*)*';
 
 // NOTE: each pattern is a SINGLE LOGICAL BLOCK: the block header line +
 // zero-or-more continuation lines that hooks emit right after it. The whole
@@ -469,7 +469,7 @@ const SYSTEM_ECHO_BLOCK_PATTERNS = [
 // All patterns use `i` because hasActionableKeyword sees a lowercased prompt.
 const SYSTEM_ECHO_SIGNATURES = [
   /\bWhen FULLY complete \(after Architect verification\)\b/i,
-  /\brun\s+\/oh-my-claudecode:cancel\b/i,
+  /\brun\s+\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)cancel\b/i,
   /\[RALPH LOOP\s*-\s*ITERATION\b/i,
 ];
 
@@ -1513,8 +1513,10 @@ function loadJsoncConfig(path) {
 }
 
 /**
- * Skills the user opted out of via `keywordDetector.disabled` in the OMC
- * config: project `.claude/omc.jsonc` first, then user
+ * Skills the user opted out of via `keywordDetector.disabled` in the OMQ
+ * config: project `.qoder/qoder.jsonc` first, then the ancestor
+ * `.claude/omc.jsonc` as read-only compat for one release (#53 — inbound
+ * tolerated, never emitted), then user
  * `~/.config/claude-omc/config.jsonc`, the same JSONC surface
  * src/config/loader.ts reads. Empty when unset, so default behavior is
  * unchanged. `cancel` is never disableable: it is the emergency stop.
@@ -1522,8 +1524,10 @@ function loadJsoncConfig(path) {
  * @returns {Set<string>} disabled skill names (never includes 'cancel')
  */
 function loadDisabledKeywords(directory) {
+  const projectRoot = directory || process.cwd();
   const configPaths = [
-    join(directory || process.cwd(), '.claude', 'omc.jsonc'),
+    join(projectRoot, '.qoder', 'qoder.jsonc'),
+    join(projectRoot, '.claude', 'omc.jsonc'),
     join(getOmcUserConfigDir(), 'claude-omc', 'config.jsonc'),
   ];
   for (const configPath of configPaths) {
@@ -1546,13 +1550,13 @@ Arguments: ${args}` : '';
   const skillPath = resolveSkillPath(skillName);
   const pathStatus = existsSync(skillPath)
     ? `Read fallback: open ${skillPath} and follow its SKILL.md instructions.`
-    : `Read fallback: locate skills/${skillName}/SKILL.md in the active oh-my-claudecode plugin/install and follow it.`;
+    : `Read fallback: locate skills/${skillName}/SKILL.md in the active oh-my-qoder plugin/install and follow it.`;
   const ralphLoopNotice = skillName === 'ralph' ? findOfficialRalphLoopNotice(directory) : '';
 
   return `[MAGIC KEYWORD: ${skillName.toUpperCase()}]
 
 Skill routing detected: ${skillName}
-Preferred invocation: /oh-my-claudecode:${skillName}${args ? ` ${args}` : ''}
+Preferred invocation: /oh-my-qoder:${skillName}${args ? ` ${args}` : ''}
 ${pathStatus}${argsSection}${ralphLoopNotice ? `
 
 ${ralphLoopNotice}` : ''}
@@ -1577,9 +1581,9 @@ function createMultiSkillInvocation(skills, originalPrompt, directory = '') {
     const argsText = s.args ? ` ${s.args}` : '';
     const pathStatus = existsSync(skillPath)
       ? `Read fallback: ${skillPath}`
-      : `Read fallback: locate skills/${s.name}/SKILL.md in the active oh-my-claudecode plugin/install`;
+      : `Read fallback: locate skills/${s.name}/SKILL.md in the active oh-my-qoder plugin/install`;
     return `### Skill ${i + 1}: ${s.name.toUpperCase()}
-Preferred invocation: /oh-my-claudecode:${s.name}${argsText}
+Preferred invocation: /oh-my-qoder:${s.name}${argsText}
 ${pathStatus}`;
   }).join('\n\n');
   // Multi-skill routing (e.g. `/ralph ultrawork`) must carry the same

@@ -205,29 +205,36 @@ describe('getQoderConfigDir', () => {
     expect(output).toBe(normalize(join(homedir(), '.qwen-alt')));
   });
 
-  it('find-node.sh resolves a ~-prefixed QODER_CONFIG_DIR before reading .omq-config.json', () => {
-    const homeDir = mkdtempSync(join(tmpdir(), 'omq-find-node-home-'));
-    const configDir = join(homeDir, '.qwen-alt');
-    mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, '.omq-config.json'), JSON.stringify({ nodeBinary: process.execPath }));
+  // POSIX-only by production design: src/hooks/setup/index.ts:131 rewrites the
+  // sh -> find-node.sh -> node chain out of the hook commands on Windows, so this
+  // lane has no Windows counterpart to protect. The fixture also hardcodes
+  // '/bin/sh' and a colon-separated POSIX PATH, neither of which exists here.
+  it.runIf(process.platform !== 'win32')(
+    'find-node.sh resolves a ~-prefixed QODER_CONFIG_DIR before reading .omq-config.json',
+    () => {
+      const homeDir = mkdtempSync(join(tmpdir(), 'omq-find-node-home-'));
+      const configDir = join(homeDir, '.qwen-alt');
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(join(configDir, '.omq-config.json'), JSON.stringify({ nodeBinary: process.execPath }));
 
-    const output = execFileSync(
-      '/bin/sh',
-      [join(process.cwd(), 'scripts', 'find-node.sh'), '-e', "process.stdout.write('ok')"],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          HOME: homeDir,
-          PATH: '/bin:/usr/bin',
-          QODER_CONFIG_DIR: '~/.qwen-alt',
+      const output = execFileSync(
+        '/bin/sh',
+        [join(process.cwd(), 'scripts', 'find-node.sh'), '-e', "process.stdout.write('ok')"],
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            HOME: homeDir,
+            PATH: '/bin:/usr/bin',
+            QODER_CONFIG_DIR: '~/.qwen-alt',
+          },
+          encoding: 'utf-8',
         },
-        encoding: 'utf-8',
-      },
-    );
+      );
 
-    expect(output).toBe('ok');
-  });
+      expect(output).toBe('ok');
+    },
+  );
 
   it('shared shell helper expands a ~-prefixed QODER_CONFIG_DIR', () => {
     const homeDir = mkdtempSync(join(tmpdir(), 'omq-uninstall-home-'));
@@ -241,7 +248,19 @@ describe('getQoderConfigDir', () => {
       encoding: 'utf-8',
     });
 
-    expect(output.trim()).toBe(join(homeDir, '.qwen-alt'));
+    // The helper answers in the shell's own namespace: Git Bash rewrites an
+    // incoming Windows HOME (measured: C:\Users\…\Temp\omq-uninstall-home-XXXX ->
+    // /tmp/omq-uninstall-home-XXXX) before tilde expansion ever runs, so the
+    // expectation is read back from that shell rather than spelled the way Node
+    // sees the directory. On macOS/Linux $HOME passes through unchanged.
+    const shellHome = execFileSync('bash', ['-lc', 'echo "$HOME"', 'config-dir-fixture'], {
+      cwd: process.cwd(),
+      env: { ...process.env, HOME: homeDir },
+      encoding: 'utf-8',
+    }).trim();
+
+    expect(output.trim()).toBe(`${shellHome}/.qwen-alt`);
+    expect(output.trim()).not.toBe('~/.qwen-alt');
   });
 
   it('keeps the CJS helper aligned with the TypeScript helper', () => {

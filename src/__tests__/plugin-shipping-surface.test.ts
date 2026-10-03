@@ -96,6 +96,12 @@ function createFixture(options: FixtureOptions = {}): Fixture {
   git(root, ['init', '--quiet']);
   git(root, ['config', 'user.name', 'Fixture']);
   git(root, ['config', 'user.email', 'fixture@example.test']);
+  // The script snapshots a prior commit with `git worktree add --detach` and hashes the
+  // canonical source inside that snapshot. A new worktree applies the autocrlf smudge, so
+  // with a developer's global core.autocrlf=true the snapshot's docs/CLAUDE.md carries CRLF
+  // while the coordinator digest was computed over LF -- the check then fails on Windows
+  // alone. Pin line endings the same way the identity above is pinned.
+  git(root, ['config', 'core.autocrlf', 'false']);
   git(root, ['add', '.']);
   git(root, ['add', '-f', '--', 'dist/index.js', 'dist/runtime.js', 'bridge/mcp-server.cjs']);
   if (options.trackCli !== false) git(root, ['add', '-f', '--', 'bridge/cli.cjs']);

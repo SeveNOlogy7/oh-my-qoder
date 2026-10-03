@@ -145,10 +145,11 @@ export function isWarningOptedOut(): boolean {
 export function normalizeWorkflowInput(raw: string): string {
   if (typeof raw !== 'string') return '';
   let s = raw.trim().toLowerCase();
-  // strip leading slash/command prefixes
-  s = s.replace(/^\/(?:oh-my-claudecode:|omc:)?/i, '');
-  s = s.replace(/^omc:/i, '');
-  s = s.replace(/^oh-my-claudecode:/i, '');
+  // strip leading slash/command prefixes (this plugin registers as oh-my-qoder,
+  // so the omq:/oh-my-qoder: forms are what arrives from its own commands; the
+  // ancestor spellings are kept because pasted guidance still uses them)
+  s = s.replace(/^\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?/i, '');
+  s = s.replace(/^(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)/i, '');
   // strip trailing punctuation that sometimes follows a bare alias token
   s = s.replace(/[?!.,;:]+$/g, '');
   s = s.trim();

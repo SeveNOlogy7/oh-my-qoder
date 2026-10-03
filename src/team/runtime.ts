@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import { tmuxExecAsync } from '../cli/tmux-utils.js';
 import type { CliAgentType } from './model-contract.js';
 import { buildWorkerArgv, resolveValidatedBinaryPath, getWorkerEnv as getModelWorkerEnv, isPromptModeAgent, getPromptModeArgs, resolveClaudeWorkerModel, assertHeadlessSupported } from './model-contract.js';
+import { isCliWorkerAgentType } from './cli-agent-types.js';
 import { validateTeamName } from './team-name.js';
 import {
   createTeamSession, spawnWorkerInPane, sendToWorker,
@@ -1021,13 +1022,12 @@ export async function shutdownTeam(
 
   const configData = await readJsonSafe<TeamConfig>(join(root, 'config.json'));
 
-  // CLI workers (claude/codex/gemini/grok/cursor tmux pane processes) never write shutdown-ack.json.
+  // CLI workers (qoder/claude/codex/gemini/grok/cursor tmux pane processes) never write shutdown-ack.json.
   // Polling for ACK files on CLI worker teams wastes the full timeoutMs on every shutdown.
   // Detect CLI worker teams by checking if all agent types are known CLI types, and skip
   // ACK polling — the tmux kill below handles process cleanup instead.
-  const CLI_AGENT_TYPES = new Set<string>(['claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity']);
   const agentTypes: string[] = configData?.agentTypes ?? [];
-  const isCliWorkerTeam = agentTypes.length > 0 && agentTypes.every(t => CLI_AGENT_TYPES.has(t));
+  const isCliWorkerTeam = agentTypes.length > 0 && agentTypes.every(isCliWorkerAgentType);
 
   if (!isCliWorkerTeam) {
     // Bridge daemon workers do write shutdown-ack.json — poll for them.

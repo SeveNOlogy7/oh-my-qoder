@@ -5,8 +5,12 @@ import { tmpdir } from 'os';
 
 import { executeTeamApiOperation } from '../api-interop.js';
 import { reserveRecoveryRequest, writeRecoveryPhase } from '../recovery-request-store.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('team api working-directory resolution', () => {
+  useDefaultStateRoot();
   let cwd: string;
   const teamName = 'resolution-team';
 

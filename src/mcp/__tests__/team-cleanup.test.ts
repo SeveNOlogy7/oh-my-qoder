@@ -30,6 +30,9 @@ vi.mock('child_process', async (importOriginal) => {
 });
 
 import { killWorkerPanes, killTeamSession } from '../../team/tmux-session.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 let killedPanes: string[] = [];
 let killedSessions: string[] = [];
@@ -54,6 +57,7 @@ afterEach(() => {
 // ─── killWorkerPanes ─────────────────────────────────────────────────────────
 
 describe('killWorkerPanes', () => {
+  useDefaultStateRoot();
   it('is a no-op when paneIds is empty', async () => {
     await killWorkerPanes({ paneIds: [], teamName: 'myteam', cwd: tmpdir(), graceMs: 0 });
     expect(killedPanes).toHaveLength(0);
@@ -121,6 +125,7 @@ describe('killWorkerPanes', () => {
 // ─── killTeamSession ─────────────────────────────────────────────────────────
 
 describe('killTeamSession', () => {
+  useDefaultStateRoot();
   it('NEVER calls kill-session when sessionName contains ":" (split-pane mode)', async () => {
     await killTeamSession('mysession:1', ['%2', '%3'], '%1');
     expect(killedSessions).toHaveLength(0);
@@ -162,6 +167,7 @@ describe('killTeamSession', () => {
 const JOB_ID_RE = /^omc-[a-z0-9]{1,16}$/;
 
 describe('validateJobId regex (/^omc-[a-z0-9]{1,16}$/)', () => {
+  useDefaultStateRoot();
   it('accepts valid job IDs', () => {
     expect(JOB_ID_RE.test('omc-abc123')).toBe(true);
     expect(JOB_ID_RE.test('omc-a')).toBe(true);
@@ -189,6 +195,7 @@ describe('validateJobId regex (/^omc-[a-z0-9]{1,16}$/)', () => {
 });
 
 describe('team start validation wiring', () => {
+  useDefaultStateRoot();
   it('validates teamName at omc_run_team_start API boundary', () => {
     const source = readFileSync(join(__dirname, '..', 'team-server.ts'), 'utf-8');
     expect(source).toContain("import { validateTeamName } from '../team/team-name.js'");
@@ -226,6 +233,7 @@ function handleStartGuard(args: unknown): void {
 }
 
 describe('omc_run_team_start timeoutSeconds rejection', () => {
+  useDefaultStateRoot();
   it('throws when timeoutSeconds is present', () => {
     expect(() => handleStartGuard({
       teamName: 'test',
@@ -271,6 +279,7 @@ function exitCodeFor(status: string): number {
 }
 
 describe('exitCodeFor (runtime-cli doShutdown exit codes)', () => {
+  useDefaultStateRoot();
   it('returns 0 for completed', () => expect(exitCodeFor('completed')).toBe(0));
   it('returns 1 for failed', () => expect(exitCodeFor('failed')).toBe(1));
   it('returns 1 for timeout (no dedicated timeout exit code)', () => expect(exitCodeFor('timeout')).toBe(1));

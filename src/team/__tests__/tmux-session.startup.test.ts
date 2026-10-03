@@ -430,6 +430,38 @@ describe('worker pane startup safety', () => {
     expect(literalInputs).toEqual(['1', '3', 'Read inbox.md, execute now.']);
   });
 
+  it('clears the Qoder folder-trust selector before typing the inbox trigger', async () => {
+    const context = await acceptedContext('qwen');
+    tmuxState.captures = [
+      '你信任此文件夹中的文件吗？\n› 1. 信任文件夹\n  2. 不信任并退出\n',
+      '› ready\n',
+    ];
+
+    await expect(deliverStartupInbox(context, 'Read inbox.md, execute now.')).resolves.toEqual({
+      ok: true,
+      kind: 'attempted_unconfirmed',
+    });
+    const literalInputs = tmuxState.args
+      .filter(args => args[0] === 'send-keys' && args.includes('-l'))
+      .map(args => args.at(-1));
+    expect(literalInputs).toEqual(['1', 'Read inbox.md, execute now.']);
+  });
+
+  it('does not answer the Qoder folder-trust selector for an unverified provider', async () => {
+    const context = await acceptedContext('gemini');
+    tmuxState.captures = [
+      '你信任此文件夹中的文件吗？\n› 1. 信任文件夹\n  2. 不信任并退出\n',
+      '› ready\n',
+    ];
+
+    await expect(deliverStartupInbox(context, 'Read inbox.md, execute now.')).resolves.toEqual({
+      ok: false,
+      reason: 'selector_unsupported',
+    });
+    expect(tmuxState.args.some(args => args.at(-1) === '1')).toBe(false);
+    expect(tmuxState.args.some(args => args.at(-1) === 'Read inbox.md, execute now.')).toBe(false);
+  });
+
   it('fails closed when the selector persists after the narrow action', async () => {
     const context = await acceptedContext('codex');
     const selector = 'Do you trust the contents of this directory?\n› 1. Yes, continue\n  2. No, quit\n';

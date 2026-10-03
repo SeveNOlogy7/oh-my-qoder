@@ -8,6 +8,9 @@ import type { StatuslineStdin } from '../hud/types.js';
 
 // @ts-expect-error Local hook helper is a JS module loaded directly by the tests.
 import { resolveContextPercent, resolveHookContextPercent, resolveHudCacheContextPercent, resolveTranscriptContextPercent } from '../../scripts/lib/context-usage.mjs';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const HUD_CACHE_FILENAME = 'hud-stdin-cache.json';
 
@@ -60,6 +63,7 @@ afterEach(() => {
 });
 
 describe('resolveTranscriptContextPercent', () => {
+  useDefaultStateRoot();
   it('returns null for production-shaped transcripts without context_window', () => {
     const transcriptPath = writeTranscript({
       message: {
@@ -94,6 +98,7 @@ describe('resolveTranscriptContextPercent', () => {
 });
 
 describe('resolveHookContextPercent', () => {
+  useDefaultStateRoot();
   it('prefers used_percentage when present', () => {
     expect(resolveHookContextPercent({
       context_window: { used_percentage: 53.6 },
@@ -123,6 +128,7 @@ describe('resolveHookContextPercent', () => {
 });
 
 describe('resolveHudCacheContextPercent', () => {
+  useDefaultStateRoot();
   it('uses HUD native used_percentage from the session cache', async () => {
     const sessionId = 'hud-native-session';
     const payload = makeHudPayload({
@@ -358,6 +364,7 @@ describe('resolveHudCacheContextPercent', () => {
 });
 
 describe('resolveContextPercent orchestration', () => {
+  useDefaultStateRoot();
   it('prefers transcript, then hook payload, then HUD cache', async () => {
     const transcriptPath = writeTranscript({
       message: {

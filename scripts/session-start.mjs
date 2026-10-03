@@ -14,6 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { getClaudeConfigDir, getUpdateCheckCachePath } from './lib/config-dir.mjs';
 import { resolveOmqStateRoot } from './lib/state-root.mjs';
 import { pathIdentity, publishCacheOccupancy, readOccupiedPluginRoots } from './lib/cache-occupancy.mjs';
+import { resolvePluginCacheBase } from './lib/plugin-cache-dir.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -426,7 +427,7 @@ export { MODEL_ROUTING_OVERRIDE_MESSAGE };
 function validateCwd(candidate) {
   if (!candidate || typeof candidate !== 'string') {
     process.stderr.write(
-      `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
+      `[OMQ] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
     );
     return null;
   }
@@ -448,7 +449,7 @@ function validateCwd(candidate) {
     cursor = parent;
   }
   process.stderr.write(
-    `[OMC] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
+    `[OMQ] session-start: refusing to use cwd '${candidate}' as workspace anchor (no .omq-workspace or .git marker)\n`
   );
   return null;
 }
@@ -583,7 +584,10 @@ function extractOmcVersion(content) {
 }
 
 function getPluginCacheBase() {
-  return join(configDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode');
+  // Scan through the shared helper instead of hand-building one slug: the
+  // marketplace segment varies (local vs a named marketplace) and the
+  // ancestor's cache layout is not where this plugin's installs land.
+  return resolvePluginCacheBase(configDir);
 }
 
 function isPathInsideOrEqual(parent, child) {
@@ -597,9 +601,10 @@ function isManagedPluginCacheRoot(pluginRoot) {
   if (isPathInsideOrEqual(cacheBase, normalizedRoot)) return true;
 
   // A stale root can come from an older config-dir location; the canonical
-  // cache path shape still proves it is an OMC managed cache version.
+  // cache path shape still proves it is a managed cache version. The
+  // marketplace segment varies, so match any slug under this package name.
   const unixRoot = normalizedRoot.replace(/\\/g, '/');
-  return /\/plugins\/cache\/omc\/oh-my-claudecode\/\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(unixRoot);
+  return /\/plugins\/cache\/[^/]+\/oh-my-qoder\/\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(unixRoot);
 }
 
 function getLatestPluginCacheVersion() {
@@ -851,7 +856,7 @@ async function checkHudInstallation(retryCount = 0) {
 
       // If OMC HUD wrapper is configured, ensure at least one plugin cache version is built.
       if (statusLineCommand?.includes('omc-hud')) {
-        const pluginCacheBase = join(configDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode');
+        const pluginCacheBase = resolvePluginCacheBase(configDir);
         if (existsSync(pluginCacheBase)) {
           const versions = readdirSync(pluginCacheBase)
             .filter(version => !version.startsWith('.'))
@@ -983,7 +988,7 @@ async function main() {
         const omcConfigPath = join(configDir, '.omq-config.json');
         const omcConfig = readJsonFile(omcConfigPath);
         if (omcConfig?.silentAutoUpdate) {
-          messages.push(`<session-restore>\n\n[OMC] silentAutoUpdate is enabled in .omq-config.json but has no effect in plugin mode.\nTo update, use: /plugin marketplace update omc && /omc-setup\nOr run manually: omc update\n\n</session-restore>\n\n---\n`);
+          messages.push(`<session-restore>\n\n[OMQ] silentAutoUpdate is enabled in .omq-config.json but has no effect in plugin mode.\nTo update, use: /plugin marketplace update omq && /omq-setup\nOr run manually: omq update\n\n</session-restore>\n\n---\n`);
         }
       } catch {}
     }
@@ -992,7 +997,7 @@ async function main() {
     const hudCheck = await checkHudInstallation();
     if (!hudCheck.installed) {
       messages.push(`<system-reminder>
-[OMC] HUD not configured (${hudCheck.reason}). Run /hud setup then restart Claude Code.
+[OMQ] HUD not configured (${hudCheck.reason}). Run /hud setup then restart Qoder CLI.
 </system-reminder>`);
     }
 
@@ -1147,7 +1152,7 @@ ${cleanContent}
     // This prevents "Cannot find module" errors for sessions started before a
     // plugin update whose CLAUDE_PLUGIN_ROOT still points to the old version.
     try {
-      const cacheBase = join(configDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode');
+      const cacheBase = resolvePluginCacheBase(configDir);
       const occupancy = readOccupiedPluginRoots(configDir);
       let versions = [];
       if (existsSync(cacheBase)) {

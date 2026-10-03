@@ -17,12 +17,16 @@ import { OMQ_PLUGIN_ROOT_ENV } from '../../lib/env-vars.js';
 describe('parsePluginDirArg', () => {
   it('returns absolute path for "--plugin-dir <path>" form', () => {
     const out = parsePluginDirArg(['--plugin-dir', '/foo/bar', 'other']);
-    expect(out).toBe(resolve('/foo/bar'));
+    // An already-absolute argument must survive untouched; resolve() would rewrite
+    // it to the cwd's drive on Windows, which is the opposite of this contract.
+    expect(out).toBe('/foo/bar');
   });
 
   it('returns absolute path for "--plugin-dir=<path>" form', () => {
     const out = parsePluginDirArg(['--plugin-dir=/foo/bar']);
-    expect(out).toBe(resolve('/foo/bar'));
+    // An already-absolute argument must survive untouched; resolve() would rewrite
+    // it to the cwd's drive on Windows, which is the opposite of this contract.
+    expect(out).toBe('/foo/bar');
   });
 
   it('preserves Windows drive-letter absolute paths on non-Windows hosts', () => {
@@ -75,6 +79,13 @@ describe('OMQ_PLUGIN_ROOT tmux env forwarding', () => {
 
 const SHORTCIRCUIT = Symbol('child_process mock short-circuit');
 let capturedEnv: NodeJS.ProcessEnv | null = null;
+
+// The mock below keys on 'qodercli', so pin the resolved flavor instead of letting
+// it depend on which Qoder distribution the test host happens to have on PATH.
+vi.mock('../../lib/qoder-cli.js', () => ({
+  qoderCliBinary: () => 'qodercli',
+  qoderCliNpmPackage: () => '@qoder-ai/qodercli',
+}));
 
 vi.mock('child_process', async () => {
   const actual = await vi.importActual<typeof import('child_process')>('child_process');
@@ -149,13 +160,13 @@ describe('launchCommand → child env propagation (OMQ_PLUGIN_ROOT)', () => {
   it('1. --plugin-dir <path> → child env contains absolute OMQ_PLUGIN_ROOT', async () => {
     await runLaunch(['--plugin-dir', '/tmp/foo']);
     expect(capturedEnv).not.toBeNull();
-    expect(capturedEnv![OMQ_PLUGIN_ROOT_ENV]).toBe(resolve('/tmp/foo'));
+    expect(capturedEnv![OMQ_PLUGIN_ROOT_ENV]).toBe('/tmp/foo');
   });
 
   it('2. --plugin-dir=<path> → child env contains absolute OMQ_PLUGIN_ROOT', async () => {
     await runLaunch(['--plugin-dir=/tmp/foo']);
     expect(capturedEnv).not.toBeNull();
-    expect(capturedEnv![OMQ_PLUGIN_ROOT_ENV]).toBe(resolve('/tmp/foo'));
+    expect(capturedEnv![OMQ_PLUGIN_ROOT_ENV]).toBe('/tmp/foo');
   });
 
   it('3. no flag and no parent env → child env does not contain OMQ_PLUGIN_ROOT', async () => {
@@ -167,7 +178,7 @@ describe('launchCommand → child env propagation (OMQ_PLUGIN_ROOT)', () => {
   it('4. parent env set + --plugin-dir → argv wins over inherited env', async () => {
     process.env[OMQ_PLUGIN_ROOT_ENV] = '/tmp/bar';
     await runLaunch(['--plugin-dir', '/tmp/foo']);
-    expect(capturedEnv![OMQ_PLUGIN_ROOT_ENV]).toBe(resolve('/tmp/foo'));
+    expect(capturedEnv![OMQ_PLUGIN_ROOT_ENV]).toBe('/tmp/foo');
   });
 
   it('5. parent env set + no flag → child inherits parent OMQ_PLUGIN_ROOT', async () => {

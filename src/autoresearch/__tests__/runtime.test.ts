@@ -1,9 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+// #57 failure-case pin: the runtime's content-level recheck must stay
+// fail-closed when `git diff` itself fails. The real spawnSync is captured
+// (vi.hoisted: the factory is hoisted above the let binding) so non-diff git
+// plumbing keeps working.
+const spawnSyncRef = vi.hoisted(() => ({
+  current: null as null | ((...args: unknown[]) => unknown),
+}));
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  spawnSyncRef.current = actual.spawnSync as (...args: unknown[]) => unknown;
+  return { ...actual, spawnSync: vi.fn(actual.spawnSync) };
+});
 import type { AutoresearchMissionContract } from '../contracts.js';
 import {
   assertModeStartAllowed,
@@ -16,6 +29,9 @@ import {
   processAutoresearchCandidate,
 } from '../runtime.js';
 import { readModeState, writeModeState } from '../../lib/mode-state-io.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 async function initRepo(): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), 'omq-autoresearch-runtime-'));
@@ -60,6 +76,7 @@ async function makeContract(repo: string): Promise<AutoresearchMissionContract> 
 }
 
 describe('autoresearch runtime', () => {
+  useDefaultStateRoot();
   it('builds bootstrap instructions with mission, sandbox, and evaluator contract', async () => {
     const repo = await initRepo();
     try {
@@ -199,6 +216,7 @@ describe('autoresearch runtime', () => {
 });
 
 describe('autoresearch parity decisions', () => {
+  useDefaultStateRoot();
   it('keeps improved candidates and resets discarded candidates back to the last kept commit', async () => {
     const repo = await initRepo();
     try {
@@ -291,6 +309,7 @@ describe('autoresearch parity decisions', () => {
 
 
 describe('autoresearch startup exclusivity', () => {
+  useDefaultStateRoot();
   it('blocks startup when a session-scoped ralph state is active', async () => {
     const repo = await initRepo();
     try {
@@ -312,6 +331,89 @@ describe('autoresearch startup exclusivity', () => {
       await expect(assertModeStartAllowed('autoresearch', repo)).rejects.toThrow(
         'Cannot start autoresearch: autopilot is already active',
       );
+    } finally {
+      await rm(repo, { recursive: true, force: true });
+    }
+  });
+});
+
+// #57 (ledger :439): `git status` reports autocrlf stat-only churn as a
+// modified file (" M" with an EMPTY content diff), which used to trip the
+// fail-closed `autoresearch_reset_requires_clean_worktree` gate for real
+// Windows users. Before throwing, each " M"-shaped candidate now gets a
+// content-level recheck (git diff --name-only / --cached); only a candidate
+// whose content diff is empty is exempted. Git failures stay fail-closed.
+describe('assertResetSafeWorktree – stat-only churn vs real content (#57)', () => {
+  it('still rejects a STAGED content change', async () => {
+    const repo = await initRepo();
+    try {
+      await writeFile(join(repo, 'README.md'), 'real staged change\n', 'utf-8');
+      execFileSync('git', ['add', 'README.md'], { cwd: repo, stdio: 'ignore' });
+
+      expect(() => assertResetSafeWorktree(repo)).toThrow('autoresearch_reset_requires_clean_worktree');
+    } finally {
+      await rm(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('still rejects an UNSTAGED real content change', async () => {
+    const repo = await initRepo();
+    try {
+      await writeFile(join(repo, 'README.md'), 'hello\nmore real content\n', 'utf-8');
+
+      expect(() => assertResetSafeWorktree(repo)).toThrow('autoresearch_reset_requires_clean_worktree');
+    } finally {
+      await rm(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('allows autocrlf stat-only churn (status M but empty content diff)', async () => {
+    const repo = await initRepo();
+    try {
+      // Reproduce the probe (.omq/scratch/rerun/probe-autocrlf-worktree.mjs):
+      // commit with autocrlf, let smudge check the file back out with CRLF,
+      // then rewrite the same logical content with LF — git status then shows
+      // " M" while `git diff` finds nothing.
+      execFileSync('git', ['config', 'core.autocrlf', 'true'], { cwd: repo, stdio: 'ignore' });
+      const target = join(repo, 'README.md');
+      await rm(target);
+      execFileSync('git', ['checkout', '--', 'README.md'], { cwd: repo, stdio: 'ignore' });
+      await writeFile(target, 'hello\n', 'utf-8');
+
+      const status = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf-8' });
+      expect(status).toContain('M README.md');
+      expect(execFileSync('git', ['diff', '--numstat'], { cwd: repo, encoding: 'utf-8' }).trim()).toBe('');
+
+      expect(() => assertResetSafeWorktree(repo)).not.toThrow();
+    } finally {
+      await rm(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('stays fail-closed when the content-level git diff command fails', async () => {
+    const repo = await initRepo();
+    try {
+      execFileSync('git', ['config', 'core.autocrlf', 'true'], { cwd: repo, stdio: 'ignore' });
+      const target = join(repo, 'README.md');
+      await rm(target);
+      execFileSync('git', ['checkout', '--', 'README.md'], { cwd: repo, stdio: 'ignore' });
+      await writeFile(target, 'hello\n', 'utf-8');
+
+      const { spawnSync } = await import('node:child_process');
+      const mock = vi.mocked(spawnSync);
+      const fallback = spawnSyncRef.current as unknown as typeof spawnSync;
+      mock.mockImplementation(((...callArgs: Parameters<typeof spawnSync>) => {
+        const args = callArgs[1] as readonly string[] | undefined;
+        if (Array.isArray(args) && args[0] === 'diff') {
+          return { status: 128, stdout: '', stderr: 'fatal: simulated diff failure' } as ReturnType<typeof spawnSync>;
+        }
+        return (fallback as (...a: unknown[]) => ReturnType<typeof spawnSync>)(...callArgs);
+      }) as typeof spawnSync);
+      try {
+        expect(() => assertResetSafeWorktree(repo)).toThrow('autoresearch_reset_requires_clean_worktree');
+      } finally {
+        mock.mockRestore();
+      }
     } finally {
       await rm(repo, { recursive: true, force: true });
     }

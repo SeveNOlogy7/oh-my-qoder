@@ -7,17 +7,18 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = process.cwd();
 const NODE = process.execPath;
-const HOOKS = [
-  join(ROOT, 'scripts', 'keyword-detector.mjs'),
-  join(ROOT, 'templates', 'hooks', 'keyword-detector.mjs'),
-];
+// Repo-relative labels, not absolute paths: these strings are interpolated into every
+// it.each title, so an absolute path would make the same test read as a NEW failure on
+// every machine except the one that authored the baseline.
+const HOOKS = ['scripts/keyword-detector.mjs', 'templates/hooks/keyword-detector.mjs'];
+const hookPath = (label: string) => join(ROOT, ...label.split('/'));
 
 type WorkflowStateWithBoundary = {
   pipelineTracking: { activationBoundary: { transcriptPath: string } };
 };
 
-function runHook(script: string, prompt: string, cwd: string, configHome: string, transcriptPath = join(cwd, 'claude-config', 'projects', 'workflow-activation-fixture.jsonl'), extraEnv: Record<string, string> = {}) {
-  return JSON.parse(execFileSync(NODE, [script], {
+function runHook(hook: string, prompt: string, cwd: string, configHome: string, transcriptPath = join(cwd, 'claude-config', 'projects', 'workflow-activation-fixture.jsonl'), extraEnv: Record<string, string> = {}) {
+  return JSON.parse(execFileSync(NODE, [hookPath(hook)], {
     input: JSON.stringify({
       hook_event_name: 'UserPromptSubmit',
       cwd,
@@ -30,9 +31,9 @@ function runHook(script: string, prompt: string, cwd: string, configHome: string
   })) as { hookSpecificOutput?: { additionalContext?: string } };
 }
 
-function runHookAsync(script: string, prompt: string, cwd: string, configHome: string, transcriptPath = join(cwd, 'claude-config', 'projects', 'workflow-activation-fixture.jsonl')) {
+function runHookAsync(hook: string, prompt: string, cwd: string, configHome: string, transcriptPath = join(cwd, 'claude-config', 'projects', 'workflow-activation-fixture.jsonl')) {
   return new Promise<{ hookSpecificOutput?: { additionalContext?: string } }>((resolve, reject) => {
-    const child = spawn(NODE, [script], {
+    const child = spawn(NODE, [hookPath(hook)], {
       cwd,
       env: { ...process.env, NODE_ENV: 'test', OMQ_SKIP_HOOKS: '', XDG_CONFIG_HOME: configHome, QODER_CONFIG_DIR: join(cwd, 'claude-config') },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -773,7 +774,7 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
   });
 
   it('preserves foreign shared-home recovery claims and publication temps while the template activates project A', () => {
-    const script = join(ROOT, 'templates', 'hooks', 'keyword-detector.mjs');
+    const script = 'templates/hooks/keyword-detector.mjs';
     const projectA = createFixture();
     const projectB = createFixture();
     const globalStatePath = join(projectA.cwd, '.omq', 'state', 'autopilot-state.json');

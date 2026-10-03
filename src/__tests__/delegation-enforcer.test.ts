@@ -192,7 +192,7 @@ describe('delegation-enforcer', () => {
       expect(thrown!.message).not.toContain('closest match');
     });
 
-    it('resolves the dir-only plan name to omc-plan in the guidance (hook parity)', () => {
+    it('resolves the dir-only plan name to omq-plan in the guidance (hook parity)', () => {
       const input: AgentInput = {
         description: 'Plan task',
         prompt: 'Run it',
@@ -207,7 +207,7 @@ describe('delegation-enforcer', () => {
       }
 
       expect(thrown).toBeDefined();
-      expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:omc-plan")');
+      expect(thrown!.message).toContain('Skill(skill="oh-my-qoder:omq-plan")');
     });
     describe('bundled skill visibility (entitlement set empty since 5.0.0, issue #3667)', () => {
       let savedUserType: string | undefined;
@@ -274,7 +274,7 @@ describe('delegation-enforcer', () => {
         expect(ungatedMixedCase!.message).toContain('Skill(skill="oh-my-qoder:remember")');
 
         const visibleMixedCase = thrownFor('oh-my-qoder:Plan');
-        expect(visibleMixedCase!.message).toContain('Skill(skill="oh-my-qoder:omc-plan")');
+        expect(visibleMixedCase!.message).toContain('Skill(skill="oh-my-qoder:omq-plan")');
 
       });
 
@@ -529,7 +529,7 @@ describe('delegation-enforcer', () => {
     it('guides namespaced bundled skills to the canonical Skill invocation (issue #3667 P2)', () => {
       for (const skillType of ['oh-my-qoder:plan', 'omc:plan']) {
         expect(() => getModelForAgent(skillType)).toThrow(
-          'Skill(skill="oh-my-qoder:omc-plan")',
+          'Skill(skill="oh-my-qoder:omq-plan")',
         );
       }
     });

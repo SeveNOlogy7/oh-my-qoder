@@ -4,6 +4,14 @@ import { join } from 'path';
 
 import { formatAutopilotRuntimeInsight } from '../runtime-insight.js';
 import { writeHudState } from '../../../hud/state.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
+// Anchors hud-state writers that resolve through getOmqRoot() with no
+// directory at a per-test temp dir instead of the real .omq/state (T16b).
+import { useCwdFixture } from '../../../__tests__/helpers/cwd-fixture.js';
+
+useCwdFixture();
 
 function writeJson(filePath: string, value: unknown): void {
   mkdirSync(join(filePath, '..'), { recursive: true });
@@ -11,6 +19,7 @@ function writeJson(filePath: string, value: unknown): void {
 }
 
 describe('formatAutopilotRuntimeInsight', () => {
+  useDefaultStateRoot();
   let cwd: string;
 
   beforeEach(() => {

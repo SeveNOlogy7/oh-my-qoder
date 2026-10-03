@@ -43,10 +43,14 @@ vi.mock('../../../lib/worktree-paths.js', async () => {
 
 import { processSessionEnd } from '../index.js';
 import { resolveToWorktreeRoot } from '../../../lib/worktree-paths.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 const mockResolveToWorktreeRoot = vi.mocked(resolveToWorktreeRoot);
 
 describe('processSessionEnd cwd normalization (issue #891)', () => {
+  useDefaultStateRoot();
   let worktreeRoot: string;
   let subdirectory: string;
 

@@ -24,8 +24,12 @@ import {
 import type { RalphthonPRD, RalphthonStory } from "../types.js";
 import { RALPHTHON_DEFAULTS } from "../types.js";
 import { DEFAULT_PLANNING_CONTEXT } from "../prd.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe("Ralphthon PRD", () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {

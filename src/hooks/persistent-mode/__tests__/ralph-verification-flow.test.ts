@@ -6,8 +6,12 @@ import { join } from 'path';
 import { checkPersistentModes } from '../index.js';
 import { amendCriterion, readPrd, writePrd, type PRD } from '../../ralph/prd.js';
 import { readRalphState } from '../../ralph/loop.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('Ralph verification flow', () => {
+  useDefaultStateRoot();
   let testDir: string;
   let claudeConfigDir: string;
   let originalClaudeConfigDir: string | undefined;

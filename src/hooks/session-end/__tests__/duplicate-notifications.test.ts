@@ -14,7 +14,7 @@ vi.mock('../callbacks.js', async () => {
 const fetchMock = vi.fn();
 
 vi.mock('../../../features/auto-update.js', () => ({
-  getOMCConfig: vi.fn(() => ({
+  getOMQConfig: vi.fn(() => ({
     silentAutoUpdate: false,
     stopHookCallbacks: undefined,
     notifications: undefined,
@@ -62,7 +62,7 @@ vi.mock('../../../lib/worktree-paths.js', async () => {
 
 import { processSessionEnd, runSessionEndCallbacks, runSessionEndNotifications } from '../index.js';
 import { readSessionEndJob } from '../cleanup-manifest.js';
-import { getOMCConfig } from '../../../features/auto-update.js';
+import { getOMQConfig } from '../../../features/auto-update.js';
 import { buildConfigFromEnv, getEnabledPlatforms, getNotificationConfig } from '../../../notifications/config.js';
 import { notify } from '../../../notifications/index.js';
 
@@ -92,7 +92,7 @@ describe('processSessionEnd notification deduplication (issue #1440)', () => {
   });
 
   it('defers legacy callbacks without re-dispatching session-end through notify() when config only comes from stopHookCallbacks', async () => {
-    vi.mocked(getOMCConfig).mockReturnValue({
+    vi.mocked(getOMQConfig).mockReturnValue({
       silentAutoUpdate: false,
       stopHookCallbacks: {
         discord: {
@@ -149,7 +149,7 @@ describe('processSessionEnd notification deduplication (issue #1440)', () => {
   });
 
   it('defers deduplicated legacy Discord callbacks and explicit notifications to the worker', async () => {
-    vi.mocked(getOMCConfig).mockReturnValue({
+    vi.mocked(getOMQConfig).mockReturnValue({
       silentAutoUpdate: false,
       stopHookCallbacks: {
         discord: {

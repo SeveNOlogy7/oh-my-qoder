@@ -8,10 +8,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const root = process.cwd();
 const created: string[] = [];
-const modules = [
-  join(root, 'scripts', 'lib', 'atomic-write.mjs'),
-  join(root, 'templates', 'hooks', 'lib', 'atomic-write.mjs'),
-];
+// Repo-relative labels because describe.each interpolates them into every title: an
+// absolute path here makes the same test a NEW failure on any machine that did not
+// author the baseline, and a stale entry on the machine that did.
+const modules = ['scripts/lib/atomic-write.mjs', 'templates/hooks/lib/atomic-write.mjs'];
+const moduleUrl = (label: string) => pathToFileURL(join(root, ...label.split('/'))).href;
 
 function processStart(pid = process.pid): string {
   const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
@@ -45,7 +46,7 @@ afterEach(() => {
 
 describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) => {
   async function api() {
-    return import(`${pathToFileURL(modulePath).href}?test=${randomUUID()}`) as Promise<{
+    return import(`${moduleUrl(modulePath)}?test=${randomUUID()}`) as Promise<{
       acquireStateFileLockSync(path: string, attempts?: number): { fd: number; lockPath: string; owner: ReturnType<typeof owner> } | null;
       releaseStateFileLockSync(lock: unknown): void;
       recoverEmergencyStateFile(path: string): boolean;
@@ -112,7 +113,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
       api.releaseStateFileLockSync(lock);
     `;
     const run = (id: string) => new Promise<void>((resolve, reject) => {
-      const child = spawn(process.execPath, ['--input-type=module', '-e', childScript, pathToFileURL(modulePath).href, statePath, logPath, id], { stdio: 'ignore' });
+      const child = spawn(process.execPath, ['--input-type=module', '-e', childScript, moduleUrl(modulePath), statePath, logPath, id], { stdio: 'ignore' });
       child.once('error', reject);
       child.once('close', code => code === 0 ? resolve() : reject(new Error(`reclaimer ${id} exited ${code}`)));
     });
@@ -144,7 +145,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
 
 describe.each(modules)('guarded emergency recovery claim (%s)', (modulePath) => {
   async function api() {
-    return import(`${pathToFileURL(modulePath).href}?recovery=${randomUUID()}`) as Promise<{
+    return import(`${moduleUrl(modulePath)}?recovery=${randomUUID()}`) as Promise<{
       recoverEmergencyStateFile(path: string): boolean;
     }>;
   }

@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 
 describe('Cleanup Validation', () => {
-  it('omq-plan skill resolves correctly', async () => {
+  it('plan skill resolves under the identity it ships with', async () => {
     const { getBuiltinSkill } = await import('../features/builtin-skills/skills.js');
-    const skill = getBuiltinSkill('omq-plan');
-    expect(skill).toBeDefined();
+    // The loader keys on the SKILL.md frontmatter name, not the directory: since
+    // the #37 rename (Loren 7b) skills/plan/ ships `name: omq-plan`, so the
+    // ancestor 'omc-plan' lookup no longer resolves.
+    expect(getBuiltinSkill('omq-plan')).toBeDefined();
+    expect(getBuiltinSkill('omc-plan')).toBeUndefined();
   });
 
   it('plan skill is blocked by CC native denylist', async () => {

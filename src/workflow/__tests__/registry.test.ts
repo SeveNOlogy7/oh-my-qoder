@@ -77,12 +77,13 @@ describe('workflow registry — risk classes and gate policy', () => {
 });
 
 describe('workflow registry — aliases and classification', () => {
-  it('classifies all 31 installed skills and 21 installed commands exactly once', () => {
+  it('classifies every installed skill and command exactly once', () => {
     const skills = WORKFLOW_ENTRIES.filter((e) => e.kind === 'skill' && !e.declaredOnly);
     const commands = WORKFLOW_ENTRIES.filter((e) => e.kind === 'command' && !e.declaredOnly);
-    // 41 + execute/review/research, which now ship as real skill directories.
-    expect(skills).toHaveLength(31);
-    expect(commands).toHaveLength(21);
+    // Census of this fork's payload: 43 skill directories and 28 command files -- the same
+    // pair createBuiltinSkills() and the durable inventory graph derive from git ls-files.
+    expect(skills).toHaveLength(43);
+    expect(commands).toHaveLength(28);
     const keys = WORKFLOW_ENTRIES.map((e) => `${e.kind}:${e.name}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
@@ -99,11 +100,17 @@ describe('workflow registry — aliases and classification', () => {
 
   it('drops legacy execution modes retired in 5.0.0', () => {
     // Retired outright under the major-version carve-out — no registry entry,
-    // so they no longer resolve to a canonical target at all.
-    for (const name of ['pipeline', 'ultrawork', 'swarm', 'ultrapilot']) {
+    // so they no longer resolve to a canonical target at all. None of these three
+    // has a skill directory in this fork either (verified against b37141e).
+    for (const name of ['pipeline', 'swarm', 'ultrapilot']) {
       expect(getEntry(name, 'skill')).toBeUndefined();
       expect(resolveCanonical(name, 'skill')).toBeUndefined();
     }
+    // ultrawork is the exception: the ancestor deleted skills/ultrawork/ with its registry
+    // entry, but this fork shipped it pre-hop and still ships it, so the census must register
+    // it. What the retirement still means here is "not a Tier-0 workflow".
+    expect(getEntry('ultrawork', 'skill')?.decision).toBe('keep');
+    expect(getEntry('ultrawork', 'skill')?.tier).not.toBe(0);
     // autopilot survives as a directly-invocable workflow (owner direction).
     expect(getEntry('autopilot', 'skill')?.decision).toBe('keep');
     expect(resolveCanonical('autopilot', 'skill')?.name).toBe('autopilot');
@@ -119,9 +126,12 @@ describe('workflow registry — aliases and classification', () => {
     expect(getEntry('ralplan', 'skill')?.tier).toBe(0);
     expect(resolveCanonical('deep-interview', 'skill')?.name).toBe('deep-interview');
     expect(resolveCanonical('ralplan', 'skill')?.name).toBe('ralplan');
-    // ultraqa and merge-readiness were retired in 5.0.0; verify/review are canonical.
-    expect(getEntry('ultraqa', 'skill')).toBeUndefined();
+    // merge-readiness was retired in 5.0.0 and has no skill directory here either;
+    // ultraqa was retired upstream but this fork ships skills/ultraqa/ (b37141e and HEAD
+    // both do), so the census registers it as a non-Tier-0 workflow.
     expect(getEntry('merge-readiness', 'skill')).toBeUndefined();
+    expect(getEntry('ultraqa', 'skill')?.decision).toBe('keep');
+    expect(getEntry('ultraqa', 'skill')?.tier).not.toBe(0);
     expect(resolveCanonical('verify', 'skill')?.name).toBe('verify');
     expect(resolveCanonical('review', 'skill')?.name).toBe('review');
   });

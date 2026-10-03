@@ -23,6 +23,11 @@ import {
   TIER0_WORKFLOWS,
   type AliasEntry,
 } from '../alias-resolver.js';
+// Anchors process.cwd()-resolving writers (hud state, session-end jobs,
+// alias telemetry) at a per-test temp dir instead of the real .omq/state.
+import { useCwdFixture } from '../../__tests__/helpers/cwd-fixture.js';
+
+useCwdFixture();
 // alias-resolver tests use worktreeRoot override; no direct worktree import needed
 
 function withEnv(overrides: Record<string, string | undefined>, fn: () => void) {
@@ -183,6 +188,15 @@ describe('alias-resolver — warnings once/session + diagnostics', () => {
     expect(normalizeWorkflowInput('/ralph ')).toBe('ralph');
     expect(normalizeWorkflowInput(' /omc:autopilot!')).toBe('autopilot');
     expect(normalizeWorkflowInput('Release.')).toBe('release');
+  });
+
+  // The plugin registers as oh-my-qoder, so these are the prefixes this fork's
+  // own commands arrive with; leaving them attached makes every alias lookup miss.
+  it('normalization strips this plugin\'s own command prefixes', () => {
+    expect(normalizeWorkflowInput('/oh-my-qoder:ralph')).toBe('ralph');
+    expect(normalizeWorkflowInput(' /omq:autopilot!')).toBe('autopilot');
+    expect(normalizeWorkflowInput('omq:review')).toBe('review');
+    expect(normalizeWorkflowInput('oh-my-qoder:execute')).toBe('execute');
   });
 });
 

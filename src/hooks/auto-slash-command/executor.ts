@@ -33,9 +33,9 @@ import { getSkillsDir, renderBundledSkillBody } from '../../features/builtin-ski
 const QODER_CONFIG_DIR = getClaudeConfigDir();
 
 /**
- * Claude Code native commands that must not be shadowed by user skills.
+ * Qoder CLI native commands that must not be shadowed by user skills.
  * Skills whose canonical name or alias matches one of these will be prefixed
- * with `omc-` to avoid overriding built-in CC slash commands.
+ * with `omq-` to avoid overriding built-in CC slash commands.
  */
 const CC_NATIVE_COMMANDS = new Set([
   'review',
@@ -53,7 +53,7 @@ const CC_NATIVE_COMMANDS = new Set([
 function toSafeSkillName(name: string): string {
   const normalized = name.trim();
   return CC_NATIVE_COMMANDS.has(normalized.toLowerCase())
-    ? `omc-${normalized}`
+    ? `omq-${normalized}`
     : normalized;
 }
 
@@ -282,7 +282,7 @@ function renderDeepInterviewAutoresearchGuidance(args: string): string {
     '- Treat evaluator clarity as a required readiness gate before launch.',
     '- When the mission and evaluator are ready, write setup artifacts and hand off with:',
     '  `Skill("oh-my-qoder:autoresearch")`',
-    '- Do **not** hand off to `omc-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc autoresearch` CLI in this mode.',
+    '- Do **not** hand off to `omq-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omq autoresearch` CLI in this mode.',
   ];
 
   if (missionSeed) {

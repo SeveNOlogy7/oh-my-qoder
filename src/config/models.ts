@@ -83,7 +83,7 @@ export const BUILTIN_EXTERNAL_MODEL_DEFAULTS = {
  *   OMQ_MODEL_MEDIUM  - Model ID for MEDIUM tier (sonnet-class)
  *   OMQ_MODEL_LOW     - Model ID for LOW tier (haiku-class)
  *
- * User config (~/.config/claude-omc/config.jsonc) can also override
+ * User config (~/.config/qoder-omq/config.jsonc) can also override
  * via `routing.tierModels` or per-agent `agents.<name>.model`.
  */
 

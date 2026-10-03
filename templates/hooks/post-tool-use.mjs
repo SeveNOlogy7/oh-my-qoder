@@ -75,7 +75,7 @@ function getSkillInvocationArgs(toolInput) {
 function isConsensusPlanningSkillInvocation(skillName, toolInput) {
   if (!skillName) return false;
   if (skillName === 'ralplan') return true;
-  if (skillName !== 'plan' && skillName !== 'omc-plan') return false;
+  if (skillName !== 'plan' && skillName !== 'omq-plan') return false;
   return getSkillInvocationArgs(toolInput).toLowerCase().includes('--consensus');
 }
 

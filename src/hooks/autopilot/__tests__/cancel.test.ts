@@ -24,6 +24,7 @@ import { resolveSessionStatePath } from '../../../lib/worktree-paths.js';
 import {
   validateNamedWorkflowState,
   validateNamedWorkflowStateStructure,
+  namedWorkflowRuntimeSupported,
 } from '../named-workflow-resume-validator.js';
 
 // Mock the ralph module (linked-state cleanup still routes through it)
@@ -36,8 +37,12 @@ vi.mock('../../ralph/index.js', () => ({
 // Import mocked functions after vi.mock
 import * as ralphLoop from '../../ralph/index.js';
 import { readModeState } from '../../../lib/mode-state-io.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('AutopilotCancel', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {
@@ -282,7 +287,11 @@ describe('AutopilotCancel', () => {
       expect(readModeState('ultraqa', testDir)).toBeNull();
     });
 
-    it('does not clean linked state when the primary named mutation lock is held', () => {
+    // The primary mutation lock only exists where an exclusive flock can be
+    // taken (mode-state-io degrades to a no-op lock without it), and its
+    // liveness fixture reads /proc/<pid>/stat, so the scenario is defined on
+    // the named-workflow runtime platforms only.
+    it.skipIf(!namedWorkflowRuntimeSupported())('does not clean linked state when the primary named mutation lock is held', () => {
       const sessionId = 'named-primary-lock';
       const state = initAutopilot(testDir, 'ship it', sessionId)!;
       state.workflow = createWorkflowDescriptor('release-flow', { version: 1, stages: ['ralplan', 'execution'] })!;
@@ -727,7 +736,10 @@ describe('AutopilotCancel', () => {
       expect(require('fs').readFileSync(stateFile)).toEqual(before);
     });
 
-    it('rejects a named traversal boundary without mutating paused bytes', () => {
+    // Boundary/symlink authentication runs through validateNamedWorkflowState,
+    // which requires the no-follow runtime (O_NOFOLLOW + /proc/self/fd);
+    // elsewhere resume fails closed with 'unsupported-runtime' by contract.
+    it.skipIf(!namedWorkflowRuntimeSupported())('rejects a named traversal boundary without mutating paused bytes', () => {
       const sessionId = 'resume-auth-session';
       const root = join(testDir, 'claude-config', 'projects');
       process.env.QODER_CONFIG_DIR = join(testDir, 'claude-config');
@@ -778,7 +790,7 @@ describe('AutopilotCancel', () => {
       expect(finalResume.message).toBe('Resuming autopilot at phase: ralplan');
       expect(finalResume).toMatchObject({ success: true, state: { active: true, workflowRunId: state.workflowRunId } });
     });
-    it('rejects forged completion observations and resumes an authenticated advanced named workflow', () => {
+    it.skipIf(!namedWorkflowRuntimeSupported())('rejects forged completion observations and resumes an authenticated advanced named workflow', () => {
       const sessionId = 'resume-observation-session';
       const root = join(testDir, 'claude-config', 'projects');
       const project = join(root, '-workspace-project');

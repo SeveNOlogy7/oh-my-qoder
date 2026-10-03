@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
@@ -9,6 +9,43 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..');
 const SCRIPT = join(REPO_ROOT, 'scripts', 'verify-epic-3698-closure.mjs');
 const COLLECTOR = join(REPO_ROOT, 'scripts', 'collect-epic-3698-ci-evidence.mjs');
+
+/**
+ * Every case except the argument-surface one drives these scripts through a
+ * fake `gh`: installFakeGh() writes an extensionless shebang script at
+ * <fixture>/fake-gh/gh and prepends that directory to PATH.
+ *
+ * On Windows that interception cannot work: Node resolves a bare command name
+ * without consulting PATHEXT (ENOENT for a `.cmd` copy) and rejects `.bat`/`.cmd`
+ * unless spawned with `shell: true` (EINVAL), so the shim is never reached and
+ * the real gh.exe later in PATH runs instead — against a fixture repository that
+ * has no GitHub remote, which is why all of these cases die inside ghJson().
+ *
+ * Gate on the measured capability rather than tolerating the whole suite, but
+ * only ever subtract coverage on win32: a false negative here (e.g. a noexec /tmp
+ * on some other runner) must not silently disable a lane that passes today.
+ */
+function ghPathShimIsReachable(): boolean {
+  const probeDir = mkdtempSync(join(tmpdir(), 'epic-3698-shim-probe-'));
+  try {
+    const shimName = 'omq-epic3698-shim-probe';
+    writeFileSync(join(probeDir, shimName), '#!/usr/bin/env node\nconsole.log("SHIM_HIT");\n');
+    chmodSync(join(probeDir, shimName), 0o755);
+    const env = { ...process.env, PATH: `${probeDir}${delimiter}${process.env.PATH ?? ''}` };
+    return execFileSync(shimName, [], { encoding: 'utf8', env, windowsHide: true }).trim() === 'SHIM_HIT';
+  } catch {
+    return false;
+  } finally {
+    rmSync(probeDir, { recursive: true, force: true });
+  }
+}
+
+const ghShimReachable = ghPathShimIsReachable() || process.platform !== 'win32';
+
+// Cases whose fixture evidence is served by the fake `gh` on PATH. That interception is
+// unreachable on Windows (see the probe above), so these cannot be evaluated there; every
+// other case in this file runs on every host.
+const ghIt = ghShimReachable ? it : it.skip;
 
 interface RunResult {
   status: number;
@@ -319,9 +356,9 @@ function buildCompleteFixture(root: string) {
   return head;
 }
 
-describe('epic-3698 closure verifier (#3712)', () => {
-  let fixture: string;
-
+// Runs on every host: it only asserts that argument validation happens before
+// any GitHub call, so it does not depend on the fake-gh PATH shim.
+describe('epic-3698 collector argument surface', () => {
   it('rejects the unverifiable direct-only collector mode before invoking GitHub', () => {
     const result = spawnSync(process.execPath, [COLLECTOR, '--direct-only', '--out', join(tmpdir(), 'unused-direct.json')], {
       cwd: REPO_ROOT,
@@ -330,8 +367,12 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('unknown argument: --direct-only');
   });
+});
 
-  it('refuses queued or in-progress PR checks instead of emitting completed evidence', () => {
+describe('epic-3698 closure verifier (#3712)', () => {
+  let fixture: string;
+
+  ghIt('refuses queued or in-progress PR checks instead of emitting completed evidence', () => {
     buildCompleteFixture(fixture);
     commitFixture(fixture, 'fixture');
     const ghFixturePath = join(fixture, 'gh-fixture.json');
@@ -361,7 +402,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     if (fixture) rmSync(fixture, { recursive: true, force: true });
   });
 
-  it('passes with exit 0 when every acceptance surface is satisfied', () => {
+  ghIt('passes with exit 0 when every acceptance surface is satisfied', () => {
     buildCompleteFixture(fixture);
     writeFileSync(join(fixture, 'tracked.txt'), 'base\n');
     commitFixture(fixture, 'base');
@@ -402,7 +443,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'exactHeadCi').problems.join(' ')).toContain(stale);
   });
 
-  it('rejects caller-controlled valid SHA evidence that disagrees with live GitHub', () => {
+  ghIt('rejects caller-controlled valid SHA evidence that disagrees with live GitHub', () => {
     buildCompleteFixture(fixture);
     const evidencePath = join(fixture, 'ci-evidence.json');
     const evidence = JSON.parse(readFileSync(evidencePath, 'utf8'));
@@ -488,7 +529,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'childTerminality').problems.join(' ')).toContain('structured object');
   });
 
-  it('records a terminal non-green PR truthfully without passing exact-head CI', () => {
+  ghIt('records a terminal non-green PR truthfully without passing exact-head CI', () => {
     buildCompleteFixture(fixture);
     const evidencePath = join(fixture, 'ci-evidence.json');
     const evidence = JSON.parse(readFileSync(evidencePath, 'utf8'));
@@ -560,7 +601,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(problems).toContain('state must be MERGED');
   });
 
-  it('rejects forged no-PR terminal evidence that does not match the direct issue artifact', () => {
+  ghIt('rejects forged no-PR terminal evidence that does not match the direct issue artifact', () => {
     buildCompleteFixture(fixture);
     writeJson(join(fixture, 'receipts', 'epic-3698', 'child-3709-terminal.receipt.json'), {
       schemaVersion: 1,
@@ -586,7 +627,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'childTerminality').problems.join(' ')).toContain('independently collected direct issue artifact');
   });
 
-  it('rejects forged direct issue commit/status evidence even when receipt and CI JSON agree', () => {
+  ghIt('rejects forged direct issue commit/status evidence even when receipt and CI JSON agree', () => {
     buildCompleteFixture(fixture);
     const evidencePath = join(fixture, 'ci-evidence.json');
     const evidence = JSON.parse(readFileSync(evidencePath, 'utf8'));
@@ -628,7 +669,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'exactHeadCi').problems.join(' ')).toContain('live issue timeline referenced.commit_id');
   });
 
-  it('rejects committed.sha-only timeline evidence for direct issue #3709', () => {
+  ghIt('rejects committed.sha-only timeline evidence for direct issue #3709', () => {
     buildCompleteFixture(fixture);
     const ghFixturePath = join(fixture, 'gh-fixture.json');
     const ghFixture = JSON.parse(readFileSync(ghFixturePath, 'utf8'));
@@ -643,7 +684,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'exactHeadCi').problems.join(' ')).toContain('referenced.commit_id');
   });
 
-  it('rejects mixed green and failed live PR check rollups', () => {
+  ghIt('rejects mixed green and failed live PR check rollups', () => {
     buildCompleteFixture(fixture);
     const ghFixturePath = join(fixture, 'gh-fixture.json');
     const ghFixture = JSON.parse(readFileSync(ghFixturePath, 'utf8'));
@@ -663,7 +704,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'exactHeadCi').problems.join(' ')).toContain('does not exactly match live successful status checks');
   });
 
-  it('fails closed when direct check-run pagination contains a late failure', () => {
+  ghIt('fails closed when direct check-run pagination contains a late failure', () => {
     buildCompleteFixture(fixture);
     const ghFixturePath = join(fixture, 'gh-fixture.json');
     const ghFixture = JSON.parse(readFileSync(ghFixturePath, 'utf8'));
@@ -711,7 +752,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'exactHeadCi').problems.join(' ')).toContain('statuses[0].state must be success');
   });
 
-  it('rejects a failed child PR check beyond the first 100 records', () => {
+  ghIt('rejects a failed child PR check beyond the first 100 records', () => {
     buildCompleteFixture(fixture);
     const head = 'a'.repeat(40);
     const ghFixturePath = join(fixture, 'gh-fixture.json');
@@ -733,7 +774,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'exactHeadCi').problems.join(' ')).toContain('does not exactly match live successful status checks');
   });
 
-  it('finds direct issue referenced.commit_id after the first timeline page', () => {
+  ghIt('finds direct issue referenced.commit_id after the first timeline page', () => {
     buildCompleteFixture(fixture);
     const ghFixturePath = join(fixture, 'gh-fixture.json');
     const ghFixture = JSON.parse(readFileSync(ghFixturePath, 'utf8'));
@@ -750,7 +791,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'exactHeadCi').status).toBe('pass');
   });
 
-  it('rejects HEAD as a valid-but-wrong base against the authenticated expected merge base', () => {
+  ghIt('rejects HEAD as a valid-but-wrong base against the authenticated expected merge base', () => {
     buildCompleteFixture(fixture);
     writeFileSync(join(fixture, 'tracked.txt'), 'base\n');
     commitFixture(fixture, 'authenticated base');
@@ -800,7 +841,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'releaseSecurityParity').problems.join(' ')).toContain('authenticated expected merge base unavailable');
   });
 
-  it('derives the authenticated exact-head PR base from a later associated-pulls page', () => {
+  ghIt('derives the authenticated exact-head PR base from a later associated-pulls page', () => {
     buildCompleteFixture(fixture);
     writeFileSync(join(fixture, 'tracked.txt'), 'base\n');
     commitFixture(fixture, 'authenticated base');
@@ -824,7 +865,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'releaseSecurityParity').problems.join(' ')).toContain('authenticated expected merge base');
   });
 
-  it('rejects authentic direct issue evidence when the referenced commit is not shipped in exact HEAD', () => {
+  ghIt('rejects authentic direct issue evidence when the referenced commit is not shipped in exact HEAD', () => {
     buildCompleteFixture(fixture);
     writeFileSync(join(fixture, 'tracked.txt'), 'base\n');
     commitFixture(fixture, 'base');
@@ -889,7 +930,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'releaseSecurityParity').details).toContain('unauthenticated');
   });
 
-  it('detects a compact/reordered package.json version bump by parsing base and HEAD JSON', () => {
+  ghIt('detects a compact/reordered package.json version bump by parsing base and HEAD JSON', () => {
     buildCompleteFixture(fixture);
     writeFileSync(join(fixture, 'package.json'), '{"name":"fixture","version":"1.0.0"}\n');
     commitFixture(fixture, 'base package');
@@ -905,7 +946,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'releaseSecurityParity').problems.join(' ')).toContain('1.0.0 -> 2.0.0');
   });
 
-  it('compares package.json against the exact merge-base when the selected base diverges', () => {
+  ghIt('compares package.json against the exact merge-base when the selected base diverges', () => {
     buildCompleteFixture(fixture);
     writeFileSync(join(fixture, 'package.json'), '{"name":"fixture","version":"1.0.0"}\n');
     commitFixture(fixture, 'common ancestor');
@@ -962,7 +1003,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'releaseSecurityParity').problems.join(' ')).toContain('release.yml');
   });
 
-  it('checks both sides when a protected release workflow is renamed', () => {
+  ghIt('checks both sides when a protected release workflow is renamed', () => {
     buildCompleteFixture(fixture);
     const workflowPath = join(fixture, '.github', 'workflows', 'release.yml');
     mkdirSync(join(fixture, '.github', 'workflows'), { recursive: true });
@@ -983,7 +1024,7 @@ describe('epic-3698 closure verifier (#3712)', () => {
     expect(check(run, 'releaseSecurityParity').problems.join(' ')).toContain('release.yml');
   });
 
-  it('allows only the exact v5 release smoke skill-path correction', () => {
+  ghIt('allows only the exact v5 release smoke skill-path correction', () => {
     buildCompleteFixture(fixture);
     const workflowPath = join(fixture, '.github', 'workflows', 'release.yml');
     writeFileSync(workflowPath, [

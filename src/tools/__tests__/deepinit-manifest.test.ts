@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, symlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import {
@@ -31,8 +31,7 @@ function createTestDir(): string {
 
 function createFile(relativePath: string, content = ''): void {
   const fullPath = join(TEST_DIR, relativePath);
-  const dir = fullPath.substring(0, fullPath.lastIndexOf('/'));
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dirname(fullPath), { recursive: true });
   writeFileSync(fullPath, content);
 }
 
@@ -49,6 +48,9 @@ function createManifest(directories: Record<string, { files: string[] }>): void 
 // Mock validateWorkingDirectory to return our test dir
 import * as worktreePaths from '../../lib/worktree-paths.js';
 import { vi } from 'vitest';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 vi.mock('../../lib/worktree-paths.js', async (importOriginal) => {
   const original = await importOriginal<typeof worktreePaths>();
@@ -63,6 +65,7 @@ vi.mock('../../lib/worktree-paths.js', async (importOriginal) => {
 // =============================================================================
 
 describe('isExcluded', () => {
+  useDefaultStateRoot();
   it('excludes node_modules', () => {
     expect(isExcluded('node_modules')).toBe(true);
   });
@@ -102,6 +105,7 @@ describe('isExcluded', () => {
 // =============================================================================
 
 describe('scanDirectories', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     TEST_DIR = createTestDir();
   });
@@ -195,6 +199,7 @@ describe('scanDirectories', () => {
 // =============================================================================
 
 describe('loadManifest', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     TEST_DIR = createTestDir();
   });
@@ -245,6 +250,7 @@ describe('loadManifest', () => {
 // =============================================================================
 
 describe('computeDiff', () => {
+  useDefaultStateRoot();
   it('first run (null previous): all directories are added', () => {
     const current = {
       '.': { files: ['index.ts'] },
@@ -345,6 +351,7 @@ describe('computeDiff', () => {
 // =============================================================================
 
 describe('ancestor cascading', () => {
+  useDefaultStateRoot();
   it('child added marks parent as modified', () => {
     const previous = {
       '.': { files: ['index.ts'] },
@@ -417,6 +424,7 @@ describe('ancestor cascading', () => {
 // =============================================================================
 
 describe('deepinitManifestTool handler', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     TEST_DIR = createTestDir();
     vi.mocked(worktreePaths.validateWorkingDirectory).mockReturnValue(TEST_DIR);
@@ -608,6 +616,7 @@ describe('deepinitManifestTool handler', () => {
 // =============================================================================
 
 describe('high', () => {
+  useDefaultStateRoot();
   let PERF_DIR: string;
 
   beforeEach(() => {

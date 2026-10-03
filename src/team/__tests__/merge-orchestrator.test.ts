@@ -104,6 +104,9 @@ import {
 } from '../merge-orchestrator.js';
 import { sanitizeName } from '../tmux-session.js';
 import { atomicWriteJson } from '../fs-utils.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -178,6 +181,7 @@ beforeEach(() => {
 });
 
 describe('Git process construction', () => {
+  useDefaultStateRoot();
   it('uses git argv with hidden-window options for merger worktree setup', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -214,6 +218,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('M3 leader-branch guard', () => {
+  useDefaultStateRoot();
   it('rejects "main"', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -273,6 +278,7 @@ describe('M3 leader-branch guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateBranchName guard', () => {
+  useDefaultStateRoot();
   it('rejects leader branch name that looks like a flag (--upload-pack=...)', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -299,6 +305,7 @@ describe('validateBranchName guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('M5 v2 gate', () => {
+  useDefaultStateRoot();
   it('allows unset OMQ_RUNTIME_V2 because runtime v2 is default-on', async () => {
     delete process.env.OMQ_RUNTIME_V2;
     const repoRoot = makeRepoRoot();
@@ -329,6 +336,7 @@ describe('M5 v2 gate', () => {
 // ---------------------------------------------------------------------------
 
 describe('commit watcher + auto-merge', () => {
+  useDefaultStateRoot();
   it('detects a SHA change and triggers a merge', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -660,6 +668,7 @@ describe('commit watcher + auto-merge', () => {
 // ---------------------------------------------------------------------------
 
 describe('M1 existing-rebase short-circuit', () => {
+  useDefaultStateRoot();
   it('skips rebase fan-out when .git/rebase-merge exists in the other worker worktree', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -744,6 +753,7 @@ describe('M1 existing-rebase short-circuit', () => {
 // ---------------------------------------------------------------------------
 
 describe('M4 dirty-tree audit', () => {
+  useDefaultStateRoot();
   it('appends an audit message when worker worktree is dirty after rebase resolution', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -851,6 +861,7 @@ describe('M4 dirty-tree audit', () => {
 // ---------------------------------------------------------------------------
 
 describe('M6 recoverFromRestart', () => {
+  useDefaultStateRoot();
   it('loads persisted SHA state and reports orphaned rebases', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -946,6 +957,7 @@ describe('M6 recoverFromRestart', () => {
 // ---------------------------------------------------------------------------
 
 describe('drainAndStop', () => {
+  useDefaultStateRoot();
   it('returns no unmerged when all workers are up to date', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -1020,6 +1032,7 @@ describe('drainAndStop', () => {
 // ---------------------------------------------------------------------------
 
 describe('worker registration', () => {
+  useDefaultStateRoot();
   it('seeds lastSha from current HEAD on register', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -1094,6 +1107,7 @@ describe('worker registration', () => {
 // ---------------------------------------------------------------------------
 
 describe('drainAndStop suppresses fan-out rebase', () => {
+  useDefaultStateRoot();
   it('emits no rebase_triggered events for merges that complete during drain', async () => {
     const repoRoot = makeRepoRoot();
     try {

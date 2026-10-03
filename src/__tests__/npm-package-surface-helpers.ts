@@ -5,7 +5,7 @@ export const PACKAGE_ROOT = process.cwd();
 export const HOOKS_JSON_PATH = join(PACKAGE_ROOT, 'hooks', 'hooks.json');
 export const PLUGIN_JSON_PATH = join(
   PACKAGE_ROOT,
-  '.claude-plugin',
+  '.qoder-plugin',
   'plugin.json',
 );
 export const MCP_JSON_PATH = join(PACKAGE_ROOT, '.mcp.json');
@@ -185,9 +185,12 @@ function listTemplateHookLibFiles(): string[] {
 
 export function listSourceControlledPackageFiles(): string[] {
   const requiredFiles = new Set<string>([
-    '.claude-plugin/plugin.json',
+    // The payload this fork ships: package.json's `files` array (identical in b37141e and
+    // HEAD) names .qoder-plugin, and commands/omq-setup.md is what is tracked. The ancestor
+    // spellings here could never resolve against this repository.
+    '.qoder-plugin/plugin.json',
     '.mcp.json',
-    'commands/omc-setup.md',
+    'commands/omq-setup.md',
     'hooks/hooks.json',
   ]);
 

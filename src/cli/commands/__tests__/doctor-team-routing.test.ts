@@ -199,7 +199,7 @@ describe('doctorTeamRoutingCommand', () => {
     const exitCode = await doctorTeamRoutingCommand({ json: true });
 
     expect(exitCode).toBe(1);
-    expect(errorSpy).toHaveBeenCalledWith('[OMC] Failed to load config: invalid config');
+    expect(errorSpy).toHaveBeenCalledWith('[OMQ] Failed to load config: invalid config');
     expect(mocks.probeCli).not.toHaveBeenCalled();
   });
 });

@@ -52,10 +52,14 @@ vi.mock('../hooks/notepad/index.js', () => ({
 }));
 
 import { existsSync, readFileSync } from 'fs';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 const mockExistsSync = vi.mocked(existsSync);
 const mockReadFileSync = vi.mocked(readFileSync);
 
 describe('delegation-enforcement-levels', () => {
+  useDefaultStateRoot();
   const savedConfigDir = process.env.QODER_CONFIG_DIR;
 
   beforeEach(() => {
@@ -179,12 +183,12 @@ describe('delegation-enforcement-levels', () => {
     it('falls back to global config when no local config', () => {
       mockExistsSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) return true;
+        if (/[\\/]mock[\\/]home[\\/]\.qoder(-cn)?[\\/]\.omq-config\.json$/.test(s)) return true;
         return false;
       });
       mockReadFileSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) {
+        if (/[\\/]mock[\\/]home[\\/]\.qoder(-cn)?[\\/]\.omq-config\.json$/.test(s)) {
           return JSON.stringify({ delegationEnforcementLevel: 'strict' });
         }
         return '';
@@ -582,7 +586,7 @@ describe('delegation-enforcement-levels', () => {
         expect.stringContaining('task-'),
         'Test task',
         'executor',
-        process.cwd(),
+        process.cwd().replace(/\\/g, '/'),
         undefined
       );
     });

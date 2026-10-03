@@ -5,6 +5,10 @@ import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
 
+// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// // the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
+
 function makeTempProject(): string {
   const tempDir = mkdtempSync(join(tmpdir(), 'team-ralplan-stop-'));
   execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
@@ -182,6 +186,7 @@ function writeSubagentTrackingState(
 // ===========================================================================
 
 describe('team pipeline standalone stop enforcement', () => {
+  useDefaultStateRoot();
   it('blocks stop when team pipeline is active with non-terminal phase', async () => {
     const sessionId = 'session-team-block-1';
     const tempDir = makeTempProject();
@@ -504,6 +509,7 @@ afterEach(() => {
 });
 
 describe('ralplan standalone stop enforcement', () => {
+  useDefaultStateRoot();
   it('blocks stop when ralplan state is active', async () => {
     const sessionId = 'session-ralplan-block-1';
     const tempDir = makeTempProject();
@@ -908,6 +914,7 @@ describe('ralplan standalone stop enforcement', () => {
 // ===========================================================================
 
 describe('team pipeline fail-open behavior', () => {
+  useDefaultStateRoot();
   it('returns mode=team with shouldBlock=false for unknown phase', async () => {
     const sessionId = 'session-team-unknown-phase';
     const tempDir = makeTempProject();

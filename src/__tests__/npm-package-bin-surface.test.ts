@@ -50,8 +50,8 @@ type PluginShippingSurface = {
   requiredPaths: string[];
 };
 
-const CLI_BIN_TARGET = "bin/oh-my-claudecode.js";
-const SUPPORTED_CLI_ALIASES = ["oh-my-claudecode", "omc"] as const;
+const CLI_BIN_TARGET = "bin/oh-my-qoder.js";
+const SUPPORTED_CLI_ALIASES = ["oh-my-qoder", "omq"] as const;
 const GENERATED_RUNTIME_ENTRYPOINTS = new Set([
   "bridge/claude-md-coordinator.cjs",
   "bridge/cli.cjs",
@@ -127,7 +127,7 @@ function getPackedPackage(): PackedPackage {
     if (!packageJson.name || !packageJson.version) {
       throw new Error("package.json must define a name and version");
     }
-    fixtureRootCache = mkdtempSync(join(tmpdir(), "omc-pack-fixture-"));
+    fixtureRootCache = mkdtempSync(join(tmpdir(), "omq-pack-fixture-"));
     packWorkspaceCache = join(fixtureRootCache, "workspace");
     committedSnapshotCache = join(fixtureRootCache, "committed");
     packDirCache = join(fixtureRootCache, "packed");
@@ -225,7 +225,6 @@ describe("npm package bin surface regression", () => {
       expect(packedFiles.has(relativePath), relativePath).toBe(true);
     }
     expect(packedFiles.has("bridge/gyoshu_bridge.py")).toBe(true);
-    expect(packedFiles.has("bridge/run-mcp-server.sh")).toBe(true);
   });
 
   it("keeps the committed plugin runtime closure as a byte-identical npm package subset", () => {
@@ -434,12 +433,12 @@ describe("npm package bin surface regression", () => {
         binNames.map((name) => [name, expectedNpmShimNames(name)]),
       ),
     ).toEqual({
-      "oh-my-claudecode": [
-        "oh-my-claudecode",
-        "oh-my-claudecode.cmd",
-        "oh-my-claudecode.ps1",
+      "oh-my-qoder": [
+        "oh-my-qoder",
+        "oh-my-qoder.cmd",
+        "oh-my-qoder.ps1",
       ],
-      omc: ["omc", "omc.cmd", "omc.ps1"],
+      omq: ["omq", "omq.cmd", "omq.ps1"],
     });
   });
 
@@ -461,12 +460,12 @@ describe("npm package bin surface regression", () => {
         packedBinNames.map((name) => [name, expectedNpmShimNames(name)]),
       ),
     ).toEqual({
-      "oh-my-claudecode": [
-        "oh-my-claudecode",
-        "oh-my-claudecode.cmd",
-        "oh-my-claudecode.ps1",
+      "oh-my-qoder": [
+        "oh-my-qoder",
+        "oh-my-qoder.cmd",
+        "oh-my-qoder.ps1",
       ],
-      omc: ["omc", "omc.cmd", "omc.ps1"],
+      omq: ["omq", "omq.cmd", "omq.ps1"],
     });
   });
 });
@@ -570,7 +569,7 @@ describe("packed project-memory learner command-harvest regression (#3494)", () 
         SCHEMA_VERSION,
       } = await importPackedLearner();
 
-      const tempDir = mkdtempSync(join(tmpdir(), "omc-packed-learner-"));
+      const tempDir = mkdtempSync(join(tmpdir(), "omq-packed-learner-"));
       try {
         await saveProjectMemory(
           tempDir,
@@ -609,7 +608,7 @@ describe("packed project-memory learner command-harvest regression (#3494)", () 
       SCHEMA_VERSION,
     } = await importPackedLearner();
 
-    const tempDir = mkdtempSync(join(tmpdir(), "omc-packed-learner-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "omq-packed-learner-"));
     try {
       const memory = createBaseMemory(tempDir, SCHEMA_VERSION);
       (memory.build as Record<string, unknown>).buildCommand = "trusted build";

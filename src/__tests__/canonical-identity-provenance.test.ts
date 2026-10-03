@@ -328,3 +328,305 @@ describe('canonical identity rule (unchanged)', () => {
     expect(parsed.violations).toEqual([]);
   });
 });
+
+/**
+ * Owner/repo visibility rule (#60). Every reference to a lineage repo name
+ * (oh-my-qoder and its ancestors) must resolve to an explicitly allowlisted
+ * owner/repo slug, whether it appears as a github URL or as a bare slug. This
+ * is the class neither the URL rule (canonical repo name only) nor the
+ * namespace rule (guidance addresses only) could see.
+ */
+describe('owner/repo visibility rule', () => {
+  let fixtureDir: string;
+
+  beforeEach(() => {
+    fixtureDir = mkdtempSync(join(tmpdir(), 'omq-ownerslug-'));
+    writeFileSync(join(fixtureDir, 'package.json'), JSON.stringify(MINIMAL_PKG));
+  });
+
+  afterEach(() => {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  });
+
+  it('passes canonical URL and bare canonical slug references', () => {
+    writeFileSync(
+      join(fixtureDir, 'README.md'),
+      [
+        'Install from https://github.com/qoder-plugins/oh-my-qoder',
+        'or clone qoder-plugins/oh-my-qoder locally.',
+      ].join('\n'),
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug).toEqual([]);
+    expect(parsed.ownerslug_refs_seen).toBeGreaterThanOrEqual(2);
+  });
+
+  it('flags a bare foreign-owner slug naming this repo', () => {
+    writeFileSync(
+      join(fixtureDir, 'README.md'),
+      'Install it from local-attacker/oh-my-qoder today.\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug.length).toBe(1);
+    expect(parsed.ownerslug[0].slugs).toContain('local-attacker/oh-my-qoder');
+  });
+
+  it('flags a URL naming an ancestor repo under a NEW foreign owner', () => {
+    // The URL rule only checks the CANONICAL repo name, so a brand-new owner
+    // of oh-my-claudecode slips past it; this rule is what sees it.
+    mkdirSync(join(fixtureDir, 'docs'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'docs', 'setup.md'),
+      'Upstream docs: https://github.com/neworg/oh-my-claudecode\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug.length).toBe(1);
+    expect(parsed.ownerslug[0].slugs).toContain('neworg/oh-my-claudecode');
+  });
+
+  it('passes allowlisted ancestor references in prose', () => {
+    mkdirSync(join(fixtureDir, 'docs'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'docs', 'MIGRATION.md'),
+      'Users coming from Yeachan-Heo/oh-my-claudecode can migrate directly.\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug).toEqual([]);
+    // The prose reference plus the fixture package.json's own canonical URL.
+    expect(parsed.ownerslug_refs_seen).toBe(2);
+  });
+
+  it('passes the allowlisted fork and alias-seed slugs', () => {
+    mkdirSync(join(fixtureDir, 'skills', 'psm'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'skills', 'psm', 'notes.md'),
+      [
+        'Fork evidence: SeveNOlogy7/oh-my-qoder run logs.',
+        'Alias seed: spring-ai-alibaba/oh-my-qoder.',
+      ].join('\n'),
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug).toEqual([]);
+    // Two slugs on separate lines, plus the trailing period after
+    // spring-ai-alibaba/oh-my-qoder is prose punctuation and now counts the
+    // reference (it is allowlisted, so it passes) instead of hiding it.
+    expect(parsed.ownerslug_refs_seen).toBe(3);
+  });
+
+  it('does not flag file paths that merely contain a lineage name', () => {
+    writeFileSync(
+      join(fixtureDir, 'README.md'),
+      ['Run bin/oh-my-qoder.js after install.', 'Config lives at etc/oh-my-claudecode.yaml.'].join('\n'),
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug).toEqual([]);
+    // Only the fixture package.json's canonical URL; neither file path counts.
+    expect(parsed.ownerslug_refs_seen).toBe(1);
+  });
+
+  it('flags a foreign-owner slug glued to a sentence period (bare and URL)', () => {
+    // Regression (#60 follow-up): the original `(?![\w.-])` lookahead treated
+    // the trailing period as a filename dot and hid the reference entirely.
+    mkdirSync(join(fixtureDir, 'docs'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'README.md'),
+      'Clone it from evil-inc/oh-my-qoder.\n',
+    );
+    writeFileSync(
+      join(fixtureDir, 'docs', 'pointer.md'),
+      'See https://github.com/neworg/oh-my-codex.\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug.length).toBe(2);
+    const allSlugs = parsed.ownerslug.flatMap((v: { slugs: string[] }) => v.slugs);
+    expect(allSlugs).toContain('evil-inc/oh-my-qoder');
+    expect(allSlugs).toContain('neworg/oh-my-codex');
+  });
+
+  it('does not flag allowlisted references ending in prose punctuation, and still flags non-allowlisted ones', () => {
+    // The extension exemption must not swing the other way: an allowlisted
+    // slug at the end of a sentence is legal prose, while a foreign slug
+    // before a comma (never a filename dot) is still a violation.
+    mkdirSync(join(fixtureDir, 'docs'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'docs', 'prose.md'),
+      [
+        'Users arrive from Yeachan-Heo/oh-my-claudecode.',
+        'Fork evidence lives in SeveNOlogy7/oh-my-qoder logs.',
+      ].join('\n'),
+    );
+    writeFileSync(
+      join(fixtureDir, 'README.md'),
+      'Do not trust someotherteam/oh-my-qoder, or any mirror like it.\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ownerslug.length).toBe(1);
+    expect(parsed.ownerslug[0].slugs).toContain('someotherteam/oh-my-qoder');
+  });
+});
+
+/**
+ * Plugin-namespace rule. Guidance files are the text a model or user is told to
+ * act on, so a skill/agent address there that is not this plugin's own namespace
+ * is a defect even though it is not a URL: `Skill("other-plugin:plan")` resolves
+ * to nothing on this host. The rule is scoped to that surface on purpose --
+ * TypeScript matchers accept foreign spellings as input by design, and migration
+ * docs name the ancestor product deliberately.
+ */
+describe('plugin namespace rule', () => {
+  let fixtureDir: string;
+
+  const OWN = 'test-pkg';
+
+  beforeEach(() => {
+    fixtureDir = mkdtempSync(join(tmpdir(), 'omq-namespace-'));
+    writeFileSync(join(fixtureDir, 'package.json'), JSON.stringify(MINIMAL_PKG));
+    mkdirSync(join(fixtureDir, '.qoder-plugin'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, '.qoder-plugin', 'plugin.json'),
+      JSON.stringify({ name: OWN }),
+    );
+  });
+
+  afterEach(() => {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  });
+
+  it('flags a foreign skill identifier inside shipped skill guidance', () => {
+    mkdirSync(join(fixtureDir, 'skills', 'demo'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'skills', 'demo', 'SKILL.md'),
+      'Invoke it with `Skill("other-plugin:plan")`.\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace.length).toBe(1);
+    expect(parsed.namespace[0].file).toBe('skills/demo/SKILL.md');
+    expect(parsed.namespace[0].namespace).toBe('other-plugin');
+  });
+
+  it('flags a foreign slash-command form in a shipped command file', () => {
+    mkdirSync(join(fixtureDir, 'commands'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'commands', 'demo.md'),
+      'Run /other-plugin:cancel to clear state.\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace.map((v: any) => v.file)).toEqual(['commands/demo.md']);
+  });
+
+  it('flags an unresolvable agent type in the canonical guidance source', () => {
+    mkdirSync(join(fixtureDir, 'docs'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'docs', 'CLAUDE.md'),
+      '<!-- OMQ:START -->\nUse Task(subagent_type="other-plugin:executor", ...)\n<!-- OMQ:END -->\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace.length).toBe(1);
+    expect(parsed.namespace[0].file).toBe('docs/CLAUDE.md');
+  });
+
+  it('accepts this plugin own namespace in the same positions', () => {
+    mkdirSync(join(fixtureDir, 'skills', 'demo'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'skills', 'demo', 'SKILL.md'),
+      `Invoke with \`Skill("${OWN}:plan")\` or /${OWN}:cancel.\n`,
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace).toEqual([]);
+  });
+
+  it('does NOT apply to TypeScript matchers, which accept foreign spellings as input', () => {
+    mkdirSync(join(fixtureDir, 'src'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'src', 'alias-resolver.ts'),
+      'const tolerant = "other-plugin:plan";\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace).toEqual([]);
+  });
+
+  it('does NOT apply to migration docs, which name the ancestor product on purpose', () => {
+    mkdirSync(join(fixtureDir, 'docs'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'docs', 'MIGRATION.md'),
+      'Users coming from `other-plugin:plan` should use this instead.\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace).toEqual([]);
+  });
+
+  it('flags a foreign MCP tool name in guidance', () => {
+    mkdirSync(join(fixtureDir, 'skills', 'demo'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'skills', 'demo', 'SKILL.md'),
+      'ToolSearch(query="select:mcp__plugin_other-plugin_t__state_clear")\n',
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace.length).toBe(1);
+    expect(parsed.namespace[0].namespace).toBe('other-plugin');
+  });
+
+  it('does NOT flag prose that merely contains a colon inside backticks', () => {
+    mkdirSync(join(fixtureDir, 'skills', 'hud'), { recursive: true });
+    writeFileSync(
+      join(fixtureDir, 'skills', 'hud', 'SKILL.md'),
+      [
+        '| `repo:name` | Git repository name |',
+        '| `ctx:67%` | Context window usage |',
+        'Imports `homedir` from `node:os`.',
+        'TypeError in src/hooks/session.ts:45 after restart',
+        '',
+      ].join('\n'),
+    );
+
+    const result = runCheck(fixtureDir);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.namespace).toEqual([]);
+  });
+});

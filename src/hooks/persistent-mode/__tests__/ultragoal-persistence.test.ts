@@ -13,7 +13,11 @@ function runHook(script: string, payload: Record<string, unknown>, env: Record<s
     input: JSON.stringify(payload),
     encoding: 'utf-8',
     cwd: process.cwd(),
-    env: { ...process.env, CLAUDE_PLUGIN_ROOT: '', ...env },
+    // Lift the per-file OMQ_STATE_DIR pin (#42): the hooks must resolve state
+    // through the DEFAULT branch via payload cwd so their writes land in the
+    // fixture, which is what the assertions read back. Node drops undefined
+    // values, so the pin is absent from the child env.
+    env: { ...process.env, OMQ_STATE_DIR: undefined, CLAUDE_PLUGIN_ROOT: '', ...env },
   });
   return JSON.parse(stdout);
 }

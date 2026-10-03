@@ -9,7 +9,7 @@
  * to the workspace anchor .omq/ so sibling sub-repos share one memory file.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -96,9 +96,23 @@ describe('concurrent project-memory writes (E.4)', () => {
 
 describe('concurrent project-memory writes — multi-repo workspace anchor (E.4 migration)', () => {
   let workspaceRoot: string;
+  // Resolves through the workspace-marker branch of getOmcRoot() (#42): lift
+  // the per-file OMQ_STATE_DIR pin per test, restore afterwards.
+  let pinnedStateDir: string | undefined;
+
+  beforeEach(() => {
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
+    clearWorktreeCache();
+  });
 
   afterEach(() => {
     clearWorktreeCache();
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
     if (workspaceRoot) rmSync(workspaceRoot, { recursive: true, force: true });
   });
 

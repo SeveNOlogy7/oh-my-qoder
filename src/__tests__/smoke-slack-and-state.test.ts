@@ -515,6 +515,10 @@ import {
 describe('SMOKE: State Cancel Cleanup — session-scoped I/O (issue #1143)', () => {
   let testDir: string;
   let omqDir: string;
+  // Some state helpers below resolve paths through the REAL getOmcRoot (only
+  // getOmqRoot is mocked), i.e. the DEFAULT state-root branch (#42): lift the
+  // per-file OMQ_STATE_DIR pin per test and restore it afterwards.
+  let pinnedStateDir: string | undefined;
 
   beforeEach(() => {
     testDir = join(
@@ -524,9 +528,16 @@ describe('SMOKE: State Cancel Cleanup — session-scoped I/O (issue #1143)', () 
     omqDir = join(testDir, '.omq');
     mkdirSync(omqDir, { recursive: true });
     mockGetOmqRoot.mockReturnValue(omqDir);
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
   });
 
   afterEach(() => {
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
     if (existsSync(testDir)) rmSync(testDir, { recursive: true, force: true });
   });
 

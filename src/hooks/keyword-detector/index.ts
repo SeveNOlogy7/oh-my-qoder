@@ -135,7 +135,7 @@ const SLASH_SKILL_TO_KEYWORD_TYPE: Partial<
 };
 
 const WORKFLOW_SLASH_PATTERN = new RegExp(
-  '^\\s*/(?:oh-my-claudecode:|omc:)?(' +
+  '^\\s*/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?(' +
     CANONICAL_WORKFLOW_SLASH_SKILLS
       .map((skill) => skill.replace(/-/g, '\\-'))
       .join('|') +
@@ -155,8 +155,12 @@ export interface ExplicitWorkflowSlashInvocation {
 /**
  * Parse an explicit workflow slash invocation at the start of a prompt.
  *
- * Recognizes `/<skill>`, `/omc:<skill>`, and `/oh-my-claudecode:<skill>` for
- * the canonical workflow skill list. Code fences and inline backticks are
+ * Recognizes `/<skill>`, `/omq:<skill>`, `/oh-my-qoder:<skill>`, and the
+ * ancestor `/omc:<skill>` / `/oh-my-claudecode:<skill>` forms for the canonical
+ * workflow skill list. Both spellings are accepted because pasted guidance and
+ * upstream documentation still carry the ancestor prefix; accepting it costs
+ * nothing here, while refusing `/omq:` would silently drop the workflow lock for
+ * the commands users of this fork type. Code fences and inline backticks are
  * stripped first so quoted commands do not match. The trailing lookahead
  * (whitespace, end-of-text, or punctuation) prevents file paths like
  * `/ralph-logs/foo.txt` from matching `/ralph`.

@@ -4,6 +4,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { createWorkerWorktree } from '../../team/git-worktree.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const tmuxMocks = vi.hoisted(() => ({
   killWorkerPanes: vi.fn(async () => undefined),
@@ -38,6 +41,7 @@ async function importTeamServerWithJobsDir(jobsDir: string) {
 }
 
 describe('team-server artifact convergence + scoped cleanup', () => {
+  useDefaultStateRoot();
   let testRoot: string;
   let jobsDir: string;
 

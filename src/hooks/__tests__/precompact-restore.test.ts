@@ -53,6 +53,9 @@ import {
   CHECKPOINT_MAX_AGE_MS,
   CHECKPOINT_MAX_BYTES,
 } from '../pre-compact/restore.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 // Marker publication is portable across every supported Node platform.
 const SECURE_MARKER_SUPPORTED = true;
@@ -141,6 +144,7 @@ function getOmcRootForTest(dir: string): string {
 // ============================================================================
 
 describe('PreCompact writer - plan anchors (issue #3730)', () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {
@@ -275,6 +279,7 @@ describe('PreCompact writer - plan anchors (issue #3730)', () => {
 // ============================================================================
 
 describe('PreCompact restore (issue #3730)', () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {
@@ -1285,6 +1290,7 @@ syncBuiltinESMExports();
 // ============================================================================
 
 describe('writer → restore lifecycle (issue #3730)', () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {

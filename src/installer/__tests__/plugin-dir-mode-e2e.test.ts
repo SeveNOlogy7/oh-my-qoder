@@ -67,8 +67,10 @@ describe('install() — plugin-dir-mode end-to-end filesystem shape', () => {
     const { install } = await freshInstaller();
     install({ verbose: false, skipQoderCheck: true, pluginDirMode: true });
 
-    // HUD wrapper present and non-empty
-    const hudPath = join(testDir, 'hud', 'omq-hud.mjs');
+    // HUD wrapper present and non-empty. The adopted install surface ships
+    // the HUD as omc-hud.mjs (installer HUD install + statusline wiring agree
+    // on that name), so pin the artifact production actually installs.
+    const hudPath = join(testDir, 'hud', 'omc-hud.mjs');
     expect(existsSync(hudPath)).toBe(true);
     expect(statSync(hudPath).size).toBeGreaterThan(0);
 
@@ -108,7 +110,7 @@ describe('install() — plugin-dir-mode end-to-end filesystem shape', () => {
     const { install } = await freshInstaller();
     install({ verbose: false, skipQoderCheck: true, pluginDirMode: true });
 
-    expect(existsSync(join(testDir, 'hud', 'omq-hud.mjs'))).toBe(true);
+    expect(existsSync(join(testDir, 'hud', 'omc-hud.mjs'))).toBe(true);
     expect(existsSync(join(testDir, 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(testDir, 'settings.json'))).toBe(true);
     expect(existsSync(join(testDir, '.omq-config.json'))).toBe(true);

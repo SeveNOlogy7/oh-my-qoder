@@ -24,6 +24,9 @@ import {
   type PRD,
   type ObservableCheck,
 } from '../hooks/ralph/index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 // ============================================================================
 // Helpers
@@ -80,6 +83,7 @@ function readAuditEntries(directory: string, sessionId?: string): Record<string,
 }
 
 describe('Ralph PRD Stale-State Detection & Reconciliation (#3669)', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {

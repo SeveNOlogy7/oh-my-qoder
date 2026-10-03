@@ -661,7 +661,7 @@ describe('Router', () => {
       const decision = routeTask(context);
 
       expect(decision.tier).toBe('LOW');
-      expect(decision.modelType).toBe('haiku');
+      expect(decision.modelType).toBe('low');
       expect(decision.model).toBe(getDefaultModelLow());
     });
 
@@ -672,7 +672,7 @@ describe('Router', () => {
       const decision = routeTask(context);
 
       expect(decision.tier).toBe('HIGH');
-      expect(decision.modelType).toBe('opus');
+      expect(decision.modelType).toBe('high');
       expect(decision.model).toBe(getDefaultModelHigh());
     });
 
@@ -749,7 +749,7 @@ describe('Router', () => {
       const decision = routeTask(context, { minTier: 'MEDIUM' });
 
       expect(decision.tier).toBe('MEDIUM');
-      expect(decision.modelType).toBe('sonnet');
+      expect(decision.modelType).toBe('medium');
       expect(decision.reasons.join(' ')).toContain('Min tier enforced');
     });
 
@@ -809,19 +809,19 @@ describe('Router', () => {
   describe('getModelForTask', () => {
     it('should return adaptive model for architect with simple task', () => {
       const result = getModelForTask('architect', 'find the file');
-      expect(result.model).toBe('haiku');
+      expect(result.model).toBe('low');
       expect(result.tier).toBe('LOW');
     });
 
     it('should return adaptive model for architect with complex task', () => {
       const result = getModelForTask('architect', 'debug the root cause of this architecture issue');
-      expect(result.model).toBe('opus');
+      expect(result.model).toBe('high');
       expect(result.tier).toBe('HIGH');
     });
 
-    it('should return haiku for explore', () => {
+    it('should return low for explore', () => {
       const result = getModelForTask('explore', 'search for files');
-      expect(result.model).toBe('haiku');
+      expect(result.model).toBe('low');
       expect(result.tier).toBe('LOW');
     });
 
@@ -947,7 +947,7 @@ describe('Integration Scenarios', () => {
     const decision = routeTask(context);
 
     expect(decision.tier).toBe('LOW');
-    expect(decision.modelType).toBe('haiku');
+    expect(decision.modelType).toBe('low');
   });
 
   it('should handle real-world debugging task', () => {
@@ -958,7 +958,7 @@ describe('Integration Scenarios', () => {
     const decision = routeTask(context);
 
     expect(decision.tier).toBe('HIGH');
-    expect(decision.modelType).toBe('opus');
+    expect(decision.modelType).toBe('high');
   });
 
   it('should handle real-world refactoring task', () => {

@@ -154,7 +154,13 @@ describe('run.cjs generic hook timeout supervisor', () => {
       writeFileSync(signalExit, "process.kill(process.pid, 'SIGKILL');");
 
       await expect(withWatchdog(runCjs.runGenericChild(numericExit, [], 2000, null))).resolves.toBe(3);
-      await expect(withWatchdog(runCjs.runGenericChild(signalExit, [], 2000, null))).resolves.toBe(0);
+      // POSIX kills surface as (code=null, signal) -> fail-open 0. On Windows
+      // the same external SIGKILL is a TerminateProcess death that can only
+      // surface as a numeric exit code (measured: 1), indistinguishable from a
+      // real hook failure in the exit surface, so the signal-shape fail-open
+      // contract is POSIX-only and win32 pins the numeric propagation.
+      await expect(withWatchdog(runCjs.runGenericChild(signalExit, [], 2000, null)))
+        .resolves.toBe(process.platform === 'win32' ? 1 : 0);
       const originalExecPath = process.execPath;
       Object.defineProperty(process, 'execPath', { configurable: true, value: join(directory, 'missing-node') });
       try {

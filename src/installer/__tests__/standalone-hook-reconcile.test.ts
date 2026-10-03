@@ -29,8 +29,8 @@ function writeCompletePluginPayload(root: string): void {
     hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node test.mjs' }] }] },
   }));
   writePluginFile(join(root, 'skills', 'plan', 'SKILL.md'), '# plan\n');
-  writePluginFile(join(root, 'commands', 'omc-setup.md'), 'Read skills/omc-setup/SKILL.md and pass $ARGUMENTS.\n');
-  writePluginFile(join(root, '.claude-plugin', 'plugin.json'), JSON.stringify({
+  writePluginFile(join(root, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n');
+  writePluginFile(join(root, '.qoder-plugin', 'plugin.json'), JSON.stringify({
     name: 'oh-my-claudecode',
     commands: './commands/',
     skills: ['./skills/plan/'],
@@ -120,16 +120,20 @@ describe('install() standalone hook reconciliation', () => {
     expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain(
       `${join(testClaudeDir, 'hud', 'omc-hud.mjs').replace(/\\/g, '/')}`,
     );
-    expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain('omc-hud-cache.sh');
-    expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud-cache.sh'), 'utf-8')).toContain('HUD cached statusLine launcher');
+    // The sh cache wrapper is POSIX-only (isWindows() deliberately installs a
+    // plain `node <hud>` statusline); the wrapper pins hold where it ships.
+    if (process.platform !== 'win32') {
+      expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain('omc-hud-cache.sh');
+      expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud-cache.sh'), 'utf-8')).toContain('HUD cached statusLine launcher');
+    }
     expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud.mjs'), 'utf-8')).toContain(
       'const { getClaudeConfigDir } = await import(pathToFileURL(join(__dirname, "lib", "config-dir.mjs")).href);',
     );
     expect(readFileSync(join(testClaudeDir, 'hud', 'lib', 'config-dir.mjs'), 'utf-8')).toContain(
-      'export function getClaudeConfigDir()',
+      'export const getClaudeConfigDir = getQoderConfigDir',
     );
     expect(readFileSync(join(testClaudeDir, 'hooks', 'lib', 'config-dir.mjs'), 'utf-8')).toContain(
-      'export function getClaudeConfigDir()',
+      'export const getClaudeConfigDir = getQoderConfigDir',
     );
     expect(readFileSync(join(testClaudeDir, 'hooks', 'keyword-detector.mjs'), 'utf-8')).toContain('Ralph keywords');
     expect(readFileSync(join(testClaudeDir, 'hooks', 'pre-tool-use.mjs'), 'utf-8')).toContain('PreToolUse');
@@ -176,7 +180,9 @@ describe('install() standalone hook reconciliation', () => {
     for (const filename of ['stdin.mjs', 'atomic-write.mjs', 'config-dir.mjs', 'state-root.mjs', 'model-routing-override-message.mjs']) {
       expect(existsSync(join(hooksLibDir, filename)), filename).toBe(true);
     }
-    expect(readFileSync(join(hooksLibDir, 'config-dir.mjs'), 'utf-8')).toContain('export function getClaudeConfigDir()');
+    // The shipped helper renamed the function to getQoderConfigDir and keeps
+    // getClaudeConfigDir as an alias export; pin the shipped declaration.
+    expect(readFileSync(join(hooksLibDir, 'config-dir.mjs'), 'utf-8')).toContain('export const getClaudeConfigDir = getQoderConfigDir');
     expect(readFileSync(join(hooksLibDir, 'config-dir.mjs'), 'utf-8')).not.toContain('/stale');
   });
 

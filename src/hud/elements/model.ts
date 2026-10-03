@@ -10,30 +10,36 @@ import { DEFAULT_HUD_LABELS, type HudLabels, type ModelFormat } from '../types.j
 
 /**
  * Extract version from a model ID string.
- * E.g., 'claude-opus-4-8-20260528' -> '4.8'
- *       'claude-sonnet-4-6-20260217' -> '4.6'
- *       'claude-haiku-4-5-20251001' -> '4.5'
- *       'claude-3-5-sonnet-20241022' -> '3.5'
- *       'claude-3-opus-20240229' -> '3'
+ * Qwen (this fork's default provider):
+ *       'qwen-max-0428' -> null (no embedded version)
+ *       'qwen-max-v2' -> '2'
+ *       'qwen-plus 2.5' -> '2.5'
+ * Claude (provider this fork still routes to):
+ *       'claude-opus-4-8-20260528' -> '4.8'
  *       'claude-sonnet-5' -> '5'
+ *       'claude-3-5-sonnet-20241022' -> '3.5'
  */
 function extractVersion(modelId: string): string | null {
-  // Match hyphenated ID patterns like opus-4-6, sonnet-4-5, haiku-4-5
-  const idMatch = modelId.match(/(?:opus|sonnet|haiku)-(\d+)-(\d+)/i);
-  if (idMatch) return `${idMatch[1]}.${idMatch[2]}`;
+  // Qwen hyphenated version patterns like max-v2, plus-v3
+  const qwenMatch = modelId.match(/(?:max|plus|turbo)-v(\d+(?:\.\d+)?)/i);
+  if (qwenMatch) return qwenMatch[1];
 
-  // Match Claude family IDs with a single trailing numeric version like claude-sonnet-5
-  const singleSegmentIdMatch = modelId.match(/(?:^|[.-])claude-(?:opus|sonnet|haiku)-(\d+)$/i);
-  if (singleSegmentIdMatch) return singleSegmentIdMatch[1];
+  // Claude hyphenated ID patterns like opus-4-8, sonnet-4-5, haiku-4-5
+  const claudeIdMatch = modelId.match(/(?:opus|sonnet|haiku)-(\d+)-(\d+)/i);
+  if (claudeIdMatch) return `${claudeIdMatch[1]}.${claudeIdMatch[2]}`;
 
-  // Match legacy raw ID patterns like claude-3-5-sonnet-20241022 and claude-3-opus-20240229
-  const legacyIdMatch = modelId.match(/claude-(\d+)(?:-(\d+))?-(?:opus|sonnet|haiku)/i);
-  if (legacyIdMatch) {
-    return legacyIdMatch[2] ? `${legacyIdMatch[1]}.${legacyIdMatch[2]}` : legacyIdMatch[1];
+  // Claude canonical IDs with a single trailing version like claude-sonnet-5
+  const claudeSingleMatch = modelId.match(/(?:^|[.-])claude-(?:opus|sonnet|haiku)-(\d+)$/i);
+  if (claudeSingleMatch) return claudeSingleMatch[1];
+
+  // Claude legacy raw IDs like claude-3-5-sonnet-20241022 / claude-3-opus-20240229
+  const claudeLegacyMatch = modelId.match(/claude-(\d+)(?:-(\d+))?-?(?:opus|sonnet|haiku)/i);
+  if (claudeLegacyMatch) {
+    return claudeLegacyMatch[2] ? `${claudeLegacyMatch[1]}.${claudeLegacyMatch[2]}` : claudeLegacyMatch[1];
   }
 
-  // Match display name patterns like "Sonnet 4.5", "Opus 4.8"
-  const displayMatch = modelId.match(/(?:opus|sonnet|haiku)\s+(\d+(?:\.\d+)?)/i);
+  // Display name patterns like "Max 2.5", "Sonnet 4.5"
+  const displayMatch = modelId.match(/(?:max|plus|turbo|opus|sonnet|haiku)\s+(\d+(?:\.\d+)?)/i);
   if (displayMatch) return displayMatch[1];
 
   return null;
@@ -53,7 +59,10 @@ export function formatModelName(modelId: string | null | undefined, format: Mode
   const id = modelId.toLowerCase();
   let shortName: string | null = null;
 
-  if (id.includes('opus')) shortName = 'Opus';
+  if (id.includes('qwen-max') || id.includes('qwen_max')) shortName = 'Max';
+  else if (id.includes('qwen-plus') || id.includes('qwen_plus')) shortName = 'Plus';
+  else if (id.includes('qwen-turbo') || id.includes('qwen_turbo')) shortName = 'Turbo';
+  else if (id.includes('opus')) shortName = 'Opus';
   else if (id.includes('sonnet')) shortName = 'Sonnet';
   else if (id.includes('haiku')) shortName = 'Haiku';
 

@@ -3,6 +3,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 import { execFileSync } from 'node:child_process';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const RESOLVER = join(process.cwd(), 'skills', 'self-improve', 'scripts', 'resolve-paths.mjs');
 const VALIDATE = join(process.cwd(), 'skills', 'self-improve', 'scripts', 'validate.sh');
@@ -12,6 +15,7 @@ function readJson(command: string, args: string[]) {
 }
 
 describe('self-improve path scoping helpers', () => {
+  useDefaultStateRoot();
   let root: string;
   let savedSessionId: string | undefined;
 

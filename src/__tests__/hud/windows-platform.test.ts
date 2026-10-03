@@ -134,6 +134,11 @@ describe('Windows HUD Platform Fixes (#739)', () => {
     });
 
     it('should use emoji icons on macOS/Linux (current platform)', async () => {
+      // Emoji rendering is the non-win32 contract; pin it by naming the
+      // platform explicitly (same mock style as the win32 sibling below) so
+      // the assertion is host-independent instead of assuming a POSIX runner.
+      Object.defineProperty(process, 'platform', { value: 'darwin' });
+      vi.resetModules();
       const { renderCallCounts } = await import('../../hud/elements/call-counts.js');
       const result = renderCallCounts(42, 7, 3);
       expect(result).toContain('\u{1F527}'); // wrench

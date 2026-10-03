@@ -61,7 +61,7 @@ const SKILL_PROTECTION = {
 };
 
 function getSkillProtection(skillName) {
-  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-claudecode:/, '');
+  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-qoder:/, '');
   return SKILL_PROTECTION[normalized] || 'light';
 }
 
@@ -81,7 +81,7 @@ async function writeSkillActiveState(directory, skillName, sessionId) {
 
   const config = PROTECTION_CONFIGS[protection];
   const now = new Date().toISOString();
-  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-claudecode:/, '');
+  const normalized = (skillName || '').toLowerCase().replace(/^oh-my-qoder:/, '');
 
   const state = {
     active: true,
@@ -169,7 +169,7 @@ async function confirmSkillModeStates(directory, skillName, sessionId) {
 // a generic "Agent type not found" error.
 // ---------------------------------------------------------------------------
 
-const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-claudecode:', 'omc:'];
+const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-qoder:', 'omq:', 'oh-my-claudecode:', 'omc:'];
 const SKILL_IDENTIFIER_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 function splitAgentNamespace(subagentType) {
@@ -234,7 +234,7 @@ function parseSkillFrontmatterIdentifiers(content) {
   return { aliases, primary };
 }
 
-// Claude Code native command names are renamed when bundled as skills.
+// Qoder CLI native command names are renamed when bundled as skills.
 const CC_NATIVE_SKILL_COMMANDS = new Set([
   'review',
   'plan',
@@ -250,7 +250,7 @@ const CC_NATIVE_SKILL_COMMANDS = new Set([
 
 function toSafeSkillName(name) {
   const normalized = name.trim();
-  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omc-${normalized}` : normalized;
+  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omq-${normalized}` : normalized;
 }
 
 let cachedCanonicalSkillRegistry = null;
@@ -335,7 +335,9 @@ function evaluateSkillAsAgentCall(toolName, toolInput, directory) {
   if (!skill) return null;
 
   const { name } = splitAgentNamespace(subagentType);
-  const skillIdentifier = `oh-my-claudecode:${skill.primary}`;
+  // This plugin exposes its bundled skills under `oh-my-qoder:`; see the same
+  // recovery in scripts/pre-tool-enforcer.mjs.
+  const skillIdentifier = `oh-my-qoder:${skill.primary}`;
   const isPrimaryMatch = name.toLowerCase() === skill.primary.toLowerCase();
   const queriedName = isPrimaryMatch
     ? `"${subagentType}"`
@@ -470,7 +472,7 @@ function checkBashCommand(command) {
     return `[DELEGATION NOTICE] Bash command may modify source files: ${summarizeCommand(command)}
 
 Recommended: Delegate to executor agent instead:
-  Task(subagent_type="oh-my-claudecode:executor", model="sonnet", prompt="...")
+  Task(subagent_type="oh-my-qoder:executor", model="sonnet", prompt="...")
 
 This is a soft warning. Operation will proceed.`;
   }
@@ -594,7 +596,7 @@ async function main() {
     const warning = `[DELEGATION NOTICE] Direct ${toolName} on source file: ${filePath}
 
 Recommended: Delegate to executor agent instead:
-  Task(subagent_type="oh-my-claudecode:executor", model="sonnet", prompt="...")
+  Task(subagent_type="oh-my-qoder:executor", model="sonnet", prompt="...")
 
 This is a soft warning. Operation will proceed.`;
 

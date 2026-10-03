@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { validateConfigPath } from '../bridge-entry.js';
 
 describe('bridge-entry security', () => {
@@ -71,31 +72,36 @@ describe('bridge-entry security', () => {
 });
 
 describe('validateConfigPath', () => {
-  const home = '/home/user';
-  const claudeConfigDir = '/home/user/.qwen';
+  // Derived with join() instead of written as POSIX literals. `resolve()` re-bases a
+  // leading-slash path onto the current drive on Windows, so the literals made the two
+  // acceptance cases unsatisfiable AND let the rejection cases pass for the wrong
+  // reason -- the path was rejected because it had moved outside home by accident of
+  // resolution, not because a guard fired.
+  const home = join(tmpdir(), `omq-bridge-entry-home-${process.pid}`);
+  const claudeConfigDir = join(home, '.qwen');
 
   it('should reject paths outside home directory', () => {
-    expect(validateConfigPath('/tmp/.omq/config.json', home, claudeConfigDir)).toBe(false);
+    expect(validateConfigPath(join(tmpdir(), 'elsewhere', '.omq', 'config.json'), home, claudeConfigDir)).toBe(false);
   });
 
   it('should reject paths without trusted subpath', () => {
-    expect(validateConfigPath('/home/user/project/config.json', home, claudeConfigDir)).toBe(false);
+    expect(validateConfigPath(join(home, 'project', 'config.json'), home, claudeConfigDir)).toBe(false);
   });
 
   it('should accept paths under claudeConfigDir (~/.qwen)', () => {
-    expect(validateConfigPath('/home/user/.qwen/teams/foo/config.json', home, claudeConfigDir)).toBe(true);
+    expect(validateConfigPath(join(claudeConfigDir, 'teams', 'foo', 'config.json'), home, claudeConfigDir)).toBe(true);
   });
 
   it('should accept paths under project/.omq/', () => {
-    expect(validateConfigPath('/home/user/project/.omq/state/config.json', home, claudeConfigDir)).toBe(true);
+    expect(validateConfigPath(join(home, 'project', '.omq', 'state', 'config.json'), home, claudeConfigDir)).toBe(true);
   });
 
   it('should reject path that matches subpath but not home', () => {
-    expect(validateConfigPath('/other/.omq/config.json', home, claudeConfigDir)).toBe(false);
+    expect(validateConfigPath(join(tmpdir(), 'other-omq-home', '.omq', 'config.json'), home, claudeConfigDir)).toBe(false);
   });
 
   it('should reject path traversal via ../ that escapes trusted subpath', () => {
-    // ~/foo/.qoder/../../evil.json resolves to ~/evil.json (no trusted subpath)
-    expect(validateConfigPath('/home/user/foo/.qoder/../../evil.json', home, claudeConfigDir)).toBe(false);
+    // <home>/foo/.qoder/../../evil.json resolves to <home>/evil.json (no trusted subpath)
+    expect(validateConfigPath(join(home, 'foo', '.qoder', '..', '..', 'evil.json'), home, claudeConfigDir)).toBe(false);
   });
 });

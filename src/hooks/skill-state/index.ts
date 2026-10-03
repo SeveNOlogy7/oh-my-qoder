@@ -108,6 +108,7 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   ralph: 'none',
   ultrawork: 'none',
   team: 'none',
+  'omq-teams': 'none',
   'omc-teams': 'none',
   ralplan: 'none',
   'self-improve': 'none',
@@ -116,8 +117,11 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   // === Instant / read-only → no protection needed ===
   trace: 'none',
   hud: 'none',
+  'omq-doctor': 'none',
   'omc-doctor': 'none',
+  'omq-help': 'none',
   'omc-help': 'none',
+  'learn-about-omq': 'none',
   'learn-about-omc': 'none',
   note: 'none',
 
@@ -127,12 +131,16 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   'configure-notifications': 'light',
 
   // === Medium protection (review/planning, 5 reinforcements) ===
+  // 'omq-plan' is the registered name since #37; 'omc-plan' stays as inbound
+  // tolerance for pre-rename spellings (same dual-key shape as omq/omc-doctor).
+  'omq-plan': 'medium',
   'omc-plan': 'medium',
   plan: 'medium',
   'deep-interview': 'heavy',
   review: 'medium',
   'external-context': 'medium',
   'ai-slop-cleaner': 'medium',
+  sciomq: 'medium',
   sciomc: 'medium',
   skillify: 'medium',
   learner: 'medium',

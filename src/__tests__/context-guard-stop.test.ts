@@ -3,6 +3,9 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os';
 import { delimiter, join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'context-guard-stop.mjs');
 
@@ -50,6 +53,7 @@ function writeTranscriptWithoutContext(filePath: string, inputTokens: number): v
 }
 
 describe('context-guard-stop safe recovery messaging (issue #1373)', () => {
+  useDefaultStateRoot();
   let tempDir: string;
   let transcriptPath: string;
 

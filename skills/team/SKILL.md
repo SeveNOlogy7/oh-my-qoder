@@ -15,9 +15,9 @@ The `swarm` compatibility alias was removed in #1131.
 ## Usage
 
 ```
-/oh-my-claudecode:team N:agent-type "task description"
-/oh-my-claudecode:team "task description"
-/oh-my-claudecode:team ralph "task description"
+/oh-my-qoder:team N:agent-type "task description"
+/oh-my-qoder:team "task description"
+/oh-my-qoder:team ralph "task description"
 ```
 
 ### Parameters
@@ -192,7 +192,7 @@ The lead writes handoffs to `.omq/handoffs/<stage-name>.md`.
 ### Resume and Cancel Semantics
 
 - **Resume:** restart from the last non-terminal stage using staged state + live task status. Read `.omq/handoffs/` to recover stage transition context.
-- **Cancel:** `/oh-my-claudecode:cancel` requests teammate shutdown, waits for responses (best effort), marks phase `cancelled` with `active=false`, captures cancellation metadata, then deletes team resources and clears/preserves Team state per policy. Handoff files in `.omq/handoffs/` are preserved for potential resume.
+- **Cancel:** `/oh-my-qoder:cancel` requests teammate shutdown, waits for responses (best effort), marks phase `cancelled` with `active=false`, captures cancellation metadata, then deletes team resources and clears/preserves Team state per policy. Handoff files in `.omq/handoffs/` are preserved for potential resume.
 - Terminal states are `complete`, `failed`, and `cancelled`.
 
 ## Windows psmux tmux-compatible gate
@@ -331,7 +331,7 @@ Spawn N teammates directly using the Agent/Task tool with distinct `name` values
 
 ```json
 {
-  "subagent_type": "oh-my-claudecode:executor",
+  "subagent_type": "oh-my-qoder:executor",
   "name": "worker-1",
   "prompt": "<worker-preamble + assigned tasks>"
 }
@@ -469,7 +469,7 @@ Do NOT mark the task as completed. Leave it in_progress so the lead can reassign
 == RULES ==
 - NEVER spawn sub-agents or use the Task tool
 - NEVER run tmux pane/session orchestration commands (for example `tmux split-window`, `tmux new-session`)
-- NEVER run team spawning/orchestration skills or commands (for example `$team`, `$ultrawork`, `$autopilot`, `$ralph`, `omc team ...`, `omx team ...`)
+- NEVER run team spawning/orchestration skills or commands (for example `$team`, `$ultrawork`, `$autopilot`, `$ralph`, `omq team ...`, `omx team ...`)
 - ALWAYS use absolute file paths
 - ALWAYS report progress to "team-lead" through the active team/conversation surface
 - Use direct team/conversation messages with type "message" only -- never "broadcast"
@@ -480,7 +480,7 @@ Do NOT mark the task as completed. Leave it in_progress so the lead can reassign
 When composing teammate prompts, append a short addendum based on worker type:
 
 - `claude_worker`: Emphasize strict TodoWrite/task-list updates, active team/conversation messages, and no orchestration commands.
-- `codex_worker`: Emphasize CLI API lifecycle (`omc team api ... --json`) and explicit failure ACKs with stderr.
+- `codex_worker`: Emphasize CLI API lifecycle (`omq team api ... --json`) and explicit failure ACKs with stderr.
 - `gemini_worker`: Emphasize bounded file ownership and milestone ACKs after each completed sub-step.
 - `antigravity_worker`: Same expectations as `gemini_worker`; emphasize bounded file ownership and milestone ACKs after each completed sub-step.
 
@@ -645,7 +645,7 @@ The lead runs #1 (Codex security analysis), then #2 and #3 in parallel (Codex re
 
 For large ambiguous tasks, run analysis before team creation:
 
-1. Spawn `Task(subagent_type="oh-my-claudecode:planner", ...)` with task description + codebase context
+1. Spawn `Task(subagent_type="oh-my-qoder:planner", ...)` with task description + codebase context
 2. Use the analysis to produce better task decomposition
 3. Create team and tasks with enriched context
 
@@ -751,7 +751,7 @@ When the user invokes `/team ralph`, says "team ralph", or combines both keyword
 
 Team+Ralph activates when:
 
-1. User invokes `/team ralph "task"` or `/oh-my-claudecode:team ralph "task"`
+1. User invokes `/team ralph "task"` or `/oh-my-qoder:team ralph "task"`
 2. Keyword detector finds both `team` and `ralph` in the prompt
 3. Hook detects `MAGIC KEYWORD: RALPH` alongside team context
 
@@ -779,7 +779,7 @@ state_write(mode="ralph", active=true, iteration=1, max_iterations=10, current_p
 1. Ralph outer loop starts (iteration 1)
 2. Team pipeline runs: `team-plan -> team-prd -> team-exec -> team-verify`
 3. If `team-verify` passes: Ralph runs architect verification (STANDARD tier minimum)
-4. If architect approves: both modes complete, run `/oh-my-claudecode:cancel`
+4. If architect approves: both modes complete, run `/oh-my-qoder:cancel`
 5. If `team-verify` fails OR architect rejects: team enters `team-fix`, then loops back to `team-exec -> team-verify`
 6. If fix loop exceeds `max_fix_loops`: Ralph increments iteration and retries the full pipeline
 7. If Ralph exceeds `max_iterations`: terminal `failed` state
@@ -826,7 +826,7 @@ This prevents duplicate worker spawns and allows graceful recovery from lead fai
 
 ## Cancellation
 
-The `/oh-my-claudecode:cancel` skill handles team cleanup:
+The `/oh-my-qoder:cancel` skill handles team cleanup:
 
 1. Read team state via `state_read(mode="team")` to get `team_name` and `linked_ralph`
 2. Request shutdown from all active named teammates through the active team surface
@@ -952,7 +952,7 @@ Precedence: `OMQ_TEAM_ROLE_OVERRIDES` > `.claude/omc.jsonc` (project) > `~/.conf
 
 ### Fallback when a CLI is missing
 
-If the CLI for a configured provider is absent from `PATH` at spawn time, `buildLaunchArgs()` throws, the team lead emits a visible team/conversation warning, and the runtime falls back to a deterministic Claude assignment pre-computed by `buildResolvedRoutingSnapshot` (same tier + same agent, `provider: "claude"`) only when the Claude CLI is resolvable. If the Claude CLI is unavailable, no runnable fallback exists: orchestration/startup is unavailable and the warning stays loud rather than claiming a fallback. Probe provider availability with `omc doctor --team-routing`.
+If the CLI for a configured provider is absent from `PATH` at spawn time, `buildLaunchArgs()` throws, the team lead emits a visible team/conversation warning, and the runtime falls back to a deterministic Claude assignment pre-computed by `buildResolvedRoutingSnapshot` (same tier + same agent, `provider: "claude"`) only when the Claude CLI is resolvable. If the Claude CLI is unavailable, no runnable fallback exists: orchestration/startup is unavailable and the warning stays loud rather than claiming a fallback. Probe provider availability with `omq doctor --team-routing`.
 
 ### Stickiness — resolved once, reused everywhere
 
@@ -975,7 +975,7 @@ On successful completion:
    state_clear(mode="ralph")
    ```
 2. For legacy OMC tmux/CLI workers, run the documented `omc team shutdown` / cleanup path.
-3. Or run `/oh-my-claudecode:cancel` which handles OMC state cleanup automatically.
+3. Or run `/oh-my-qoder:cancel` which handles OMC state cleanup automatically.
 
 **IMPORTANT:** Clear OMC team state only AFTER all teammates have been shut down or timed out.
 

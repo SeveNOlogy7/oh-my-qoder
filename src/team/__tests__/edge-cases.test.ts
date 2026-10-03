@@ -52,6 +52,9 @@ import {
   readProbeResult, writeProbeResult,
   registerMcpWorker, unregisterMcpWorker, isMcpWorker, listMcpWorkers
 } from '../team-registration.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 
 // ============================================================
@@ -96,6 +99,7 @@ function makeHeartbeat(overrides?: Partial<HeartbeatData>): HeartbeatData {
 // ============================================================
 
 describe('task-file-ops edge cases', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     TASK_TEST_CWD = join(realpathSync(tmpdir()), `omq-edge-tasks-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     TASKS_DIR = join(TASK_TEST_CWD, '.omq', 'state', 'team', EDGE_TEAM_TASKS, 'tasks');
@@ -297,6 +301,7 @@ describe('task-file-ops edge cases', () => {
 // ============================================================
 
 describe('inbox-outbox edge cases', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     mkdirSync(join(TEAMS_IO_DIR, 'inbox'), { recursive: true });
     mkdirSync(join(TEAMS_IO_DIR, 'outbox'), { recursive: true });
@@ -545,6 +550,7 @@ describe('inbox-outbox edge cases', () => {
 // ============================================================
 
 describe('heartbeat edge cases', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     mkdirSync(HB_DIR, { recursive: true });
   });
@@ -663,6 +669,7 @@ describe('heartbeat edge cases', () => {
 // ============================================================
 
 describe('tmux-session edge cases', () => {
+  useDefaultStateRoot();
   describe('sanitizeName with empty string', () => {
     it('throws for empty string', () => {
       expect(() => sanitizeName('')).toThrow('no valid characters');
@@ -726,6 +733,7 @@ describe('tmux-session edge cases', () => {
 // ============================================================
 
 describe('team-registration edge cases', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     mkdirSync(REG_DIR, { recursive: true });
     mkdirSync(join(REG_DIR, '.omq', 'state'), { recursive: true });

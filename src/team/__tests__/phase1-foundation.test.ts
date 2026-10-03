@@ -5,9 +5,13 @@ import { tmpdir } from 'os';
 
 import type { TeamConfig, TeamManifestV2 } from '../types.js';
 import { executeTeamApiOperation } from '../api-interop.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 // Step 1.1: lifecycle_profile type compilation tests
 describe('lifecycle_profile type field', () => {
+  useDefaultStateRoot();
   it('TeamConfig accepts lifecycle_profile as optional field', () => {
     const config: Partial<TeamConfig> = {
       lifecycle_profile: 'default',
@@ -49,6 +53,7 @@ describe('lifecycle_profile type field', () => {
 
 // Step 1.2: state root resolution priority tests
 describe('state root resolution priority: config > manifest > cwd-walk', () => {
+  useDefaultStateRoot();
   let cwd: string;
   const teamName = 'priority-test-team';
 

@@ -46,6 +46,9 @@ import { getOpenClawConfig, resolveGateway } from "../config.js";
 import { wakeGateway, wakeCommandGateway } from "../dispatcher.js";
 import type { OpenClawConfig } from "../types.js";
 import { parseTmuxTail } from "../../notifications/formatter.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const mockConfig: OpenClawConfig = {
   enabled: true,
@@ -71,6 +74,7 @@ const mockResolvedGateway = {
 };
 
 describe("wakeOpenClaw", () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     vi.mocked(getOpenClawConfig).mockReturnValue(mockConfig);
     vi.mocked(resolveGateway).mockReturnValue(mockResolvedGateway);
@@ -398,6 +402,7 @@ describe("wakeOpenClaw", () => {
 });
 
 describe("reply channel context", () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     vi.mocked(getOpenClawConfig).mockReturnValue(mockConfig);
     vi.mocked(resolveGateway).mockReturnValue(mockResolvedGateway);
@@ -502,6 +507,7 @@ describe("reply channel context", () => {
 
 
 describe("burst dedupe for attached multi-pane sessions", () => {
+  useDefaultStateRoot();
   let projectDir: string;
 
   beforeEach(() => {

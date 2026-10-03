@@ -33,7 +33,7 @@ Most non-trivial software tasks require coordinated phases: understanding requir
 - Parallel execution is used within phases where possible (Phase 2 and Phase 4)
 - QA cycles repeat up to 5 times; if the same error persists 3 times, stop and report the fundamental issue
 - Validation requires approval from all reviewers; rejected items get fixed and re-validated
-- Cancel with `/oh-my-claudecode:cancel` at any time; progress is preserved for resume
+- Cancel with `/oh-my-qoder:cancel` at any time; progress is preserved for resume
 </Execution_Policy>
 
 <Workflow_Profiles>
@@ -112,13 +112,13 @@ V1 does not support `stageModels`, model routing, provider or role selection; in
 
 6. **Phase 5 - Cleanup**: Delete all state files on successful completion
    - Remove `.omq/state/autopilot-state.json`, `ralph-state.json`, `ultrawork-state.json` (plus stale `ultraqa-state.json` if a retired copy exists)
-   - Run `/oh-my-claudecode:cancel` for clean exit
+   - Run `/oh-my-qoder:cancel` for clean exit
 </Steps>
 
 <Tool_Usage>
-- Use `Task(subagent_type="oh-my-claudecode:architect", ...)` for Phase 4 architecture validation
-- Use `Task(subagent_type="oh-my-claudecode:security-reviewer", ...)` for Phase 4 security review
-- Use `Task(subagent_type="oh-my-claudecode:code-reviewer", ...)` for Phase 4 quality review
+- Use `Task(subagent_type="oh-my-qoder:architect", ...)` for Phase 4 architecture validation
+- Use `Task(subagent_type="oh-my-qoder:security-reviewer", ...)` for Phase 4 security review
+- Use `Task(subagent_type="oh-my-qoder:code-reviewer", ...)` for Phase 4 quality review
 - Agents form their own analysis first, then spawn Claude Task agents for cross-validation
 - Never block on external tools; proceed with available agents if delegation fails
 </Tool_Usage>
@@ -202,7 +202,7 @@ To run autopilot implementation through the tmux CLI team runtime and prefer Cur
 With that config, the execution stage must launch executor-style work through:
 
 ```sh
-omc team 1:cursor "<implementation task>"
+omq team 1:cursor "<implementation task>"
 ```
 
 or the Claude Code slash compatibility surface:
@@ -218,7 +218,7 @@ Limitations:
 
 ## Resume
 
-If autopilot was cancelled or failed, run `/oh-my-claudecode:autopilot` again to resume from where it stopped.
+If autopilot was cancelled or failed, run `/oh-my-qoder:autopilot` again to resume from where it stopped.
 
 ## Best Practices for Input
 

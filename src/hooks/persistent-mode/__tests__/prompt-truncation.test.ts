@@ -12,6 +12,9 @@ import { join } from 'path';
 import { execSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
 import { DEFAULT_PROMPT_ECHO_MAX_CHARS } from '../../../lib/truncate-prompt.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 function writeRalphState(
   tempDir: string,
@@ -35,6 +38,7 @@ function writeRalphState(
 }
 
 describe('Ralph stop-hook continuation — prompt truncation (issue #2542)', () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {

@@ -23,10 +23,10 @@
  *  head = exact HEAD at generation (or ISSUE_3702_HEAD env)
  */
 
-import { readdir, readFile, stat, mkdir, writeFile } from 'node:fs/promises';
+import { readdir, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { join, relative, dirname, resolve } from 'node:path';
+import { join, relative, dirname, normalize, resolve } from 'node:path';
 import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -209,25 +209,12 @@ function resolveImportSpec(fromPath, spec) {
       join(base, spec + '.cjs'),
       join(base, spec, 'index.ts'),
       join(base, spec, 'index.js'),
-    ].map((candidate) => toPosix(resolve('/', candidate)).slice(1));
+    // normalize() only: anchoring with resolve('/', ...) yields "C:\..." on win32, and the
+    // following slice(1) leaves ":/..." that cannot resolve against the repo root.
+    ].map((candidate) => toPosix(normalize(candidate)));
     return { kind: 'relative', spec, candidates };
   }
   return { kind: 'external', spec, candidates: [] };
-}
-
-async function existsAny(root, cands) {
-  for (const c of cands) {
-    const absolute = resolve(root, c);
-    const confined = relative(root, absolute);
-    if (confined.startsWith('..') || confined === '' || resolve(root, confined) !== absolute) continue;
-    try {
-      await stat(absolute);
-      return toPosix(confined);
-    } catch {
-      // continue
-    }
-  }
-  return null;
 }
 
 function listTrackedGenerated(root, prefix) {
@@ -340,6 +327,9 @@ export async function generateInventoryGraph(opts = {}) {
   // 1) Import-derived edges (source -> imported)
   // Only scan source files for performance + determinism
   const scanTargets = relStable.filter(isSourceForGraph);
+  // Resolve against the graph's own node universe, not the filesystem: build output that this
+  // repository does not track (dist/, bridge/) would otherwise receive edges no node owns.
+  const graphUniverse = new Set([...relStable, ...genDist, ...genBridge]);
   // Sort to ensure deterministic order
   scanTargets.sort();
   for (const from of scanTargets) {
@@ -363,7 +353,7 @@ export async function generateInventoryGraph(opts = {}) {
         pushEdge(from, to, kind);
       } else {
         // Try to resolve relative to an existing stable file
-        const hit = await existsAny(root, resolved.candidates);
+        const hit = resolved.candidates.find((candidate) => graphUniverse.has(candidate)) ?? null;
         if (hit) {
           // Prefer canonical posix relative
           pushEdge(from, hit, kind);

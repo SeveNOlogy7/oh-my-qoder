@@ -923,10 +923,11 @@ export interface ResolveSessionStatePathsOptions {
  * callers cannot accidentally write to the read-fallback path. See
  * `SessionStatePaths` for field semantics.
  *
- * When `sessionId` is undefined or empty, the function operates in legacy
- * mode: `sessionScoped` is the empty string, both `effectiveRead` and
- * `effectiveWrite` brand the legacy path. This preserves single-plan/single-
- * session repos unchanged.
+ * A caller that omits `sessionId` still means "this session", so the process
+ * session id is used (b37141e semantics) — otherwise the write silently lands in
+ * the shared `.omq/state/` root and every concurrent session in the repo
+ * overwrites one another. Legacy mode is therefore the degenerate case where no
+ * session id can be derived at all, not the default.
  *
  * @internal Internal-ish helpers (resolveStatePath, resolveSessionStatePath
  * single-string variant) remain for back-compat but new code should prefer
@@ -940,7 +941,8 @@ export function resolveSessionStatePaths(
 ): SessionStatePaths {
   const normalizedName = stateName.endsWith('-state') ? stateName : `${stateName}-state`;
   const legacy = resolveStatePath(stateName, worktreeRoot);
-  if (!sessionId) {
+  const sid = sessionId || getProcessSessionId();
+  if (!sid) {
     return {
       sessionScoped: '',
       legacy,
@@ -948,11 +950,14 @@ export function resolveSessionStatePaths(
       effectiveWrite: legacy as WritePath,
     };
   }
-  validateSessionId(sessionId);
-  const sessionScoped = resolveOmcPath(`state/sessions/${sessionId}/${normalizedName}.json`, worktreeRoot);
-  // effectiveRead probes session-scoped first; fall back to legacy when the
-  // session-scoped file does not yet exist (first-read back-compat).
-  const effectiveRead = (existsSync(sessionScoped) ? sessionScoped : legacy) as ReadPath;
+  validateSessionId(sid);
+  const sessionScoped = resolveOmcPath(`state/sessions/${sid}/${normalizedName}.json`, worktreeRoot);
+  // Back-compat read: prefer the session file, fall back to legacy only when a legacy
+  // file is actually present. Probing legacy whenever the session file is missing made a
+  // brand-new session resolve its first read to a path that exists nowhere.
+  const effectiveRead = (existsSync(sessionScoped) || !existsSync(legacy)
+    ? sessionScoped
+    : legacy) as ReadPath;
   return {
     sessionScoped,
     legacy,

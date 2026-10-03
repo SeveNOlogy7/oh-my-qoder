@@ -20,6 +20,9 @@ import {
   type IncompleteTodosResult,
   type StopContext,
 } from '../hooks/todo-continuation/index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 // Mock fs and os modules
 vi.mock('fs');
@@ -29,6 +32,7 @@ vi.mock('../utils/config-dir.js', () => ({
 }));
 
 describe('Task System Support', () => {
+  useDefaultStateRoot();
   const mockHomedir = '/home/testuser';
 
   beforeEach(() => {

@@ -16,9 +16,13 @@ import {
 } from "../state.js";
 import { createWorkflowDescriptor } from "../pipeline.js";
 import { validateNamedWorkflowStateStructure } from "../named-workflow-resume-validator.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 
 describe("AutopilotState", () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {
@@ -102,6 +106,7 @@ describe("AutopilotState", () => {
 });
 
 describe('workflow profile state contract (#3487)', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {

@@ -135,8 +135,8 @@ function entry(e: WorkflowEntry): WorkflowEntry {
 const ALIAS_MILESTONE = REMOVAL_MILESTONE;
 
 // ---------------------------------------------------------------------------
-// Skills — all 41 installed surfaces + defined Tier-0 targets + legacy alias
-// names. Classification per plan §4.2 with the owner's authoritative Tier-0
+// Skills — every installed surface (43 skill directories in this fork) plus defined
+// Tier-0 targets and legacy alias names. Classification per plan §4.2 with the owner's authoritative Tier-0
 // decision (plan/execute/review/verify; specialists remain internal).
 // ---------------------------------------------------------------------------
 
@@ -148,7 +148,7 @@ const SKILL_ENTRIES: readonly WorkflowEntry[] = [
   entry({ name: 'deep-interview', kind: 'skill', tier: 0, decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Independent Tier-0 requirements interview — not a plan alias (owner direction #3708).' }),
   entry({ name: 'ralplan', kind: 'skill', tier: 0, decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Independent Tier-0 consensus planning — not a plan alias (owner direction #3708).' }),
   entry({ name: 'execute', kind: 'skill', tier: 0, decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Absorbs ultrawork, ultrapilot, swarm, pipeline; autopilot, ralph, and ultragoal remain directly invocable.' }),
-  entry({ name: 'review', kind: 'skill', tier: 0, decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Absorbs review routing incl. the merge-readiness advisory lane. Installs as omc-review (native-command collision).' }),
+  entry({ name: 'review', kind: 'skill', tier: 0, decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Absorbs review routing incl. the merge-readiness advisory lane. Installs as omq-review (native-command collision).' }),
   entry({ name: 'verify', kind: 'skill', tier: 0, decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Absorbs ultraqa / verification routing.' }),
 
   // Internal lanes / optional modules (not Tier-0 public workflows)
@@ -180,8 +180,12 @@ const SKILL_ENTRIES: readonly WorkflowEntry[] = [
   entry({ name: 'ask', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'skill', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'skillify', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Authoring utility, not a runtime workflow.' }),
-  entry({ name: 'omc-setup', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
-  entry({ name: 'omc-doctor', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'omc-setup', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, declaredOnly: true, notes: 'Legacy alias name; this fork ships omq-setup.' }),
+  entry({ name: 'omc-doctor', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, declaredOnly: true, notes: 'Legacy alias name; this fork ships omq-doctor.' }),
+  entry({ name: 'omq-setup', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'omq-doctor', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'omq-reference', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Agent catalog / commit protocol / skills registry reference.' }),
+  entry({ name: 'omq-teams', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'tmux-backed CLI team runtime; opt-in.' }),
   entry({ name: 'wiki', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'remember', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'configure-notifications', kind: 'skill', decision: 'keep', riskClass: 'secrets-privacy', owner: REGISTRY_OWNER, notes: 'Opt-in integration handling secrets; hard boundary retained.' }),
@@ -194,6 +198,16 @@ const SKILL_ENTRIES: readonly WorkflowEntry[] = [
   entry({ name: 'hud', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'self-improve', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Opt-in learning utility.' }),
   entry({ name: 'trace', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'ultrawork', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Opt-in parallel execution mode.' }),
+  entry({ name: 'ultraqa', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Opt-in QA cycling mode.' }),
+  entry({ name: 'ccg', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Tri-model orchestration via external CLIs; opt-in.' }),
+  entry({ name: 'deep-dive', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'sciomq', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Parallel scientist orchestration; opt-in.' }),
+  entry({ name: 'writer-memory', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'learner', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Deprecated compatibility surface for skillify.' }),
+  entry({ name: 'local-build-reminder', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'mcp-setup', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'setup', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Setup routing entrypoint; writes only to user-level config.' }),
 ];
 
 // ---------------------------------------------------------------------------
@@ -208,8 +222,10 @@ const COMMAND_ENTRIES: readonly WorkflowEntry[] = [
   entry({ name: 'deepinit', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'external-context', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'hud', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
-  entry({ name: 'omc-doctor', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
-  entry({ name: 'omc-setup', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'omc-doctor', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, declaredOnly: true, notes: 'Legacy alias name; this fork ships omq-doctor.' }),
+  entry({ name: 'omc-setup', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, declaredOnly: true, notes: 'Legacy alias name; this fork ships omq-setup.' }),
+  entry({ name: 'omq-doctor', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'omq-setup', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'project-session-manager', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'remember', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'self-improve', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
@@ -220,8 +236,16 @@ const COMMAND_ENTRIES: readonly WorkflowEntry[] = [
   entry({ name: 'wiki', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'verify', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Command form of the Tier-0 verify workflow.' }),
   entry({ name: 'autoresearch', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Retained alongside the research lane (owner direction, 5.0.0).' }),
-  // Retired in 5.0.0: ccg, deep-dive, learner, mcp-setup, omc-teams, sciomc,
-  // writer-memory command files were removed with their skills.
+  // The ancestor retired these command files in 5.0.0; this fork still ships them,
+  // so the census registers what the payload actually contains. Retiring them here
+  // would make the drift check agree with the ancestor while disagreeing with the box.
+  entry({ name: 'ccg', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'deep-dive', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'learner', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Deprecated compatibility surface for skillify.' }),
+  entry({ name: 'mcp-setup', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'omq-teams', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'sciomq', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
+  entry({ name: 'writer-memory', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'psm', kind: 'command', decision: 'alias-deprecate', canonicalTarget: 'project-session-manager', riskClass: 'advisory', owner: REGISTRY_OWNER, removalMilestone: 'short-name convenience alias; retained by owner direction' }),
   entry({ name: 'release', kind: 'command', decision: 'alias-deprecate', canonicalTarget: 'omc-release', riskClass: 'release-authority', owner: REGISTRY_OWNER, maintainerOnly: true, removalMilestone: 'compatibility alias during migration; never auto-removed without owner approval' }),
 ];
