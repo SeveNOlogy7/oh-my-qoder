@@ -14,12 +14,13 @@ import { join, dirname, basename, resolve, relative, isAbsolute, win32 } from 'p
 import { fileURLToPath } from 'url';
 import type { BuiltinSkill } from './types.js';
 import { parseFrontmatter, parseFrontmatterAliases } from '../../utils/frontmatter.js';
-import { rewriteOmqCliInvocations } from '../../utils/omq-cli-rendering.js';
+import { rewriteOmcCliInvocations } from '../../utils/omc-cli-rendering.js';
 import { parseSkillPipelineMetadata, renderSkillPipelineGuidance } from '../../utils/skill-pipeline.js';
 import { renderSkillResourcesGuidance } from '../../utils/skill-resources.js';
 import { renderSkillRuntimeGuidance } from './runtime-guidance.js';
 import { isSkininthegamebrosUser } from '../../utils/skininthegamebros-user.js';
 import { getQoderConfigDir } from '../../utils/config-dir.js';
+import entitlementManifest from '../../config/builtin-skill-entitlements.json' with { type: 'json' };
 
 function getPackageDir(): string {
   if (typeof __dirname !== 'undefined' && __dirname) {
@@ -69,11 +70,9 @@ const CC_NATIVE_COMMANDS = new Set([
   'memory',
 ]);
 
-const SKININTHEGAMEBROS_ONLY_SKILLS = new Set([
-  'remember',
-  'verify',
-  'debug',
-]);
+const SKININTHEGAMEBROS_ONLY_SKILLS = new Set<string>(
+  entitlementManifest.skininthegamebrosOnlySkills.map((skill: string) => skill.trim().toLowerCase()),
+);
 
 const DEFAULT_DEEP_INTERVIEW_AMBIGUITY_THRESHOLD = 0.2;
 
@@ -99,22 +98,30 @@ function readJsonObject(path: string): Record<string, unknown> | null {
   }
 }
 
-function readDeepInterviewThresholdFromSettings(path: string): number | null {
+function readDeepInterviewThresholdFromSettings(
+  path: string,
+  source: string,
+): DeepInterviewThresholdResolution | null {
   const settings = readJsonObject(path);
-  const omq = settings?.omq;
-  if (!omq || typeof omq !== 'object' || Array.isArray(omq)) {
-    return null;
+  if (!settings) return null;
+
+  // 'omq' is this product's own section name inside the CLI's settings.json; 'omc'
+  // is kept as a fallback so pre-hop configuration still resolves. Same shape as
+  // hud/state.ts's `settings.omqHud ?? settings.omcHud`.
+  for (const sectionKey of ['omq', 'omc'] as const) {
+    const section = settings[sectionKey];
+    if (!section || typeof section !== 'object' || Array.isArray(section)) continue;
+
+    const deepInterview = (section as Record<string, unknown>).deepInterview;
+    if (!deepInterview || typeof deepInterview !== 'object' || Array.isArray(deepInterview)) continue;
+
+    const threshold = (deepInterview as Record<string, unknown>).ambiguityThreshold;
+    if (typeof threshold === 'number' && Number.isFinite(threshold) && threshold >= 0 && threshold <= 1) {
+      return { threshold, source };
+    }
   }
 
-  const deepInterview = (omq as Record<string, unknown>).deepInterview;
-  if (!deepInterview || typeof deepInterview !== 'object' || Array.isArray(deepInterview)) {
-    return null;
-  }
-
-  const threshold = (deepInterview as Record<string, unknown>).ambiguityThreshold;
-  return typeof threshold === 'number' && Number.isFinite(threshold) && threshold >= 0 && threshold <= 1
-    ? threshold
-    : null;
+  return null;
 }
 
 type DeepInterviewThresholdResolution = {
@@ -122,19 +129,29 @@ type DeepInterviewThresholdResolution = {
   source: string;
 };
 
+// Project settings live under .qoder for this CLI; .claude is read afterwards so
+// worktrees configured before the hop keep working.
+const PROJECT_SETTINGS_CANDIDATES: ReadonlyArray<{ dir: string; source: string }> = [
+  { dir: '.qoder', source: './.qoder/settings.json' },
+  { dir: '.claude', source: './.claude/settings.json' },
+];
+
 function getDeepInterviewAmbiguityThresholdResolution(): DeepInterviewThresholdResolution {
   const profileSettingsPath = join(getQoderConfigDir(), 'settings.json');
-  const projectSettingsPath = join(process.cwd(), '.claude', 'settings.json');
-  const profileThreshold = readDeepInterviewThresholdFromSettings(profileSettingsPath);
-  const projectThreshold = readDeepInterviewThresholdFromSettings(projectSettingsPath);
 
-  if (projectThreshold !== null) {
-    return { threshold: projectThreshold, source: './.qoder/settings.json' };
+  for (const candidate of PROJECT_SETTINGS_CANDIDATES) {
+    const resolved = readDeepInterviewThresholdFromSettings(
+      join(process.cwd(), candidate.dir, 'settings.json'),
+      candidate.source,
+    );
+    if (resolved) return resolved;
   }
 
-  if (profileThreshold !== null) {
-    return { threshold: profileThreshold, source: '[$QODER_CONFIG_DIR|~/.qoder]/settings.json' };
-  }
+  const profileThreshold = readDeepInterviewThresholdFromSettings(
+    profileSettingsPath,
+    '[$QODER_CONFIG_DIR|~/.qoder[-cn]]/settings.json',
+  );
+  if (profileThreshold) return profileThreshold;
 
   return { threshold: DEFAULT_DEEP_INTERVIEW_AMBIGUITY_THRESHOLD, source: 'default' };
 }
@@ -159,7 +176,7 @@ function getFrontmatterString(metadata: Record<string, unknown>, key: string): s
 }
 
 function readSkillBodyOverride(skillPath: string, metadata: Record<string, unknown>, fallbackBody: string): string {
-  const bodyPath = getFrontmatterString(metadata, 'omq-full-body');
+  const bodyPath = getFrontmatterString(metadata, 'omc-full-body');
   if (!bodyPath) {
     return fallbackBody;
   }
@@ -196,7 +213,7 @@ function applyDeepInterviewRuntimeSettings(template: string): string {
     : withResolvedPlaceholders.replace(
       '4. **Initialize state** via `state_write(mode="deep-interview")`:',
       [
-        `3.5. **Load runtime settings** from \`~/.qoder/settings.json\` and \`./.qoder/settings.json\` before state init (project overrides profile). For this run, use \`ambiguityThreshold = ${threshold}\`.`,
+        `3.5. **Load runtime settings** from \`./.qoder/settings.json\` (legacy fallback \`./.claude/settings.json\`) and the profile \`settings.json\` before state init (project overrides profile). For this run, use \`ambiguityThreshold = ${threshold}\`.`,
         '4. **Initialize state** via `state_write(mode="deep-interview")`:',
       ].join('\n'),
     );
@@ -217,12 +234,12 @@ function applyDeepInterviewRuntimeSettings(template: string): string {
 }
 
 function normalizeSkillNameForRuntimeRendering(skillName: string): string {
-  return skillName.trim().toLowerCase().replace(/^oh-my-qoder:/, '').replace(/^omq:/, '');
+  return skillName.trim().toLowerCase().replace(/^oh-my-qoder:/, '').replace(/^omc:/, '');
 }
 
 export function renderBundledSkillBody(skillName: string, body: string): string {
   const normalizedSkillName = normalizeSkillNameForRuntimeRendering(skillName);
-  const rewrittenBody = rewriteOmqCliInvocations(body.trim());
+  const rewrittenBody = rewriteOmcCliInvocations(body.trim());
   return normalizedSkillName === 'deep-interview' || normalizedSkillName === 'deep-dive'
     ? applyDeepInterviewRuntimeSettings(rewrittenBody)
     : rewrittenBody;
@@ -311,7 +328,7 @@ function loadSkillsFromDirectory(): BuiltinSkill[] {
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      if (SKININTHEGAMEBROS_ONLY_SKILLS.has(entry.name) && !isSkininthegamebrosUser()) {
+      if (SKININTHEGAMEBROS_ONLY_SKILLS.has(entry.name.toLowerCase()) && !isSkininthegamebrosUser()) {
         continue;
       }
 

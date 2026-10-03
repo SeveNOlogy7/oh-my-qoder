@@ -3,8 +3,9 @@
 // PostToolUse hook installer + fs-watch fallback poller for worker auto-commit cadence.
 //
 // Two commit-cadence mechanisms:
-//   hook   — writes {worktreePath}/.qoder/settings.json with a PostToolUse hook that
-//             auto-commits after every Write/Edit/MultiEdit tool use (Qoder CLI only).
+//   hook   — writes {worktreePath}/.qoder/settings.json (Qoder CLI harness) or
+//             {worktreePath}/.claude/settings.json (Claude Code) with a
+//             PostToolUse hook that auto-commits after every Write/Edit/MultiEdit.
 //   fallback-poll — uses node:fs.watch with a 3 s debounce to detect filesystem changes
 //             and auto-commit (for codex/gemini workers that lack PostToolUse support).
 //
@@ -24,8 +25,30 @@ export interface WorkerCadenceContext {
   teamName: string;
   workerName: string;
   worktreePath: string;
-  agentType: 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok';
+  agentType: 'claude' | 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
   enabled: boolean;
+}
+
+/** Service ownership fence supplied by the persistent runtime owner. */
+export interface CadenceOwnership {
+  serviceGeneration: number;
+  attemptId: string;
+}
+
+const cadenceOwners = new Map<string, CadenceOwnership>();
+
+function ownsCadence(ctx: WorkerCadenceContext & Partial<CadenceOwnership>): boolean {
+  const current = cadenceOwners.get(ctx.worktreePath);
+  return !current || ctx.serviceGeneration === undefined
+    || (current.serviceGeneration === ctx.serviceGeneration && current.attemptId === ctx.attemptId);
+}
+
+function registerCadenceOwner(ctx: WorkerCadenceContext & Partial<CadenceOwnership>): boolean {
+  if (ctx.serviceGeneration === undefined || ctx.attemptId === undefined) return true;
+  const current = cadenceOwners.get(ctx.worktreePath);
+  if (current && current.serviceGeneration > ctx.serviceGeneration) return false;
+  cadenceOwners.set(ctx.worktreePath, { serviceGeneration: ctx.serviceGeneration, attemptId: ctx.attemptId });
+  return true;
 }
 
 export type CadenceMethod = 'hook' | 'fallback-poll' | 'none';
@@ -39,6 +62,27 @@ const SENTINEL_FILENAME = '.hook-paused';
 
 /** PostToolUse hook matcher pattern. */
 const HOOK_MATCHER = 'Write|Edit|MultiEdit';
+
+/**
+ * Settings directory that carries the PostToolUse auto-commit hook, per
+ * harness — the provider-aware source shared by the installer, the uninstaller
+ * and the installCommitCadence gate (#48). The Qoder CLI harness reads
+ * `.qoder/settings.json` (PostToolUse is a first-class event there — see the
+ * qoderclicn behavior reference), while Claude Code reads
+ * `.claude/settings.json`. Agents with no PostToolUse harness (codex, gemini,
+ * cursor, grok, antigravity) return null and use the fallback fs-watch poller.
+ *
+ * b37141e carried this pair half-translated (gate on the Qoder agent, write
+ * into `.claude/`), which pointed qwen workers at a settings file their
+ * harness never reads; HEAD's `!== 'claude'` gate "fixed" it by demoting qwen
+ * to the poller. This pairing restores the real mechanism: gate and write
+ * path come from this one function.
+ */
+function getHookSettingsDir(agentType: WorkerCadenceContext['agentType']): '.qoder' | '.claude' | null {
+  if (agentType === 'qwen') return '.qoder';
+  if (agentType === 'claude') return '.claude';
+  return null;
+}
 
 /** Default debounce interval for the fallback poller (ms). */
 const DEFAULT_POLL_DEBOUNCE_MS = 3000;
@@ -156,14 +200,17 @@ async function mergeSettingsWithHook(
 // ---------------------------------------------------------------------------
 
 /**
- * Writes `{worktreePath}/.qoder/settings.json` containing a PostToolUse hook
- * that auto-commits after every Write/Edit/MultiEdit.
+ * Writes `{worktreePath}/<settingsDir>/settings.json` containing a PostToolUse
+ * hook that auto-commits after every Write/Edit/MultiEdit. The directory is
+ * provider-aware (`getHookSettingsDir`): `.qoder` for the Qoder CLI harness,
+ * `.claude` for Claude Code.
  *
  * Skips installation if the .hook-paused sentinel is present.
  */
 export async function installPostToolUseHook(
   worktreePath: string,
   workerName: string,
+  settingsDir: '.qoder' | '.claude' = '.qoder',
 ): Promise<void> {
   // Validate up-front so callers cannot pass an injectable name that would
   // later land in the shell hook body. Throws synchronously on bad input.
@@ -173,10 +220,10 @@ export async function installPostToolUseHook(
     return;
   }
 
-  const claudeDir = join(worktreePath, '.claude');
-  await mkdir(claudeDir, { recursive: true });
+  const settingsDirPath = join(worktreePath, settingsDir);
+  await mkdir(settingsDirPath, { recursive: true });
 
-  const settingsPath = join(claudeDir, 'settings.json');
+  const settingsPath = join(settingsDirPath, 'settings.json');
   const hookCommand = buildHookCommand(workerName);
   const merged = await mergeSettingsWithHook(settingsPath, hookCommand);
 
@@ -298,53 +345,79 @@ export function startFallbackPoller(
 
 /**
  * Installs the appropriate commit cadence for the worker agent type.
- * - claude  → PostToolUse hook in .qoder/settings.json
- * - codex / gemini / cursor → fallback fs-watch poller (caller owns the handle)
+ * - qwen   → PostToolUse hook in .qoder/settings.json (Qoder CLI harness)
+ * - claude → PostToolUse hook in .claude/settings.json (Claude Code)
+ * - codex / gemini / cursor / grok / antigravity → fallback fs-watch poller
+ *   (caller owns the handle)
+ *
+ * The gate reads the same provider-aware mapping (getHookSettingsDir) that
+ * decides the write path, so a harness hook can never be pointed at a settings
+ * file its harness does not read (#48).
  *
  * Returns the chosen method. The fallback-poll handle is NOT started here;
  * callers that need the poller should call startFallbackPoller directly.
  */
 export async function installCommitCadence(
-  ctx: WorkerCadenceContext,
+  ctx: WorkerCadenceContext & Partial<CadenceOwnership>,
 ): Promise<{ method: CadenceMethod }> {
+  if (!registerCadenceOwner(ctx)) return { method: 'none' };
   if (!ctx.enabled) {
     return { method: 'none' };
   }
 
-  if (ctx.agentType === 'qwen') {
-    await installPostToolUseHook(ctx.worktreePath, ctx.workerName);
+  const settingsDir = getHookSettingsDir(ctx.agentType);
+  if (settingsDir) {
+    await installPostToolUseHook(ctx.worktreePath, ctx.workerName, settingsDir);
     return { method: 'hook' };
   }
 
-  // codex / gemini / cursor: no PostToolUse hook; caller starts the fallback poller.
+  // No PostToolUse harness; caller starts the fallback poller.
   return { method: 'fallback-poll' };
 }
 
 /**
- * Removes the auto-commit PostToolUse hook from .qoder/settings.json.
+ * Removes the auto-commit PostToolUse hook from the worker harness's settings
+ * file (same provider-aware directory the installer used).
  * For fallback-poll workers the caller is responsible for stopping the poller handle.
  */
-export async function uninstallCommitCadence(ctx: WorkerCadenceContext): Promise<void> {
-  if (ctx.agentType !== 'qwen') return;
-
-  const settingsPath = join(ctx.worktreePath, '.claude', 'settings.json');
-  try {
-    const raw = await readFile(settingsPath, 'utf-8');
-    const parsed = JSON.parse(raw) as ClaudeSettings;
-    const filtered = (parsed.hooks?.PostToolUse ?? []).filter(
-      (h) => h.matcher !== HOOK_MATCHER,
-    );
-    const updated: ClaudeSettings = {
-      ...parsed,
-      hooks: {
-        ...parsed.hooks,
-        PostToolUse: filtered,
-      },
-    };
-    await writeFile(settingsPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
-  } catch {
-    // File absent — nothing to uninstall.
+export async function uninstallCommitCadence(
+  ctx: WorkerCadenceContext & Partial<CadenceOwnership>,
+  io: { readFile: typeof readFile; writeFile: typeof writeFile } = { readFile, writeFile },
+): Promise<void> {
+  if (!ownsCadence(ctx)) return;
+  const owner = cadenceOwners.get(ctx.worktreePath);
+  const ownsRegisteredGeneration = owner && ctx.serviceGeneration !== undefined
+    && owner.serviceGeneration === ctx.serviceGeneration && owner.attemptId === ctx.attemptId;
+  const settingsDir = getHookSettingsDir(ctx.agentType);
+  if (!settingsDir) {
+    if (ownsRegisteredGeneration) cadenceOwners.delete(ctx.worktreePath);
+    return;
   }
+
+  const settingsPath = join(ctx.worktreePath, settingsDir, 'settings.json');
+  let raw: string;
+  try {
+    raw = await io.readFile(settingsPath, 'utf-8');
+  } catch (error: unknown) {
+    if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'ENOENT') {
+      if (ownsRegisteredGeneration) cadenceOwners.delete(ctx.worktreePath);
+      return;
+    }
+    throw error;
+  }
+  const parsed = JSON.parse(raw) as ClaudeSettings;
+  const filtered = (parsed.hooks?.PostToolUse ?? []).filter(
+    (h) => h.matcher !== HOOK_MATCHER,
+  );
+  const updated: ClaudeSettings = {
+    ...parsed,
+    hooks: {
+      ...parsed.hooks,
+      PostToolUse: filtered,
+    },
+  };
+  await io.writeFile(settingsPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
+  if (ownsRegisteredGeneration) cadenceOwners.delete(ctx.worktreePath);
 }
 
 /**

@@ -55,6 +55,9 @@ function getUpdateCheckCachePath() {
 
 module.exports = {
   getQoderConfigDir,
+  // HUD/hook templates and the .mjs mirror both spell the config root getter
+  // getClaudeConfigDir; keep the CommonJS mirror exporting the same name.
+  getClaudeConfigDir: getQoderConfigDir,
   resolveDefaultConfigDir,
   getQoderRootConfigFileName,
   getOmqConfigDir,

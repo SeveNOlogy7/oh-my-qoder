@@ -13,8 +13,12 @@ import {
   restoreWorktreeRootAgents,
   prepareWorkerWorktreeForRemoval,
 } from '../git-worktree.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('git-worktree', () => {
+  useDefaultStateRoot();
   let repoDir: string;
   const teamName = 'test-wt';
 

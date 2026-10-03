@@ -17,13 +17,13 @@ describe('Consolidation contracts', () => {
       const names = listBuiltinSkillNames();
 
       expect(names).toContain('autopilot');
-      expect(names).toContain('ultrawork');
-      expect(names).toContain('ralph');
+      expect(names).toContain('execute');
+      expect(names).toContain('ultragoal');
       expect(names).toContain('team');
     });
 
     it('resolves Tier-0 skills via getBuiltinSkill()', () => {
-      const tier0 = ['autopilot', 'ultrawork', 'ralph', 'team'] as const;
+      const tier0 = ['autopilot', 'execute', 'ultragoal', 'team'] as const;
 
       for (const name of tier0) {
         const skill = getBuiltinSkill(name);
@@ -40,9 +40,11 @@ describe('Consolidation contracts', () => {
       expect(swarm).toBeUndefined();
     });
 
-    it('keeps native-command collisions prefixed to omq-* names', () => {
+    it('keeps native-command collisions prefixed', () => {
       const names = listBuiltinSkillNames();
 
+      // Asserted as the catalog loads them today: the collision prefix is the
+      // fork's own `omq-` spelling since #37 (skills/plan declares `omq-plan`).
       expect(names).toContain('omq-plan');
       expect(names).toContain('omq-doctor');
       expect(names).not.toContain('plan');
@@ -57,7 +59,7 @@ describe('Consolidation contracts', () => {
       expect(names).not.toContain('build-fix');
       expect(names).not.toContain('tdd');
       expect(names).not.toContain('code-review');
-      expect(names).not.toContain('omq-security-review');
+      expect(names).not.toContain('omc-security-review');
     });
 
     it('hides deprecated compatibility aliases from default listings', () => {

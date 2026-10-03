@@ -23,19 +23,26 @@ describe('CLI command registration — no duplicates', () => {
     const source = readFileSync(CLI_SOURCE, 'utf-8');
     // Match program.command('name') or .command('name') — capture the command name
     const commandPattern = /\.command\(\s*['"]([^'"[\s]+)/g;
-    const names: string[] = [];
+    // A command name is only a collision within its own parent: `omq doctor check` and
+    // `omq capabilities check` are distinct paths and commander routes them fine, so a
+    // flat name set would forbid a normal CLI shape. The receiver is the identifier that
+    // the .command() call hangs off (own line, or `program` inline); anything unattributed
+    // shares one bucket, so a chain-added duplicate still collides.
+    const keys: string[] = [];
     let match: RegExpExecArray | null;
     while ((match = commandPattern.exec(source)) !== null) {
-      names.push(match[1]);
+      const before = source.slice(Math.max(0, match.index - 160), match.index).trimEnd();
+      const receiver = /([A-Za-z_$][\w$]*)\s*$/.exec(before)?.[1] ?? '(unknown)';
+      keys.push(`${receiver} ${match[1]}`);
     }
 
     const seen = new Set<string>();
     const duplicates: string[] = [];
-    for (const name of names) {
-      if (seen.has(name)) {
-        duplicates.push(name);
+    for (const key of keys) {
+      if (seen.has(key)) {
+        duplicates.push(key);
       }
-      seen.add(name);
+      seen.add(key);
     }
 
     expect(duplicates, `Duplicate command names found: ${duplicates.join(', ')}`).toEqual([]);
@@ -86,5 +93,30 @@ describe('CLI runtime boot', () => {
       expect(output).not.toContain('cannot add command');
       expect(output).not.toContain('as already have command');
     }
+  });
+});
+
+// Patch-layer guard for src/cli/index.ts: `omq doctor check` was added so an
+// installed copy can be diagnosed, and the inert `--skip-hooks` flag was removed
+// because it never did anything. Reverting this file brings both back, and no
+// other suite inspects either.
+describe('command surface', () => {
+  it('registers `doctor check` and no longer accepts --skip-hooks', async () => {
+    const previous = process.env.OMQ_CLI_SKIP_PARSE;
+    process.env.OMQ_CLI_SKIP_PARSE = '1';
+    const { buildProgram } = await import('../index.js');
+    if (previous === undefined) delete process.env.OMQ_CLI_SKIP_PARSE;
+    else process.env.OMQ_CLI_SKIP_PARSE = previous;
+
+    const program = buildProgram();
+    const names = program.commands.map((cmd) => cmd.name());
+    expect(names).toContain('doctor');
+
+    const doctor = program.commands.find((cmd) => cmd.name() === 'doctor');
+    expect(doctor?.commands.map((sub) => sub.name())).toContain('check');
+
+    const setup = program.commands.find((cmd) => cmd.name() === 'setup');
+    const setupFlags = setup?.options.map((opt) => opt.long) ?? [];
+    expect(setupFlags).not.toContain('--skip-hooks');
   });
 });

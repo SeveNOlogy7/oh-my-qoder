@@ -6,8 +6,17 @@ import {
   type HookInput,
   type HookType,
 } from '../bridge.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
+// Anchors the in-process processHook writers (hud state, dispatch telemetry)
+// at a per-test temp dir instead of the real .omq/state (T16b).
+import { useCwdFixture } from '../../__tests__/helpers/cwd-fixture.js';
+
+useCwdFixture();
 
 describe('processHook - Environment Kill-Switches', () => {
+  useDefaultStateRoot();
   const originalEnv = process.env;
 
   beforeEach(() => {

@@ -4,6 +4,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { createWorkerWorktree } from '../../team/git-worktree.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const tmuxMocks = vi.hoisted(() => ({
   killWorkerPanes: vi.fn(async () => undefined),
@@ -38,6 +41,7 @@ async function importTeamServerWithJobsDir(jobsDir: string) {
 }
 
 describe('team-server artifact convergence + scoped cleanup', () => {
+  useDefaultStateRoot();
   let testRoot: string;
   let jobsDir: string;
 
@@ -256,13 +260,13 @@ describe('team-server artifact convergence + scoped cleanup', () => {
     writeFileSync(join(teamDir, 'config.json'), JSON.stringify({
       name: 'team-one',
       task: 'demo',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_launch_mode: 'interactive',
       worker_count: 1,
       max_workers: 20,
       workers: [{ name: 'worker-1', index: 1, role: 'executor', assigned_tasks: [] }],
       created_at: new Date().toISOString(),
-      tmux_session: '',
+      tmux_session: 'team-one-session:0',
       leader_pane_id: null,
       hud_pane_id: null,
       resize_hook_name: null,

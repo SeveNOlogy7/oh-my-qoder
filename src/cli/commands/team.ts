@@ -21,13 +21,14 @@ import { loadConfig } from '../../config/loader.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmuxExec } from '../tmux-utils.js';
-import { getOmqRoot } from '../../lib/worktree-paths.js';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
 
 const HELP_TOKENS = new Set(['--help', '-h', 'help']);
 const MIN_WORKER_COUNT = 1;
 const MAX_WORKER_COUNT = 20;
-const VALID_TEAM_CLI_AGENT_TYPES = new Set(['qwen', 'codex', 'gemini', 'grok', 'cursor']);
-const DEFAULT_TEAM_CLI_AGENT_TYPE: CliAgentType = 'qwen';
+const VALID_TEAM_CLI_AGENT_TYPES = new Set(['qwen', 'claude', 'codex', 'gemini', 'grok', 'cursor', 'antigravity']);
+const CURSOR_ALLOWED_TEAM_ROLES = new Set(['executor']);
+const DEFAULT_TEAM_CLI_AGENT_TYPE: CliAgentType = 'claude';
 
 const TEAM_HELP = `
 Usage: omq team [N:agent-type[:role]] [--new-window] [--auto-merge] [--no-decompose] "<task description>"
@@ -42,6 +43,7 @@ Examples:
   omq team 1:gemini:executor "implement feature"
   omq team 1:codex,1:gemini "compare approaches"
   omq team 1:cursor:executor "apply the implementation"
+  omq team 1:antigravity:executor "apply the implementation"
   omq team 2:codex "review auth flow" --new-window
   omq team status fix-failing-tests
   omq team shutdown fix-failing-tests
@@ -59,6 +61,8 @@ Auto-merge (v2-only):
 
 Roles (optional): architect, executor, planner, analyst, critic, debugger, verifier,
   code-reviewer, security-reviewer, test-engineer, designer, writer, scientist
+
+Cursor workers are executor-style only; use 1:cursor or 1:cursor:executor, not reviewer/critic/security/verdict roles.
 `;
 
 const TEAM_API_HELP = `
@@ -103,6 +107,9 @@ const TEAM_API_OPERATION_REQUIRED_FIELDS: Record<TeamApiOperation, string[]> = {
   'write-monitor-snapshot': ['team_name', 'snapshot'],
   'read-task-approval': ['team_name', 'task_id'],
   'write-task-approval': ['team_name', 'task_id', 'status', 'reviewer', 'decision_reason'],
+  'recover-worker': ['team_name', 'worker'],
+  'write-task-checkpoint': ['team_name', 'task_id', 'worker', 'claim_token', 'task_version', 'sequence', 'resume_payload'],
+  'read-recovery-result': ['team_name', 'request_id'],
 };
 
 const TEAM_API_OPERATION_OPTIONAL_FIELDS: Partial<Record<TeamApiOperation, string[]>> = {
@@ -116,13 +123,22 @@ const TEAM_API_OPERATION_OPTIONAL_FIELDS: Partial<Record<TeamApiOperation, strin
   ],
   'append-event': ['task_id', 'message_id', 'reason'],
   'write-task-approval': ['required'],
+  'recover-worker': ['request_id', 'timeout_ms'],
 };
 
 const TEAM_API_OPERATION_NOTES: Partial<Record<TeamApiOperation, string>> = {
   'update-task': 'Only non-lifecycle task metadata can be updated.',
   'release-task-claim': 'Use this only for rollback/requeue to pending (not for completion).',
   'transition-task-status': 'Lifecycle flow is claim-safe and typically transitions in_progress -> completed|failed.',
+  'recover-worker': 'v2 live-session recovery only: it proceeds only after confirmed worker death, refuses unknown liveness, and replays idempotently by request_id. A timeout may return before the durable result is final; use read-recovery-result to look it up. In-progress tasks require a checkpoint; idle dead workers recover without one.',
+  'write-task-checkpoint': 'Authenticated worker checkpoint producer. The resume_payload must be JSON and no larger than 64 KiB; repeat the same sequence and payload to replay safely.',
+  'read-recovery-result': 'Looks up the durable pending, succeeded, failed, or commit_unknown recovery outcome by request_id in the canonical team workspace state.',
 };
+
+function shouldPrintTeamHelpForError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /^Usage:\s+omq team\b/.test(message);
+}
 
 // ---------------------------------------------------------------------------
 // Task decomposition helpers
@@ -247,7 +263,7 @@ function slugifyTask(task: string): string {
 
 export function resolveAvailableTeamName(baseName: string, cwd: string): string {
   const sanitizedBase = slugifyTask(baseName);
-  const stateRoot = join(getOmqRoot(cwd), 'state', 'team');
+  const stateRoot = join(getOmcRoot(cwd), 'state', 'team');
   const teamDir = (name: string) => join(stateRoot, name);
   if (!existsSync(teamDir(sanitizedBase))) return sanitizedBase;
 
@@ -352,7 +368,7 @@ function normalizeWorkerSpecSegment(match: RegExpMatchArray): NormalizedWorkerSp
   const token = match[2]?.toLowerCase();
   const explicitRole = match[3]?.toLowerCase();
   if (!token) {
-    return { count, agentType: 'qwen' };
+    return { count, agentType: 'claude' };
   }
 
   if (explicitRole) {
@@ -363,6 +379,12 @@ function normalizeWorkerSpecSegment(match: RegExpMatchArray): NormalizedWorkerSp
         `For a role-only shorthand on the default agent, use "${count}:${explicitRole}".`,
       );
     }
+    if (token === 'cursor' && !CURSOR_ALLOWED_TEAM_ROLES.has(explicitRole)) {
+      throw new Error(
+        `Invalid Cursor worker role "${explicitRole}" in worker spec "${match[0]}". ` +
+        `Cursor workers are executor-style only; use "${count}:cursor" or "${count}:cursor:executor".`,
+      );
+    }
     return { count, agentType: token, role: explicitRole };
   }
 
@@ -370,11 +392,11 @@ function normalizeWorkerSpecSegment(match: RegExpMatchArray): NormalizedWorkerSp
     return { count, agentType: token };
   }
 
-  return { count, agentType: 'qwen', role: token };
+  return { count, agentType: 'claude', role: token };
 }
 
 /** @internal Exported for testing */
-export function parseTeamArgs(tokens: string[], defaultAgentType: string = 'qwen'): ParsedTeamArgs {
+export function parseTeamArgs(tokens: string[], defaultAgentType: string = 'claude'): ParsedTeamArgs {
   const args = [...tokens];
   let workerCount = 3;
   let agentTypes: string[] = [];
@@ -605,6 +627,11 @@ function sampleValueForField(field: string): unknown {
     case 'reviewer': return 'leader-fixed';
     case 'decision_reason': return 'approved in demo';
     case 'required': return true;
+    case 'task_version': return 1;
+    case 'sequence': return 1;
+    case 'resume_payload': return { cursor: 'safe-boundary' };
+    case 'request_id': return 'recovery-request-123';
+    case 'timeout_ms': return 30000;
     default: return `<${field}>`;
   }
 }
@@ -867,14 +894,16 @@ async function handleTeamShutdown(teamName: string, cwd: string, force: boolean)
   const { isRuntimeV2Enabled } = await import('../../team/runtime-v2.js');
   if (isRuntimeV2Enabled()) {
     const { shutdownTeamV2 } = await import('../../team/runtime-v2.js');
-    await shutdownTeamV2(teamName, cwd, { force });
+    const shutdown = await shutdownTeamV2(teamName, cwd, { force });
+    if (shutdown.outcome !== 'cleaned') throw new Error(`Team shutdown ${shutdown.outcome}: ${shutdown.reason}`);
     console.log(`Team shutdown complete: ${teamName}`);
     return;
   }
 
   // v1 fallback
   const { shutdownTeam } = await import('../../team/runtime.js');
-  await shutdownTeam(teamName, `omq-team-${teamName}`, cwd);
+  const cleaned = await shutdownTeam(teamName, `omc-team-${teamName}`, cwd);
+  if (!cleaned) throw new Error(`Team shutdown failed: cleanup unverified for ${teamName}`);
   console.log(`Team shutdown complete: ${teamName}`);
 }
 
@@ -1007,7 +1036,9 @@ export async function teamCommand(args: string[]): Promise<void> {
     await handleTeamStart(parsed, cwd);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
-    console.log(TEAM_HELP.trim());
+    if (shouldPrintTeamHelpForError(error)) {
+      console.log(TEAM_HELP.trim());
+    }
     process.exitCode = 1;
   }
 }

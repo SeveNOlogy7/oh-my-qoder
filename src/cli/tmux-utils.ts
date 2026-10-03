@@ -15,8 +15,8 @@ import {
   type SpawnSyncReturns,
 } from 'child_process';
 import { basename, isAbsolute, win32 as win32Path } from 'path';
-import { promisify } from 'util';
 import { qoderCliBinary } from '../lib/qoder-cli.js';
+import { promisify } from 'util';
 
 // ── tmux environment & execution wrappers ────────────────────────────────────
 
@@ -25,6 +25,22 @@ export interface TmuxExecOptions {
    *  Default: false — preserves TMUX (targets the current server).
    *  Set to true for OMQ-owned background sessions and cross-session scans. */
   stripTmux?: boolean;
+}
+
+
+/**
+ * Check whether the Qoder CLI binary is callable from this process.
+ */
+export function isQoderCliAvailable(): boolean {
+  try {
+    execFileSync(qoderCliBinary(), ['--version'], {
+      stdio: 'ignore',
+      shell: process.platform === 'win32',
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function tmuxEnv(): NodeJS.ProcessEnv {
@@ -134,7 +150,7 @@ export async function tmuxCmdAsync(
   args: string[],
   opts?: TmuxExecOptions & { timeout?: number },
 ): Promise<{ stdout: string; stderr: string }> {
-  if (args.some(a => a.includes('#{'))) {
+  if (args.some(a => a.includes('#{')) && !isNativeWindowsShell()) {
     const escaped = args.map(a => "'" + a.replace(/'/g, "'\\''") + "'").join(' ');
     return tmuxShellAsync(escaped, opts);
   }
@@ -201,21 +217,6 @@ export function isTmuxAvailable(): boolean {
 }
 
 /**
- * Check if the host Qoder CLI is available on the system.
- */
-export function isQoderCliAvailable(): boolean {
-  try {
-    execFileSync(qoderCliBinary(), ['--version'], {
-      stdio: 'ignore',
-      shell: process.platform === 'win32',
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Options for `resolveLaunchPolicy`. `requireTmux=true` makes
  * CMUX_SURFACE_ID stop demoting to 'direct'. The caller is responsible for
  * gating on platform/flag combinations (e.g. macOS + --madmax).
@@ -266,6 +267,7 @@ export function buildTmuxSessionName(cwd: string): string {
       cwd,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      windowsHide: true,
     }).trim();
     if (branch) {
       branchToken = sanitizeTmuxToken(branch);
@@ -391,7 +393,7 @@ export function isHudWatchPane(pane: TmuxPaneSnapshot): boolean {
   const command = `${pane.startCommand} ${pane.currentCommand}`.toLowerCase();
   return /\bhud\b/.test(command)
     && /--watch\b/.test(command)
-    && (/\bomq(?:\.js)?\b/.test(command) || /\bnode\b/.test(command));
+    && (/\bomc(?:\.js)?\b/.test(command) || /\bnode\b/.test(command));
 }
 
 /**

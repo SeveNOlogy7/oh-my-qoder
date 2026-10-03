@@ -49,6 +49,20 @@ function extractFilePath(toolInput) {
 }
 
 async function main() {
+  // Skip guard: honor DISABLE_OMQ and OMQ_SKIP_HOOKS (see issues #838, #3253),
+  // matching the sibling PostToolUse hooks (post-tool-verifier.mjs,
+  // post-tool-use-failure.mjs). A guarded short-circuit emits the bare
+  // `{ continue: true }` the hook contract reserves for kill switches.
+  const _skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map(s => s.trim());
+  if (
+    process.env.DISABLE_OMQ === '1' ||
+    process.env.DISABLE_OMQ === 'true' ||
+    _skipHooks.includes('post-tool-use')
+  ) {
+    console.log(JSON.stringify({ continue: true }));
+    return;
+  }
+
   try {
     const input = await readStdin();
     if (!input.trim()) {

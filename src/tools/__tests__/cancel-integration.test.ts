@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
-
-const TEST_DIR = '/tmp/cancel-integration-test';
+// A platform-absolute root: a POSIX-literal '/tmp/...' root resolves to a
+// drive-relative path string on win32, so the same physical state file is
+// captured twice under two spellings (drive-relative and drive-absolute) and
+// the broad-clear "Locations cleared" count double-books each session file.
+const TEST_DIR = join(tmpdir(), 'cancel-integration-test');
 
 // Mock validateWorkingDirectory to allow test directory
 vi.mock('../../lib/worktree-paths.js', async () => {
@@ -20,8 +24,12 @@ import {
   stateClearTool,
 } from '../state-tools.js';
 import { cleanupStaleStates } from '../../features/state-manager/index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('cancel-integration', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     mkdirSync(join(TEST_DIR, '.omq', 'state'), { recursive: true });
   });

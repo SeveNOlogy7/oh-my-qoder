@@ -14,7 +14,7 @@
  * returns null and the normal repo/branch/status elements take over.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { cyan, dim, green, yellow } from '../colors.js';
@@ -24,9 +24,9 @@ import { getOmqRoot } from '../../lib/worktree-paths.js';
  * Liveness window for the session counter. A session dir whose
  * mtime (or any file inside) is within this window counts as active.
  *
- * 5 minutes balances responsiveness (a closed Qoder CLI drops off
+ * 5 minutes balances responsiveness (a closed Claude Code drops off
  * quickly) with tolerance for short user idleness between tool calls.
- * Qoder CLI fires hooks on every tool invocation and writes hud
+ * Claude Code fires hooks on every tool invocation and writes hud
  * state on every render, so any active session keeps the dir mtime
  * fresh well inside this window.
  *
@@ -37,7 +37,7 @@ import { getOmqRoot } from '../../lib/worktree-paths.js';
 const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
 
 /**
- * Qoder CLI session IDs are UUIDs. Anchor on this to filter out
+ * Claude Code session IDs are UUIDs. Anchor on this to filter out
  * unrelated subdirectories without depending on any specific marker
  * file (different hooks may or may not have run yet for a given
  * session — e.g. session-started.json is missing if the session-start
@@ -69,12 +69,12 @@ export function resetMultiRepoCache(): void {
 
 function isGitRepo(dir: string): boolean {
   try {
-    execSync('git rev-parse --show-toplevel', {
+    execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: dir,
       encoding: 'utf-8',
       timeout: 1000,
       stdio: ['pipe', 'pipe', 'pipe'],
-      shell: process.platform === 'win32' ? 'cmd.exe' : undefined,
+      windowsHide: true,
     });
     return true;
   } catch {
@@ -91,13 +91,13 @@ function looksLikeRepo(entryPath: string): boolean {
  * Count session directories under `<cwd>/.omq/state/sessions/`.
  *
  * A session is "active" when both:
- *  1. The directory name matches a Qoder CLI session UUID — filters
+ *  1. The directory name matches a Claude Code session UUID — filters
  *     out unrelated subdirectories without depending on any specific
  *     marker file.
  *  2. The dir mtime — or any file inside, as a fallback for FS that
  *     don't bubble child mtime — is within ACTIVITY_WINDOW_MS.
  *
- * This relies on Qoder CLI firing hooks on every tool call (and
+ * This relies on Claude Code firing hooks on every tool call (and
  * writing hud state on every render), which keeps mtime fresh while
  * the user is interacting with the session.
  */

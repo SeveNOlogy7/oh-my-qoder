@@ -11,7 +11,7 @@ import {
   interopSendOmxMessageTool,
   interopSendTaskTool,
 } from '../mcp-bridge.js';
-import { initInteropSession, readSharedMessages, readSharedTasks, updateSharedTask } from '../shared-state.js';
+import { getInteropDir, initInteropSession, readSharedMessages, readSharedTasks, updateSharedTask } from '../shared-state.js';
 
 describe('interop mcp bridge gating', () => {
   it('getInteropMode normalizes invalid values to off', () => {
@@ -113,8 +113,11 @@ describe('interop mcp bridge artifact surfacing', () => {
     const readText = readResponse.content[0]?.text ?? '';
     expect(readText).toContain('Description artifact:');
     expect(readText).toContain('Result artifact:');
-    expect(readText).toContain('.omq/state/interop/artifacts/task-description/');
-    expect(readText).toContain('.omq/state/interop/artifacts/task-result/');
+    // The surfaced descriptor path is the host-native spelling of the
+    // artifacts directory (join separators); the former POSIX-literal
+    // '.omq/state/interop/artifacts/...' substring could never match on win32.
+    expect(readText).toContain(join(getInteropDir(tempDir), 'artifacts', 'task-description'));
+    expect(readText).toContain(join(getInteropDir(tempDir), 'artifacts', 'task-result'));
   });
 
   it('reports artifact-backed shared messages', async () => {
@@ -136,6 +139,6 @@ describe('interop mcp bridge artifact surfacing', () => {
 
     const readText = readResponse.content[0]?.text ?? '';
     expect(readText).toContain('Content artifact:');
-    expect(readText).toContain('.omq/state/interop/artifacts/message-content/');
+    expect(readText).toContain(join(getInteropDir(tempDir), 'artifacts', 'message-content'));
   });
 });

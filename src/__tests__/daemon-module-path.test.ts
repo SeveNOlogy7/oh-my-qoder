@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { join } from 'path';
 import { resolveDaemonModulePath } from '../utils/daemon-module-path.js';
 
 describe('resolveDaemonModulePath', () => {
@@ -15,7 +16,9 @@ describe('resolveDaemonModulePath', () => {
       '/repo/bridge/cli.cjs',
       ['features', 'rate-limit-wait', 'daemon.js'],
     );
-    expect(result).toBe('/repo/dist/features/rate-limit-wait/daemon.js');
+    // The helper joins with the host separator, so the expectation is built the
+    // same way instead of being written in POSIX form only.
+    expect(result).toBe(join('/repo', 'dist', 'features', 'rate-limit-wait', 'daemon.js'));
   });
 
   it('resolves bundled bridge/cli.cjs to dist reply-listener module path', () => {
@@ -23,7 +26,7 @@ describe('resolveDaemonModulePath', () => {
       '/repo/bridge/cli.cjs',
       ['notifications', 'reply-listener.js'],
     );
-    expect(result).toBe('/repo/dist/notifications/reply-listener.js');
+    expect(result).toBe(join('/repo', 'dist', 'notifications', 'reply-listener.js'));
   });
 
   it('supports windows-style bundled bridge paths', () => {

@@ -42,8 +42,8 @@ Jumping into code without understanding requirements leads to rework, scope cree
 - Consensus mode runs fully automated by default; add `--interactive` to enable user prompts at draft review and final approval steps
 - Consensus mode uses RALPLAN-DR short mode by default; switch to deliberate mode with `--deliberate` or when the request explicitly signals high risk (auth/security, data migration, destructive/irreversible changes, production incident, compliance/PII, public API breakage)
 - **Planning/execution boundary:** planning modes inspect context and produce plans/specs/proposals only. They MUST mark artifacts as `pending approval` unless the user has explicitly opted into execution in the current turn or via the structured approval UI. Before explicit execution approval, planning modes MUST NOT run mutation-oriented shell commands, edit source files, commit, push, open PRs, invoke execution skills, or delegate implementation tasks.
-- **Goal workflow boundary:** when a plan compares Qoder CLI `/goal`, Ralph, Team, UltraQA, or artifact-only Ultragoal, identify exactly one primary loop authority and use the deterministic conflict policies `refuse`, `adopt_existing`, and `artifact_only` rather than non-deterministic warning handling. `/goal` facts must cite Qoder CLI/Anthropic sources only (Qoder CLI `/goal` docs: https://code.claude.com/docs/en/goal; Anthropic Qoder CLI changelog: https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md), and plans MUST NOT claim the `/goal` evaluator independently runs commands or reads files; require surfaced proof evidence before any completion claim.
-- **Goal workflow doc target:** for user-facing comparisons, keep examples aligned with `docs/shared/mode-selection-guide.md#goal-oriented-workflow-selection` and `docs/REFERENCE.md#goal-workflow-ux-goal-ralph-team-ultraqa-ultragoal`.
+- **Goal workflow boundary:** when a plan compares Claude Code `/goal`, Ralph, Team, or artifact-only Ultragoal, identify exactly one primary loop authority and use the deterministic conflict policies `refuse`, `adopt_existing`, and `artifact_only` rather than non-deterministic warning handling. `/goal` facts must cite Claude Code/Anthropic sources only (Claude Code `/goal` docs: https://code.claude.com/docs/en/goal; Anthropic Claude Code changelog: https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md), and plans MUST NOT claim the `/goal` evaluator independently runs commands or reads files; require surfaced proof evidence before any completion claim.
+- **Goal workflow doc target:** for user-facing comparisons, keep examples aligned with `docs/shared/mode-selection-guide.md#goal-oriented-workflow-selection` and `docs/REFERENCE.md#goal-workflow-ux-goal-ralph-team-ultragoal`.
   </Execution_Policy>
 
 <Steps>
@@ -102,10 +102,12 @@ Without cleanup, the stop hook blocks all subsequent stops with `[RALPLAN - CONS
    - **Request changes** — return to step 1 with user feedback incorporated
    - **Skip review** — go directly to final approval (step 7)
      If NOT running with `--interactive`, automatically proceed to review (step 3).
-3. **Architect** reviews for architectural soundness using `Agent(subagent_type="oh-my-qoder:architect", ...)`. Architect review **MUST** include: strongest steelman counterargument (antithesis) against the favored option, at least one meaningful tradeoff tension, and (when possible) a synthesis path. In deliberate mode, Architect should explicitly flag principle violations. **Wait for this step to complete before proceeding to step 4.** Do NOT run steps 3 and 4 in parallel.
-4. **Critic** evaluates against quality criteria using `Agent(subagent_type="oh-my-qoder:critic", ...)`. Critic **MUST** verify principle-option consistency, fair alternative exploration, risk mitigation clarity, testable acceptance criteria, and concrete verification steps. Critic **MUST** explicitly reject shallow alternatives, driver contradictions, vague risks, or weak verification. In deliberate mode, Critic **MUST** reject missing/weak pre-mortem or missing/weak expanded test plan. Run only after step 3 is complete.
+3. **Architect** reviews for architectural soundness using `Task(subagent_type="oh-my-qoder:architect", ...)`. Architect review **MUST** include: strongest steelman counterargument (antithesis) against the favored option, at least one meaningful tradeoff tension, and (when possible) a synthesis path. In deliberate mode, Architect should explicitly flag principle violations. **Wait for this step to complete before proceeding to step 4.** Do NOT run steps 3 and 4 in parallel. Architect MUST evaluate the same fixed plan snapshot produced by Planner in step 1 without mutating it; Architect output MUST NOT be passed to Critic.
+4. **Critic** evaluates against quality criteria using `Task(subagent_type="oh-my-qoder:critic", ...)`. Critic **MUST** verify principle-option consistency, fair alternative exploration, risk mitigation clarity, testable acceptance criteria, and concrete verification steps. Critic **MUST** explicitly reject shallow alternatives, driver contradictions, vague risks, or weak verification. In deliberate mode, Critic **MUST** reject missing/weak pre-mortem or missing/weak expanded test plan. Run only after step 3 is complete. Critic MUST evaluate the same fixed plan snapshot independently, as a separate, individually awaited Task call; Critic MUST NOT consume or receive the Architect review.
+
+   > **Independent sequential reviews of one fixed plan snapshot.** Architect and Critic each review the same fixed plan snapshot produced by Planner in step 1, and neither review mutates it. Architect output MUST NOT be passed to Critic. Architect and Critic MUST run sequentially as separate, individually awaited Task calls — never in parallel — and the Critic Task MUST NOT be issued until the Architect Task has completed and its result has been awaited. Critic MUST NOT consume or receive the Architect review. Architect and Critic results MUST be combined only by Planner during revision or improvement synthesis, and only after both reviews have completed.
 5. **Re-review loop** (max 5 iterations): If Critic rejects, execute this closed loop:
-   a. Collect all rejection feedback from Architect + Critic
+   a. Collect all rejection feedback from Architect + Critic (Planner-only synthesis: Architect and Critic results MUST be combined only by Planner, and only after both reviews have completed).
    b. Pass feedback to Planner to produce a revised plan
    c. **Return to Step 3** — Architect reviews the revised plan
    d. **Return to Step 4** — Critic evaluates the revised plan
@@ -132,7 +134,7 @@ Without cleanup, the stop hook blocks all subsequent stops with `[RALPLAN - CONS
 ### Review Mode (`--review`)
 
 1. Read plan file from `.omq/plans/`
-2. Evaluate via Critic using `Agent(subagent_type="oh-my-qoder:critic", ...)`
+2. Evaluate via Critic using `Task(subagent_type="oh-my-qoder:critic", ...)`
 3. Return verdict: APPROVED, REVISE (with specific feedback), or REJECT (replanning required)
 
 ### Plan Output Format
@@ -156,10 +158,10 @@ Plans are saved to `.omq/plans/`. Drafts go to `.omq/drafts/`.
 - Use `AskUserQuestion` for preference questions (scope, priority, timeline, risk tolerance) -- provides clickable UI
 - Use plain text for questions needing specific values (port numbers, names, follow-up clarifications)
 - Use `explore` agent (Haiku, 30s timeout) to gather codebase facts before asking the user
-- Use `Agent(subagent_type="oh-my-qoder:planner", ...)` for planning validation on large-scope plans
-- Use `Agent(subagent_type="oh-my-qoder:analyst", ...)` for requirements analysis
-- Use `Agent(subagent_type="oh-my-qoder:critic", ...)` for plan review in consensus and review modes
-- **CRITICAL — Consensus mode agent calls MUST be sequential, never parallel.** Always await the Architect Task result before issuing the Critic Task.
+- Use `Task(subagent_type="oh-my-qoder:planner", ...)` for planning validation on large-scope plans
+- Use `Task(subagent_type="oh-my-qoder:analyst", ...)` for requirements analysis
+- Use `Task(subagent_type="oh-my-qoder:critic", ...)` for plan review in consensus and review modes
+- **CRITICAL — Consensus mode agent calls MUST be sequential, never parallel.** Always await the Architect Task result before issuing the Critic Task. Both reviews consume the same fixed plan snapshot; no Architect output passes to Critic; results combine only during Planner synthesis after both reviews complete.
 - In consensus mode, default to RALPLAN-DR short mode; enable deliberate mode on `--deliberate` or explicit high-risk signals (auth/security, migrations, destructive changes, production incidents, compliance/PII, public API breakage)
 - In consensus mode with `--interactive`: use `AskUserQuestion` for the user feedback step (step 2) and the final approval step (step 7) -- never ask for approval in plain text. Without `--interactive`, skip both prompts, mark the plan `pending approval`, output the final plan, and stop.
 - In consensus mode with `--interactive`, on explicit user approval **MUST** invoke `Skill("oh-my-qoder:ralph")` or `Skill("oh-my-qoder:team")` for execution (step 9) -- never implement directly in the planning agent

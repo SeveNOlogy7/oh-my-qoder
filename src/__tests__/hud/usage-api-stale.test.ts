@@ -8,10 +8,14 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
+import { join } from 'path';
 
 const QODER_CONFIG_DIR = '/tmp/test-claude';
-const CACHE_PATH = `${QODER_CONFIG_DIR}/plugins/oh-my-qoder/.usage-cache-zai.json`;
-const CACHE_DIR = `${QODER_CONFIG_DIR}/plugins/oh-my-qoder`;
+// Built with join(), not a hand-written POSIX string: production computes the
+// cache path with join() too, and the fs mock below matches keys by exact string,
+// so a hardcoded "/" form can only ever resolve on one platform.
+const CACHE_DIR = join(QODER_CONFIG_DIR, 'plugins', 'oh-my-qoder');
+const CACHE_PATH = join(CACHE_DIR, '.usage-cache-zai.json');
 
 function createFsMock(initialFiles: Record<string, string>) {
   const files = new Map(Object.entries(initialFiles));

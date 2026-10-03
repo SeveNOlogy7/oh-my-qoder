@@ -28,8 +28,12 @@ import {
   installWorktreeRootAgents,
   restoreWorktreeRootAgents,
 } from '../git-worktree.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('multi-repo workspace team writes', () => {
+  useDefaultStateRoot();
   let parent: string;
   let api: string;
   const teamName = 'multi-repo-team';

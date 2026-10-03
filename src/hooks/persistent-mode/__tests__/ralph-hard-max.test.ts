@@ -5,8 +5,13 @@ import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
 import { clearSecurityConfigCache } from '../../../lib/security-config.js';
+// Seeds {fixture}/.omq and expects the DEFAULT state-root branch (#42): lift
+// the per-file OMQ_STATE_DIR pin for every test here.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('persistent-mode ralph hard max iterations', () => {
+  useDefaultStateRoot();
+
   const originalSecurity = process.env.OMQ_SECURITY;
 
   afterEach(() => {

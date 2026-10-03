@@ -19,6 +19,9 @@ import {
   type OrchestratorConfig,
 } from '../merge-orchestrator.js';
 import { atomicWriteJson } from '../fs-utils.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 beforeAll(() => {
   process.env.OMQ_RUNTIME_V2 = '1';
@@ -30,6 +33,7 @@ afterEach(() => {
 });
 
 describe('M6: restart recovery', () => {
+  useDefaultStateRoot();
   let fixture: GitFixture;
 
   beforeEach(async () => {

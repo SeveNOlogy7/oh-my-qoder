@@ -20,15 +20,19 @@ import {
   type IncompleteTodosResult,
   type StopContext,
 } from '../hooks/todo-continuation/index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 // Mock fs and os modules
 vi.mock('fs');
 vi.mock('os');
 vi.mock('../utils/config-dir.js', () => ({
-  getQoderConfigDir: () => '/home/testuser/.qwen',
+  getClaudeConfigDir: () => '/home/testuser/.claude',
 }));
 
 describe('Task System Support', () => {
+  useDefaultStateRoot();
   const mockHomedir = '/home/testuser';
 
   beforeEach(() => {
@@ -44,7 +48,7 @@ describe('Task System Support', () => {
     it('should return correct path for session ID', () => {
       const sessionId = 'abc123';
       const result = getTaskDirectory(sessionId);
-      expect(result).toBe(path.join(mockHomedir, '.qwen', 'tasks', sessionId));
+      expect(result).toBe(path.join(mockHomedir, '.claude', 'tasks', sessionId));
     });
 
     it('should handle session ID with special characters', () => {
@@ -58,6 +62,75 @@ describe('Task System Support', () => {
       const result = getTaskDirectory(sessionId);
       // After security validation: empty string is invalid → returns ''
       expect(result).toBe('');
+    });
+  });
+
+  describe('task list identity resolution (issue #3732)', () => {
+    const ORIGINAL_OVERRIDE = process.env.CLAUDE_CODE_TASK_LIST_ID;
+
+    afterEach(() => {
+      if (ORIGINAL_OVERRIDE === undefined) {
+        delete process.env.CLAUDE_CODE_TASK_LIST_ID;
+      } else {
+        process.env.CLAUDE_CODE_TASK_LIST_ID = ORIGINAL_OVERRIDE;
+      }
+    });
+
+    it('should resolve the task directory from CLAUDE_CODE_TASK_LIST_ID when set', () => {
+      process.env.CLAUDE_CODE_TASK_LIST_ID = 'my-team-tasks';
+      const result = getTaskDirectory('session-123');
+      // Reads the store Claude Code actually writes under the override, not
+      // the session dir — otherwise successful writes look like they vanished.
+      expect(result).toBe(path.join(mockHomedir, '.claude', 'tasks', 'my-team-tasks'));
+    });
+
+    it('should fall back to the session id directory when the override is absent', () => {
+      delete process.env.CLAUDE_CODE_TASK_LIST_ID;
+      const result = getTaskDirectory('session-123');
+      expect(result).toBe(path.join(mockHomedir, '.claude', 'tasks', 'session-123'));
+    });
+
+    it('should reject a path-traversal override and fall back to the session id', () => {
+      process.env.CLAUDE_CODE_TASK_LIST_ID = '../evil';
+      const result = getTaskDirectory('session-123');
+      expect(result).toBe(path.join(mockHomedir, '.claude', 'tasks', 'session-123'));
+    });
+
+    it('should reject an empty override and fall back to the session id', () => {
+      process.env.CLAUDE_CODE_TASK_LIST_ID = '   ';
+      const result = getTaskDirectory('session-123');
+      expect(result).toBe(path.join(mockHomedir, '.claude', 'tasks', 'session-123'));
+    });
+
+    it('checkIncompleteTasks reads tasks written under the task-list override', () => {
+      process.env.CLAUDE_CODE_TASK_LIST_ID = 'my-team-tasks';
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readdirSync).mockReturnValue(['1.json'] as any);
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        JSON.stringify({ id: '1', subject: 'Task 1', status: 'pending' })
+      );
+
+      const result = checkIncompleteTasks('session-123');
+      expect(result.count).toBe(1);
+      // The read must have targeted the override dir, not the session dir.
+      expect(vi.mocked(fs.readdirSync).mock.calls[0][0]).toBe(
+        path.join(mockHomedir, '.claude', 'tasks', 'my-team-tasks')
+      );
+    });
+
+    it('checkIncompleteTasks returns zero when only a foreign store exists', () => {
+      delete process.env.CLAUDE_CODE_TASK_LIST_ID;
+      vi.mocked(fs.existsSync).mockImplementation(
+        (p: any) => typeof p === 'string' && p.includes('my-team-tasks')
+      );
+      vi.mocked(fs.readdirSync).mockReturnValue(['1.json'] as any);
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        JSON.stringify({ id: '1', subject: 'Task 1', status: 'pending' })
+      );
+
+      // Tasks exist only under the team store; session dir is absent.
+      const result = checkIncompleteTasks('session-123');
+      expect(result.count).toBe(0);
     });
   });
 
@@ -874,7 +947,7 @@ describe('Task System Support', () => {
     it('should return valid path for valid session ID', () => {
       const result = getTaskDirectory('valid-session-123');
       expect(result).toContain('valid-session-123');
-      expect(result).toContain(path.join('.qwen', 'tasks'));
+      expect(result).toContain(path.join('.claude', 'tasks'));
     });
   });
 

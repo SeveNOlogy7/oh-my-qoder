@@ -8,6 +8,9 @@ import { join } from 'path';
 import { createCompactCheckpoint } from '../hooks/pre-compact/index.js';
 import { initJobDb, upsertJob, closeAllJobDbs } from '../lib/job-state-db.js';
 import type { JobStatus } from '../mcp/prompt-persistence.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const TEST_BASE = join(process.cwd(), '.test-pre-compact-cwd-' + process.pid);
 const DIR_A = join(TEST_BASE, 'worktree-a');
@@ -29,6 +32,7 @@ function makeJob(overrides: Partial<JobStatus> = {}): JobStatus {
 }
 
 describe('pre-compact: getActiveJobsSummary respects cwd', () => {
+  useDefaultStateRoot();
   beforeEach(async () => {
     if (existsSync(TEST_BASE)) rmSync(TEST_BASE, { recursive: true, force: true });
     mkdirSync(DIR_A, { recursive: true });

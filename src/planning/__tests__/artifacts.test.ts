@@ -12,8 +12,12 @@ import {
   planningArtifactTimestamp,
   selectMatchingTestSpecsForPrd,
 } from "../artifact-names.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe("planning/artifacts", () => {
+  useDefaultStateRoot();
   let testDir: string;
   let plansDir: string;
 

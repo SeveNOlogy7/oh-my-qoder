@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { readFile as readFileAsync, writeFile as writeFileAsync } from 'node:fs/promises';
 import { tmpdir } from 'os';
 import {
   installPostToolUseHook,
+  installCommitCadence,
+  uninstallCommitCadence,
   pauseHookViaSentinel,
   resumeHookViaSentinel,
   isHookPaused,
@@ -24,19 +27,19 @@ vi.mock('child_process', () => ({
 // ---------------------------------------------------------------------------
 
 function mkWorktree(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'omq-cadence-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'omc-cadence-test-'));
   // Minimal git init so hooks can reference .git internals
   mkdirSync(join(dir, '.git'), { recursive: true });
   return dir;
 }
 
-function readSettings(worktreePath: string): Record<string, unknown> {
-  const p = join(worktreePath, '.claude', 'settings.json');
+function readSettings(worktreePath: string, dir: '.qoder' | '.claude' = '.qoder'): Record<string, unknown> {
+  const p = join(worktreePath, dir, 'settings.json');
   return JSON.parse(readFileSync(p, 'utf-8')) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
-// 1. settings.json shape — must match Qoder CLI hook schema
+// 1. settings.json shape — must match the harness PostToolUse hook schema
 // ---------------------------------------------------------------------------
 
 describe('installPostToolUseHook – settings.json shape', () => {
@@ -50,7 +53,7 @@ describe('installPostToolUseHook – settings.json shape', () => {
     rmSync(worktreePath, { recursive: true, force: true });
   });
 
-  it('creates .claude/settings.json with correct Qoder CLI hook schema', async () => {
+  it('creates .qoder/settings.json by default with the harness PostToolUse hook schema', async () => {
     await installPostToolUseHook(worktreePath, 'writer');
 
     const settings = readSettings(worktreePath);
@@ -126,15 +129,15 @@ describe('installPostToolUseHook – settings.json shape', () => {
     await installPostToolUseHook(worktreePath, 'writer');
 
     // settings.json should not have been created
-    expect(existsSync(join(worktreePath, '.claude', 'settings.json'))).toBe(false);
+    expect(existsSync(join(worktreePath, '.qoder', 'settings.json'))).toBe(false);
   });
 
   it('merges into existing settings.json without clobbering other keys', async () => {
     // Pre-create a settings.json with an existing key
-    const claudeDir = join(worktreePath, '.claude');
-    mkdirSync(claudeDir, { recursive: true });
+    const qoderDir = join(worktreePath, '.qoder');
+    mkdirSync(qoderDir, { recursive: true });
     writeFileSync(
-      join(claudeDir, 'settings.json'),
+      join(qoderDir, 'settings.json'),
       JSON.stringify({ theme: 'dark', hooks: { PreToolUse: [] } }, null, 2),
       'utf-8',
     );
@@ -425,5 +428,131 @@ describe('worker name validation (shell injection guard)', () => {
     await expect(
       installPostToolUseHook(worktreePath, 'alice-1_writer'),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('uninstallCommitCadence durability', () => {
+  let worktreePath: string;
+
+  const context = (): {
+    teamName: string;
+    workerName: string;
+    worktreePath: string;
+    agentType: 'claude';
+    enabled: true;
+    serviceGeneration: number;
+    attemptId: string;
+  } => ({
+    teamName: 'cadence-durability', workerName: 'writer', worktreePath, agentType: 'claude', enabled: true,
+    serviceGeneration: 7, attemptId: '7:owner',
+  });
+
+  beforeEach(() => {
+    worktreePath = mkWorktree();
+  });
+
+  afterEach(() => {
+    rmSync(worktreePath, { recursive: true, force: true });
+  });
+
+  it('retains generation ownership after malformed settings and removes it only after a durable retry', async () => {
+    const current = context();
+    await installCommitCadence(current);
+    const settingsPath = join(worktreePath, '.claude', 'settings.json');
+    writeFileSync(settingsPath, '{ malformed settings', 'utf-8');
+
+    await expect(uninstallCommitCadence(current)).rejects.toThrow();
+    await expect(installCommitCadence({ ...current, serviceGeneration: 6, attemptId: '6:owner' }))
+      .resolves.toEqual({ method: 'none' });
+
+    writeFileSync(settingsPath, JSON.stringify({ hooks: { PostToolUse: [] } }), 'utf-8');
+    await expect(uninstallCommitCadence(current)).resolves.toBeUndefined();
+  });
+
+  it('propagates non-ENOENT read errors and permits a later durable uninstall retry', async () => {
+    const current = context();
+    await installCommitCadence(current);
+    const settingsPath = join(worktreePath, '.claude', 'settings.json');
+    rmSync(settingsPath);
+    mkdirSync(settingsPath);
+
+    await expect(uninstallCommitCadence(current)).rejects.toThrow();
+
+    rmSync(settingsPath, { recursive: true });
+    writeFileSync(settingsPath, JSON.stringify({ hooks: { PostToolUse: [] } }), 'utf-8');
+    await expect(uninstallCommitCadence(current)).resolves.toBeUndefined();
+  });
+
+  it('propagates write failures and permits a later durable uninstall retry', async () => {
+    const current = context();
+    await installCommitCadence(current);
+    await expect(uninstallCommitCadence(current, {
+      readFile: readFileAsync,
+      writeFile: vi.fn(async () => { throw new Error('settings write denied'); }) as typeof writeFileAsync,
+    })).rejects.toThrow('settings write denied');
+    await expect(uninstallCommitCadence(current)).resolves.toBeUndefined();
+
+    const settings = readSettings(worktreePath, '.claude');
+    const postToolUse = (settings.hooks as Record<string, unknown>)['PostToolUse'] as Array<Record<string, unknown>>;
+    expect(postToolUse).toEqual([]);
+  });
+});
+
+// #48 (ledger :401): the gate and the write path must come from the same
+// provider-aware mapping. b37141e paired a qwen gate with a `.claude/` write
+// (a settings file the Qoder harness never reads); HEAD's `!== 'claude'` gate
+// demoted qwen to the fallback poller. The harness that actually reads each
+// settings file gets the hook; everyone else keeps the poller.
+describe('installCommitCadence – provider-aware settings dir + gate pairing', () => {
+  let worktreePath: string;
+
+  beforeEach(() => {
+    worktreePath = mkWorktree();
+  });
+
+  afterEach(() => {
+    rmSync(worktreePath, { recursive: true, force: true });
+  });
+
+  it('qwen workers get the PostToolUse hook in .qoder/settings.json', async () => {
+    const result = await installCommitCadence({
+      teamName: 't', workerName: 'writer', worktreePath, agentType: 'qwen', enabled: true,
+    });
+
+    expect(result).toEqual({ method: 'hook' });
+    expect(existsSync(join(worktreePath, '.qoder', 'settings.json'))).toBe(true);
+    expect(existsSync(join(worktreePath, '.claude', 'settings.json'))).toBe(false);
+  });
+
+  it('claude workers get the PostToolUse hook in .claude/settings.json', async () => {
+    const result = await installCommitCadence({
+      teamName: 't', workerName: 'writer', worktreePath, agentType: 'claude', enabled: true,
+    });
+
+    expect(result).toEqual({ method: 'hook' });
+    expect(existsSync(join(worktreePath, '.claude', 'settings.json'))).toBe(true);
+    expect(existsSync(join(worktreePath, '.qoder', 'settings.json'))).toBe(false);
+  });
+
+  it.each(['codex', 'gemini', 'cursor', 'grok', 'antigravity'] as const)('%s workers keep the fallback poller (no settings file)', async (agentType) => {
+    const result = await installCommitCadence({
+      teamName: 't', workerName: 'writer', worktreePath, agentType, enabled: true,
+    });
+
+    expect(result).toEqual({ method: 'fallback-poll' });
+    expect(existsSync(join(worktreePath, '.qoder'))).toBe(false);
+    expect(existsSync(join(worktreePath, '.claude'))).toBe(false);
+  });
+
+  it('uninstallCommitCadence removes the qwen hook from .qoder/settings.json', async () => {
+    const ctx = { teamName: 't', workerName: 'writer', worktreePath, agentType: 'qwen' as const, enabled: true, serviceGeneration: 1, attemptId: '1:o' };
+    await installCommitCadence(ctx);
+    expect(existsSync(join(worktreePath, '.qoder', 'settings.json'))).toBe(true);
+
+    await uninstallCommitCadence(ctx);
+
+    const settings = readSettings(worktreePath, '.qoder');
+    const postToolUse = (settings.hooks as Record<string, unknown>)['PostToolUse'] as Array<Record<string, unknown>>;
+    expect(postToolUse).toEqual([]);
   });
 });

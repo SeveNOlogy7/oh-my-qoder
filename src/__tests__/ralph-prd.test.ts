@@ -23,8 +23,12 @@ import {
   type PRD,
   type UserStory
 } from '../hooks/ralph/index.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 describe('Ralph PRD Module', () => {
+  useDefaultStateRoot();
   let testDir: string;
 
   beforeEach(() => {

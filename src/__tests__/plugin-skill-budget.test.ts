@@ -54,12 +54,13 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
     const defaultSkillDirs = pluginSkillDirs();
     const allSkillDirs = bundledSkillDirs();
 
-    expect(allSkillDirs.length).toBeGreaterThan(30);
+    // 5.0.0 retired 15 legacy skills; the bundled surface is intentionally smaller.
+    expect(allSkillDirs.length).toBeGreaterThan(20);
     expect(defaultSkillDirs).toEqual(allSkillDirs);
   });
 
   it('compacts installed plugin SKILL.md files while archiving full on-demand skill bodies', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-plugin-skill-budget-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-plugin-skill-budget-'));
     try {
       cpSync(SKILLS_DIR, join(tempRoot, 'skills'), { recursive: true });
       const originalBytes = skillPayloadBytes(tempRoot);
@@ -70,7 +71,10 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
 
       expect(result.errors).toEqual([]);
       expect(result.compacted).toBe(allSkillDirs.length);
-      expect(originalBytes).toBeGreaterThan(400 * 1024);
+      // Precondition: the uncompacted payload is still large enough that
+      // compaction is doing real work. Lowered from 400KB after the 5.0.0
+      // retirement removed 15 skills from the bundled surface.
+      expect(originalBytes).toBeGreaterThan(300 * 1024);
       expect(compactBytes).toBeLessThan(COMPACT_PLUGIN_SKILL_BUDGET_BYTES);
       expect(result.totalBytes).toBe(compactBytes);
 
@@ -83,9 +87,9 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
 
         expect(Buffer.byteLength(shim), `${skillDir} compact shim size`).toBeLessThan(COMPACT_PLUGIN_SKILL_PER_FILE_BUDGET_BYTES);
         expect(shim, `${skillDir} shim should point to archived body`).toContain(`../../skill-bodies/${skillDir}/SKILL.md`);
-        expect(shim, `${skillDir} shim should expose runtime body override`).toContain('omq-full-body:');
+        expect(shim, `${skillDir} shim should expose runtime body override`).toContain('omc-full-body:');
         expect(shim, `${skillDir} shim should prefer plugin root env vars`).toContain(
-          `\${QODER_PLUGIN_ROOT:-\${OMQ_PLUGIN_ROOT}}/skill-bodies/${skillDir}/SKILL.md`,
+          `\${CLAUDE_PLUGIN_ROOT:-\${OMQ_PLUGIN_ROOT}}/skill-bodies/${skillDir}/SKILL.md`,
         );
         expect(shim, `${skillDir} shim should define plugin root by containing directories`).toContain(
           'The plugin root is the directory containing both `skills/` and `skill-bodies/`.',
@@ -104,7 +108,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('uses platform-safe containment for archived full-body skill paths', () => {
-    const winRoot = 'C:\\Users\\me\\.qwen\\plugins\\cache\\omq\\oh-my-qoder\\4.13.7';
+    const winRoot = 'C:\\Users\\me\\.claude\\plugins\\cache\\omc\\oh-my-claudecode\\4.13.7';
     const winArchivedBody = win32.join(winRoot, 'skill-bodies', 'plan', 'SKILL.md');
     const winEscapedBody = win32.join(winRoot, '..', 'other-plugin', 'SKILL.md');
 
@@ -132,7 +136,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('materializes declared plugin command wrappers into cache sync targets', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-plugin-commands-cache-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-plugin-commands-cache-'));
     try {
       const sourceRoot = join(tempRoot, 'source');
       const targetRoot = join(tempRoot, 'cache', 'omq', 'oh-my-qoder', '4.14.1');
@@ -150,9 +154,10 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
       writeFileSync(join(sourceRoot, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n');
       writeFileSync(join(sourceRoot, 'dist', 'hooks', 'skill-bridge.cjs'), 'console.log("skill bridge");\n');
       writeFileSync(join(sourceRoot, 'bridge', 'cli.cjs'), 'console.log("bridge");\n');
+      writeFileSync(join(sourceRoot, 'bridge', 'claude-md-coordinator.cjs'), 'console.log("CLAUDE.md coordinator");\n');
       writeFileSync(join(sourceRoot, 'hooks', 'hooks.json'), '{}\n');
       writeFileSync(join(sourceRoot, 'skills', 'plan', 'SKILL.md'), 'name: plan\n');
-      writeFileSync(join(sourceRoot, 'package.json'), JSON.stringify({ name: 'oh-my-qoder', version: '4.14.1' }));
+      writeFileSync(join(sourceRoot, 'package.json'), JSON.stringify({ name: 'oh-my-claude-sisyphus', version: '4.14.1' }));
 
       const result = copyPluginSyncPayload(sourceRoot, [targetRoot]);
 
@@ -172,7 +177,12 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('preserves deprecated slash aliases as command wrappers', () => {
-    expect(readFileSync(join(COMMANDS_DIR, 'learner.md'), 'utf-8')).toContain('skills/skillify/SKILL.md');
     expect(readFileSync(join(COMMANDS_DIR, 'psm.md'), 'utf-8')).toContain('skills/project-session-manager/SKILL.md');
+    // The ancestor retired learner.md in 5.0.0; this fork shipped it pre-hop and kept
+    // it, so the fork's contract is "it stays a wrapper", not "it is absent".
+    const learner = readFileSync(join(COMMANDS_DIR, 'learner.md'), 'utf-8');
+    expect(learner).toContain('skills/skillify/SKILL.md');
+    expect(learner).toContain('$ARGUMENTS');
+    expect(learner.length).toBeLessThan(600);
   });
 });

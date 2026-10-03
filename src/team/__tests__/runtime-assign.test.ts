@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const mocks = vi.hoisted(() => ({
   sendToWorker: vi.fn(),
@@ -16,6 +19,7 @@ vi.mock('../tmux-session.js', async () => {
 });
 
 describe('assignTask trigger delivery', () => {
+  useDefaultStateRoot();
   beforeEach(() => {
     mocks.sendToWorker.mockReset();
   });

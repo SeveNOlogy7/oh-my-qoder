@@ -8,6 +8,9 @@ import {
   acquireTaskLock, releaseTaskLock, withTaskLock,
 } from '../task-file-ops.js';
 import type { TaskFile } from '../types.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const TEST_TEAM = 'test-team-ops';
 
@@ -42,6 +45,7 @@ afterEach(() => {
 });
 
 describe('readTask', () => {
+  useDefaultStateRoot();
   it('reads existing task', () => {
     const task: TaskFile = {
       id: '1', subject: 'Test', description: 'Desc', status: 'pending',
@@ -64,6 +68,7 @@ describe('readTask', () => {
 });
 
 describe('updateTask', () => {
+  useDefaultStateRoot();
   it('updates status while preserving other fields', () => {
     const task: TaskFile = {
       id: '1', subject: 'Test', description: 'Desc', status: 'pending',
@@ -115,6 +120,7 @@ describe('updateTask', () => {
 });
 
 describe('findNextTask', () => {
+  useDefaultStateRoot();
   it('finds pending task assigned to worker and claims it', async () => {
     writeTask({ id: '1', subject: 'T1', description: 'D', status: 'pending', owner: 'w1', blocks: [], blockedBy: [] });
     const result = await findNextTask(TEST_TEAM, 'w1', { cwd: TEST_CWD });
@@ -188,6 +194,7 @@ describe('findNextTask', () => {
 });
 
 describe('acquireTaskLock / releaseTaskLock', () => {
+  useDefaultStateRoot();
   it('acquires and releases a lock', () => {
     const handle = acquireTaskLock(TEST_TEAM, 'lock-test-1', { cwd: TEST_CWD });
     expect(handle).not.toBeNull();
@@ -267,6 +274,7 @@ describe('acquireTaskLock / releaseTaskLock', () => {
 });
 
 describe('withTaskLock', () => {
+  useDefaultStateRoot();
   it('executes function while holding lock', async () => {
     let executed = false;
     const result = await withTaskLock(TEST_TEAM, 'with-lock-1', () => {
@@ -304,6 +312,7 @@ describe('withTaskLock', () => {
 });
 
 describe('areBlockersResolved', () => {
+  useDefaultStateRoot();
   it('returns true for empty blockers', () => {
     expect(areBlockersResolved(TEST_TEAM, [], { cwd: TEST_CWD })).toBe(true);
   });
@@ -320,6 +329,7 @@ describe('areBlockersResolved', () => {
 });
 
 describe('writeTaskFailure / readTaskFailure', () => {
+  useDefaultStateRoot();
   it('creates failure sidecar', () => {
     writeTaskFailure(TEST_TEAM, '1', 'timeout error', { cwd: TEST_CWD });
     const failure = readTaskFailure(TEST_TEAM, '1', { cwd: TEST_CWD });
@@ -351,6 +361,7 @@ describe('writeTaskFailure / readTaskFailure', () => {
 });
 
 describe('listTaskIds', () => {
+  useDefaultStateRoot();
   it('lists task IDs sorted numerically', () => {
     writeTask({ id: '3', subject: 'T', description: 'D', status: 'pending', owner: 'w', blocks: [], blockedBy: [] });
     writeTask({ id: '1', subject: 'T', description: 'D', status: 'pending', owner: 'w', blocks: [], blockedBy: [] });
@@ -372,6 +383,7 @@ describe('listTaskIds', () => {
 });
 
 describe('isTaskRetryExhausted', () => {
+  useDefaultStateRoot();
   it('returns true after 5 failures (default max)', () => {
     for (let i = 0; i < 5; i++) {
       writeTaskFailure(TEST_TEAM, '1', `error-${i}`, { cwd: TEST_CWD });

@@ -189,6 +189,26 @@ describe('harness-file auto-merge (#3224)', () => {
     }
   });
 
+  // The loop above iterates the constant, so it stays green whatever the constant
+  // holds. These literal expectations are what make the list observable: the fork's
+  // worker worktrees carry a `.qoder/` overlay, and dropping that entry silently
+  // re-exposes infrastructure files to three-way merges.
+  it('auto-merges the overlay paths this fork actually writes into a worktree', () => {
+    expect([...HARNESS_MERGE_PATHS]).toEqual(['AGENTS.md', '.qoder/**', '.claude/**']);
+
+    configureHarnessMergeAttributes(repoDir);
+    const commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: repoDir, encoding: 'utf-8', stdio: 'pipe',
+    }).trim();
+    const lines = readFileSync(join(repoDir, commonDir, 'info', 'attributes'), 'utf-8')
+      .split('\n')
+      .filter((l) => l.trim());
+
+    expect(lines).toContain('.qoder/** merge=ours');
+    expect(lines).toContain('.claude/** merge=ours');
+    expect(lines).toContain('AGENTS.md merge=ours');
+  });
+
   it('auto-resolves AGENTS.md conflict so disjoint task work still merges', () => {
     const main = mainBranch();
 

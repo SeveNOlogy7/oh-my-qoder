@@ -1,12 +1,13 @@
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { spawnSync } from 'child_process';
-import { isAbsolute, normalize, sep, win32 as win32Path } from 'path';
+import { isAbsolute, normalize, win32 as win32Path } from 'path';
 import { validateTeamName } from './team-name.js';
-import { normalizeToTierAlias } from '../features/delegation-enforcer.js';
-import { isProviderSpecificModelId, isNonDefaultProvider } from '../config/models.js';
+import { normalizeToCcAlias, normalizeToTierAlias } from '../features/delegation-enforcer.js';
+import { isBedrock, isVertexAI, isProviderSpecificModelId } from '../config/models.js';
 import { isExternalLLMDisabled } from '../lib/security-config.js';
-import { qoderCliBinary, qoderCliNpmPackage } from '../lib/qoder-cli.js';
+import type { WorkerLaunchDescriptor } from './types.js';
 
-export type CliAgentType = 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok';
+export type CliAgentType = 'claude' | 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
 
 export interface CliAgentContract {
   agentType: CliAgentType;
@@ -53,9 +54,35 @@ const UNTRUSTED_PATH_PATTERNS: RegExp[] = [
   /^\/tmp(\/|$)/,
   /^\/var\/tmp(\/|$)/,
   /^\/dev\/shm(\/|$)/,
+  // The REAL Windows temp locations, in the forward-slash form
+  // resolveCliBinaryPath matches against (#63): C:\Windows\Temp and the
+  // per-user %LOCALAPPDATA%\Temp (= C:\Users\<u>\AppData\Local\Temp).
+  // Case-insensitive and drive-letter agnostic; the trailing boundary keeps
+  // siblings like C:\Windows\Tempx trusted.
+  /^([A-Za-z]:)\/windows\/temp(\/|$)/i,
+  /^([A-Za-z]:)\/users\/[^/]+\/appdata\/local\/temp(\/|$)/i,
 ];
 
-function getTrustedPrefixes(): string[] {
+/**
+ * Split OMQ_TRUSTED_CLI_DIRS (#63). Windows path lists are ';'-delimited and
+ * drive-letter entries contain ':' themselves, so a blind ':' split corrupts
+ * both (shredding 'C:\tools\bin' into 'C' and '\tools\bin'). Rule:
+ *   1. the value carries ';'  -> split on ';' (Windows list, or any list that
+ *      uses the Windows separator)
+ *   2. no ';' but a drive-letter path on win32 -> single entry (the colon is
+ *      the drive separator, not a list separator)
+ *   3. otherwise -> the historic ':' split, so existing POSIX colon lists are
+ *      interpreted exactly as before
+ */
+function splitTrustedDirList(raw: string, platform: NodeJS.Platform = process.platform): string[] {
+  const value = raw.trim();
+  if (!value) return [];
+  if (value.includes(';')) return value.split(';');
+  if (platform === 'win32' && /^[A-Za-z]:[\\/]/.test(value)) return [value];
+  return value.split(':');
+}
+
+function getTrustedPrefixes(platform: NodeJS.Platform = process.platform): string[] {
   const trusted = [
     '/usr/local/bin',
     '/usr/bin',
@@ -70,8 +97,7 @@ function getTrustedPrefixes(): string[] {
     trusted.push(`${home}/.grok/bin`);
   }
 
-  const custom = (process.env.OMQ_TRUSTED_CLI_DIRS ?? '')
-    .split(':')
+  const custom = splitTrustedDirList(process.env.OMQ_TRUSTED_CLI_DIRS ?? '', platform)
     .map(part => part.trim())
     .filter(Boolean)
     .filter(part => isAbsolute(part));
@@ -81,16 +107,19 @@ function getTrustedPrefixes(): string[] {
 }
 
 function isTrustedPrefix(resolvedPath: string): boolean {
-  const normalized = normalize(resolvedPath);
+  const normalized = normalize(resolvedPath).replace(/\\/g, '/');
   return getTrustedPrefixes().some(prefix => {
     // `normalize` strips trailing separators, so a plain `startsWith` would treat
     // a sibling whose name merely begins with the prefix as trusted — e.g.
     // `/usr/bin` would match `/usr/bin-malicious/grok`, and `~/.local/bin` would
     // match `~/.local/bin-evil/x`. Enforce a directory boundary: the resolved
     // path must be the trusted dir itself or a true descendant (prefix + sep).
-    const p = normalize(prefix);
+    // Comparison is done in forward-slash form because the prefix list is POSIX-shaped
+    // and win32 `normalize` would rewrite a '/usr/…' value into '\usr\…', which starts
+    // with nothing in the list.
+    const p = normalize(prefix).replace(/\\/g, '/');
     if (normalized === p) return true;
-    const withSep = p.endsWith(sep) ? p : p + sep;
+    const withSep = p.endsWith('/') ? p : p + '/';
     return normalized.startsWith(withSep);
   });
 }
@@ -128,17 +157,23 @@ export function resolveCliBinaryPath(binary: string): string {
     throw new Error(`CLI binary '${binary}' not found in PATH`);
   }
 
-  const resolvedPath = normalize(firstLine);
-  if (!isAbsolute(resolvedPath)) {
+  // Keep the finder's own spelling: win32 normalize() turned a '/usr/local/bin/claude'
+  // result into '\usr\local\bin\claude', which is a path nothing can exec.
+  const resolvedPath = firstLine;
+  // Matching happens in forward-slash form. UNTRUSTED_PATH_PATTERNS are anchored on '/',
+  // so a normalized backslash path was absolute to win32 yet matched no pattern — the
+  // untrusted-location check silently passed for /tmp, /var/tmp and /dev/shm on Windows.
+  const matchPath = resolvedPath.replace(/\\/g, '/');
+  if (!isAbsolute(resolvedPath) && !matchPath.startsWith('/')) {
     throw new Error(`Resolved CLI binary '${binary}' to relative path`);
   }
 
-  if (UNTRUSTED_PATH_PATTERNS.some(pattern => pattern.test(resolvedPath))) {
+  if (UNTRUSTED_PATH_PATTERNS.some(pattern => pattern.test(matchPath))) {
     throw new Error(`Resolved CLI binary '${binary}' to untrusted location: ${resolvedPath}`);
   }
 
-  if (!isTrustedPrefix(resolvedPath)) {
-    console.warn(`[omq:cli-security] CLI binary '${binary}' resolved to non-standard path: ${resolvedPath}`);
+  if (!isTrustedPrefix(matchPath)) {
+    console.warn(`[omc:cli-security] CLI binary '${binary}' resolved to non-standard path: ${resolvedPath}`);
   }
 
   resolvedPathCache.set(binary, resolvedPath);
@@ -171,14 +206,14 @@ export const _testInternals = {
 };
 
 /**
- * Detect parent launch env for Qoder CLI API-key auth.
+ * Detect parent launch env for Claude Code API-key auth.
  *
- * Qoder CLI's `--dangerously-skip-permissions` only bypasses permission
+ * Claude Code's `--dangerously-skip-permissions` only bypasses permission
  * prompts. When an API key is present, `--bare` is needed to avoid the
  * interactive OAuth/session login path for team worker panes.
  */
 export function shouldUseClaudeBareMode(env: NodeJS.ProcessEnv = process.env): boolean {
-  return typeof env.DASHSCOPE_API_KEY === 'string' && env.DASHSCOPE_API_KEY.trim().length > 0;
+  return typeof env.ANTHROPIC_API_KEY === 'string' && env.ANTHROPIC_API_KEY.trim().length > 0;
 }
 
 const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
@@ -198,6 +233,29 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
         // them to default Qwen API names (qwen-plus) which are invalid on
         // non-standard providers. (issue #1695)
         const resolved = isProviderSpecificModelId(model) ? model : normalizeToTierAlias(model);
+        args.push('--model', resolved);
+      }
+      return [...args, ...extraFlags];
+    },
+    parseOutput(rawOutput: string): string {
+      return rawOutput.trim();
+    },
+  },
+  claude: {
+    agentType: 'claude',
+    binary: 'claude',
+    installInstructions: 'Install Claude CLI: https://claude.ai/download',
+    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+      const args = ['--dangerously-skip-permissions'];
+      if (shouldUseClaudeBareMode() && !extraFlags.includes('--bare')) {
+        args.push('--bare');
+      }
+      if (model) {
+        // Provider-specific model IDs (Bedrock, Vertex) must be passed as-is.
+        // Normalizing them to aliases like "sonnet" causes Claude Code to expand
+        // them to Anthropic API names (claude-sonnet-5) which are invalid on
+        // these providers. (issue #1695)
+        const resolved = isProviderSpecificModelId(model) ? model : normalizeToCcAlias(model);
         args.push('--model', resolved);
       }
       return [...args, ...extraFlags];
@@ -268,6 +326,26 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
       return rawOutput.trim();
     },
   },
+  antigravity: {
+    agentType: 'antigravity',
+    binary: 'agy',
+    installInstructions: 'Install the Antigravity CLI (agy) per the official instructions at https://antigravity.google, then verify with `agy --version`.',
+    supportsPromptMode: true,
+    promptModeFlag: '-p',
+    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+      // agy's `-p`/`--print` is appended by getPromptModeArgs as `-p <instruction>`,
+      // where the prompt is the VALUE of `-p` (not a boolean). All other flags
+      // MUST precede that `-p`, so buildLaunchArgs returns only the leading flags
+      // (like grok). --dangerously-skip-permissions suppresses approval prompts,
+      // so no trust-confirm send-keys is needed (unlike gemini). Verified agy 1.0.10.
+      const args = ['--dangerously-skip-permissions'];
+      if (model) args.push('--model', model);
+      return [...args, ...extraFlags];
+    },
+    parseOutput(rawOutput: string): string {
+      return rawOutput.trim();
+    },
+  },
   cursor: {
     agentType: 'cursor',
     binary: 'cursor-agent',
@@ -293,10 +371,10 @@ export function getContract(agentType: CliAgentType): CliAgentContract {
   if (!contract) {
     throw new Error(`Unknown agent type: ${agentType}. Supported: ${Object.keys(CONTRACTS).join(', ')}`);
   }
-  if (agentType !== 'qwen' && isExternalLLMDisabled()) {
+  if (agentType !== 'claude' && isExternalLLMDisabled()) {
     throw new Error(
       `External LLM provider "${agentType}" is blocked by security policy (disableExternalLLM). ` +
-      `Only Qwen workers are allowed in the current security configuration.`
+      `Only Claude workers are allowed in the current security configuration.`
     );
   }
   return contract;
@@ -351,6 +429,10 @@ export function isCliAvailable(agentType: CliAgentType): boolean {
 }
 
 export function validateCliAvailable(agentType: CliAgentType): void {
+  // Platform support first: a clear "unsupported on this OS" error is more useful
+  // than a binary-not-found message when the binary exists but headless mode is
+  // unsupported here (e.g. antigravity on Windows).
+  assertHeadlessSupported(agentType);
   if (!isCliAvailable(agentType)) {
     const contract = getContract(agentType);
     throw new Error(
@@ -381,6 +463,42 @@ export function buildWorkerArgv(agentType: CliAgentType, config: WorkerLaunchCon
   return [binary, ...args];
 }
 
+export function validateWorkerLaunchDescriptor(value: unknown): WorkerLaunchDescriptor {
+  const descriptor = value as Partial<WorkerLaunchDescriptor> | null;
+  if (!descriptor || descriptor.schema_version !== 1
+    || typeof descriptor.provider !== 'string'
+    || !Object.prototype.hasOwnProperty.call(descriptor, 'model')
+    || (descriptor.model !== null && (typeof descriptor.model !== 'string' || descriptor.model.length === 0))
+    || typeof descriptor.binary !== 'string' || descriptor.binary.length === 0 || descriptor.binary.includes('\0')
+    || !(isAbsolute(descriptor.binary) || win32Path.isAbsolute(descriptor.binary))
+    || !Array.isArray(descriptor.args) || descriptor.args.some(arg => typeof arg !== 'string' || arg.includes('\0'))) {
+    throw new Error('Invalid worker launch descriptor');
+  }
+  getContract(descriptor.provider as CliAgentType);
+  return {
+    schema_version: 1,
+    provider: descriptor.provider as CliAgentType,
+    model: descriptor.model,
+    binary: descriptor.binary,
+    args: [...descriptor.args],
+  };
+}
+
+export function buildValidatedWorkerLaunchDescriptor(
+  agentType: CliAgentType,
+  config: WorkerLaunchConfig,
+  appendedArgs: readonly string[] = [],
+): WorkerLaunchDescriptor {
+  const [binary, ...args] = buildWorkerArgv(agentType, config);
+  return validateWorkerLaunchDescriptor({
+    schema_version: 1,
+    provider: agentType,
+    model: config.model ?? null,
+    binary,
+    args: [...args, ...appendedArgs],
+  });
+}
+
 export function buildWorkerCommand(agentType: CliAgentType, config: WorkerLaunchConfig): string {
   return buildWorkerArgv(agentType, config)
     .map((part) => `'${part.replace(/'/g, `'\"'\"'`)}'`)
@@ -388,13 +506,17 @@ export function buildWorkerCommand(agentType: CliAgentType, config: WorkerLaunch
 }
 
 const WORKER_MODEL_ENV_ALLOWLIST = [
-  'DASHSCOPE_MODEL',
-  'QODER_MODEL',
-  'DASHSCOPE_BASE_URL',
-  'OMQ_ROUTING_FORCE_INHERIT',
-  'DASHSCOPE_DEFAULT_MAX_MODEL',
-  'DASHSCOPE_DEFAULT_PLUS_MODEL',
-  'DASHSCOPE_DEFAULT_TURBO_MODEL',
+  'ANTHROPIC_MODEL',
+  'CLAUDE_MODEL',
+  'ANTHROPIC_BASE_URL',
+  'CLAUDE_CODE_USE_BEDROCK',
+  'CLAUDE_CODE_USE_VERTEX',
+  'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
+  'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
+  'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
+  'ANTHROPIC_DEFAULT_OPUS_MODEL',
+  'ANTHROPIC_DEFAULT_SONNET_MODEL',
+  'ANTHROPIC_DEFAULT_HAIKU_MODEL',
   'OMQ_MODEL_HIGH',
   'OMQ_MODEL_MEDIUM',
   'OMQ_MODEL_LOW',
@@ -404,6 +526,8 @@ const WORKER_MODEL_ENV_ALLOWLIST = [
   'OMQ_GEMINI_DEFAULT_MODEL',
   'OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL',
   'OMQ_GROK_DEFAULT_MODEL',
+  'OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL',
+  'OMQ_ANTIGRAVITY_DEFAULT_MODEL',
 ] as const;
 
 export function getWorkerEnv(
@@ -442,18 +566,19 @@ export function isPromptModeAgent(agentType: CliAgentType): boolean {
 }
 
 /**
- * Resolve the active model for Qwen team workers on non-standard providers.
+ * Resolve the active model for Claude team workers on Bedrock/Vertex.
  *
- * When running on a non-standard provider, workers need the provider-specific
- * model ID passed explicitly via --model. Without it, Qoder CLI falls back
- * to its built-in default (qwen-plus) which may be invalid on the provider.
+ * When running on a non-standard provider (Bedrock, Vertex), workers need
+ * the provider-specific model ID passed explicitly via --model. Without it,
+ * Claude Code falls back to its built-in default (claude-sonnet-5) which
+ * is invalid on these providers.
  *
  * Resolution order:
- *   1. DASHSCOPE_MODEL / QODER_MODEL env vars (user's explicit setting)
- *   2. Provider tier-specific env vars (DASHSCOPE_DEFAULT_MEDIUM_MODEL, etc.)
- *   3. undefined — let Qoder CLI handle its own default
+ *   1. ANTHROPIC_MODEL / CLAUDE_MODEL env vars (user's explicit setting)
+ *   2. Provider tier-specific env vars (CLAUDE_CODE_BEDROCK_SONNET_MODEL, etc.)
+ *   3. undefined — let Claude Code handle its own default
  *
- * Returns undefined when on the default provider (standard DashScope API
+ * Returns undefined when not on Bedrock/Vertex (standard Anthropic API
  * handles bare aliases fine).
  */
 export function resolveClaudeWorkerModel(
@@ -466,28 +591,29 @@ export function resolveClaudeWorkerModel(
   }
 
   // Only needed for non-standard providers
-  if (!isNonDefaultProvider()) {
+  if (!isBedrock() && !isVertexAI()) {
     return undefined;
   }
 
   // Direct model env vars — highest priority
-  const directModel = env.DASHSCOPE_MODEL || env.QODER_MODEL || '';
+  const directModel = env.ANTHROPIC_MODEL || env.CLAUDE_MODEL || '';
   if (directModel) {
     return directModel;
   }
 
-  // Fallback: tier-specific env vars (default to plus/medium tier)
-  const tierModel =
-    env.DASHSCOPE_DEFAULT_PLUS_MODEL ||
+  // Fallback: Bedrock tier-specific env vars (default to sonnet tier)
+  const bedrockModel =
+    env.CLAUDE_CODE_BEDROCK_SONNET_MODEL ||
+    env.ANTHROPIC_DEFAULT_SONNET_MODEL ||
     '';
-  if (tierModel) {
-    return tierModel;
+  if (bedrockModel) {
+    return bedrockModel;
   }
 
-  // OMQ tier env vars
-  const omqModel = env.OMQ_MODEL_MEDIUM || '';
-  if (omqModel) {
-    return omqModel;
+  // OMC tier env vars
+  const omcModel = env.OMQ_MODEL_MEDIUM || '';
+  if (omcModel) {
+    return omcModel;
   }
 
   return undefined;
@@ -497,11 +623,44 @@ export function resolveClaudeWorkerModel(
  * Get the extra CLI args needed to pass an instruction in prompt mode.
  * Returns empty array if the agent does not support prompt mode.
  */
+/**
+ * Whether a CLI agent's headless/prompt mode is supported on the given platform.
+ * Antigravity (`agy`) `-p`/`--print` takes the prompt as an argv value and cannot
+ * read it from stdin; on Windows that argv path is unreliable and `agy` has known
+ * upstream Windows `-p` limitations. This centralizes the same platform support
+ * decision the advisor (`scripts/run-provider-advisor.js`) enforces for `omc ask`.
+ */
+export function isHeadlessSupportedOnPlatform(
+  agentType: CliAgentType,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  if (agentType === 'antigravity' && platform === 'win32') {
+    return false;
+  }
+  return true;
+}
+
+/** Throw a clear, actionable error if the agent's headless mode is unsupported here. */
+export function assertHeadlessSupported(agentType: CliAgentType): void {
+  if (!isHeadlessSupportedOnPlatform(agentType)) {
+    throw new Error(
+      `CLI agent '${agentType}' headless/prompt mode is not supported on Windows: ` +
+      `\`agy --print\` takes the prompt as an argv value (it cannot read stdin) and has ` +
+      `known upstream Windows \`-p\` limitations. Run '${agentType}' team workers on ` +
+      `macOS/Linux, or use the 'gemini' provider on Windows.`,
+    );
+  }
+}
+
 export function getPromptModeArgs(agentType: CliAgentType, instruction: string): string[] {
   const contract = getContract(agentType);
   if (!contract.supportsPromptMode) {
     return [];
   }
+  // Centralized platform guard: refuse unsupported headless paths (e.g. antigravity
+  // on Windows) before building `-p <prompt>`, so the team path fails clearly here
+  // instead of attempting an unreliable argv spawn that fails/hangs opaquely.
+  assertHeadlessSupported(agentType);
   // If a flag is defined (e.g. gemini's '-p'), prepend it; otherwise the
   // instruction is passed as a positional argument (e.g. codex [PROMPT]).
   if (contract.promptModeFlag) {

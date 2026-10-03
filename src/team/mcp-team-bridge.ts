@@ -11,11 +11,11 @@
  * Polls task files, builds prompts, spawns CLI processes, reports results.
  */
 
-import { spawn, execSync, ChildProcess } from "child_process";
+import { spawn, execFileSync, ChildProcess } from "child_process";
 import { existsSync, openSync, readSync, closeSync } from "fs";
 import { join } from "path";
 import { writeFileWithMode, ensureDirWithMode } from "./fs-utils.js";
-import { getOmqRoot } from "../lib/worktree-paths.js";
+import { getOmcRoot } from "../lib/worktree-paths.js";
 import type {
   BridgeConfig,
   TaskFile,
@@ -89,10 +89,11 @@ export function captureFileSnapshot(cwd: string): Set<string> {
   const files = new Set<string>();
   try {
     // Get all tracked files that are modified, added, or staged
-    const statusOutput = execSync("git status --porcelain", {
+    const statusOutput = execFileSync("git", ["status", "--porcelain"], {
       cwd,
       encoding: "utf-8",
       timeout: 10000,
+      windowsHide: true,
     });
     for (const line of statusOutput.split("\n")) {
       if (!line.trim()) continue;
@@ -105,9 +106,10 @@ export function captureFileSnapshot(cwd: string): Set<string> {
     }
 
     // Get untracked files
-    const untrackedOutput = execSync(
-      "git ls-files --others --exclude-standard",
-      { cwd, encoding: "utf-8", timeout: 10000 },
+    const untrackedOutput = execFileSync(
+      "git",
+      ["ls-files", "--others", "--exclude-standard"],
+      { cwd, encoding: "utf-8", timeout: 10000, windowsHide: true },
     );
     for (const line of untrackedOutput.split("\n")) {
       if (line.trim()) files.add(line.trim());
@@ -323,7 +325,7 @@ function writePromptFile(
   taskId: string,
   prompt: string,
 ): string {
-  const dir = join(getOmqRoot(config.workingDirectory), "prompts");
+  const dir = join(getOmcRoot(config.workingDirectory), "prompts");
   ensureDirWithMode(dir);
   const filename = `team-${config.teamName}-task-${taskId}-${Date.now()}.md`;
   const filePath = join(dir, filename);
@@ -333,7 +335,7 @@ function writePromptFile(
 
 /** Get output file path for a task */
 function getOutputPath(config: BridgeConfig, taskId: string): string {
-  const dir = join(getOmqRoot(config.workingDirectory), "outputs");
+  const dir = join(getOmcRoot(config.workingDirectory), "outputs");
   ensureDirWithMode(dir);
   const suffix = Math.random().toString(36).slice(2, 8);
   return join(

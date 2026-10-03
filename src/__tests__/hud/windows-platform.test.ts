@@ -3,6 +3,13 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
+vi.mock('node:child_process', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:child_process')>()),
+  execFileSync: vi.fn(),
+}));
+
+import { execFileSync } from 'node:child_process';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const packageRoot = join(__dirname, '..', '..', '..');
@@ -42,6 +49,7 @@ describe('Windows HUD Platform Fixes (#739)', () => {
   describe('P0: Bridge NODE_PATH separator', () => {
     const bridgeFiles = [
       'bridge/mcp-server.cjs',
+      'bridge/team-bridge.cjs',
     ];
 
     for (const file of bridgeFiles) {
@@ -126,6 +134,11 @@ describe('Windows HUD Platform Fixes (#739)', () => {
     });
 
     it('should use emoji icons on macOS/Linux (current platform)', async () => {
+      // Emoji rendering is the non-win32 contract; pin it by naming the
+      // platform explicitly (same mock style as the win32 sibling below) so
+      // the assertion is host-independent instead of assuming a POSIX runner.
+      Object.defineProperty(process, 'platform', { value: 'darwin' });
+      vi.resetModules();
       const { renderCallCounts } = await import('../../hud/elements/call-counts.js');
       const result = renderCallCounts(42, 7, 3);
       expect(result).toContain('\u{1F527}'); // wrench
@@ -186,19 +199,24 @@ describe('Windows HUD Platform Fixes (#739)', () => {
   // P1: Git execFileSync argv on Windows
   // =========================================================================
   describe('P1: Git shell-free execFileSync on Windows', () => {
-    it('git.ts should call git via execFileSync argv with windowsHide', () => {
-      const content = readFileSync(
-        join(packageRoot, 'src', 'hud', 'elements', 'git.ts'),
-        'utf-8',
+    it('invokes git with separate argv and hidden Windows process options', async () => {
+      const cwd = 'C:\\repo folder; & echo owned\\worktree';
+      vi.mocked(execFileSync).mockReturnValue('feature/space;name\\branch\n');
+      const { getGitBranch, resetGitCache } = await import('../../hud/elements/git.js');
+      resetGitCache();
+
+      expect(getGitBranch(cwd)).toBe('feature/space;name\\branch');
+      expect(execFileSync).toHaveBeenCalledWith(
+        'git',
+        ['branch', '--show-current'],
+        {
+          cwd,
+          encoding: 'utf-8',
+          timeout: 1000,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true,
+        },
       );
-
-      expect(content).toContain("import { execFileSync } from 'node:child_process'");
-      expect(content).toContain("execFileSync('git', args, {");
-      expect(content).toContain('windowsHide: true');
-
-      expect(content).not.toContain("shell: process.platform === 'win32' ? 'cmd.exe' : undefined");
-      expect(content).not.toContain('cmd.exe');
-      expect(content).not.toContain('execSync');
     });
   });
 

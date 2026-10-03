@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   isNonDefaultProvider,
   isProviderSpecificModelId,
+  resolveClaudeFamily,
   resolveQwenFamily,
   QWEN_FAMILY_DEFAULTS,
   hasExtendedContextSuffix,
@@ -244,6 +245,38 @@ describe('resolveQwenFamily()', () => {
   });
 });
 
+// The delegation enforcer folds a model id to whichever alias vocabulary its
+// own family defines (7ab618e). That is only safe while the two resolvers are
+// disjoint; if an id ever matched both, a tier alias and a CC alias would be
+// candidates for the same model and the fold would become order-dependent.
+describe('resolveClaudeFamily() and family disjointness', () => {
+  const QWEN_IDS = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'QWEN-PLUS'];
+  const CLAUDE_IDS = ['claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-4-8', 'claude-fable-5'];
+
+  it('resolves each Claude family from its canonical id', () => {
+    expect(resolveClaudeFamily('claude-haiku-4-5')).toBe('HAIKU');
+    expect(resolveClaudeFamily('claude-sonnet-5')).toBe('SONNET');
+    expect(resolveClaudeFamily('claude-opus-4-8')).toBe('OPUS');
+    expect(resolveClaudeFamily('claude-fable-5')).toBe('FABLE');
+  });
+
+  it('returns null for ids outside the Claude family', () => {
+    expect(resolveClaudeFamily('deepseek-v3')).toBeNull();
+    expect(resolveClaudeFamily('gpt-4')).toBeNull();
+  });
+
+  it('never resolves the same id as both a Qwen and a Claude family', () => {
+    for (const id of QWEN_IDS) {
+      expect(resolveClaudeFamily(id), `resolveClaudeFamily(${id})`).toBeNull();
+      expect(resolveQwenFamily(id), `resolveQwenFamily(${id})`).not.toBeNull();
+    }
+    for (const id of CLAUDE_IDS) {
+      expect(resolveQwenFamily(id), `resolveQwenFamily(${id})`).toBeNull();
+      expect(resolveClaudeFamily(id), `resolveClaudeFamily(${id})`).not.toBeNull();
+    }
+  });
+});
+
 // ---------------------------------------------------------------------------
 // QWEN_FAMILY_DEFAULTS
 // ---------------------------------------------------------------------------
@@ -312,5 +345,32 @@ describe('isSubagentSafeModelId()', () => {
     expect(isSubagentSafeModelId('medium')).toBe(true);
     expect(isSubagentSafeModelId('high')).toBe(true);
     expect(isSubagentSafeModelId('low')).toBe(true);
+  });
+});
+
+// An unrecognised Qwen variant must resolve to null rather than picking a
+// family default: a silent fallback would hand the Agent tool a model id the
+// account does not have.
+describe('resolveQwenFamily()', () => {
+  it('maps the three known families case-insensitively', () => {
+    expect(resolveQwenFamily('qwen-turbo')).toBe('TURBO');
+    expect(resolveQwenFamily('dashscope/qwen-plus')).toBe('PLUS');
+    expect(resolveQwenFamily('QWEN-MAX')).toBe('MAX');
+  });
+
+  it('returns null for an unknown Qwen variant instead of defaulting', () => {
+    expect(resolveQwenFamily('qwen-ultra')).toBeNull();
+    expect(resolveQwenFamily('qwen')).toBeNull();
+  });
+
+  it('returns null for non-Qwen model ids', () => {
+    expect(resolveQwenFamily('deepseek-v3')).toBeNull();
+    expect(resolveQwenFamily('glm-5.1:cloud')).toBeNull();
+  });
+
+  it('exposes a default model id for every family it can return', () => {
+    for (const family of ['TURBO', 'PLUS', 'MAX'] as const) {
+      expect(QWEN_FAMILY_DEFAULTS[family]).toBeTruthy();
+    }
   });
 });

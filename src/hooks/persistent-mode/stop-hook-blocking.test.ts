@@ -9,7 +9,10 @@ import {
   type PersistentModeResult,
 } from "./index.js";
 import { activateUltrawork, deactivateUltrawork } from "../ultrawork/index.js";
-import { getOmqRoot } from "../../lib/worktree-paths.js";
+import { getOmcRoot } from "../../lib/worktree-paths.js";
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 function writeTranscriptWithContext(filePath: string, contextWindow: number, inputTokens: number): void {
   writeFileSync(
@@ -155,7 +158,7 @@ function resolveCentralizedStateDir(directory: string, customStateDir: string): 
   const previous = process.env.OMQ_STATE_DIR;
   process.env.OMQ_STATE_DIR = customStateDir;
   try {
-    return join(getOmqRoot(directory), "state");
+    return join(getOmcRoot(directory), "state");
   } finally {
     if (previous === undefined) {
       delete process.env.OMQ_STATE_DIR;
@@ -166,6 +169,7 @@ function resolveCentralizedStateDir(directory: string, customStateDir: string): 
 }
 
 describe("Stop Hook Blocking Contract", () => {
+  useDefaultStateRoot();
   describe("createHookOutput", () => {
     it("returns continue: false when shouldBlock is true", () => {
       const result: PersistentModeResult = {
@@ -323,6 +327,68 @@ describe("Stop Hook Blocking Contract", () => {
           iteration: 3,
         }),
       );
+
+      const result = await checkPersistentModes(sessionId, tempDir);
+      expect(result.shouldBlock).toBe(false);
+      expect(result.mode).toBe("autoresearch");
+      expect(result.message).toContain("Max-runtime ceiling reached");
+
+      const updated = JSON.parse(readFileSync(statePath, 'utf-8')) as { active: boolean; current_phase: string; stop_reason: string };
+      expect(updated.active).toBe(false);
+      expect(updated.current_phase).toBe('stopped');
+      expect(updated.stop_reason).toBe('max-runtime ceiling reached');
+    });
+
+
+    it("blocks stop when autoresearch only exists on the legacy shared path", async () => {
+      const sessionId = "autoresearch-legacy-active";
+      writeLegacyModeState(tempDir, "autoresearch-state.json", {
+        active: true,
+        mission_slug: "legacy-demo",
+        current_phase: "running",
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deadline_at: new Date(Date.now() + 60_000).toISOString(),
+        iteration: 4,
+      });
+
+      const result = await checkPersistentModes(sessionId, tempDir);
+      expect(result.shouldBlock).toBe(true);
+      expect(result.mode).toBe("autoresearch");
+      expect(result.message).toContain("AUTORESEARCH - STATEFUL MISSION ACTIVE");
+      expect(result.message).toContain("legacy-demo");
+    });
+
+    it("does not leak foreign-session legacy autoresearch state", async () => {
+      const sessionId = "autoresearch-session-a";
+      writeLegacyModeState(tempDir, "autoresearch-state.json", {
+        active: true,
+        session_id: "autoresearch-session-b",
+        mission_slug: "foreign-demo",
+        current_phase: "running",
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deadline_at: new Date(Date.now() + 60_000).toISOString(),
+        iteration: 1,
+      });
+
+      const result = await checkPersistentModes(sessionId, tempDir);
+      expect(result.shouldBlock).toBe(false);
+      expect(result.mode).toBe("none");
+    });
+
+    it("releases expired autoresearch discovered through the legacy shared bridge", async () => {
+      const sessionId = "autoresearch-legacy-expired";
+      const statePath = join(tempDir, ".omq", "state", "autoresearch-state.json");
+      writeLegacyModeState(tempDir, "autoresearch-state.json", {
+        active: true,
+        mission_slug: "legacy-expired",
+        current_phase: "running",
+        started_at: new Date(Date.now() - 120_000).toISOString(),
+        updated_at: new Date().toISOString(),
+        deadline_at: new Date(Date.now() - 1_000).toISOString(),
+        iteration: 5,
+      });
 
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(false);
@@ -581,8 +647,7 @@ describe("Stop Hook Blocking Contract", () => {
       );
 
       const { clearModeStateFile } = await import('../../lib/mode-state-io.js');
-      expect(clearModeStateFile('ralph', tempDir, sessionA)).toBe(true);
-      expect(clearModeStateFile('ralph', tempDir, sessionB)).toBe(true);
+      expect(clearModeStateFile('ralph', tempDir)).toBe(true);
 
       const resultA = await checkPersistentModes(sessionA, tempDir);
       const outputA = createHookOutput(resultA);
@@ -816,7 +881,6 @@ describe("Stop Hook Blocking Contract", () => {
       | "ultragoal"
       | "pipeline"
       | "team"
-      | "ultraqa"
       | "swarm";
 
     const stopHookActiveModes: PersistentModeScriptMode[] = [
@@ -826,7 +890,6 @@ describe("Stop Hook Blocking Contract", () => {
       "ultragoal",
       "pipeline",
       "team",
-      "ultraqa",
       "swarm",
     ];
 
@@ -904,12 +967,6 @@ describe("Stop Hook Blocking Contract", () => {
           ...baseState,
           current_phase: "team-exec",
         },
-        ultraqa: {
-          ...baseState,
-          cycle: 1,
-          max_cycles: 10,
-          all_passing: false,
-        },
       };
 
       writeFileSync(
@@ -966,6 +1023,27 @@ describe("Stop Hook Blocking Contract", () => {
         expect(output.decision).toBe("block");
       },
     );
+    it("does not block on retired ultraqa state (issue #3826)", () => {
+      const caseDir = makeCaseDir("retired-ultraqa-not-blocking");
+      const sessionId = "retired-ultraqa-not-blocking";
+      const sessionDir = join(caseDir, ".omq", "state", "sessions", sessionId);
+      mkdirSync(sessionDir, { recursive: true });
+      writeFileSync(
+        join(sessionDir, "ultraqa-state.json"),
+        JSON.stringify({
+          active: true,
+          cycle: 1,
+          max_cycles: 10,
+          all_passing: false,
+          session_id: sessionId,
+          started_at: new Date().toISOString(),
+        }),
+      );
+
+      const output = runScript({ directory: caseDir, sessionId });
+      expect(output.continue).toBe(true);
+      expect(output.decision).not.toBe("block");
+    });
 
     it("returns continue: true when ralph is awaiting confirmation", () => {
       const sessionId = "ralph-awaiting-confirmation-mjs";
@@ -1018,6 +1096,45 @@ describe("Stop Hook Blocking Contract", () => {
       expect(output.continue).toBe(true);
       expect(output.decision).toBeUndefined();
       expect(String(output.reason || "")).not.toContain("[RALPH LOOP");
+    });
+
+    it("returns continue: true for active ralph with a running delegated subagent", () => {
+      const sessionId = "ralph-mjs-subagent-running";
+      writeActiveRalphState(tempDir, sessionId);
+      writeSubagentTrackingState(tempDir, [
+        {
+          agent_id: "agent-mjs-running",
+          agent_type: "executor",
+          started_at: new Date().toISOString(),
+          parent_mode: "ralph",
+          status: "running",
+        },
+      ]);
+
+      const output = runScript({ directory: tempDir, sessionId });
+      expect(output.continue).toBe(true);
+      expect(output.decision).toBeUndefined();
+      expect(String(output.reason || "")).not.toContain("[RALPH LOOP");
+    });
+
+    it("returns decision: block for active ralph when the only delegated subagent has completed", () => {
+      // Negative control: a completed (non-running) subagent must NOT suppress
+      // the boulder — only an in-flight one does. Proves the gate has teeth.
+      const sessionId = "ralph-mjs-subagent-done";
+      writeActiveRalphState(tempDir, sessionId);
+      writeSubagentTrackingState(tempDir, [
+        {
+          agent_id: "agent-mjs-done",
+          agent_type: "executor",
+          started_at: new Date(Date.now() - 60_000).toISOString(),
+          completed_at: new Date().toISOString(),
+          parent_mode: "ralph",
+          status: "completed",
+        },
+      ]);
+
+      const output = runScript({ directory: tempDir, sessionId });
+      expect(output.decision).toBe("block");
     });
 
     it("returns continue: true for tombstoned stale ralph state", () => {
@@ -1282,7 +1399,7 @@ describe("Stop Hook Blocking Contract", () => {
         autopilotPath,
         JSON.stringify({
           active: true,
-          original_prompt: "/oh-my-qoder:autopilot execute",
+          original_prompt: "/oh-my-claudecode:autopilot execute",
           session_id: sessionId,
           started_at: new Date().toISOString(),
           last_checked_at: new Date().toISOString(),
@@ -1296,6 +1413,34 @@ describe("Stop Hook Blocking Contract", () => {
       expect(existsSync(autopilotPath)).toBe(false);
     });
 
+    // The plugin registers as oh-my-qoder, so these are the routing echoes this
+    // fork's own command actually writes into autopilot-state.json.
+    it.each(["/omq:autopilot execute", "/oh-my-qoder:autopilot"])(
+      "cleans slash autopilot routing echo state for %s in mjs script",
+      (originalPrompt) => {
+        const sessionId = `autopilot-fork-echo-orphan-${originalPrompt.replace(/\W/g, "")}`;
+        const sessionDir = join(tempDir, ".omq", "state", "sessions", sessionId);
+        const autopilotPath = join(sessionDir, "autopilot-state.json");
+        mkdirSync(sessionDir, { recursive: true });
+        writeFileSync(
+          autopilotPath,
+          JSON.stringify({
+            active: true,
+            original_prompt: originalPrompt,
+            session_id: sessionId,
+            started_at: new Date().toISOString(),
+            last_checked_at: new Date().toISOString(),
+            reinforcement_count: 0,
+          }),
+        );
+
+        const output = runScript({ directory: tempDir, sessionId });
+        expect(output.continue).toBe(true);
+        expect(output.decision).toBeUndefined();
+        expect(existsSync(autopilotPath)).toBe(false);
+      },
+    );
+
     it("does not clear slash autopilot state once a real phase is present in mjs script", () => {
       const sessionId = "autopilot-slash-active-phase-mjs";
       const sessionDir = join(tempDir, ".omq", "state", "sessions", sessionId);
@@ -1306,7 +1451,7 @@ describe("Stop Hook Blocking Contract", () => {
         JSON.stringify({
           active: true,
           phase: "expansion",
-          original_prompt: "/oh-my-qoder:autopilot execute",
+          original_prompt: "/oh-my-claudecode:autopilot execute",
           session_id: sessionId,
           started_at: new Date().toISOString(),
           last_checked_at: new Date().toISOString(),
@@ -1337,7 +1482,7 @@ describe("Stop Hook Blocking Contract", () => {
           expansion: { analyst_complete: false, architect_complete: false, spec_path: null, requirements_summary: "", tech_stack: [] },
           planning: { plan_path: null, architect_iterations: 0, approved: false },
           execution: { ralph_iterations: 0, ultrawork_active: false, tasks_completed: 0, tasks_total: 0, files_created: [], files_modified: [] },
-          qa: { ultraqa_cycles: 0, build_status: "pending", lint_status: "pending", test_status: "pending" },
+          qa: { build_status: "pending", lint_status: "pending", test_status: "pending" },
           validation: { architects_spawned: 0, verdicts: [], all_approved: false, validation_rounds: 0 },
           started_at: new Date().toISOString(),
           completed_at: null,
@@ -1387,7 +1532,7 @@ describe("Stop Hook Blocking Contract", () => {
           active: true,
           session_id: sessionId,
           current_phase: "ralplan",
-          original_prompt: "/oh-my-qoder:ralplan issue #2622",
+          original_prompt: "/oh-my-claudecode:ralplan issue #2622",
           awaiting_confirmation: true,
           awaiting_confirmation_set_at: new Date().toISOString(),
           started_at: new Date().toISOString(),
@@ -1441,7 +1586,7 @@ describe("Stop Hook Blocking Contract", () => {
           expansion: { analyst_complete: false, architect_complete: false, spec_path: null, requirements_summary: "", tech_stack: [] },
           planning: { plan_path: null, architect_iterations: 0, approved: false },
           execution: { ralph_iterations: 0, ultrawork_active: false, tasks_completed: 0, tasks_total: 0, files_created: [], files_modified: [] },
-          qa: { ultraqa_cycles: 0, build_status: "pending", lint_status: "pending", test_status: "pending" },
+          qa: { build_status: "pending", lint_status: "pending", test_status: "pending" },
           validation: { architects_spawned: 0, verdicts: [], all_approved: false, validation_rounds: 0 },
           started_at: new Date().toISOString(),
           completed_at: null,
@@ -1778,7 +1923,7 @@ describe("Stop Hook Blocking Contract", () => {
         autopilotPath,
         JSON.stringify({
           active: true,
-          original_prompt: "/oh-my-qoder:autopilot execute",
+          original_prompt: "/oh-my-claudecode:autopilot execute",
           session_id: sessionId,
           started_at: new Date().toISOString(),
           last_checked_at: new Date().toISOString(),
@@ -1802,7 +1947,7 @@ describe("Stop Hook Blocking Contract", () => {
         JSON.stringify({
           active: true,
           phase: "expansion",
-          original_prompt: "/oh-my-qoder:autopilot execute",
+          original_prompt: "/oh-my-claudecode:autopilot execute",
           session_id: sessionId,
           started_at: new Date().toISOString(),
           last_checked_at: new Date().toISOString(),
@@ -1910,6 +2055,45 @@ describe("Stop Hook Blocking Contract", () => {
         stop_reason: "ScheduleWakeup",
       });
       expect(output.continue).toBe(true);
+    });
+
+    it("returns continue: true for active ralph with a running delegated subagent", () => {
+      const sessionId = "ralph-cjs-subagent-running";
+      writeActiveRalphState(tempDir, sessionId);
+      writeSubagentTrackingState(tempDir, [
+        {
+          agent_id: "agent-cjs-running",
+          agent_type: "executor",
+          started_at: new Date().toISOString(),
+          parent_mode: "ralph",
+          status: "running",
+        },
+      ]);
+
+      const output = runScript({ directory: tempDir, sessionId });
+      expect(output.continue).toBe(true);
+      expect(output.decision).toBeUndefined();
+      expect(String(output.reason || "")).not.toContain("[RALPH LOOP");
+    });
+
+    it("returns decision: block for active ralph when the only delegated subagent has completed", () => {
+      // Negative control: a completed (non-running) subagent must NOT suppress
+      // the boulder — only an in-flight one does. Proves the gate has teeth.
+      const sessionId = "ralph-cjs-subagent-done";
+      writeActiveRalphState(tempDir, sessionId);
+      writeSubagentTrackingState(tempDir, [
+        {
+          agent_id: "agent-cjs-done",
+          agent_type: "executor",
+          started_at: new Date(Date.now() - 60_000).toISOString(),
+          completed_at: new Date().toISOString(),
+          parent_mode: "ralph",
+          status: "completed",
+        },
+      ]);
+
+      const output = runScript({ directory: tempDir, sessionId });
+      expect(output.decision).toBe("block");
     });
 
     it("returns continue: true when skill state is active but delegated subagents are still running", () => {

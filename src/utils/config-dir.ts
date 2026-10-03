@@ -140,3 +140,12 @@ export function getOmqConfigDir(): string {
 export function getUpdateCheckCachePath(): string {
   return join(getOmqConfigDir(), 'update-check.json');
 }
+
+/**
+ * Ancestor-era name. Vendored ancestor files call `getClaudeConfigDir`; OMQ
+ * resolves the CN vs international root itself, so this is a thin alias rather
+ * than a second implementation that could drift.
+ */
+export function getClaudeConfigDir(): string {
+  return getQoderConfigDir();
+}

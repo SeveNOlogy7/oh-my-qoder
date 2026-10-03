@@ -312,6 +312,7 @@ function resolveMissionRepoRoot(missionDir: string): string {
     cwd: missionDir,
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
   }).trim();
 }
 
@@ -348,7 +349,7 @@ export function spawnAutoresearchTmux(missionDir: string, slug: string): void {
   }
 
   const repoRoot = resolveMissionRepoRoot(missionDir);
-  const omqPath = resolve(join(__dirname, '..', '..', 'bin', 'omq.js'));
+  const omqPath = resolve(join(__dirname, '..', '..', 'bin', 'oh-my-qoder.js'));
   const command = buildTmuxShellCommand(process.execPath, [omqPath, 'autoresearch', missionDir]);
   const wrappedCommand = wrapWithLoginShell(command);
 

@@ -2,14 +2,19 @@ node_modules/
 *.log
 .DS_Store
 .omc/
-.omq/
+!.omq/
+.omq/*
+!.omq/skills/
+!.omq/skills/**
+.omx/
 .idea/
 .qoder/
 .env
 .claude/
 
 dist/
-bridge/
+bridge/*
+!bridge/claude-md-coordinator.cjs
 *.tsbuildinfo
 .tmp-post-tool-use-failure-tests/
 

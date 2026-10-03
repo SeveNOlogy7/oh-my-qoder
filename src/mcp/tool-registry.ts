@@ -9,8 +9,8 @@
  * when @ast-grep/napi is unavailable — they are always present in the registry
  * but return a helpful error message instead of results.
  *
- * Team tools (team_create, team_claim_task, team_transition_task, etc.) expose
- * the file-based team coordination engine via MCP for leader and worker agents.
+ * Team runtime tools (omc_run_team_start, omc_run_team_status) are intentionally
+ * excluded: they live in the separate "team" MCP server (bridge/team-mcp.cjs).
  */
 
 import { lspTools } from '../tools/lsp-tools.js';
@@ -27,13 +27,15 @@ import { sharedMemoryTools } from '../tools/shared-memory-tools.js';
 import { deepinitManifestTool } from '../tools/deepinit-manifest.js';
 import { wikiTools } from '../tools/wiki-tools.js';
 import { skillsTools } from '../tools/skills-tools.js';
-import { teamTools } from '../tools/team-tools.js';
+import { TOOL_CATEGORIES, type ToolCategory } from '../constants/index.js';
+import { filterDisabledTools, tagCategory } from './disable-tools.js';
 import { z } from 'zod';
 
 /** Minimal tool definition shape shared across all tool families. */
 export interface ToolDef {
   name: string;
   description: string;
+  category?: ToolCategory;
   annotations?: {
     readOnlyHint?: boolean;
     destructiveHint?: boolean;
@@ -48,19 +50,23 @@ export interface ToolDef {
 
 /** All tools exposed by the standalone server, in registration order. */
 export const allTools: ToolDef[] = [
-  ...(lspTools as unknown as ToolDef[]),
-  ...(astTools as unknown as ToolDef[]),
-  pythonReplTool as unknown as ToolDef,
-  ...(stateTools as unknown as ToolDef[]),
-  ...(notepadTools as unknown as ToolDef[]),
-  ...(memoryTools as unknown as ToolDef[]),
-  ...(traceTools as unknown as ToolDef[]),
-  ...(sharedMemoryTools as unknown as ToolDef[]),
-  deepinitManifestTool as unknown as ToolDef,
-  ...(wikiTools as unknown as ToolDef[]),
-  ...(skillsTools as unknown as ToolDef[]),
-  ...(teamTools as unknown as ToolDef[]),
+  ...tagCategory(lspTools as unknown as ToolDef[], TOOL_CATEGORIES.LSP),
+  ...tagCategory(astTools as unknown as ToolDef[], TOOL_CATEGORIES.AST),
+  { ...(pythonReplTool as unknown as ToolDef), category: TOOL_CATEGORIES.PYTHON },
+  ...tagCategory(stateTools as unknown as ToolDef[], TOOL_CATEGORIES.STATE),
+  ...tagCategory(notepadTools as unknown as ToolDef[], TOOL_CATEGORIES.NOTEPAD),
+  ...tagCategory(memoryTools as unknown as ToolDef[], TOOL_CATEGORIES.MEMORY),
+  ...tagCategory(traceTools as unknown as ToolDef[], TOOL_CATEGORIES.TRACE),
+  ...tagCategory(sharedMemoryTools as unknown as ToolDef[], TOOL_CATEGORIES.SHARED_MEMORY),
+  { ...(deepinitManifestTool as unknown as ToolDef), category: TOOL_CATEGORIES.DEEPINIT },
+  ...tagCategory(wikiTools as unknown as ToolDef[], TOOL_CATEGORIES.WIKI),
+  ...tagCategory(skillsTools as unknown as ToolDef[], TOOL_CATEGORIES.SKILLS),
 ];
+
+/** Tools currently enabled for standalone ListTools after OMQ_DISABLE_TOOLS filtering. */
+export function getEnabledTools(envValue?: string): ToolDef[] {
+  return filterDisabledTools(allTools, envValue);
+}
 
 // ---------------------------------------------------------------------------
 // Zod → JSON Schema helpers (mirrors what the MCP server sends over the wire)
@@ -73,13 +79,19 @@ function zodTypeToJsonSchema(zodType: z.ZodTypeAny): Record<string, unknown> {
     return { type: 'string' };
   }
 
+  // `.optional()` / `.default()` are usually applied before `.describe()`, so the
+  // description lives on the wrapper. Carry it onto the unwrapped schema instead
+  // of dropping the parameter documentation MCP clients render.
   if (zodType instanceof z.ZodOptional) {
-    return zodTypeToJsonSchema(zodType._def.innerType);
+    const inner = zodTypeToJsonSchema(zodType._def.innerType);
+    if (zodType._def?.description) inner.description = zodType._def.description;
+    return inner;
   }
 
   if (zodType instanceof z.ZodDefault) {
     const inner = zodTypeToJsonSchema(zodType._def.innerType);
     inner.default = zodType._def.defaultValue();
+    if (zodType._def?.description) inner.description = zodType._def.description;
     return inner;
   }
 
@@ -152,9 +164,9 @@ export interface ListToolsEntry {
  * Build the ListTools response payload exactly as standalone-server.ts sends it.
  * Tests call this directly to exercise the same code path as the live server.
  */
-export function buildListToolsResponse(): { tools: ListToolsEntry[] } {
+export function buildListToolsResponse(envValue?: string): { tools: ListToolsEntry[] } {
   return {
-    tools: allTools.map((tool) => ({
+    tools: getEnabledTools(envValue).map((tool) => ({
       name: tool.name,
       description: tool.description,
       inputSchema: zodToJsonSchema(tool.schema),

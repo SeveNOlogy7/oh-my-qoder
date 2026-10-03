@@ -25,6 +25,10 @@ import {
   type ActiveSkillSlot,
 } from '../index.js';
 
+// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
+// // the per-file OMQ_STATE_DIR pin for every test in this describe.
+import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
+
 function makeTempDir(): string {
   const tempDir = mkdtempSync(join(tmpdir(), 'skill-state-'));
   execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
@@ -54,6 +58,7 @@ function writeSubagentTrackingState(
 }
 
 describe('skill-state', () => {
+  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {
@@ -94,6 +99,34 @@ describe('skill-state', () => {
       expect(getSkillProtection('plan')).toBe('medium');
       expect(getSkillProtection('review')).toBe('medium');
       expect(getSkillProtection('external-context')).toBe('medium');
+    });
+
+    // Every name asserted here must be a skill directory this fork actually ships,
+    // and the level must be non-'none' on purpose: 'none' is also the fall-through
+    // for an unknown name (see getSkillProtection's `?? 'none'`), so an entry mapped
+    // to 'none' is documentation and cannot be guarded by behaviour at all. That is
+    // why omq-doctor/omq-help/omq-teams are not claimed here.
+    it('returns medium for protected skills shipped under the fork names', () => {
+      expect(getSkillProtection('sciomq')).toBe('medium');
+      expect(getSkillProtection('omq-setup')).toBe('medium');
+      expect(getSkillProtection('project-session-manager')).toBe('medium');
+      expect(getSkillProtection('psm')).toBe('medium');
+      expect(getSkillProtection('learner')).toBe('medium');
+      expect(getSkillProtection('skillify')).toBe('medium');
+    });
+
+    it('keeps the ancestor spellings resolving as aliases', () => {
+      expect(getSkillProtection('sciomc')).toBe('medium');
+      // 'omq-plan' is the registered name since #37; 'omc-plan' stays as an
+      // inbound-tolerance alias so pre-rename spellings keep their protection.
+      expect(getSkillProtection('omq-plan')).toBe('medium');
+      expect(getSkillProtection('omc-plan')).toBe('medium');
+    });
+
+    it('falls through to none for a name no skill ships under', () => {
+      // Pins the fall-through that made the omq-* entries invisible when they were
+      // missing: a typo or renamed skill silently loses its protection level.
+      expect(getSkillProtection('no-such-skill-anywhere')).toBe('none');
     });
 
     it('returns none for ralplan because persistent-mode enforces it directly', () => {

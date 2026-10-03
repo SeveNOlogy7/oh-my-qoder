@@ -62,6 +62,18 @@ describe('Signal Extraction', () => {
       expect(signals.codeBlockCount).toBe(2);
     });
 
+    it('should count a single indented code block', () => {
+      const prompt = 'Here is code:\n    const x = 1;\n    return x;\ndone';
+      const signals = extractLexicalSignals(prompt);
+      expect(signals.codeBlockCount).toBe(1);
+    });
+
+    it('should count two separate indented code blocks', () => {
+      const prompt = 'First:\n    const a = 1;\n\nSecond:\n    const b = 2;';
+      const signals = extractLexicalSignals(prompt);
+      expect(signals.codeBlockCount).toBe(2);
+    });
+
     it('should detect architecture keywords', () => {
       const signals = extractLexicalSignals('We need to refactor the architecture');
       expect(signals.hasArchitectureKeywords).toBe(true);
@@ -486,7 +498,7 @@ describe('Routing Rules', () => {
     it('should evaluate explicit model rule', () => {
       const context: RoutingContext = {
         taskPrompt: 'test',
-        explicitModel: 'high',
+        explicitModel: 'opus',
       };
       const signals = extractAllSignals(context.taskPrompt, context);
       const result = evaluateRules(context, signals);
@@ -556,7 +568,7 @@ describe('Routing Rules', () => {
     it('should respect rule priority order', () => {
       const context: RoutingContext = {
         taskPrompt: 'test',
-        explicitModel: 'low',
+        explicitModel: 'haiku',
         agentType: 'architect',
       };
       const signals = extractAllSignals(context.taskPrompt, context);
@@ -667,11 +679,23 @@ describe('Router', () => {
     it('should respect explicit model override', () => {
       const context: RoutingContext = {
         taskPrompt: 'Complex architectural task',
-        explicitModel: 'low',
+        explicitModel: 'haiku',
       };
       const decision = routeTask(context);
 
       expect(decision.tier).toBe('LOW');
+      expect(decision.reasons[0]).toContain('Explicit model');
+    });
+
+    it('should route explicit fable model to HIGH tier (issue #3726)', () => {
+      const context: RoutingContext = {
+        taskPrompt: 'Complex architectural task',
+        explicitModel: 'fable',
+      };
+      const decision = routeTask(context);
+
+      expect(decision.tier).toBe('HIGH');
+      expect(decision.modelType).toBe('fable');
       expect(decision.reasons[0]).toContain('Explicit model');
     });
 
@@ -795,7 +819,7 @@ describe('Router', () => {
       expect(result.tier).toBe('HIGH');
     });
 
-    it('should return haiku for explore', () => {
+    it('should return low for explore', () => {
       const result = getModelForTask('explore', 'search for files');
       expect(result.model).toBe('low');
       expect(result.tier).toBe('LOW');

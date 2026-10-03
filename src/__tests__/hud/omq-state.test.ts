@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   readRalphStateForHud,
   readUltraworkStateForHud,
@@ -25,13 +25,27 @@ function writeJson(path: string, data: unknown, mtimeMs = Date.now()): void {
 
 describe('hud omq state session scoping', () => {
   const tempDirs: string[] = [];
+  // These tests exercise the DEFAULT state-root branch (no OMQ_STATE_DIR) with
+  // explicit temp worktrees (#42). Lift the per-file pin for each test and
+  // restore it afterwards, so the unset never leaks into the shared worker and
+  // the fallback drill stays inside the controlled fixture.
+  let pinnedStateDir: string | undefined;
+
+  beforeEach(() => {
+    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
+  });
 
   afterEach(() => {
     for (const dir of tempDirs) {
       rmSync(dir, { recursive: true, force: true });
     }
     tempDirs.length = 0;
-    delete process.env.OMQ_STATE_DIR;
+    if (pinnedStateDir === undefined) {
+      delete process.env.OMQ_STATE_DIR;
+    } else {
+      process.env.OMQ_STATE_DIR = pinnedStateDir;
+    }
   });
 
   function createWorktree(): string {
@@ -170,5 +184,38 @@ describe('hud omq state session scoping', () => {
       active: true,
       reinforcementCount: 7,
     });
+  });
+
+  it('executes named-workflow resume validation when reading autopilot state with workflow markers', () => {
+    const worktree = createWorktree();
+    const omqRoot = join(worktree, '.omq');
+
+    // Create autopilot state with workflow markers but invalid profile hash
+    writeJson(join(omqRoot, 'state', 'autopilot-state.json'), {
+      active: true,
+      session_id: 'test-session-id',
+      phase: 'execution',
+      iteration: 1,
+      max_iterations: 10,
+      workflowRunId: 'test-workflow-run-id',
+      workflow: {
+        descriptorVersion: 1,
+        workflowName: 'test-workflow',
+        profileVersion: 1,
+        stages: ['stage1', 'stage2'],
+        profileHash: 'invalid-hash-that-wont-match',
+      },
+      pipelineTracking: {
+        currentStageIndex: 0,
+        stages: [
+          { id: 'stage1', status: 'active' },
+          { id: 'stage2', status: 'pending' },
+        ],
+      },
+    });
+
+    const result = readAutopilotStateForHud(worktree);
+    // The validation should execute and mark this as invalid
+    expect(result?.workflow).toEqual({ invalid: true });
   });
 });

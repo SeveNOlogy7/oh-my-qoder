@@ -1,0 +1,119 @@
+# Negative Control Carrier: src-lib-release-generation-ts
+
+- **Lane**: src-lib-release-generation-ts
+- **Fix commit**: 2f0bd25
+- **Patched file**: src/lib/release-generation.ts
+- **Named observation**: src/__tests__/release-generation.test.ts
+- **Verified observation**: src/__tests__/release-generation.test.ts
+- **Description**: fix(identity): point every repo URL at the canonical repository -- reverting src/lib/release-generation.ts should turn src/__tests__/release-generation.test.ts RED (observation found by rule "reference-and-co-changed").
+
+## Attempts
+
+| observation | before (want 0) | after (want !=0) | verdict |
+|---|---|---|---|
+| `src/__tests__/release-generation.test.ts` | 0 | 1 | RED after revert |
+
+## Verdict
+
+**VALID**
+
+### Winning observation output after revert (last 2000 chars)
+```
+release-generation.test.ts > release generation > excludes the current release tag when resolving the previous tag
+ × src/__tests__/release-generation.test.ts > release generation > assembles a single custom release body with compare link and contributors
+   → expected '# oh-my-qoder v4.10.2: Bug Fixes\n###…' to contain 'git clone https://github.com/qoder-pl…'
+ ↓ src/__tests__/release-generation.test.ts > release generation > configures the workflow to use one custom release body source with github auth
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed | 1 skipped (7)
+   Start at  <redacted>
+   Duration  (transform, setup, import, tests, environment)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/release-generation.test.ts > release generation > assembles a single custom release body with compare link and contributors
+AssertionError: expected '# oh-my-qoder v4.10.2: Bug Fixes\n###…' to contain 'git clone https://github.com/qoder-pl…'
+
+- Expected
++ Received
+
+- git clone https://github.com/qoder-<tmp>/oh-my-qoder.git
++ # oh-my-qoder v4.10.2: Bug Fixes
++ ### Install / Update
++
++ Fresh install:
++ ```bash
++ git clone https://github.com/spring-ai-<tmp>/oh-my-qoder.git
++ cd oh-my-qoder && npm install && npm run build
++ qodercli plugins install "$(pwd)"
++ ```
++
++ Already installed? Update in place:
++ ```bash
++ git pull && npm run build
++ ```
++ Then run `/plugins reload` inside Qoder CLI.
++
++ **Full Changelog**: https://github.com/spring-ai-<tmp>/oh-my-qoder/compare/v4.10.1...v4.10.2
++
++ ## Contributors
++
++ Thank you to all contributors who made this release possible!
++
++ @blue-int @DdangJin @chickenlj
++
+
+ ❯ src/__tests__/release-generation.test.ts:126:18
+    124|     );
+    125|
+    126|     expect(body).toContain('git clone https://github.com/qoder-plugins…
+       |                  ^
+    127|     expect(body).toContain('qodercli plugins install "$(pwd)"');
+    128|     expect(body).toContain('git pull && npm run build');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```
+
+### Winning observation stderr after revert (last 1000 chars)
+```
+e https://github.com/qoder-<tmp>/oh-my-qoder.git
++ # oh-my-qoder v4.10.2: Bug Fixes
++ ### Install / Update
++
++ Fresh install:
++ ```bash
++ git clone https://github.com/spring-ai-<tmp>/oh-my-qoder.git
++ cd oh-my-qoder && npm install && npm run build
++ qodercli plugins install "$(pwd)"
++ ```
++
++ Already installed? Update in place:
++ ```bash
++ git pull && npm run build
++ ```
++ Then run `/plugins reload` inside Qoder CLI.
++
++ **Full Changelog**: https://github.com/spring-ai-<tmp>/oh-my-qoder/compare/v4.10.1...v4.10.2
++
++ ## Contributors
++
++ Thank you to all contributors who made this release possible!
++
++ @blue-int @DdangJin @chickenlj
++
+
+ ❯ src/__tests__/release-generation.test.ts:126:18
+    124|     );
+    125|
+    126|     expect(body).toContain('git clone https://github.com/qoder-plugins…
+       |                  ^
+    127|     expect(body).toContain('qodercli plugins install "$(pwd)"');
+    128|     expect(body).toContain('git pull && npm run build');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+```

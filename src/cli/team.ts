@@ -11,12 +11,12 @@ import { validateTeamName } from '../team/team-name.js';
 import { monitorTeam, resumeTeam, shutdownTeam } from '../team/runtime.js';
 import { readTeamConfig } from '../team/monitor.js';
 import { isProcessAlive } from '../platform/index.js';
-import { getGlobalOmqStatePath } from '../utils/paths.js';
+import { getGlobalOmcStatePath } from '../utils/paths.js';
 import { readApprovedExecutionLaunchHintOutcome } from '../planning/artifacts.js';
-import { getOmqRoot } from '../lib/worktree-paths.js';
+import { getOmcRoot } from '../lib/worktree-paths.js';
 
 const JOB_ID_PATTERN = /^omq-[a-z0-9]{1,16}$/;
-const VALID_CLI_AGENT_TYPES = new Set(['qwen', 'codex', 'gemini', 'cursor', 'grok']);
+const VALID_CLI_AGENT_TYPES = new Set(['qwen', 'claude', 'codex', 'gemini', 'cursor', 'grok', 'antigravity']);
 const SUBCOMMANDS = new Set(['start', 'status', 'wait', 'cleanup', 'resume', 'shutdown', 'api', 'help', '--help', '-h']);
 
 const SUPPORTED_API_OPERATIONS = new Set([
@@ -30,6 +30,9 @@ const SUPPORTED_API_OPERATIONS = new Set([
   'read-config',
   'get-summary',
   'orphan-cleanup',
+  'recover-worker',
+  'write-task-checkpoint',
+  'read-recovery-result',
 ] as const);
 const TEAM_API_USAGE = `
 Usage:
@@ -49,7 +52,10 @@ type SupportedApiOperation =
   | 'read-task'
   | 'read-config'
   | 'get-summary'
-  | 'orphan-cleanup';
+  | 'orphan-cleanup'
+  | 'recover-worker'
+  | 'write-task-checkpoint'
+  | 'read-recovery-result';
 
 interface TeamApiEnvelope {
   ok: boolean;
@@ -188,7 +194,7 @@ async function assertTeamSpawnAllowed(cwd: string, env: NodeJS.ProcessEnv = proc
 }
 
 function resolveJobsDir(env: NodeJS.ProcessEnv = process.env): string {
-  return env.OMQ_JOBS_DIR || getGlobalOmqStatePath('team-jobs');
+  return env.OMQ_JOBS_DIR || getGlobalOmcStatePath('team-jobs');
 }
 
 function resolveRuntimeCliPath(env: NodeJS.ProcessEnv = process.env): string {
@@ -219,7 +225,7 @@ function panesArtifactPath(jobsDir: string, jobId: string): string {
 }
 
 function teamStateRoot(cwd: string, teamName: string): string {
-  return join(getOmqRoot(cwd), 'state', 'team', teamName);
+  return join(getOmcRoot(cwd), 'state', 'team', teamName);
 }
 
 function validateJobId(jobId: string): void {
@@ -674,7 +680,8 @@ export async function teamShutdownByName(teamName: string, options: { cwd?: stri
   const runtimeV2 = await import('../team/runtime-v2.js');
   if (runtimeV2.isRuntimeV2Enabled()) {
     const config = await readTeamConfig(teamName, cwd);
-    await runtimeV2.shutdownTeamV2(teamName, cwd, { force: Boolean(options.force) });
+    const shutdown = await runtimeV2.shutdownTeamV2(teamName, cwd, { force: Boolean(options.force) });
+    if (shutdown.outcome !== 'cleaned') throw new Error(`Team shutdown ${shutdown.outcome}: ${shutdown.reason}`);
     return {
       teamName,
       shutdown: true,
@@ -699,7 +706,7 @@ export async function teamShutdownByName(teamName: string, options: { cwd?: stri
     throw new Error(`Team ${teamName} is not running. Use --force to clear stale state.`);
   }
 
-  await shutdownTeam(
+  const cleaned = await shutdownTeam(
     runtime.teamName,
     runtime.sessionName,
     runtime.cwd,
@@ -711,9 +718,10 @@ export async function teamShutdownByName(teamName: string, options: { cwd?: stri
 
   return {
     teamName,
-    shutdown: true,
+    shutdown: cleaned,
     forced: Boolean(options.force),
     sessionFound: true,
+    ...(cleaned ? {} : { error: 'team_shutdown_failed:cleanup_unverified' }),
   };
 }
 
@@ -734,7 +742,7 @@ export async function executeTeamApiOperation(
     };
   }
 
-  const normalizedInput = {
+  const normalizedInput: Record<string, unknown> = {
     ...input,
     ...(typeof input.teamName === 'string' && input.teamName.trim() !== '' && typeof input.team_name !== 'string'
       ? { team_name: input.teamName }
@@ -754,7 +762,26 @@ export async function executeTeamApiOperation(
     ...(typeof input.messageId === 'string' && input.messageId.trim() !== '' && typeof input.message_id !== 'string'
       ? { message_id: input.messageId }
       : {}),
+    ...(typeof input.claimToken === 'string' && input.claimToken.trim() !== '' && typeof input.claim_token !== 'string'
+      ? { claim_token: input.claimToken }
+      : {}),
+    ...(typeof input.taskVersion === 'number' && input.task_version === undefined
+      ? { task_version: input.taskVersion }
+      : {}),
+    ...(typeof input.resumePayload !== 'undefined' && input.resume_payload === undefined
+      ? { resume_payload: input.resumePayload }
+      : {}),
+    ...(typeof input.requestId === 'string' && input.requestId.trim() !== '' && typeof input.request_id !== 'string'
+      ? { request_id: input.requestId }
+      : {}),
+    ...(typeof input.timeoutMs === 'number' && input.timeout_ms === undefined
+      ? { timeout_ms: input.timeoutMs }
+      : {}),
   };
+  for (const alias of ['teamName', 'taskId', 'workerName', 'fromWorker', 'toWorker', 'messageId',
+    'claimToken', 'taskVersion', 'resumePayload', 'requestId', 'timeoutMs']) {
+    delete normalizedInput[alias];
+  }
 
   const result = await executeCanonicalTeamApiOperation(canonicalOperation, normalizedInput, cwd);
   return result;
@@ -794,7 +821,7 @@ export async function teamCleanupCommand(
 
 export const TEAM_USAGE = `
 Usage:
-  omq team start --agent <claude|codex|gemini|cursor|grok>[,<agent>...] --task "<task>" [--count N] [--name TEAM] [--cwd DIR] [--new-window] [--auto-merge] [--json]
+  omq team start --agent <claude|codex|gemini|cursor|grok|antigravity>[,<agent>...] --task "<task>" [--count N] [--name TEAM] [--cwd DIR] [--new-window] [--auto-merge] [--json]
   omq team status <job_id|team_name> [--json] [--cwd DIR]
   omq team wait <job_id> [--timeout-ms MS] [--json]
   omq team cleanup <job_id> [--grace-ms MS] [--json]

@@ -8,6 +8,9 @@ import { appendOutbox } from '../inbox-outbox.js';
 import { recordTaskUsage } from '../usage-tracker.js';
 import { getQoderConfigDir } from '../../utils/config-dir.js';
 import type { HeartbeatData, TaskFile, OutboxMessage, McpWorkerMember } from '../types.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const TEST_TEAM = 'test-team-status';
 let WORK_DIR: string;
@@ -81,6 +84,7 @@ function makeTask(id: string, owner: string, status: 'pending' | 'in_progress' |
 }
 
 describe('getTeamStatus', () => {
+  useDefaultStateRoot();
   it('returns empty status when no workers registered', () => {
     const status = getTeamStatus(TEST_TEAM, WORK_DIR);
     expect(status.teamName).toBe(TEST_TEAM);

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { resolve } from 'path';
+import { join, resolve } from 'path';
 import { validateToolPath } from '../tools/ast-tools.js';
-import { clearSecurityConfigCache } from '../lib/security-config.js';
+import { clearSecurityConfigCache, securityConfigPaths } from '../lib/security-config.js';
 
 describe('validateToolPath', () => {
   const originalSecurity = process.env.OMQ_SECURITY;
@@ -63,6 +63,20 @@ describe('validateToolPath', () => {
 
     it('includes helpful message in error', () => {
       expect(() => validateToolPath('/etc')).toThrow('OMQ_SECURITY');
+    });
+
+    it('points the reader at the config file security-config actually opens', () => {
+      const message = (() => {
+        try {
+          validateToolPath('/etc');
+          return '';
+        } catch (error) {
+          return (error as Error).message;
+        }
+      })();
+      expect(message).toContain(join('.claude', 'omq.jsonc'));
+      expect(message).not.toContain('omc.jsonc');
+      expect(securityConfigPaths()).toContain(join(process.cwd(), '.claude', 'omq.jsonc'));
     });
   });
 });

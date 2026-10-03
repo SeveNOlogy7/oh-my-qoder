@@ -1,7 +1,7 @@
 /**
  * Rules Finder
  *
- * Finds rule files in project directories and [$QODER_CONFIG_DIR|~/.qoder].
+ * Finds rule files in project directories and [$QODER_CONFIG_DIR|~/.claude].
  *
  * Ported from oh-my-opencode's rules-injector hook.
  */
@@ -20,7 +20,7 @@ import {
   PROJECT_RULE_SUBDIRS,
   RULE_EXTENSIONS,
 } from './constants.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
 import type { RuleFileCandidate } from './types.js';
 
 /**
@@ -153,7 +153,7 @@ export function calculateDistance(
 /**
  * Find all rule files for a given context.
  * Searches from currentFile upward to projectRoot for rule directories,
- * then [$QODER_CONFIG_DIR|~/.qoder]/rules.
+ * then [$QODER_CONFIG_DIR|~/.claude]/rules.
  */
 export function findRuleFiles(
   projectRoot: string | null,
@@ -186,6 +186,10 @@ export function findRuleFiles(
         });
       }
     }
+    // Without a project root, only the current file's own directory is in
+    // scope. Ascending further would let unrelated ancestor .cursor/rules,
+    // .claude/rules, or .github/instructions masquerade as project rules.
+    if (!projectRoot) break;
 
     // Stop at project root or filesystem root
     if (projectRoot && currentDir === projectRoot) break;
@@ -223,7 +227,7 @@ export function findRuleFiles(
   }
 
   // Search user-level rule directory
-  const userRuleDir = join(getQoderConfigDir(), 'rules');
+  const userRuleDir = join(getClaudeConfigDir(), 'rules');
   const userFiles: string[] = [];
   findRuleFilesRecursive(userRuleDir, userFiles);
 

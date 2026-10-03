@@ -19,6 +19,9 @@ import {
   getJobSummaryForPreCompact,
 } from '../lib/job-state-db.js';
 import type { JobStatus } from '../mcp/prompt-persistence.js';
+// Exercises the DEFAULT state-root branch over its own fixtures (#42):
+// lift the per-file OMQ_STATE_DIR pin for every test below.
+import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 // Test fixtures
 const TEST_DIR = join(process.cwd(), '.test-job-state-db-' + process.pid);
@@ -41,6 +44,7 @@ function createTestJob(overrides: Partial<JobStatus> = {}): JobStatus {
 }
 
 describe('job-state-db', () => {
+  useDefaultStateRoot();
   beforeEach(async () => {
     // Clean up any previous test state
     if (existsSync(TEST_DIR)) {

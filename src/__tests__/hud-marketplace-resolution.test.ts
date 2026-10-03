@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { OMQ_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -32,14 +32,28 @@ afterEach(() => {
 
 // plugin-setup.mjs rewrites hooks/hooks.json with an absolute node binary path
 // (it always resolves the path relative to its own __dirname, ignoring QODER_CONFIG_DIR).
-// Restore the committed version after all tests in this file so sibling test
-// suites (e.g. setup-contracts-regression) don't see a mutated working tree.
-afterAll(() => {
-  try {
-    execFileSync('git', ['checkout', '--', 'hooks/hooks.json'], { cwd: root, stdio: 'pipe' });
-  } catch {
-    // Non-fatal: hooks.json may already be clean or git may be unavailable.
+// Snapshot the working-tree file into memory and a tmp fixture before each test
+// and restore the exact snapshot afterwards, so sibling test suites
+// (e.g. setup-contracts-regression) never see a mutated working tree and this
+// suite never depends on git state.
+let hooksJsonSnapshot: string | undefined;
+let hooksJsonFixturePath: string | undefined;
+
+beforeEach(() => {
+  const hooksJsonPath = join(root, 'hooks', 'hooks.json');
+  hooksJsonSnapshot = readFileSync(hooksJsonPath, 'utf-8');
+  const fixtureDir = mkdtempSync(join(tmpdir(), 'omq-hooks-json-fixture-'));
+  tempDirs.push(fixtureDir);
+  hooksJsonFixturePath = join(fixtureDir, 'hooks.json');
+  writeFileSync(hooksJsonFixturePath, hooksJsonSnapshot);
+});
+
+afterEach(() => {
+  if (hooksJsonSnapshot !== undefined) {
+    writeFileSync(join(root, 'hooks', 'hooks.json'), hooksJsonSnapshot);
+    hooksJsonSnapshot = undefined;
   }
+  hooksJsonFixturePath = undefined;
 });
 
 describe('HUD marketplace resolution', () => {
@@ -94,7 +108,7 @@ describe('HUD marketplace resolution', () => {
     mkdirSync(fakeHome, { recursive: true });
 
     const sentinelPath = join(configDir, 'marketplace-loaded.txt');
-    const marketplaceRoot = join(configDir, 'plugins', 'marketplaces', 'omq');
+    const marketplaceRoot = join(configDir, 'plugins', 'marketplaces', 'local');
     const marketplaceHudDir = join(marketplaceRoot, 'dist', 'hud');
     mkdirSync(marketplaceHudDir, { recursive: true });
     writeFileSync(join(marketplaceRoot, 'package.json'), '{"type":"module"}\n');
@@ -162,8 +176,8 @@ describe('HUD marketplace resolution', () => {
         ...process.env,
         QODER_CONFIG_DIR: configDir,
         HOME: fakeHome,
-        OMC_PLUGIN_ROOT: pluginRoot,
-        OMC_HUD_DISABLE_NPM_FALLBACK: '1',
+        OMQ_PLUGIN_ROOT: pluginRoot,
+        OMQ_HUD_DISABLE_NPM_FALLBACK: '1',
       },
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
