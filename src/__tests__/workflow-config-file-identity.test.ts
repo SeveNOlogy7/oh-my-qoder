@@ -18,9 +18,15 @@ const tempDirs: string[] = [];
 function mkRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'omq-config-identity-'));
   tempDirs.push(dir);
-  execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.email', 't@example.invalid'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.name', 't'], { cwd: dir, stdio: 'ignore' });
+  // execFileSync with no timeout hangs the whole worker if git ever blocks on
+  // the runner (CI-only hang, 2× deterministic: 724/727 suites completed, this
+  // file in-flight at cancel) — bounded so a stuck git fails the pin instead
+  // of stalling the captured run.
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: dir, stdio: 'ignore', timeout: 15000 });
+  git(['init']);
+  git(['config', 'user.email', 't@example.invalid']);
+  git(['config', 'user.name', 't']);
   return dir;
 }
 

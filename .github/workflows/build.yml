@@ -156,7 +156,7 @@ jobs:
       - name: Identity gate (unpacked tarball)
         run: |
           set -euo pipefail
-          tarball=$(npm pack)
+          tarball=$(npm pack | tail -n 1)  # prepack streams build output to stdout; the filename is the last line
           out=$(mktemp -d)
           tar -xzf "$tarball" -C "$out"
           node scripts/check-canonical-identity.mjs "$out/package"
