@@ -27,6 +27,7 @@ import { sharedMemoryTools } from '../tools/shared-memory-tools.js';
 import { deepinitManifestTool } from '../tools/deepinit-manifest.js';
 import { wikiTools } from '../tools/wiki-tools.js';
 import { skillsTools } from '../tools/skills-tools.js';
+import { teamTools } from '../tools/team-tools.js';
 import { TOOL_CATEGORIES, type ToolCategory } from '../constants/index.js';
 import { filterDisabledTools, tagCategory } from './disable-tools.js';
 import { z } from 'zod';
@@ -61,6 +62,7 @@ export const allTools: ToolDef[] = [
   { ...(deepinitManifestTool as unknown as ToolDef), category: TOOL_CATEGORIES.DEEPINIT },
   ...tagCategory(wikiTools as unknown as ToolDef[], TOOL_CATEGORIES.WIKI),
   ...tagCategory(skillsTools as unknown as ToolDef[], TOOL_CATEGORIES.SKILLS),
+  ...tagCategory(teamTools as unknown as ToolDef[], TOOL_CATEGORIES.TEAM),
 ];
 
 /** Tools currently enabled for standalone ListTools after OMQ_DISABLE_TOOLS filtering. */

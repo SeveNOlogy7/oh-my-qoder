@@ -10,10 +10,10 @@ const root = join(__dirname, '..', '..');
 describe('HUD build/load guidance', () => {
   it('session-start checks legacy hud script name and build guidance', () => {
     const content = readFileSync(join(root, 'scripts', 'session-start.mjs'), 'utf-8');
-    // The installed/checked pair settled on omc-hud.* in the upstream adoption
-    // (installer/index.ts installs omc-hud.mjs; session-start checks it plus
-    // the omc-hud.js legacy name), so pin the legacy name production checks.
-    expect(content).toContain("const hudScriptLegacy = join(hudDir, 'omc-hud.js');");
+    // The fork installs omq-hud.*; the ancestor's omc-hud.* remains accepted
+    // as legacy so an upgraded install is not reported as missing.
+    expect(content).toContain("const hudScriptLegacy = join(hudDir, 'omq-hud.js');");
+    expect(content).toContain("const hudScriptAncestor = join(hudDir, 'omc-hud.mjs');");
     expect(content).toContain('HUD plugin cache is not built. Run: cd');
     expect(content).toContain('npm install && npm run build');
   });
