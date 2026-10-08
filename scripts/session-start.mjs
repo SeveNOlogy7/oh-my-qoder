@@ -811,16 +811,20 @@ async function checkNpmUpdate(currentVersion) {
 // Check if HUD is properly installed (with retry for race conditions)
 async function checkHudInstallation(retryCount = 0) {
   const hudDir = join(configDir, 'hud');
-  // Support current and legacy script names
-  const hudScriptOmc = join(hudDir, 'omc-hud.mjs');
-  const hudScriptLegacy = join(hudDir, 'omc-hud.js');
+  // Both prefixes are accepted: this fork installs omq-hud.*, and the
+  // ancestor's omc-hud.* stays accepted as legacy so an upgraded install is
+  // never reported as missing.
+  const hudScriptCurrent = join(hudDir, 'omq-hud.mjs');
+  const hudScriptLegacy = join(hudDir, 'omq-hud.js');
+  const hudScriptAncestor = join(hudDir, 'omc-hud.mjs');
+  const hudScriptAncestorLegacy = join(hudDir, 'omc-hud.js');
   const settingsFile = join(configDir, 'settings.json');
 
   const MAX_RETRIES = 2;
   const RETRY_DELAY_MS = 100;
 
   // Check if HUD script exists (either naming convention)
-  const hudScriptExists = existsSync(hudScriptOmc) || existsSync(hudScriptLegacy);
+  const hudScriptExists = existsSync(hudScriptCurrent) || existsSync(hudScriptLegacy) || existsSync(hudScriptAncestor) || existsSync(hudScriptAncestorLegacy);
   if (!hudScriptExists) {
     return { installed: false, reason: 'HUD script missing' };
   }
@@ -855,7 +859,7 @@ async function checkHudInstallation(retryCount = 0) {
           : null);
 
       // If OMC HUD wrapper is configured, ensure at least one plugin cache version is built.
-      if (statusLineCommand?.includes('omc-hud')) {
+      if (statusLineCommand?.includes('omq-hud') || statusLineCommand?.includes('omc-hud')) {
         const pluginCacheBase = resolvePluginCacheBase(configDir);
         if (existsSync(pluginCacheBase)) {
           const versions = readdirSync(pluginCacheBase)

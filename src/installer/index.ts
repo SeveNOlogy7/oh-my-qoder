@@ -251,7 +251,7 @@ export function buildStatusLineCommand(
 
   if (cacheWrapperPath) {
     if (isDefaultQoderConfigDir(QODER_CONFIG_DIR)) {
-      return `sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud-cache.sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud.mjs`;
+      return `sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omq-hud-cache.sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omq-hud.mjs`;
     }
 
     return `sh ${quoteShellArg(cacheWrapperPath.replace(/\\/g, '/'))} ${quoteShellArg(normalizedHudScriptPath)}`;
@@ -259,10 +259,10 @@ export function buildStatusLineCommand(
 
   if (isDefaultQoderConfigDir(QODER_CONFIG_DIR)) {
     if (findNodePath) {
-      return `sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/find-node.sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud.mjs`;
+      return `sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/find-node.sh \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omq-hud.mjs`;
     }
 
-    return `node \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omc-hud.mjs`;
+    return `node \${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hud/omq-hud.mjs`;
   }
 
   if (findNodePath) {
@@ -844,7 +844,7 @@ function configureInstallerSettings(
         const findNodeSrc = join(getPackageDir(), 'scripts', 'find-node.sh');
         const findNodeDest = join(HUD_DIR, 'find-node.sh');
         const cacheWrapperSrc = join(getPackageDir(), 'scripts', 'lib', 'hud-cache-wrapper.sh');
-        const cacheWrapperDest = join(HUD_DIR, 'omc-hud-cache.sh');
+        const cacheWrapperDest = join(HUD_DIR, 'omq-hud-cache.sh');
         const configDirHelperSrc = join(getPackageDir(), 'scripts', 'lib', 'config-dir.sh');
         const hudLibDir = join(HUD_DIR, 'lib');
         const configDirHelperDest = join(hudLibDir, 'config-dir.sh');
@@ -2715,14 +2715,14 @@ export function install(options: InstallOptions = {}): InstallResult {
       // The wrapper body is read by buildHudWrapper() in src/lib/hud-wrapper-template.ts —
       // the single TS source of truth, mirrored by scripts/lib/hud-wrapper-template.mjs
       // for scripts/plugin-setup.mjs. Drift enforced by hud-wrapper-template-sync.test.ts.
-      hudScriptPath = join(HUD_DIR, 'omc-hud.mjs').replace(/\\/g, '/');
+      hudScriptPath = join(HUD_DIR, 'omq-hud.mjs').replace(/\\/g, '/');
       const hudScript = buildHudWrapper(getPackageDir());
 
       writeFileSync(hudScriptPath, hudScript);
       if (!isWindows()) {
         chmodSync(hudScriptPath, 0o755);
       }
-      log('  Installed omc-hud.mjs');
+      log('  Installed omq-hud.mjs');
     } catch (_e) {
       log('  Warning: Could not install HUD statusline script (non-fatal)');
       hudScriptPath = null;

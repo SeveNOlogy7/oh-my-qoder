@@ -779,7 +779,7 @@ function executeClaudeMdTransaction(request) {
     return failure(request, 3, message(error), "validation");
   }
   const root = capturedRoot.canonical;
-  const main2 = (0, import_node_path.resolve)(root, "AGENTS.md");
+  const main2 = (0, import_node_path.resolve)(root, "CLAUDE.md");
   const companion = (0, import_node_path.resolve)(root, "CLAUDE-omc.md");
   try {
     verifyCapturedRoot(capturedRoot, fs, true);
@@ -876,7 +876,7 @@ function executeClaudeMdTransaction(request) {
 // src/cli/claude-md-coordinator.ts
 var CLAUDE_MD_COORDINATOR_SCHEMA_VERSION = 1;
 var COMPILED_ENGINE_VERSION = true ? "0.1.0" : "";
-var COMPILED_SOURCE_SHA256 = true ? "a2b1c82847f10f5418b764f57d2b2dd2c603b9bae82ac371c4e62adc7f9dd835" : "";
+var COMPILED_SOURCE_SHA256 = true ? "a0bc1dd48226850aa57f2c16b1ff869aa0c58453c8b21972cd7a9273ac2625f1" : "";
 function runClaudeMdCoordinatorHandshake() {
   if (!COMPILED_ENGINE_VERSION || !COMPILED_SOURCE_SHA256) {
     return { exitCode: 2, response: coordinatorError(2, "Coordinator build handshake is unavailable") };

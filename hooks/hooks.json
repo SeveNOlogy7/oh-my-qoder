@@ -25,17 +25,17 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/session-start.mjs",
-            "timeout": 5
+            "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/project-memory-session.mjs",
-            "timeout": 5
+            "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/wiki-session-start.mjs",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -67,7 +67,7 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/pre-tool-enforcer.mjs",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       }
@@ -79,7 +79,7 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/permission-handler.mjs",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       }
@@ -91,17 +91,17 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/post-tool-verifier.mjs",
-            "timeout": 3
+            "timeout": 10
           },
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/project-memory-posttool.mjs",
-            "timeout": 3
+            "timeout": 10
           },
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/post-tool-rules-injector.mjs",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       }
@@ -113,7 +113,7 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/post-tool-use-failure.mjs",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       }
@@ -125,7 +125,7 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/subagent-tracker.mjs start",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       }
@@ -137,12 +137,12 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/subagent-tracker.mjs stop",
-            "timeout": 5
+            "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/verify-deliverables.mjs",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       }
@@ -159,12 +159,12 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/project-memory-precompact.mjs",
-            "timeout": 5
+            "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/wiki-pre-compact.mjs",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       }
@@ -176,12 +176,12 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/context-guard-stop.mjs",
-            "timeout": 5
+            "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/workflow-drift-guard.mjs",
-            "timeout": 3
+            "timeout": 10
           },
           {
             "type": "command",
@@ -191,7 +191,7 @@
           {
             "type": "command",
             "command": "node \"$QODER_PLUGIN_ROOT\"/scripts/run.cjs \"$QODER_PLUGIN_ROOT\"/scripts/code-simplifier.mjs",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       }

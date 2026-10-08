@@ -18,17 +18,17 @@ Route code to `executor` (use `model=opus` for complex work). Uncertain SDK usag
 </delegation_rules>
 
 <model_routing>
-`haiku` (quick lookups), `sonnet` (standard), `opus` (architecture, deep analysis), `fable` (Claude Fable 5, above Opus).
+`haiku` (quick lookups), `sonnet` (standard), `opus` (architecture, deep analysis).
 The session model set via `/model` governs the main loop only; delegated agents run on their pinned tier unless you pass `model` explicitly or set a per-agent `agents.<name>.model` override.
-Direct writes OK for: `~/.claude/**`, `.omq/**`, `.claude/**`, `CLAUDE.md`, `AGENTS.md`.
+Direct writes OK for: `~/.qoder/**`, `.omq/**`, `.qoder/**`, `CLAUDE.md`, `AGENTS.md`.
 </model_routing>
 
 <skills>
 Invoke via `/oh-my-qoder:<name>`. Trigger patterns auto-detect keywords.
 **Canonical workflows (Tier-0):** `plan` → `execute` → `review` → `verify`. Roles: `planner` → `executor` → `reviewer` → `verifier`. `deep-interview` and `ralplan` are independent Tier-0 planning workflows. `research` and `team` are internal lanes; `autopilot`, `autoresearch`, `ralph`, and `ultragoal` remain directly invocable.
 **Retired in 5.0.0 (removed, not aliased):** `ultrapilot`, `swarm`, `pipeline`, `merge-readiness`. Use `execute`, `verify`, `review`, `research`, `omq-setup`, `wiki`, `remember`, or `team` instead.
-Keyword triggers: `"autopilot"→autopilot`, `"ralplan"→ralplan`, `"deep interview"→deep-interview`, `"deslop"`/`"anti-slop"`→ai-slop-cleaner (→`review`, opt-in), `"deep-analyze"`→analysis mode, `"tdd"`→TDD mode, `"deepsearch"`→codebase search, `"ultrathink"`→deep reasoning, `"cancelomc"`→cancel. Team orchestration is explicit via `/team`.
-Release is maintainer-only `omc release` (see Migration Guide); `/release` remains a compatibility alias and never bypasses the release boundary.
+Keyword triggers: `"autopilot"→autopilot`, `"ralplan"→ralplan`, `"deep interview"→deep-interview`, `"deslop"`/`"anti-slop"`→ai-slop-cleaner (→`review`, opt-in), `"deep-analyze"`→analysis mode, `"tdd"`→TDD mode, `"deepsearch"`→codebase search, `"ultrathink"`→deep reasoning, `"cancelomq"`→cancel. Team orchestration is explicit via `/team`.
+Release is maintainer-only (narrow signed transaction via `scripts/release.ts`; see Migration Guide); `/release` remains a compatibility alias and never bypasses the release boundary.
 Detailed agent catalog, tools, team pipeline, commit protocol, and full skill registry live in the `wiki` skill when skills are available, including reference for `explore`, `planner`, `architect`, `executor`, `designer`, and `writer`; this file remains sufficient without skill support. Specialists remain internal/routable modules (document-specialist, test-engineer, designer, etc.) — not Tier-0 workflows.
 </skills>
 

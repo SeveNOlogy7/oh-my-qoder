@@ -30,7 +30,7 @@ describe('HUD Windows Compatibility', () => {
 
       const content = readFileSync(sessionStartPath, 'utf-8');
       expect(content).toContain('omq-hud.mjs');
-      // Note: May also contain 'omq-hud.mjs' for backward compatibility (dual naming)
+      // Note: May also contain 'omc-hud.mjs' for backward compatibility (dual naming)
     });
 
     it('installer should create omq-hud.mjs', () => {
@@ -39,7 +39,7 @@ describe('HUD Windows Compatibility', () => {
 
       const content = readFileSync(installerPath, 'utf-8');
       expect(content).toContain('omq-hud.mjs');
-      // Note: May also contain 'omq-hud.mjs' for legacy support
+      // Note: May also contain 'omc-hud.mjs' for legacy support
     });
   });
 
