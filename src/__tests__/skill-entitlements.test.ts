@@ -60,6 +60,43 @@ describe('builtin skill entitlement projections', () => {
     }
   });
 
+  it('hashes and compares EOL-insensitively so CRLF and LF checkouts verify identically', () => {
+    const fixtureRoot = mkdtempSync(join(tmpdir(), 'omc-skill-entitlements-eol-'));
+    try {
+      mkdirSync(join(fixtureRoot, 'scripts', 'lib'), { recursive: true });
+      mkdirSync(join(fixtureRoot, 'src', 'config'), { recursive: true });
+      mkdirSync(join(fixtureRoot, 'templates', 'hooks', 'lib'), { recursive: true });
+      cpSync(generator, join(fixtureRoot, 'scripts', 'generate-skill-entitlements.mjs'));
+      const manifestFile = join(fixtureRoot, 'src', 'config', 'builtin-skill-entitlements.json');
+      const projection = join(fixtureRoot, 'scripts', 'lib', 'skill-entitlements.mjs');
+      const body = JSON.stringify({ schemaVersion: 1, skininthegamebrosOnlySkills: ['remember'] }, null, 2);
+
+      // A CRLF checkout generates the projections...
+      writeFileSync(manifestFile, body.replace(/\n/g, '\r\n'));
+      execFileSync(process.execPath, [join(fixtureRoot, 'scripts', 'generate-skill-entitlements.mjs')], {
+        cwd: fixtureRoot,
+        stdio: 'pipe',
+      });
+
+      // ...an LF checkout of the same manifest verifies...
+      writeFileSync(manifestFile, body);
+      expect(() => execFileSync(process.execPath, [join(fixtureRoot, 'scripts', 'generate-skill-entitlements.mjs'), '--verify'], {
+        cwd: fixtureRoot,
+        stdio: 'pipe',
+      })).not.toThrow();
+
+      // ...and a CRLF checkout of the projections verifies against the LF render.
+      writeFileSync(projection, readFileSync(projection, 'utf8').replace(/\n/g, '\r\n'));
+      writeFileSync(manifestFile, body.replace(/\n/g, '\r\n'));
+      expect(() => execFileSync(process.execPath, [join(fixtureRoot, 'scripts', 'generate-skill-entitlements.mjs'), '--verify'], {
+        cwd: fixtureRoot,
+        stdio: 'pipe',
+      })).not.toThrow();
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
   it('normalizes manifest entries before every visibility membership check', () => {
     const normalizedExpression = 'map((skill: string) => skill.trim().toLowerCase())';
     for (const path of [
