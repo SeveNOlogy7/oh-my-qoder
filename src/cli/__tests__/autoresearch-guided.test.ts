@@ -5,7 +5,6 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseSandboxContract } from '../../autoresearch/contracts.js';
-import { clearQoderCliCache } from '../../lib/qoder-cli.js';
 
 // The launch path used to name `bin/omc.js` (ancestor) and before that `bin/omq.js`
 // (fork); neither exists in any commit, so tmux died with MODULE_NOT_FOUND. package.json's
@@ -15,13 +14,6 @@ const packageBin = (JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'ut
   bin: Record<string, string>;
 }).bin.omq;
 const packageBinPath = join(REPO_ROOT, ...packageBin.split('/'));
-
-// Pinned so the CLI resolver never PATH-probes: without it these cases assert whichever
-// Qoder distribution the host happens to install (same seam as
-// src/cli/__tests__/autoresearch-setup-session.test.ts). The value is arbitrary -- what
-// the cases assert is that the resolved binary reaches tmux unchanged.
-const PINNED_CLI = 'qwen';
-const setupCodexHome = (repo: string) => join(repo, '.omx', 'tmp', 'omq-autoresearch-setup-kf12oi', 'codex-home');
 
 const { tmuxAvailableMock, buildTmuxShellCommandMock, buildTmuxShellCommandWithEnvMock, wrapWithLoginShellMock, quoteShellArgMock } = vi.hoisted(() => ({
   tmuxAvailableMock: vi.fn(),
@@ -66,9 +58,6 @@ import {
   spawnAutoresearchTmux,
   type AutoresearchQuestionIO,
 } from '../autoresearch-guided.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 async function initRepo(): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), 'omq-autoresearch-guided-test-'));
@@ -76,6 +65,8 @@ async function initRepo(): Promise<string> {
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'ignore' });
   await writeFile(join(cwd, 'README.md'), 'hello\n', 'utf-8');
+  process.env.HOME = cwd;
+  process.env.USERPROFILE = cwd;
   execFileSync('git', ['add', 'README.md'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['commit', '-m', 'init'], { cwd, stdio: 'ignore' });
   return cwd;
@@ -104,7 +95,6 @@ function makeFakeIo(answers: string[]): AutoresearchQuestionIO {
 }
 
 describe('initAutoresearchMission', () => {
-  useDefaultStateRoot();
   it('creates mission.md with correct content', async () => {
     const repo = await initRepo();
     try {
@@ -191,7 +181,6 @@ describe('initAutoresearchMission', () => {
 });
 
 describe('parseInitArgs', () => {
-  useDefaultStateRoot();
   it('parses all flags with space-separated values', () => {
     const result = parseInitArgs([
       '--topic', 'my topic',
@@ -220,7 +209,6 @@ describe('parseInitArgs', () => {
 });
 
 describe('runAutoresearchNoviceBridge', () => {
-  useDefaultStateRoot();
   it('loops through refine further before launching and writes draft + mission files', async () => {
     const repo = await initRepo();
     try {
@@ -261,7 +249,6 @@ describe('runAutoresearchNoviceBridge', () => {
 });
 
 describe('guidedAutoresearchSetup', () => {
-  useDefaultStateRoot();
   it('delegates to the novice bridge behavior', async () => {
     const repo = await initRepo();
     try {
@@ -324,7 +311,6 @@ describe('guidedAutoresearchSetup', () => {
 });
 
 describe('checkTmuxAvailable', () => {
-  useDefaultStateRoot();
   beforeEach(() => {
     tmuxAvailableMock.mockReset();
   });
@@ -337,7 +323,6 @@ describe('checkTmuxAvailable', () => {
 });
 
 describe('spawnAutoresearchTmux', () => {
-  useDefaultStateRoot();
   const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
   beforeEach(() => {
@@ -403,7 +388,6 @@ describe('spawnAutoresearchTmux', () => {
 });
 
 describe('prepareAutoresearchSetupCodexHome', () => {
-  useDefaultStateRoot();
   it('creates a temp CODEX_HOME with autoNudge disabled and symlinked skills when available', async () => {
     vi.mocked(execFileSync).mockReset();
     const repo = await initRepo();
@@ -427,14 +411,10 @@ describe('prepareAutoresearchSetupCodexHome', () => {
 });
 
 describe('spawnAutoresearchSetupTmux', () => {
-  useDefaultStateRoot();
   let logSpy: ReturnType<typeof vi.spyOn>;
   let dateNowSpy: ReturnType<typeof vi.spyOn>;
-  const originalCliEnv = process.env.OMQ_QODER_CLI;
 
   beforeEach(() => {
-    process.env.OMQ_QODER_CLI = PINNED_CLI;
-    clearQoderCliCache();
     vi.mocked(execFileSync).mockReset();
     tmuxExecMock.mockReset();
     tmuxAvailableMock.mockReset();
@@ -448,9 +428,6 @@ describe('spawnAutoresearchSetupTmux', () => {
   afterEach(() => {
     dateNowSpy.mockRestore();
     logSpy.mockRestore();
-    if (originalCliEnv === undefined) delete process.env.OMQ_QODER_CLI;
-    else process.env.OMQ_QODER_CLI = originalCliEnv;
-    clearQoderCliCache();
   });
 
   it('launches a detached claude setup session and seeds deep-interview autoresearch mode', async () => {
@@ -466,8 +443,8 @@ describe('spawnAutoresearchSetupTmux', () => {
           ]);
           expect(typeof args[9]).toBe('string');
           expect(String(args[9])).toContain('wrapped:CODEX_HOME=');
-          expect(String(args[9])).toContain(`CODEX_HOME=${setupCodexHome(repo)}`);
-          expect(String(args[9])).toContain(PINNED_CLI);
+          expect(String(args[9])).toContain(`CODEX_HOME=${repo}/.omx/tmp/omq-autoresearch-setup-kf12oi/codex-home`);
+          expect(String(args[9])).toContain('claude');
           expect(String(args[9])).toContain('--dangerously-skip-permissions');
           return '%42\n';
         }
@@ -488,11 +465,11 @@ describe('spawnAutoresearchSetupTmux', () => {
       spawnAutoresearchSetupTmux(repo);
 
       expect(buildTmuxShellCommandWithEnvMock).toHaveBeenCalledWith(
-        PINNED_CLI,
+        'claude',
         ['--dangerously-skip-permissions'],
-        { CODEX_HOME: `${setupCodexHome(repo)}` },
+        { CODEX_HOME: `${repo}/.omx/tmp/omq-autoresearch-setup-kf12oi/codex-home` },
       );
-      expect(wrapWithLoginShellMock).toHaveBeenCalledWith(`CODEX_HOME=${setupCodexHome(repo)} ${PINNED_CLI} --dangerously-skip-permissions`);
+      expect(wrapWithLoginShellMock).toHaveBeenCalledWith(`CODEX_HOME=${repo}/.omx/tmp/omq-autoresearch-setup-kf12oi/codex-home claude --dangerously-skip-permissions`);
       expect(buildAutoresearchSetupSlashCommand()).toBe('/deep-interview --autoresearch');
       expect(tmuxExecMock).toHaveBeenCalledWith(
         ['send-keys', '-t', '%42', '-l', buildAutoresearchSetupSlashCommand()],
@@ -527,12 +504,12 @@ describe('spawnAutoresearchSetupTmux', () => {
       spawnAutoresearchSetupTmux(repo);
 
       expect(buildTmuxShellCommandWithEnvMock).toHaveBeenCalledWith(
-        PINNED_CLI,
+        'claude',
         ['--dangerously-skip-permissions'],
-        { CODEX_HOME: `${setupCodexHome(repo)}` },
+        { CODEX_HOME: `${repo}/.omx/tmp/omq-autoresearch-setup-kf12oi/codex-home` },
       );
       expect(wrapWithLoginShellMock).toHaveBeenCalledWith(
-        `CODEX_HOME=${setupCodexHome(repo)} ${PINNED_CLI} --dangerously-skip-permissions`,
+        `CODEX_HOME=${repo}/.omx/tmp/omq-autoresearch-setup-kf12oi/codex-home claude --dangerously-skip-permissions`,
       );
     } finally {
       Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });

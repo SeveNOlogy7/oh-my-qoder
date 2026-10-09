@@ -11,12 +11,13 @@ import { join } from 'path';
 import {
   processOrchestratorPreTool,
   isAllowedPath,
+  isTempOrScratchpadPath,
   isSourceFile,
   isWriteEditTool,
   clearEnforcementCache,
   type ToolExecuteInput,
-} from '../hooks/omq-orchestrator/index.js';
-import type { AuditEntry } from '../hooks/omq-orchestrator/audit.js';
+} from '../hooks/omc-orchestrator/index.js';
+import type { AuditEntry } from '../hooks/omc-orchestrator/audit.js';
 
 // Mock fs module
 vi.mock('fs', async () => {
@@ -51,31 +52,50 @@ vi.mock('../hooks/notepad/index.js', () => ({
   setPriorityContext: vi.fn(),
 }));
 
+// Keep bridge integration focused on delegation and task tracking. The bridge's
+// prompt-prerequisite reader resolves runtime state roots through git, which is
+// intentionally unavailable in this suite's mocked filesystem. Stub that
+// unrelated stateful surface so each integration case observes only its own
+// enforcement/task inputs.
+vi.mock('../hooks/prompt-prerequisites/index.js', () => ({
+  activatePromptPrerequisiteState: vi.fn(),
+  buildPromptPrerequisiteDenyReason: vi.fn(() => ''),
+  buildPromptPrerequisiteReminder: vi.fn(() => ''),
+  clearPromptPrerequisiteState: vi.fn(),
+  getPromptPrerequisiteConfig: vi.fn(() => ({
+    enabled: false,
+    blockingTools: [],
+    executionKeywords: [],
+    sectionNames: {},
+  })),
+  isPromptPrerequisiteBlockingTool: vi.fn(() => false),
+  parsePromptPrerequisiteSections: vi.fn(),
+  readPromptPrerequisiteState: vi.fn(() => null),
+  recordPromptPrerequisiteProgress: vi.fn(() => null),
+  shouldEnforcePromptPrerequisites: vi.fn(() => false),
+}));
+
 import { existsSync, readFileSync } from 'fs';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 const mockExistsSync = vi.mocked(existsSync);
 const mockReadFileSync = vi.mocked(readFileSync);
 
 describe('delegation-enforcement-levels', () => {
-  useDefaultStateRoot();
-  const savedConfigDir = process.env.QODER_CONFIG_DIR;
+  const savedConfigDir = process.env.CLAUDE_CONFIG_DIR;
 
   beforeEach(() => {
     vi.clearAllMocks();
     clearEnforcementCache();
-    // Ensure tests use the mocked homedir, not a custom QODER_CONFIG_DIR
-    delete process.env.QODER_CONFIG_DIR;
+    // Ensure tests use the mocked homedir, not a custom CLAUDE_CONFIG_DIR
+    delete process.env.CLAUDE_CONFIG_DIR;
     // Default: no config files exist
     mockExistsSync.mockReturnValue(false);
   });
 
   afterEach(() => {
     if (savedConfigDir !== undefined) {
-      process.env.QODER_CONFIG_DIR = savedConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = savedConfigDir;
     } else {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     }
   });
 
@@ -143,7 +163,7 @@ describe('delegation-enforcement-levels', () => {
     const sourceFileInput: ToolExecuteInput = {
       toolName: 'Write',
       toolInput: { filePath: 'src/app.ts' },
-      directory: '/tmp/test-project',
+      directory: '/home/test-project',
     };
 
     it('defaults to warn when no config file exists', () => {
@@ -159,13 +179,13 @@ describe('delegation-enforcement-levels', () => {
       // Local config exists with 'off', global has 'strict'
       mockExistsSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]tmp[\\/]test-project[\\/]\.omq[\\/]config\.json$/.test(s)) return true;
+        if (s.endsWith('/.omq/config.json')) return true;
         if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) return true;
         return false;
       });
       mockReadFileSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]tmp[\\/]test-project[\\/]\.omq[\\/]config\.json$/.test(s)) {
+        if (s.endsWith('/.omq/config.json')) {
           return JSON.stringify({ delegationEnforcementLevel: 'off' });
         }
         if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) {
@@ -183,12 +203,12 @@ describe('delegation-enforcement-levels', () => {
     it('falls back to global config when no local config', () => {
       mockExistsSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]mock[\\/]home[\\/]\.qoder(-cn)?[\\/]\.omq-config\.json$/.test(s)) return true;
+        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) return true;
         return false;
       });
       mockReadFileSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]mock[\\/]home[\\/]\.qoder(-cn)?[\\/]\.omq-config\.json$/.test(s)) {
+        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) {
           return JSON.stringify({ delegationEnforcementLevel: 'strict' });
         }
         return '';
@@ -235,7 +255,7 @@ describe('delegation-enforcement-levels', () => {
     it('supports enforcementLevel key as alternative', () => {
       mockExistsSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]tmp[\\/]test-project[\\/]\.omq[\\/]config\.json$/.test(s)) return true;
+        if (s.endsWith('/.omq/config.json')) return true;
         return false;
       });
       mockReadFileSync.mockImplementation(() => {
@@ -497,7 +517,7 @@ describe('delegation-enforcement-levels', () => {
         formatCompactSummary: vi.fn(),
       }));
       vi.mock('../installer/hooks.js', () => ({
-        ULTRAWORK_MESSAGE: 'ultrawork',
+
         ULTRATHINK_MESSAGE: 'ultrathink',
         SEARCH_MESSAGE: 'search',
         ANALYZE_MESSAGE: 'analyze',
@@ -586,7 +606,7 @@ describe('delegation-enforcement-levels', () => {
         expect.stringContaining('task-'),
         'Test task',
         'executor',
-        process.cwd().replace(/\\/g, '/'),
+        process.cwd(),
         undefined
       );
     });
@@ -603,32 +623,62 @@ describe('delegation-enforcement-levels', () => {
       expect(isAllowedPath('.claude/settings.json')).toBe(true);
     });
 
-    it('returns true for absolute paths under QODER_CONFIG_DIR', () => {
-      const originalConfigDir = process.env.QODER_CONFIG_DIR;
-      process.env.QODER_CONFIG_DIR = '/custom/claude-config';
+    it('returns true for temporary and scratchpad paths', () => {
+      expect(isAllowedPath('/tmp/test.py')).toBe(true);
+      expect(isAllowedPath('/private/tmp/claude-501/project/session/scratchpad/test.py')).toBe(true);
+      expect(isAllowedPath('/var/tmp/script.sh')).toBe(true);
+    });
+
+    it.each([
+      ['/tmp/test.py', '/home/project', true],
+      ['/private/tmp/test.py', '/home/project', true],
+      ['/var/tmp/test.py', '/home/project', true],
+      ['/private/var/tmp/test.py', '/home/project', true],
+      ['/tmp/project/src/app.ts', '/tmp/project', false],
+      ['/tmp/project2/src/app.ts', '/tmp/project', true],
+      ['/tmpfoo/src/app.ts', '/home/project', false],
+      ['scratchpad/src/app.ts', '/home/project', false],
+      ['C:\\Windows\\Temp\\fixture.ts', '/home/project', process.platform === 'win32'],
+      ['C:\\Users\\alice\\AppData\\Local\\Temp\\fixture.ts', '/home/project', process.platform === 'win32'],
+      ['\\\\server\\share\\fixture.ts', '/home/project', false],
+      ['.omq\\..\\src\\app.ts', '/home/project', false],
+    ] as const)('uses bounded cross-platform temp paths: %s from %s', (filePath, directory, expected) => {
+      expect(isTempOrScratchpadPath(filePath, directory)).toBe(expected);
+      expect(isAllowedPath(filePath, directory)).toBe(expected);
+    });
+
+    it('does not allow an absolute temp path that resolves inside the project', () => {
+      const directory = '/tmp/project';
+      expect(isTempOrScratchpadPath('/tmp/project/../project/src/app.ts', directory)).toBe(false);
+      expect(isAllowedPath('/tmp/project/../project/src/app.ts', directory)).toBe(false);
+    });
+
+    it('returns true for absolute paths under CLAUDE_CONFIG_DIR', () => {
+      const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+      process.env.CLAUDE_CONFIG_DIR = '/custom/claude-config';
       try {
         expect(isAllowedPath('/custom/claude-config/settings.json')).toBe(true);
         expect(isAllowedPath('/custom/claude-config/agents/test.md')).toBe(true);
       } finally {
         if (originalConfigDir === undefined) {
-          delete process.env.QODER_CONFIG_DIR;
+          delete process.env.CLAUDE_CONFIG_DIR;
         } else {
-          process.env.QODER_CONFIG_DIR = originalConfigDir;
+          process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
         }
       }
     });
 
-    it('returns true for absolute paths under a ~-prefixed QODER_CONFIG_DIR', () => {
-      const originalConfigDir = process.env.QODER_CONFIG_DIR;
-      process.env.QODER_CONFIG_DIR = '~/.qwen-alt';
+    it('returns true for absolute paths under a ~-prefixed CLAUDE_CONFIG_DIR', () => {
+      const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+      process.env.CLAUDE_CONFIG_DIR = '~/.claude-alt';
       try {
-        expect(isAllowedPath(join('/mock/home', '.qwen-alt', 'settings.json'))).toBe(true);
-        expect(isAllowedPath(join('/mock/home', '.qwen-alt', 'agents', 'test.md'))).toBe(true);
+        expect(isAllowedPath(join('/mock/home', '.claude-alt', 'settings.json'))).toBe(true);
+        expect(isAllowedPath(join('/mock/home', '.claude-alt', 'agents', 'test.md'))).toBe(true);
       } finally {
         if (originalConfigDir === undefined) {
-          delete process.env.QODER_CONFIG_DIR;
+          delete process.env.CLAUDE_CONFIG_DIR;
         } else {
-          process.env.QODER_CONFIG_DIR = originalConfigDir;
+          process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
         }
       }
     });
@@ -655,8 +705,8 @@ describe('delegation-enforcement-levels', () => {
       expect(isAllowedPath('.omq/../src/file.ts')).toBe(false);
     });
 
-    it('rejects .qoder/../src/file.ts traversal', () => {
-      expect(isAllowedPath('.qoder/../src/file.ts')).toBe(false);
+    it('rejects .claude/../src/file.ts traversal', () => {
+      expect(isAllowedPath('.claude/../src/file.ts')).toBe(false);
     });
 
     it('rejects bare .. traversal', () => {

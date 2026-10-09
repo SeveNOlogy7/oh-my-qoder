@@ -104,7 +104,7 @@ export function getRoleRoutingSpec(
  */
 function resolveTierToModelId(tier: TeamRoleTier, cfg: PluginConfig): string {
   const fromCfg = cfg.routing?.tierModels?.[tier];
-  if (typeof fromCfg === 'string' && fromCfg.length > 0) return fromCfg;
+  if (typeof fromCfg === 'string' && fromCfg.trim().length > 0) return fromCfg.trim();
   return getDefaultTierModels()[tier];
 }
 
@@ -118,8 +118,9 @@ function resolveQwenModel(
   raw: string | undefined,
   cfg: PluginConfig,
 ): string {
-  if (typeof raw === 'string' && raw.length > 0) {
-    return isTier(raw) ? resolveTierToModelId(raw, cfg) : raw;
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    const value = raw.trim();
+    return isTier(value) ? resolveTierToModelId(value, cfg) : value;
   }
   return resolveTierToModelId(ROLE_DEFAULT_TIER[role], cfg);
 }
@@ -127,29 +128,37 @@ function resolveQwenModel(
 /**
  * Resolve a user-supplied `model` value for an external provider worker.
  *
- * Tier names are Qwen-centric and not meaningful for codex/gemini/grok/cursor,
+ * Tier names are Qwen-centric and not meaningful for codex/gemini/grok/cursor/antigravity,
  * so tier input (or absent input) maps to the provider's builtin default. Only
  * an explicit non-tier model ID is passed through.
  */
 function resolveExternalModel(
-  provider: 'claude' | 'qwen' | 'codex' | 'gemini' | 'grok' | 'cursor' | 'antigravity',
+  provider: 'codex' | 'gemini' | 'grok' | 'cursor' | 'antigravity' | 'qwen',
   raw: string | undefined,
   cfg: PluginConfig,
 ): string {
-  if (typeof raw === 'string' && raw.length > 0 && !isTier(raw)) {
-    return raw;
+  if (typeof raw === 'string' && raw.trim().length > 0 && !isTier(raw.trim())) {
+    return raw.trim();
   }
   const defaults = cfg.externalModels?.defaults;
+  const model = (value: unknown): string | undefined => typeof value === 'string' && value.trim() ? value.trim() : undefined;
   if (provider === 'codex') {
-    return defaults?.codexModel ?? BUILTIN_EXTERNAL_MODEL_DEFAULTS.codexModel;
+    return model(defaults?.codexModel) ?? BUILTIN_EXTERNAL_MODEL_DEFAULTS.codexModel;
   }
   if (provider === 'grok') {
-    return defaults?.grokModel ?? '';
+    return model(defaults?.grokModel) ?? '';
   }
   if (provider === 'cursor') {
-    return '';
+    // No builtin default: cursor-agent picks its own model when `--model` is
+    // omitted, and pinning one here would override that for every user. The
+    // config hook still has to exist, or `externalModels.defaults.cursorModel`
+    // and a tier name both resolve to nothing with no diagnostic.
+    return model(defaults?.cursorModel) ?? '';
   }
-  return defaults?.geminiModel ?? BUILTIN_EXTERNAL_MODEL_DEFAULTS.geminiModel;
+  if (provider === 'antigravity') {
+    return model(defaults?.antigravityModel) ?? BUILTIN_EXTERNAL_MODEL_DEFAULTS.antigravityModel;
+  }
+  return model(defaults?.geminiModel) ?? BUILTIN_EXTERNAL_MODEL_DEFAULTS.geminiModel;
 }
 
 /**
@@ -180,8 +189,10 @@ export function resolveRoleAssignment(
   const provider: TeamRoleProvider = isOrchestrator
     ? 'qwen'
     : (spec?.provider ?? 'qwen');
-
-  const model = provider === 'qwen'
+  // Qwen is the default worker provider and owns the tier map. An explicit
+  // `claude` spec rides the same tier resolution so it never receives an
+  // external provider's model id.
+  const model = provider === 'qwen' || provider === 'claude'
     ? resolveQwenModel(canonical, spec?.model, cfg)
     : resolveExternalModel(provider, spec?.model, cfg);
   const agent: KnownAgentName = spec?.agent ?? ROLE_TO_AGENT[canonical];

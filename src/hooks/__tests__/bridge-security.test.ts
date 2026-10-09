@@ -27,9 +27,6 @@ import {
 import { validatePath } from '../../lib/worktree-paths.js';
 import { normalizeHookInput, SENSITIVE_HOOKS, isAlreadyCamelCase, HookInputSchema } from '../bridge-normalize.js';
 import { readAutopilotState } from '../autopilot/state.js';
-// Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
-// the per-file OMQ_STATE_DIR pin for every test in this describe.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 function initializeGitRepo(directory: string): void {
   execFileSync('git', ['init', '--quiet'], {
@@ -149,16 +146,30 @@ describe('Path Traversal Protection', () => {
 // ============================================================================
 
 describe('State Poisoning Resilience', () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+  let previousStateDir: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), 'security-test-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
+    delete process.env.OMQ_STATE_DIR;
     mkdirSync(join(testDir, '.omq', 'state'), { recursive: true });
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
   });
 
   it('should return null for completely invalid JSON state', () => {

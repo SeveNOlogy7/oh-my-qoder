@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { omqToolsServer, omqToolNames, getOmqToolNames } from '../mcp/omq-tools-server.js';
 
 const interopEnabled = process.env.OMQ_INTEROP_TOOLS_ENABLED === '1';
-const totalTools = interopEnabled ? 82 : 74;
-const withoutLsp = interopEnabled ? 70 : 62;
-const withoutAst = interopEnabled ? 80 : 72;
-const withoutPython = interopEnabled ? 81 : 73;
-const withoutSkills = interopEnabled ? 79 : 71;
+const totalTools = interopEnabled ? 83 : 75;
+const withoutLsp = interopEnabled ? 71 : 63;
+const withoutAst = interopEnabled ? 81 : 73;
+const withoutPython = interopEnabled ? 82 : 74;
+const withoutSkills = interopEnabled ? 80 : 72;
 
 describe('omq-tools-server', () => {
   describe('omqToolNames', () => {

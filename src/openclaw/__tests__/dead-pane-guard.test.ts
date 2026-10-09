@@ -55,9 +55,6 @@ import { wakeOpenClaw } from "../index.js";
 import { getOpenClawConfig, resolveGateway } from "../config.js";
 import { wakeGateway } from "../dispatcher.js";
 import type { OpenClawConfig } from "../types.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const TEST_CONFIG: OpenClawConfig = {
   enabled: true,
@@ -81,13 +78,18 @@ const PROJECT_PATH = "/home/user/project";
 const STATE_DIR = join(PROJECT_PATH, ".omq", "state");
 
 describe("dead-pane guard in wakeOpenClaw (issue #2562)", () => {
-  useDefaultStateRoot();
   let origTmux: string | undefined;
   let origTmuxPane: string | undefined;
+  let origHome: string | undefined;
+  let origUserProfile: string | undefined;
 
   beforeEach(() => {
     origTmux = process.env.TMUX;
     origTmuxPane = process.env.TMUX_PANE;
+    origHome = process.env.HOME;
+    origUserProfile = process.env.USERPROFILE;
+    process.env.HOME = PROJECT_PATH;
+    process.env.USERPROFILE = PROJECT_PATH;
     process.env.TMUX = "/tmp/tmux-1000/default,12345,0";
     process.env.TMUX_PANE = "%42";
 
@@ -104,6 +106,10 @@ describe("dead-pane guard in wakeOpenClaw (issue #2562)", () => {
     else process.env.TMUX = origTmux;
     if (origTmuxPane === undefined) delete process.env.TMUX_PANE;
     else process.env.TMUX_PANE = origTmuxPane;
+    if (origHome === undefined) delete process.env.HOME;
+    else process.env.HOME = origHome;
+    if (origUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = origUserProfile;
     vi.clearAllMocks();
   });
 

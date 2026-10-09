@@ -9,10 +9,10 @@
  * to the workspace anchor .omq/ so sibling sub-repos share one memory file.
  */
 
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { withProjectMemoryLock } from '../../src/hooks/project-memory/storage.js';
 import { clearWorktreeCache, getOmcRoot } from '../../src/lib/worktree-paths.js';
 
@@ -62,7 +62,7 @@ describe('concurrent project-memory writes (E.4)', () => {
   }
 
   it('two concurrent writers preserve both notes (no lost updates)', async () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omc-pmem-concurrent-'));
+    tempDir = mkdtempSync(join(homedir(), 'omc-pmem-concurrent-'));
     mkdirSync(join(tempDir, '.omq'), { recursive: true });
 
     await Promise.all([
@@ -77,7 +77,7 @@ describe('concurrent project-memory writes (E.4)', () => {
   });
 
   it('three concurrent writers each preserve their note', async () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omc-pmem-three-'));
+    tempDir = mkdtempSync(join(homedir(), 'omc-pmem-three-'));
     mkdirSync(join(tempDir, '.omq'), { recursive: true });
 
     await Promise.all([
@@ -96,23 +96,9 @@ describe('concurrent project-memory writes (E.4)', () => {
 
 describe('concurrent project-memory writes — multi-repo workspace anchor (E.4 migration)', () => {
   let workspaceRoot: string;
-  // Resolves through the workspace-marker branch of getOmcRoot() (#42): lift
-  // the per-file OMQ_STATE_DIR pin per test, restore afterwards.
-  let pinnedStateDir: string | undefined;
-
-  beforeEach(() => {
-    pinnedStateDir = process.env.OMQ_STATE_DIR;
-    delete process.env.OMQ_STATE_DIR;
-    clearWorktreeCache();
-  });
 
   afterEach(() => {
     clearWorktreeCache();
-    if (pinnedStateDir === undefined) {
-      delete process.env.OMQ_STATE_DIR;
-    } else {
-      process.env.OMQ_STATE_DIR = pinnedStateDir;
-    }
     if (workspaceRoot) rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
@@ -154,7 +140,7 @@ describe('concurrent project-memory writes — multi-repo workspace anchor (E.4 
   }
 
   it('concurrent writers from sibling sub-repos converge on workspace anchor project-memory.json', async () => {
-    workspaceRoot = mkdtempSync(join(tmpdir(), 'omc-pmem-workspace-'));
+    workspaceRoot = mkdtempSync(join(homedir(), 'omc-pmem-workspace-'));
 
     // Drop workspace marker so getOmcRoot() anchors here
     writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
@@ -186,7 +172,7 @@ describe('concurrent project-memory writes — multi-repo workspace anchor (E.4 
   });
 
   it('three concurrent writers from different sub-repos each preserve their note at the workspace anchor', async () => {
-    workspaceRoot = mkdtempSync(join(tmpdir(), 'omc-pmem-workspace-three-'));
+    workspaceRoot = mkdtempSync(join(homedir(), 'omc-pmem-workspace-three-'));
     writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
 
     const repoA = join(workspaceRoot, 'repo-a');

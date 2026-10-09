@@ -303,7 +303,7 @@ ralplan this feature
 | `ultrathink`, `think hard`, `think deeply` | Deep reasoning mode |
 | `tdd`, `test first`, `red green` | TDD workflow |
 | `deslop`, `anti-slop` | AI expression cleanup |
-| `cancelomc`, `stopomc` | Cancel active execution mode |
+| `cancelomq`, `stopomq` | Cancel active execution mode |
 
 ### Keyword Detection Sources
 

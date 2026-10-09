@@ -3,18 +3,23 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ultragoalCommand } from '../ultragoal.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 async function withTempCwd<T>(run: (cwd: string) => Promise<T>): Promise<T> {
   const cwd = await mkdtemp(join(tmpdir(), 'omc-ultragoal-cli-'));
   const original = process.cwd();
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
   process.chdir(cwd);
+  process.env.HOME = cwd;
+  process.env.USERPROFILE = cwd;
   try {
     return await run(cwd);
   } finally {
     process.chdir(original);
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
     await rm(cwd, { recursive: true, force: true });
   }
 }
@@ -39,7 +44,6 @@ function captureConsole() {
 }
 
 describe('omc ultragoal CLI', () => {
-  useDefaultStateRoot();
   let captured: ReturnType<typeof captureConsole>;
 
   beforeEach(() => {
@@ -66,8 +70,8 @@ describe('omc ultragoal CLI', () => {
       await ultragoalCommand(['create-goals', '- First story\n- Second story']);
       expect(process.exitCode).toBe(0);
 
-      const goals = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { goals: Array<{ id: string }>; qoderGoalMode: string };
-      expect(goals.qoderGoalMode).toBe('aggregate');
+      const goals = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { goals: Array<{ id: string }>; claudeGoalMode: string };
+      expect(goals.claudeGoalMode).toBe('aggregate');
       expect(goals.goals.map((g) => g.id)).toEqual(['G001-first-story', 'G002-second-story']);
 
       const brief = await readFile(join(cwd, '.omq/ultragoal/brief.md'), 'utf-8');
@@ -135,12 +139,12 @@ describe('omc ultragoal CLI', () => {
         '--goal', 'First::Complete first milestone.',
         '--goal', 'Second::Complete second milestone.',
       ]);
-      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { qoderObjective: string };
+      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { claudeObjective: string };
 
       await ultragoalCommand(['complete-goals']);
       captured.out.length = 0;
 
-      const snapshot = JSON.stringify({ goal: { objective: plan.qoderObjective, status: 'active' } });
+      const snapshot = JSON.stringify({ goal: { objective: plan.claudeObjective, status: 'active' } });
       await ultragoalCommand([
         'checkpoint',
         '--goal-id', 'G001-first',
@@ -163,11 +167,11 @@ describe('omc ultragoal CLI', () => {
         '--brief', 'brief',
         '--goal', 'First::Complete first milestone.',
       ]);
-      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { qoderObjective: string };
+      const plan = JSON.parse(await readFile(join(cwd, '.omq/ultragoal/goals.json'), 'utf-8')) as { claudeObjective: string };
       await ultragoalCommand(['complete-goals']);
 
       const snapshotPath = join(cwd, 'goal-snapshot.json');
-      await writeFile(snapshotPath, JSON.stringify({ goal: { objective: plan.qoderObjective, status: 'complete' } }));
+      await writeFile(snapshotPath, JSON.stringify({ goal: { objective: plan.claudeObjective, status: 'complete' } }));
       const qualityGate = {
         aiSlopCleaner: { status: 'passed', evidence: 'cleaner ran' },
         verification: { status: 'passed', commands: ['npm test'], evidence: 'tests passed' },

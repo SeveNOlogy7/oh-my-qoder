@@ -27,7 +27,7 @@ import {
   performUpdate,
   formatUpdateNotification,
   getInstalledVersion,
-  getOMQConfig,
+  getOMCConfig,
   reconcileUpdateRuntime,
   CONFIG_FILE,
   type OMCConfig,
@@ -63,6 +63,7 @@ import { resolvePluginDirArg } from '../lib/plugin-dir.js';
 import { launchCommand } from './launch.js';
 import { interopCommand } from './interop.js';
 import { askCommand, ASK_USAGE } from './ask.js';
+import { graphCommand } from './graph.js';
 import { warnIfWin32 } from './win32-warning.js';
 import { autoresearchCommand } from './autoresearch.js';
 import { runHudWatchLoop } from './hud-watch.js';
@@ -303,7 +304,7 @@ Examples:
         process.exit(1);
       }
 
-      const config = getOMQConfig() as OMCConfig & { notificationProfiles?: Record<string, any> };
+      const config = getOMCConfig() as OMCConfig & { notificationProfiles?: Record<string, any> };
       config.notificationProfiles = config.notificationProfiles || {};
       const profileName = options.profile as string;
       const profile = config.notificationProfiles[profileName] || { enabled: true };
@@ -433,7 +434,7 @@ Examples:
       process.exit(1);
     }
 
-    const config = getOMQConfig();
+    const config = getOMCConfig();
     config.stopHookCallbacks = config.stopHookCallbacks || {};
 
     // Show current config
@@ -587,7 +588,7 @@ Examples:
   # Select profile at launch:
   $ OMQ_NOTIFY_PROFILE=work claude`)
   .action(async (name: string | undefined, options) => {
-    const config = getOMQConfig() as OMCConfig & { notificationProfiles?: Record<string, any> };
+    const config = getOMCConfig() as OMCConfig & { notificationProfiles?: Record<string, any> };
     const profiles = config.notificationProfiles || {};
 
     if (options.list || !name) {
@@ -693,7 +694,6 @@ Examples:
     }
 
     console.log(chalk.blue('\nMagic Keywords:'));
-    console.log(`  Ultrawork: ${chalk.cyan(session.config.magicKeywords?.ultrawork?.join(', ') ?? 'ultrawork, ulw, uw')}`);
     console.log(`  Search:    ${chalk.cyan(session.config.magicKeywords?.search?.join(', ') ?? 'search, find, locate')}`);
     console.log(`  Analyze:   ${chalk.cyan(session.config.magicKeywords?.analyze?.join(', ') ?? 'analyze, investigate, examine')}`);
 
@@ -709,7 +709,7 @@ program
   .description('Test how a prompt would be enhanced')
   .addHelpText('after', `
 Examples:
-  $ omq test-prompt "ultrawork fix bugs"    See how magic keywords are detected
+  $ omq test-prompt "analyze this code"     See how magic keywords are detected
   $ omq test-prompt "analyze this code"     Test prompt enhancement`)
   .action(async (prompt: string) => {
     const session = createOmcSession();
@@ -890,7 +890,7 @@ Examples:
   $ omq install                  Install to config directory (default: ~/.claude/)
   $ omq install --force          Reinstall, overwriting existing files
   $ omq install --quiet          Silent install for scripts
-  $ QODER_CONFIG_DIR=$HOME/.claude-isolated-workspace omq install  Isolated config directory`)
+  $ CLAUDE_CONFIG_DIR=$HOME/.claude-isolated-workspace omq install  Isolated config directory`)
   .action(async (options) => {
     if (!options.quiet) {
       console.log(chalk.blue('╔═══════════════════════════════════════════════════════════╗'));
@@ -918,7 +918,7 @@ Examples:
     const result = installOmc({
       force: options.force,
       verbose: !options.quiet,
-      skipQoderCheck: options.skipQoderCheck
+      skipQoderCheck: options.skipClaudeCheck
     });
 
     if (result.success) {
@@ -937,7 +937,7 @@ Examples:
         console.log('  /omq <task>              # Activate OMQ orchestration mode');
         console.log('  /omq-default             # Configure for current project');
         console.log('  /omq-default-global      # Configure globally');
-        console.log('  /ultrawork <task>             # Maximum performance mode');
+        console.log('  /team <task>                  # Coordinated parallel execution');
         console.log('  /deepsearch <query>           # Thorough codebase search');
         console.log('  /analyze <target>             # Deep analysis mode');
         console.log('  /plan <description>           # Start planning with Planner');
@@ -1209,7 +1209,7 @@ capabilitiesCmd
   .command('lock')
   .description('Write the current deterministic tool/skill/capability lockfile')
   .option('--json', 'Output as JSON')
-  .option('--lockfile <path>', 'Lockfile path (default: omc-capabilities.lock.json)')
+  .option('--lockfile <path>', 'Lockfile path (default: omq-capabilities.lock.json)')
   .action(async (options) => {
     const exitCode = await capabilitiesLockCommand(options);
     process.exit(exitCode);
@@ -1219,7 +1219,7 @@ capabilitiesCmd
   .command('check')
   .description('Check current deterministic tool/skill/capability surface against a lockfile')
   .option('--json', 'Output as JSON')
-  .option('--lockfile <path>', 'Lockfile path (default: omc-capabilities.lock.json)')
+  .option('--lockfile <path>', 'Lockfile path (default: omq-capabilities.lock.json)')
   .action(async (options) => {
     const exitCode = await capabilitiesCheckCommand(options);
     process.exit(exitCode);
@@ -1276,7 +1276,6 @@ Examples:
   $ omq doctor check --plugin-dir <dir>         Diagnose a specific cache/clone dir
   $ omq doctor check --json                     Machine-readable report`)
   .action(async (options) => {
-    applyPluginDirOption(options.pluginDir);
     const { doctorCheckCommand } = await import('./commands/doctor-check.js');
     const exitCode = await doctorCheckCommand({ json: options.json ?? false, pluginDir: options.pluginDir });
     process.exit(exitCode);
@@ -1407,7 +1406,7 @@ Examples:
       if (reportedVersion !== version) {
         console.log(chalk.gray(`CLI package version: ${version}`));
       }
-      console.log(chalk.gray('Start Qoder CLI and use /oh-my-qoder:omq-setup for interactive setup.'));
+      console.log(chalk.gray('Start Claude Code and use /oh-my-qoder:omq-setup for interactive setup.'));
     }
   });
 
@@ -1428,7 +1427,7 @@ program
     if (result.success) {
       console.log(chalk.green('✓ Oh-My-ClaudeCode installed successfully!'));
       console.log(chalk.gray('  Run "oh-my-claudecode info" to see available agents.'));
-      console.log(chalk.yellow('  Run "/omc-default" (project) or "/omc-default-global" (global) in Claude Code.'));
+      console.log(chalk.yellow('  Run "/omq-default" (project) or "/omq-default-global" (global) in Claude Code.'));
     } else {
       // Don't fail the npm install, just warn
       console.warn(chalk.yellow('⚠ Could not complete OMQ setup:'), result.message);
@@ -1563,6 +1562,11 @@ program
   .action(async (args: string[]) => {
     await aliasRetirementCommand(args ?? []);
   });
+
+/**
+ * Graph command - Execute sealed graph descriptors (graph runtime v2)
+ */
+program.addCommand(graphCommand());
 
 /**
  * Returns the fully-configured commander program.

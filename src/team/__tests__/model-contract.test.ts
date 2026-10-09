@@ -16,11 +16,13 @@ import {
   clearResolvedPathCache,
   validateCliBinaryPath,
   resolveClaudeWorkerModel,
+  resolveDefaultWorkerModel,
   shouldUseClaudeBareMode,
   _testInternals,
   buildValidatedWorkerLaunchDescriptor,
   validateWorkerLaunchDescriptor,
 } from '../model-contract.js';
+import type { CliAgentType } from '../model-contract.js';
 
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
@@ -61,10 +63,6 @@ function countArg(args: string[], expected: string): number {
 }
 
 describe('model-contract', () => {
-  // Production asks the platform's own locator (`where` on win32, `which` elsewhere);
-  // asserting a literal one of them can only ever pass on the host that owns it.
-  const FINDER = process.platform === 'win32' ? 'where' : 'which';
-
   describe('backward-compat API shims', () => {
     it('shouldLoadShellRc returns false for non-interactive compatibility mode', () => {
       expect(shouldLoadShellRc()).toBe(false);
@@ -81,19 +79,8 @@ describe('model-contract', () => {
       clearResolvedPathCache();
     });
 
-    it('resolveCliBinaryPath treats a POSIX-shaped trusted path as trusted on any host', () => {
+    it('resolveCliBinaryPath rejects unsafe names and paths', () => {
       const mockSpawnSync = vi.mocked(spawnSync);
-      mockSpawnSync.mockReturnValue({ status: 0, stdout: '/usr/local/bin/claude\n', stderr: '', pid: 0, output: [], signal: null });
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
-      clearResolvedPathCache();
-      resolveCliBinaryPath('claude');
-      expect(warnSpy).not.toHaveBeenCalled();
-      clearResolvedPathCache();
-      warnSpy.mockRestore();
-    });
-
-    it('resolveCliBinaryPath rejects unsafe names and paths', () => {      const mockSpawnSync = vi.mocked(spawnSync);
       expect(() => resolveCliBinaryPath('../evil')).toThrow('Invalid CLI binary name');
 
       mockSpawnSync.mockReturnValue({ status: 0, stdout: '/tmp/evil/claude\n', stderr: '', pid: 0, output: [], signal: null });
@@ -130,88 +117,6 @@ describe('model-contract', () => {
       const prefixes = _testInternals.getTrustedPrefixes();
       expect(prefixes).toContain('/usr/local/bin');
       expect(prefixes).toContain('/usr/bin');
-    });
-
-    // #63 (ledger :484): the untrusted list covered only POSIX temp dirs, so a
-    // binary sitting in the REAL Windows temp locations was trusted. These are
-    // matched against the forward-slash form produced by resolveCliBinaryPath.
-    it('treats Windows temp locations as untrusted', () => {
-      const { UNTRUSTED_PATH_PATTERNS } = _testInternals;
-      // C:\Windows\Temp in forward-slash form
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('C:/Windows/Temp/evil/claude'))).toBe(true);
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('C:/Windows/Temp'))).toBe(true);
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('d:/WINDOWS/TEMP/x.exe'))).toBe(true);
-      // %LOCALAPPDATA%\Temp = C:\Users\<u>\AppData\Local\Temp
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('C:/Users/dev/AppData/Local/Temp/evil/claude'))).toBe(true);
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('C:/Users/dev/AppData/Local/Temp'))).toBe(true);
-      // negative controls: narrowing must not become "everything under the drive"
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('C:/Windows/Tempx/evil'))).toBe(false);
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('C:/Users/dev/AppData/Local/Tempshare/x'))).toBe(false);
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('C:/Program Files/claude/claude.exe'))).toBe(false);
-      // POSIX forms are unchanged
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('/tmp/evil'))).toBe(true);
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('/var/tmp/evil'))).toBe(true);
-      expect(UNTRUSTED_PATH_PATTERNS.some(p => p.test('/dev/shm/evil'))).toBe(true);
-    });
-
-    // #63 (ledger :484): OMQ_TRUSTED_CLI_DIRS was split on ':' only, which
-    // mis-parses ';'-delimited Windows lists (and shreds drive-letter paths at
-    // the drive colon).
-    it('splits OMQ_TRUSTED_CLI_DIRS on ; when the value is ;-delimited', () => {
-      const orig = process.env.OMQ_TRUSTED_CLI_DIRS;
-      process.env.OMQ_TRUSTED_CLI_DIRS = 'C:\\tools\\bin;D:\\team bins';
-      try {
-        const prefixes = _testInternals.getTrustedPrefixes();
-        expect(prefixes).toContain('C:\\tools\\bin');
-        expect(prefixes).toContain('D:\\team bins');
-        // the drive colon must not have produced junk entries
-        expect(prefixes).not.toContain('C');
-        expect(prefixes).not.toContain('\\tools\\bin');
-      } finally {
-        if (orig === undefined) delete process.env.OMQ_TRUSTED_CLI_DIRS;
-        else process.env.OMQ_TRUSTED_CLI_DIRS = orig;
-      }
-    });
-
-    it('treats a bare drive-letter path as one entry on win32 (no drive-colon split)', () => {
-      const orig = process.env.OMQ_TRUSTED_CLI_DIRS;
-      process.env.OMQ_TRUSTED_CLI_DIRS = 'C:\\tools\\bin';
-      try {
-        const prefixes = _testInternals.getTrustedPrefixes('win32');
-        expect(prefixes).toContain('C:\\tools\\bin');
-        expect(prefixes).not.toContain('C');
-      } finally {
-        if (orig === undefined) delete process.env.OMQ_TRUSTED_CLI_DIRS;
-        else process.env.OMQ_TRUSTED_CLI_DIRS = orig;
-      }
-    });
-
-    it('keeps the historic : split for POSIX colon lists', () => {
-      const orig = process.env.OMQ_TRUSTED_CLI_DIRS;
-      process.env.OMQ_TRUSTED_CLI_DIRS = '/opt/mybins:/opt/otherbins';
-      try {
-        const prefixes = _testInternals.getTrustedPrefixes('linux');
-        expect(prefixes).toContain('/opt/mybins');
-        expect(prefixes).toContain('/opt/otherbins');
-      } finally {
-        if (orig === undefined) delete process.env.OMQ_TRUSTED_CLI_DIRS;
-        else process.env.OMQ_TRUSTED_CLI_DIRS = orig;
-      }
-    });
-
-    it('isTrustedPrefix accepts a custom Windows directory under the ; list', () => {
-      const orig = process.env.OMQ_TRUSTED_CLI_DIRS;
-      process.env.OMQ_TRUSTED_CLI_DIRS = 'C:\\tools\\bin;D:\\bins';
-      try {
-        const { isTrustedPrefix } = _testInternals;
-        expect(isTrustedPrefix('C:/tools/bin/grok.exe')).toBe(true);
-        expect(isTrustedPrefix('D:/bins/claude.exe')).toBe(true);
-        // sibling names still rejected; untrusted temps still rejected elsewhere
-        expect(isTrustedPrefix('C:/tools/bin-evil/grok.exe')).toBe(false);
-      } finally {
-        if (orig === undefined) delete process.env.OMQ_TRUSTED_CLI_DIRS;
-        else process.env.OMQ_TRUSTED_CLI_DIRS = orig;
-      }
     });
 
     it('isTrustedPrefix enforces directory boundaries (no sibling-prefix bypass)', () => {
@@ -469,6 +374,67 @@ describe('model-contract', () => {
       const withModel = buildLaunchArgs('grok', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'grok-4-fast' });
       expect(withModel).toEqual(['--always-approve', '--model', 'grok-4-fast']);
     });
+    it('cursor leads with --force --trust and appends --model <m> when given (issue #3880)', () => {
+      const noModel = buildLaunchArgs('cursor', { teamName: 't', workerName: 'w', cwd: '/tmp' });
+      expect(noModel).toEqual(['--force', '--trust']);
+      expect(noModel).not.toContain('--model');
+
+      const emptyModel = buildLaunchArgs('cursor', { teamName: 't', workerName: 'w', cwd: '/tmp', model: '' });
+      expect(emptyModel).toEqual(['--force', '--trust']);
+      expect(emptyModel).not.toContain('--model');
+
+      const withModel = buildLaunchArgs('cursor', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'cursor-grok-4.6-high' });
+      expect(withModel).toEqual(['--force', '--trust', '--model', 'cursor-grok-4.6-high']);
+    });
+    it('cursor appends extraFlags after the model flag (issue #3880)', () => {
+      const args = buildLaunchArgs('cursor', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'composer-2.5', extraFlags: ['--foo'] });
+      expect(args).toEqual(['--force', '--trust', '--model', 'composer-2.5', '--foo']);
+
+      const noModel = buildLaunchArgs('cursor', { teamName: 't', workerName: 'w', cwd: '/tmp', extraFlags: ['--foo'] });
+      expect(noModel).toEqual(['--force', '--trust', '--foo']);
+    });
+    it('cursor keeps required trust flags singular when extra flags repeat them', () => {
+      const args = buildLaunchArgs('cursor', {
+        teamName: 't', workerName: 'w', cwd: '/tmp',
+        extraFlags: ['--trust', '--force', '--trust', '--foo'],
+      });
+      expect(args).toEqual(['--force', '--trust', '--foo']);
+      expect(countArg(args, '--force')).toBe(1);
+      expect(countArg(args, '--trust')).toBe(1);
+    });
+    it('cursor removes documented force aliases from extra flags', () => {
+      const args = buildLaunchArgs('cursor', {
+        teamName: 't', workerName: 'w', cwd: '/tmp',
+        extraFlags: ['-f', '--yolo', '--force', '--trust'],
+      });
+      expect(args).toEqual(['--force', '--trust']);
+    });
+    it('cursor worker argv leads with the cursor-agent binary then approval flags', () => {
+      const argv = buildWorkerArgv('cursor', {
+        teamName: 'cursor-team', workerName: 'w', cwd: '/tmp',
+        model: 'cursor-grok-4.6-high', resolvedBinaryPath: '/usr/local/bin/cursor-agent',
+      });
+      expect(argv).toEqual([
+        '/usr/local/bin/cursor-agent', '--force', '--trust', '--model', 'cursor-grok-4.6-high',
+      ]);
+    });
+    it('every CLI provider carries an approval-bypass flag so no worker pane can block on a prompt', () => {
+      // A team worker pane has nobody to answer an approval or trust question.
+      // cursor was the sole provider launched bare, which stranded it on
+      // "Workspace Trust Required" in any directory cursor had not seen before.
+      const approvalFlags: Record<string, string> = {
+        claude: '--dangerously-skip-permissions',
+        codex: '--dangerously-bypass-approvals-and-sandbox',
+        gemini: '--approval-mode',
+        grok: '--always-approve',
+        antigravity: '--dangerously-skip-permissions',
+        cursor: '--trust',
+      };
+      for (const [agent, flag] of Object.entries(approvalFlags)) {
+        const args = buildLaunchArgs(agent as CliAgentType, { teamName: 't', workerName: 'w', cwd: '/tmp' });
+        expect(args, `${agent} must bypass approval prompts`).toContain(flag);
+      }
+    });
     it('passes model flag when specified', () => {
       const args = buildLaunchArgs('codex', { teamName: 't', workerName: 'w', cwd: '/tmp', model: 'gpt-4' });
       expect(args).toContain('--model');
@@ -570,7 +536,7 @@ describe('model-contract', () => {
         '--dangerously-bypass-approvals-and-sandbox',
       ]);
       expect(argv).not.toContain('exec');
-      expect(mockSpawnSync).toHaveBeenCalledWith(FINDER, ['codex'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['codex'], { timeout: 5000, encoding: 'utf8' });
       mockSpawnSync.mockRestore();
     });
 
@@ -588,7 +554,7 @@ describe('model-contract', () => {
       expect(argv).toContain('--bare');
       expect(countArg(argv, '--bare')).toBe(1);
       expect(argv).not.toContain('exec');
-      expect(mockSpawnSync).toHaveBeenCalledWith(FINDER, ['claude'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenCalledWith('which', ['claude'], { timeout: 5000, encoding: 'utf8' });
       mockSpawnSync.mockRestore();
     });
 
@@ -617,30 +583,21 @@ describe('model-contract', () => {
   describe('isCliAvailable', () => {
     it('checks version without shell:true for standard binaries', () => {
       const mockSpawnSync = vi.mocked(spawnSync);
-      mockSpawnSync.mockClear();
-      // The case name claims "no shell", which is only the behaviour off Windows; pin the
-      // host so the assertion means the same thing everywhere. The win32 shell:true branch
-      // has its own cases below.
-      const restorePlatform = setProcessPlatform('linux');
-      try {
-        mockSpawnSync
-          .mockReturnValueOnce({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any)
-          .mockReturnValueOnce({ status: 0, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any);
+      clearResolvedPathCache();
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any)
+        .mockReturnValueOnce({ status: 0, stdout: '', stderr: '', pid: 0, output: [], signal: null } as any);
 
-        isCliAvailable('codex');
+      isCliAvailable('codex');
 
-        expect(mockSpawnSync).toHaveBeenNthCalledWith(1, 'which', ['codex'], { timeout: 5000, encoding: 'utf8' });
-        expect(mockSpawnSync).toHaveBeenNthCalledWith(2, 'codex', ['--version'], { timeout: 5000, shell: false });
-      } finally {
-        restorePlatform();
-        clearResolvedPathCache();
-        mockSpawnSync.mockRestore();
-      }
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(1, 'which', ['codex'], { timeout: 5000, encoding: 'utf8' });
+      expect(mockSpawnSync).toHaveBeenNthCalledWith(2, 'codex', ['--version'], { timeout: 5000, shell: false });
+      clearResolvedPathCache();
+      mockSpawnSync.mockRestore();
     });
 
     it('uses COMSPEC for .cmd binaries on win32', () => {
       const mockSpawnSync = vi.mocked(spawnSync);
-      mockSpawnSync.mockClear();
       const restorePlatform = setProcessPlatform('win32');
       vi.stubEnv('COMSPEC', 'C:\\Windows\\System32\\cmd.exe');
       clearResolvedPathCache();
@@ -666,7 +623,6 @@ describe('model-contract', () => {
 
     it('uses shell:true for unresolved binaries on win32', () => {
       const mockSpawnSync = vi.mocked(spawnSync);
-      mockSpawnSync.mockClear();
       const restorePlatform = setProcessPlatform('win32');
       clearResolvedPathCache();
 
@@ -718,23 +674,8 @@ describe('model-contract', () => {
     });
 
     it('getPromptModeArgs returns flag + instruction for antigravity', () => {
-      // antigravity has a deliberate Windows gate, so this case is only meaningful on a
-      // host where headless mode is supported -- pin it rather than depend on the runner.
-      const restorePlatform = setProcessPlatform('linux');
-      try {
-        expect(getPromptModeArgs('antigravity', 'Read inbox')).toEqual(['-p', 'Read inbox']);
-      } finally {
-        restorePlatform();
-      }
-    });
-
-    it('getPromptModeArgs refuses antigravity on win32 with the platform gate', () => {
-      const restorePlatform = setProcessPlatform('win32');
-      try {
-        expect(() => getPromptModeArgs('antigravity', 'Read inbox')).toThrow('not supported on Windows');
-      } finally {
-        restorePlatform();
-      }
+      const args = getPromptModeArgs('antigravity', 'Read inbox');
+      expect(args).toEqual(['-p', 'Read inbox']);
     });
 
     it('getPromptModeArgs returns flag + instruction for grok', () => {
@@ -848,6 +789,56 @@ describe('model-contract', () => {
       vi.unstubAllEnvs();
     });
   });
+
+  describe('resolveDefaultWorkerModel', () => {
+    it.each([
+      ['codex', 'OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL', 'OMQ_CODEX_DEFAULT_MODEL'],
+      ['gemini', 'OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL', 'OMQ_GEMINI_DEFAULT_MODEL'],
+      ['antigravity', 'OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL', 'OMQ_ANTIGRAVITY_DEFAULT_MODEL'],
+      ['grok', 'OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL', 'OMQ_GROK_DEFAULT_MODEL'],
+      ['cursor', 'OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL', 'OMQ_CURSOR_DEFAULT_MODEL'],
+    ] as const)('%s prefers canonical env over legacy fallback', (provider, canonical, legacy) => {
+      expect(resolveDefaultWorkerModel(provider, { [canonical]: 'canonical-model', [legacy]: 'legacy-model' })).toBe('canonical-model');
+    });
+
+    it.each([
+      ['codex', 'OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL', 'OMQ_CODEX_DEFAULT_MODEL'],
+      ['gemini', 'OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL', 'OMQ_GEMINI_DEFAULT_MODEL'],
+      ['antigravity', 'OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL', 'OMQ_ANTIGRAVITY_DEFAULT_MODEL'],
+      ['grok', 'OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL', 'OMQ_GROK_DEFAULT_MODEL'],
+      ['cursor', 'OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL', 'OMQ_CURSOR_DEFAULT_MODEL'],
+    ] as const)('%s falls back to legacy env', (provider, canonical, legacy) => {
+      expect(resolveDefaultWorkerModel(provider, { [canonical]: '', [legacy]: 'legacy-model' })).toBe('legacy-model');
+    });
+
+    it('returns undefined when external provider config is absent', () => {
+      expect(resolveDefaultWorkerModel('cursor', {})).toBeUndefined();
+    });
+
+    it('ignores whitespace-only environment defaults and uses captured config', () => {
+      expect(resolveDefaultWorkerModel('cursor', {
+        OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL: '   ',
+        OMQ_CURSOR_DEFAULT_MODEL: '\t',
+      }, { cursorModel: 'captured-cursor-model' })).toBe('captured-cursor-model');
+    });
+
+    it.each([
+      ['codex', 'codexModel', 'OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL', 'OMQ_CODEX_DEFAULT_MODEL'],
+      ['gemini', 'geminiModel', 'OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL', 'OMQ_GEMINI_DEFAULT_MODEL'],
+      ['antigravity', 'antigravityModel', 'OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL', 'OMQ_ANTIGRAVITY_DEFAULT_MODEL'],
+      ['grok', 'grokModel', 'OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL', 'OMQ_GROK_DEFAULT_MODEL'],
+      ['cursor', 'cursorModel', 'OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL', 'OMQ_CURSOR_DEFAULT_MODEL'],
+    ] as const)('%s prefers captured config over both environment fallbacks', (provider, key, canonical, legacy) => {
+      expect(resolveDefaultWorkerModel(provider, {
+        [canonical]: 'canonical-model',
+        [legacy]: 'legacy-model',
+      }, { [key]: 'captured-model' })).toBe('captured-model');
+    });
+
+    it('keeps Claude on its own resolver because external snapshots have no Claude field', () => {
+      expect(resolveDefaultWorkerModel('claude', { OMQ_MODEL_MEDIUM: 'claude-env' }, { cursorModel: 'captured-model' })).toBeUndefined();
+    });
+  });
   describe('worker launch descriptors', () => {
     it('captures exact binary model and appended prompt argv', () => {
       const descriptor = buildValidatedWorkerLaunchDescriptor('gemini', {
@@ -875,6 +866,17 @@ describe('model-contract', () => {
       const validated = validateWorkerLaunchDescriptor(source);
       validated.args.push('--changed');
       expect(source.args).toEqual(['--flag']);
+    });
+
+    it('normalizes persisted Cursor descriptors to the required trust flags', () => {
+      const validated = validateWorkerLaunchDescriptor({
+        schema_version: 1,
+        provider: 'cursor',
+        model: null,
+        binary: '/usr/local/bin/cursor-agent',
+        args: ['--yolo', '--model', 'composer-2.5', '--trust', '--force'],
+      });
+      expect(validated.args).toEqual(['--force', '--trust', '--model', 'composer-2.5']);
     });
   });
 

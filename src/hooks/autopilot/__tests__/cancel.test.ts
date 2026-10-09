@@ -24,29 +24,29 @@ import { resolveSessionStatePath } from '../../../lib/worktree-paths.js';
 import {
   validateNamedWorkflowState,
   validateNamedWorkflowStateStructure,
-  namedWorkflowRuntimeSupported,
 } from '../named-workflow-resume-validator.js';
 
 // Mock the ralph module (linked-state cleanup still routes through it)
 vi.mock('../../ralph/index.js', () => ({
   clearRalphState: vi.fn(() => true),
-  clearLinkedUltraworkState: vi.fn(() => true),
   readRalphState: vi.fn(() => null)
 }));
 
 // Import mocked functions after vi.mock
 import * as ralphLoop from '../../ralph/index.js';
 import { readModeState } from '../../../lib/mode-state-io.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('AutopilotCancel', () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), 'autopilot-cancel-test-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
     const fs = require('fs');
     fs.mkdirSync(join(testDir, '.omq', 'state'), { recursive: true });
     vi.clearAllMocks();
@@ -54,13 +54,17 @@ describe('AutopilotCancel', () => {
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
     delete process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_PATH;
     delete process.env.OMQ_TEST_CONDITIONAL_WRITE_REPLACEMENT_BASE64;
     delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
     delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
     delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
     delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH;
     delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64;
   });
@@ -130,7 +134,7 @@ describe('AutopilotCancel', () => {
       expect(ralphLoop.clearRalphState).toHaveBeenCalledWith(testDir);
     });
 
-    it('should clean up ralph and ultrawork when linked', () => {
+    it('should ignore retired linkage metadata when cleaning up ralph', () => {
       initAutopilot(testDir, 'test idea');
 
       // Mock active ralph state with linked ultrawork
@@ -142,8 +146,8 @@ describe('AutopilotCancel', () => {
       const result = cancelAutopilot(testDir);
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Cleaned up: ultrawork, ralph');
-      expect(ralphLoop.clearLinkedUltraworkState).toHaveBeenCalledWith(testDir);
+      expect(result.message).toContain('Cleaned up: ralph');
+      expect(result.message).not.toContain('ultrawork');
       expect(ralphLoop.clearRalphState).toHaveBeenCalledWith(testDir);
     });
 
@@ -179,8 +183,8 @@ describe('AutopilotCancel', () => {
       const result = cancelAutopilot(testDir);
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Cleaned up: ultrawork, ralph, ultraqa');
-      expect(ralphLoop.clearLinkedUltraworkState).toHaveBeenCalledWith(testDir);
+      expect(result.message).toContain('Cleaned up: ralph, ultraqa');
+      expect(result.message).not.toContain('ultrawork');
       expect(ralphLoop.clearRalphState).toHaveBeenCalledWith(testDir);
       expect(readModeState('ultraqa', testDir)).toBeNull();
     });
@@ -222,7 +226,6 @@ describe('AutopilotCancel', () => {
       expect(cancelAutopilot(testDir, sessionId)).toMatchObject({ success: false, message: 'workflow_descriptor_integrity_failed' });
       expect(require('fs').readFileSync(statePath)).toEqual(before);
       expect(ralphLoop.clearRalphState).not.toHaveBeenCalled();
-      expect(ralphLoop.clearLinkedUltraworkState).not.toHaveBeenCalled();
       expect(readModeState('ultraqa', testDir)).toBeNull();
     });
 
@@ -287,11 +290,7 @@ describe('AutopilotCancel', () => {
       expect(readModeState('ultraqa', testDir)).toBeNull();
     });
 
-    // The primary mutation lock only exists where an exclusive flock can be
-    // taken (mode-state-io degrades to a no-op lock without it), and its
-    // liveness fixture reads /proc/<pid>/stat, so the scenario is defined on
-    // the named-workflow runtime platforms only.
-    it.skipIf(!namedWorkflowRuntimeSupported())('does not clean linked state when the primary named mutation lock is held', () => {
+    it('does not clean linked state when the primary named mutation lock is held', () => {
       const sessionId = 'named-primary-lock';
       const state = initAutopilot(testDir, 'ship it', sessionId)!;
       state.workflow = createWorkflowDescriptor('release-flow', { version: 1, stages: ['ralplan', 'execution'] })!;
@@ -305,7 +304,6 @@ describe('AutopilotCancel', () => {
       expect(cancelAutopilot(testDir, sessionId).success).toBe(false);
       expect(clearAutopilot(testDir, sessionId).success).toBe(false);
       expect(ralphLoop.clearRalphState).not.toHaveBeenCalled();
-      expect(ralphLoop.clearLinkedUltraworkState).not.toHaveBeenCalled();
       expect(readModeState('ultraqa', testDir)).toBeNull();
       expect(readAutopilotState(testDir, sessionId)).toMatchObject({ active: true, workflowRunId: state.workflowRunId });
     });
@@ -330,17 +328,16 @@ describe('AutopilotCancel', () => {
       });
       writeAutopilotState(testDir, state, sessionId);
       vi.mocked(ralphLoop.readRalphState).mockReturnValue({ active: true, linked_ultrawork: true } as any);
-      vi.mocked(ralphLoop.clearLinkedUltraworkState).mockReturnValueOnce(false);
+      vi.mocked(ralphLoop.clearRalphState).mockReturnValueOnce(false);
 
       const cancelled = cancelAutopilot(testDir, sessionId);
       expect(cancelled).toMatchObject({ success: false, preservedState: { active: false, workflowRunId: state.workflowRunId } });
-      expect(cancelled.message).toContain('ultrawork');
-      expect(ralphLoop.clearRalphState).not.toHaveBeenCalled();
+      expect(cancelled.message).toContain('ralph');
 
       const retried = cancelAutopilot(testDir, sessionId);
       expect(retried).toMatchObject({ success: true, preservedState: { active: false, workflowRunId: state.workflowRunId } });
       expect(readAutopilotState(testDir, sessionId)).toMatchObject({ active: false, workflowRunId: state.workflowRunId });
-      expect(ralphLoop.clearLinkedUltraworkState).toHaveBeenCalledTimes(2);
+      expect(ralphLoop.clearRalphState).toHaveBeenCalledTimes(2);
       expect(ralphLoop.clearRalphState).toHaveBeenCalledWith(testDir, sessionId);
     });
 
@@ -355,7 +352,6 @@ describe('AutopilotCancel', () => {
       expect(ralphLoop.readRalphState).toHaveBeenCalledWith(testDir, sessionId);
       expect(readModeState('ultraqa', testDir, sessionId)).toBeNull();
       expect(ralphLoop.clearRalphState).not.toHaveBeenCalled();
-      expect(ralphLoop.clearLinkedUltraworkState).not.toHaveBeenCalled();
       expect(readModeState('ultraqa', testDir)).toBeNull();
     });
   });
@@ -394,7 +390,7 @@ describe('AutopilotCancel', () => {
       expect(ralphLoop.clearRalphState).toHaveBeenCalledWith(testDir);
     });
 
-    it('should clear ralph and linked ultrawork state when present', () => {
+    it('should ignore retired linkage metadata when clearing ralph state', () => {
       initAutopilot(testDir, 'test idea');
 
       // Mock ralph state with linked ultrawork
@@ -405,7 +401,6 @@ describe('AutopilotCancel', () => {
 
       clearAutopilot(testDir);
 
-      expect(ralphLoop.clearLinkedUltraworkState).toHaveBeenCalledWith(testDir);
       expect(ralphLoop.clearRalphState).toHaveBeenCalledWith(testDir);
     });
 
@@ -438,7 +433,6 @@ describe('AutopilotCancel', () => {
 
       clearAutopilot(testDir);
 
-      expect(ralphLoop.clearLinkedUltraworkState).toHaveBeenCalledWith(testDir);
       expect(ralphLoop.clearRalphState).toHaveBeenCalledWith(testDir);
       expect(readModeState('ultraqa', testDir)).toBeNull();
 
@@ -457,7 +451,6 @@ describe('AutopilotCancel', () => {
       expect(ralphLoop.readRalphState).toHaveBeenCalledWith(testDir, sessionId);
       expect(readModeState('ultraqa', testDir, sessionId)).toBeNull();
       expect(ralphLoop.clearRalphState).not.toHaveBeenCalled();
-      expect(ralphLoop.clearLinkedUltraworkState).not.toHaveBeenCalled();
       expect(readModeState('ultraqa', testDir)).toBeNull();
     });
   });
@@ -736,13 +729,10 @@ describe('AutopilotCancel', () => {
       expect(require('fs').readFileSync(stateFile)).toEqual(before);
     });
 
-    // Boundary/symlink authentication runs through validateNamedWorkflowState,
-    // which requires the no-follow runtime (O_NOFOLLOW + /proc/self/fd);
-    // elsewhere resume fails closed with 'unsupported-runtime' by contract.
-    it.skipIf(!namedWorkflowRuntimeSupported())('rejects a named traversal boundary without mutating paused bytes', () => {
+    it('rejects a named traversal boundary without mutating paused bytes', () => {
       const sessionId = 'resume-auth-session';
       const root = join(testDir, 'claude-config', 'projects');
-      process.env.QODER_CONFIG_DIR = join(testDir, 'claude-config');
+      process.env.CLAUDE_CONFIG_DIR = join(testDir, 'claude-config');
       mkdirSync(root, { recursive: true });
       const encodedProject = join(root, '-workspace-project');
       mkdirSync(encodedProject);
@@ -790,12 +780,12 @@ describe('AutopilotCancel', () => {
       expect(finalResume.message).toBe('Resuming autopilot at phase: ralplan');
       expect(finalResume).toMatchObject({ success: true, state: { active: true, workflowRunId: state.workflowRunId } });
     });
-    it.skipIf(!namedWorkflowRuntimeSupported())('rejects forged completion observations and resumes an authenticated advanced named workflow', () => {
+    it('rejects forged completion observations and resumes an authenticated advanced named workflow', () => {
       const sessionId = 'resume-observation-session';
       const root = join(testDir, 'claude-config', 'projects');
       const project = join(root, '-workspace-project');
       const transcript = join(project, `${sessionId}.jsonl`);
-      process.env.QODER_CONFIG_DIR = join(testDir, 'claude-config');
+      process.env.CLAUDE_CONFIG_DIR = join(testDir, 'claude-config');
       mkdirSync(project, { recursive: true });
       writeFileSync(transcript, '');
       const initial = statSync(transcript);

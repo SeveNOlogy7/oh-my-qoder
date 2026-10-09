@@ -39,7 +39,7 @@ describe('runtime-v2 explicit provider + role preservation', () => {
     expect(assignment.role).toBe('code-reviewer');
   });
 
-  it('still routes a role-only spec (default claude provider) normally', () => {
+  it('still routes a role-only spec (default qwen provider) normally', () => {
     const assignment = resolveTaskAssignment(
       { subject: 'Executor task', description: 'apply the implementation', role: 'executor' },
       resolvedRouting,
@@ -47,7 +47,7 @@ describe('runtime-v2 explicit provider + role preservation', () => {
       binaries,
       'claude',
     );
-    expect(assignment.agentType).toBe('claude');
+    expect(assignment.agentType).toBe('qwen');
     expect(assignment.role).toBe('executor');
   });
 });

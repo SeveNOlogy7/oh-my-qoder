@@ -332,7 +332,7 @@ describe("reply-listener", () => {
       expect(source).toContain("getReplyListenerPlatformConfig");
     });
 
-    it("forwards OMC_* env vars to daemon process", () => {
+    it("forwards OMQ_* env vars to daemon process", () => {
       const fs = require("fs");
       const path = require("path");
       const source = fs.readFileSync(

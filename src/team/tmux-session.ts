@@ -723,6 +723,10 @@ function escapeForCmdSet(value: string): string {
   return value.replace(/(["%])/g, '$1$1');
 }
 
+function assertSafeCmdValue(value: string): void {
+  if (/[\r\n\0]/.test(value)) throw new Error('Invalid Windows command value: contains CR, LF, or NUL');
+}
+
 
 function shellNameFromPath(shellPath: string): string {
   const shellName = basename(shellPath.replace(/\\/g, '/'));
@@ -805,10 +809,14 @@ export function buildWorkerStartCommand(config: WorkerPaneConfig): string {
     const envPrefix = Object.entries(windowsEnvVars)
       .map(([key, value]) => {
         assertSafeEnvKey(key);
+        assertSafeCmdValue(value);
         return `set "${key}=${escapeForCmdSet(value)}"`;
       })
       .join(' && ');
-    const launch = launchWords.map(part => `"${escapeForCmdSet(part)}"`).join(' ');
+    const launch = launchWords.map(part => {
+      assertSafeCmdValue(part);
+      return `"${escapeForCmdSet(part)}"`;
+    }).join(' ');
     const cmdBody = envPrefix ? `${envPrefix} && ${launch}` : launch;
     return `${shell} /d /s /c "${cmdBody}" & exit /b`;
   }
@@ -1585,25 +1593,29 @@ export async function killOwnedWorkerPane(ownership: WorkerPaneOwnership): Promi
   await tmuxExecAsync(['kill-pane', '-t', ownership.paneId]);
 }
 
-type PaneTrustPromptKind = 'directory' | 'codex_hooks';
+type PaneTrustPromptKind = 'directory' | 'codex_hooks' | 'cursor_workspace_trust';
 
-function detectPaneTrustPromptKind(captured: string): PaneTrustPromptKind | null {
+function detectPaneTrustPromptKind(captured: string, provider?: CliAgentType): PaneTrustPromptKind | null {
   const lines = captured.split('\n').map(l => l.replace(/\r/g, '').trim()).filter(l => l.length > 0);
   const tail = lines.slice(-12);
+
+  const hasCursorTrustBanner = tail.some(l => /Workspace Trust Required/i.test(l));
+  const hasCursorTrustHint = tail.some(l => /Pass\s+--trust,\s*--yolo,\s*or\s+-f/i.test(l));
+  if ((provider === undefined || provider === 'cursor')
+    && hasCursorTrustBanner && (hasCursorTrustHint || tail.some(l => /Do you trust the contents of this directory\?/i.test(l)))) {
+    return 'cursor_workspace_trust';
+  }
 
   const hasDirectoryQuestion = tail.some(l => /Do you trust the contents of this directory\?/i.test(l));
   const hasDirectoryChoices = tail.some(l => /Yes,\s*continue|No,\s*quit|Press enter to continue/i.test(l));
   if (hasDirectoryQuestion && hasDirectoryChoices) return 'directory';
 
-  // The Qoder CLI renders its own folder-trust dialog, whose two action labels
-  // ("Trust folder" / "Don't trust and exit", and 信任文件夹 / 不信任并退出) are
-  // literals in the shipped bundle. Its title is locale-dependent, so the pair of
-  // choices is what identifies it — and it is required for the same reason the
-  // question+choices pair is above: neither half alone should send keystrokes.
-  const hasTrustFolderChoice = tail.some(l => /Trust folder|信任文件夹/u.test(l));
-  const hasTrustExitChoice = tail.some(l => /Don'?t trust and exit|不信任并退出/u.test(l));
-  if (hasTrustFolderChoice && hasTrustExitChoice) return 'directory';
-
+  // cursor-agent asks the same question but offers no selectable answer: it
+  // prints "Workspace Trust Required", tells the operator to pass --trust/-f,
+  // and exits. There is nothing to dismiss, so this is reported as its own
+  // kind and never answered with keystrokes. Launch args carry `--force
+  // --trust` precisely so this state is unreachable; seeing it means a pane
+  // was started without them.
   const hasHookReview = tail.some(l => /Hooks need review/i.test(l));
   const hasHookTrustChoice = tail.some(l => /Continue without trusting/i.test(l));
   const hasHookConfirm = tail.some(l => /Press enter to confirm or esc to go back/i.test(l));
@@ -1612,8 +1624,12 @@ function detectPaneTrustPromptKind(captured: string): PaneTrustPromptKind | null
   return null;
 }
 
-export function paneHasTrustPrompt(captured: string): boolean {
-  return detectPaneTrustPromptKind(captured) !== null;
+export function paneHasTrustPrompt(captured: string, provider?: CliAgentType): boolean {
+  return detectPaneTrustPromptKind(captured, provider) !== null;
+}
+
+export function paneHasCursorWorkspaceTrustPrompt(captured: string): boolean {
+  return detectPaneTrustPromptKind(captured, 'cursor') === 'cursor_workspace_trust';
 }
 
 function paneHasClaudeStartupBanner(captured: string, provider?: CliAgentType): boolean {
@@ -1669,7 +1685,11 @@ export function paneLooksReady(captured: string, provider?: CliAgentType): boole
     .map(line => line.replace(/\r/g, '').trimEnd())
     .filter(line => line.trim() !== '');
   if (lines.length === 0) return false;
-  if (paneHasTrustPrompt(content)) return true;
+  // A dismissible trust prompt still means the CLI is up and answering. The
+  // cursor workspace-trust banner is the opposite: the process already exited,
+  // so the pane is not ready and never will be without `--trust`.
+  if (detectPaneTrustPromptKind(content, provider) === 'cursor_workspace_trust') return false;
+  if (paneHasTrustPrompt(content, provider)) return true;
   if (paneIsBootstrapping(content, provider)) return false;
 
   const lastLine = lines[lines.length - 1]!;
@@ -1735,7 +1755,7 @@ async function paneInCopyMode(paneId: string): Promise<boolean> {
 
 export type StartupPaneReadyResult =
   | { ok: true }
-  | { ok: false; reason: 'attempt_inactive' | 'ownership_mismatch' | 'copy_mode' | 'copy_mode_unknown' | 'capture_failed' | 'selector_unsupported' | 'selector_persistent' | 'pane_busy' | 'readiness_timeout' };
+  | { ok: false; reason: 'attempt_inactive' | 'ownership_mismatch' | 'copy_mode' | 'copy_mode_unknown' | 'capture_failed' | 'selector_unsupported' | 'selector_persistent' | 'cursor_workspace_untrusted' | 'pane_busy' | 'readiness_timeout' };
 
 async function sendLiteralPaneText(paneId: string, text: string): Promise<void> {
   if (isCmuxSurfaceTarget(paneId)) {
@@ -1772,11 +1792,17 @@ export async function waitForStartupPaneReady(
     const observation = await capturePaneObservation(context.ownership.paneId, { operation: 'startup-readiness' });
     if (!observation.ok) return { ok: false, reason: 'capture_failed' };
     const captured = observation.captured;
-    const selector = detectPaneTrustPromptKind(captured);
+    const selector = detectPaneTrustPromptKind(captured, context.provider);
     if (selector) {
+      // cursor-agent's workspace-trust banner has no selectable answer and the
+      // process is already gone, so there is nothing to drive. Report it under
+      // its own reason instead of blocking until readiness_timeout.
+      if (selector === 'cursor_workspace_trust') {
+        return { ok: false, reason: 'cursor_workspace_untrusted' };
+      }
       const providerSupportsSelector = selector === 'codex_hooks'
         ? context.provider === 'codex'
-        : context.provider === 'codex' || context.provider === 'claude' || context.provider === 'qwen';
+        : context.provider === 'codex' || context.provider === 'claude';
       if (!providerSupportsSelector) return { ok: false, reason: 'selector_unsupported' };
       if (handledSelectors.has(selector)) return { ok: false, reason: 'selector_persistent' };
       await sendLiteralPaneText(context.ownership.paneId, selector === 'directory' ? '1' : '3');
@@ -1816,23 +1842,34 @@ export async function deliverStartupInbox(
   }
 }
 
+/**
+ * Outcome of a startup-inbox resubmit probe:
+ * - `resubmitted` — the trigger was still visibly pending and Enter was re-sent.
+ * - `pane_busy` — the owned pane shows an active task: the worker consumed the
+ *   trigger and is working, so resubmitting would duplicate the inbox. Callers
+ *   must keep waiting for startup evidence instead of tearing the launch down.
+ * - `unavailable` — the pane cannot be re-submitted into (inactive attempt,
+ *   copy mode, capture failure, selector, or the trigger text is gone).
+ */
+export type StartupInboxResubmitOutcome = 'resubmitted' | 'pane_busy' | 'unavailable';
+
 export async function retryStartupInboxSubmit(
   context: StartupPaneContext,
   message: string,
   options: { attemptAlreadyFenced?: boolean } = {},
-): Promise<boolean> {
-  if (!await startupContextIsActive(context, options.attemptAlreadyFenced)) return false;
+): Promise<StartupInboxResubmitOutcome> {
+  if (!await startupContextIsActive(context, options.attemptAlreadyFenced)) return 'unavailable';
   const copyMode = await paneCopyModeObservation(context.ownership.paneId);
-  if (copyMode !== false) return false;
+  if (copyMode !== false) return 'unavailable';
   const observation = await capturePaneObservation(context.ownership.paneId, { operation: 'startup-submit-retry' });
-  if (!observation.ok || detectPaneTrustPromptKind(observation.captured)) return false;
-  if (paneHasActiveTask(observation.captured)) return false;
-  if (!paneTailContainsLiteralLine(observation.captured, message)) return false;
+  if (!observation.ok || detectPaneTrustPromptKind(observation.captured, context.provider)) return 'unavailable';
+  if (paneHasActiveTask(observation.captured, context.provider)) return 'pane_busy';
+  if (!paneTailContainsLiteralLine(observation.captured, message)) return 'unavailable';
   try {
     await sendTeamPaneKey(context.ownership.paneId, 'Enter');
-    return true;
+    return 'resubmitted';
   } catch {
-    return false;
+    return 'unavailable';
   }
 }
 
@@ -1888,6 +1925,11 @@ export async function sendToWorker(
     const paneBusy = paneHasActiveTask(initialCapture);
 
     const trustPromptKind = detectPaneTrustPromptKind(initialCapture);
+    if (trustPromptKind === 'cursor_workspace_trust') {
+      // Nothing to dismiss: cursor-agent printed the banner and exited. Sending
+      // keys here would type into a dead pane.
+      return false;
+    }
     if (trustPromptKind === 'directory') {
       await sendKey('C-m');
       await sleep(120);

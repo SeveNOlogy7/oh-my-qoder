@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { join } from "path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // Mock session-registry before importing notify
 const mockRegisterMessage = vi.fn();
@@ -74,7 +76,6 @@ vi.mock("https", () => {
 });
 
 import { notify } from "../index.js";
-import { getOmqRoot } from "../../lib/worktree-paths.js";
 
 /** Default discord-bot config used by most tests */
 const DEFAULT_CONFIG = {
@@ -87,7 +88,16 @@ const DEFAULT_CONFIG = {
 };
 
 describe("notify() -> session-registry integration", () => {
+  let fixtureHome: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+
   beforeEach(() => {
+    fixtureHome = mkdtempSync(join(tmpdir(), "omq-notify-registry-"));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = fixtureHome;
+    process.env.USERPROFILE = fixtureHome;
     vi.clearAllMocks();
     // Reset forwarding mocks to defaults
     mockGetCurrentTmuxPaneId.mockReturnValue("%42");
@@ -102,6 +112,11 @@ describe("notify() -> session-registry integration", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    rmSync(fixtureHome, { recursive: true, force: true });
   });
 
   it("registers discord-bot messageId in session registry after dispatch", async () => {
@@ -237,14 +252,7 @@ describe("notify() -> session-registry integration", () => {
     });
 
     expect(result).not.toBeNull();
-    // The state dir is whatever getOmqRoot resolves for the project under the
-    // runner's pinned state root; the former '/test/project/.omq/state'
-    // literal predates the state-root isolation and never matches it.
-    expect(mockGetNewPaneTail).toHaveBeenCalledWith(
-      "%42",
-      join(getOmqRoot("/test/project"), "state"),
-      23,
-    );
+    expect(mockGetNewPaneTail).toHaveBeenCalledWith("%42", join(fixtureHome, ".omq/state"), 23);
     expect(mockCapturePaneContent).not.toHaveBeenCalled();
   });
 

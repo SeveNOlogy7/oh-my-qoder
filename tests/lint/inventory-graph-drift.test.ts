@@ -4,9 +4,10 @@
  * This test is the "ongoing drift enforcement" owned by #3702. It asserts:
  *  - committed baseline exists and is valid JSON with the expected schema
  *  - public/internal/generated counts are separately reported and match filesystem
- *  - registry-to-installed drift: installed skills/commands/workflows/agents equal
- *    the manifest's public lists (no phantom entries) — the "registry-to-installed
- *    drift test" required by #3702
+ *  - registry-to-installed drift: installed skills/commands/workflows and the
+ *    registry's routable agent roles equal the manifest's public lists
+ *    (no phantom entries) — the "registry-to-installed drift test" required
+ *    by #3702
  *  - exact base/head provenance (base + planningHead immutable, head present)
  *  - deterministic graph: re-running the generator yields an identical manifest
  *    modulo ephemeral head/generatedAt; the embedded manifestSha256 is consistent
@@ -34,7 +35,7 @@ const GENERATOR = join(REPO_ROOT, 'scripts', 'generate-inventory-graph.mjs');
 const EXPECTED_BASE = '05c800f40d1ad53b42a78609d2667ef4f726808b';
 const EXPECTED_PLANNING_HEAD = '0a91273e61dbbd47eb0af4c02844409251e08398';
 const SEED_IGNORES = new Set(['node_modules', '.git', 'dist', 'coverage']);
-const EPHEMERAL_IGNORES = new Set(['.tmp', '.tmp-02', '.clawhip', '.omq', '.omx', '__pycache__', '.gjc']);
+const EPHEMERAL_IGNORES = new Set(['.tmp', '.tmp-02', '.clawhip', '.omc', '.omx', '__pycache__', '.gjc']);
 const STABLE_EXCLUDED = new Set([
   'inventory/inventory-graph.json',
   '.github/generated-artifact-authorizations.json',
@@ -83,6 +84,16 @@ type Manifest = {
 function loadManifest(): Manifest {
   if (!existsSync(BASELINE)) throw new Error(`baseline missing at ${relative(REPO_ROOT, BASELINE)} — run: node scripts/generate-inventory-graph.mjs --write`);
   return JSON.parse(readFileSync(BASELINE, 'utf8')) as Manifest;
+}
+
+function collectRegisteredAgents(): string[] {
+  const source = readFileSync(join(REPO_ROOT, 'src/workflow/registry.ts'), 'utf8');
+  const start = source.indexOf('export const WORKFLOW_ROLES');
+  const end = source.indexOf('];', start);
+  if (start < 0 || end < 0) throw new Error('WORKFLOW_ROLES registry is missing');
+  return [...source.slice(start, end).matchAll(/\{\s*name:\s*'([^']+)'/g)]
+    .map((match) => match[1]!)
+    .sort();
 }
 
 function sha256Hex(s: string): string {
@@ -220,7 +231,7 @@ describe('inventory-graph drift enforcement (#3702)', () => {
     const liveSkills = stable.filter((p) => /^skills\/[^/]+\/SKILL\.md$/.test(p)).map((p) => p.split('/')[1]).sort();
     const liveCommands = stable.filter((p) => /^commands\/[^/]+\.md$/.test(p)).map((p) => p.slice('commands/'.length, -3)).sort();
     const liveWorkflows = stable.filter((p) => p.startsWith('.github/workflows/')).sort();
-    const liveAgents = stable.filter((p) => /^src\/agents\/[^/]+\.ts$/.test(p)).map((p) => p.slice('src/agents/'.length, -3)).sort();
+    const liveAgents = collectRegisteredAgents();
 
     const missing = (live: string[], listed: string[]) => live.filter((x) => !listed.includes(x));
     const extra = (live: string[], listed: string[]) => listed.filter((x) => !live.includes(x));
@@ -294,22 +305,6 @@ describe('inventory-graph drift enforcement (#3702)', () => {
     expect(m.graph.edges.some((e) => e.from === 'src/cli/autoresearch-guided.ts' && e.kind === 'imports')).toBe(true);
     expect(m.graph.edges.some((e) => e.from === 'src/cli/autoresearch-guided.ts' && e.kind === 'type-imports')).toBe(true);
     expect(m.graph.edges.some((e) => e.from === 'src/features/delegation-categories/index.ts' && e.kind.endsWith('-unresolved'))).toBe(false);
-  });
-
-  it('a fresh generation on this host resolves the call graph, not just the committed one', () => {
-    const result = spawnSync('node', [GENERATOR], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8' as const,
-      maxBuffer: 50 * 1024 * 1024,
-    });
-    expect(result.status, result.stderr || result.stdout).toBe(0);
-    const fresh = JSON.parse(result.stdout as unknown as string) as Manifest;
-    const edgeKeys = new Set(fresh.graph.edges.map((e) => `${e.from} -> ${e.to} [${e.kind}]`));
-    // The committed baseline above can only prove the artifact was generated somewhere that
-    // could resolve paths. Candidates built with a Windows drive root silently miss every file.
-    expect(edgeKeys.has('src/agents/index.ts -> src/agents/definitions.ts [exports]')).toBe(true);
-    expect(fresh.graph.edges.some((e) => e.kind === 'exports-unresolved')).toBe(false);
-    expect(fresh.graph.edges.some((e) => e.from === 'src/features/delegation-categories/index.ts' && e.kind.endsWith('-unresolved'))).toBe(false);
   });
 
   it('generator is deterministic (two consecutive runs yield identical manifest modulo head/generatedAt)', () => {

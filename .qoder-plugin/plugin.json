@@ -1,6 +1,6 @@
 {
   "name": "oh-my-qoder",
-  "version": "0.1.0",
+  "version": "5.1.0",
   "description": "Multi-agent orchestration plugin for Qoder CLI",
   "author": {
     "name": "oh-my-qoder contributors"
@@ -28,12 +28,16 @@
     "./skills/deep-dive/",
     "./skills/deep-interview/",
     "./skills/deepinit/",
+    "./skills/drydock/",
     "./skills/execute/",
     "./skills/external-context/",
+    "./skills/graph/",
     "./skills/hud/",
+    "./skills/launch/",
     "./skills/learner/",
     "./skills/local-build-reminder/",
     "./skills/mcp-setup/",
+    "./skills/minimal-code-discipline/",
     "./skills/omq-doctor/",
     "./skills/omq-reference/",
     "./skills/omq-setup/",

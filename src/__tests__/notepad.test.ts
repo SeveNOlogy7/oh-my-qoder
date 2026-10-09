@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { getOmcRoot } from '../lib/worktree-paths.js';
 import {
   initNotepad,
   readNotepad,
@@ -20,22 +21,31 @@ import {
   getManualSection,
   getNotepadPath
 } from '../hooks/notepad/index.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 describe('Notepad Module', () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+  let previousStateDir: string | undefined;
 
   beforeEach(() => {
-    // Create a unique temp directory for each test
-    testDir = join(tmpdir(), `notepad-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    mkdirSync(testDir, { recursive: true });
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    testDir = mkdtempSync(join(tmpdir(), 'notepad-test-'));
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
+    process.env.OMQ_STATE_DIR = join(testDir, 'centralized-state');
+
   });
 
   afterEach(() => {
-    // Clean up test directory
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
@@ -58,7 +68,7 @@ describe('Notepad Module', () => {
     });
 
     it('should create .omq directory if not exists', () => {
-      const omqDir = join(testDir, '.omq');
+      const omqDir = getOmcRoot(testDir);
       expect(existsSync(omqDir)).toBe(false);
 
       initNotepad(testDir);
@@ -67,7 +77,7 @@ describe('Notepad Module', () => {
     });
 
     it('should not overwrite existing notepad', () => {
-      const omqDir = join(testDir, '.omq');
+      const omqDir = getOmcRoot(testDir);
       mkdirSync(omqDir, { recursive: true });
       const notepadPath = getNotepadPath(testDir);
       const existingContent = '# Existing content\nTest data';

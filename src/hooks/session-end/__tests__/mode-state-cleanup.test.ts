@@ -31,17 +31,19 @@ vi.mock('../../../lib/worktree-paths.js', async () => {
 });
 
 import { processSessionEnd } from '../index.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('processSessionEnd mode state cleanup (issue #1427)', () => {
-  useDefaultStateRoot();
   let tmpDir: string;
   let transcriptPath: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-session-end-mode-state-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = tmpDir;
+    process.env.USERPROFILE = tmpDir;
     transcriptPath = path.join(tmpDir, 'transcript.jsonl');
     fs.writeFileSync(
       transcriptPath,
@@ -55,6 +57,10 @@ describe('processSessionEnd mode state cleanup (issue #1427)', () => {
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
     vi.clearAllMocks();
   });
 

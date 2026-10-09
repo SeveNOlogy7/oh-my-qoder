@@ -24,21 +24,27 @@ import {
 import type { RalphthonPRD, RalphthonStory } from "../types.js";
 import { RALPHTHON_DEFAULTS } from "../types.js";
 import { DEFAULT_PLANNING_CONTEXT } from "../prd.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe("Ralphthon PRD", () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), "ralphthon-prd-test-"));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
     // Create .omq directory for PRD storage
     mkdirSync(join(testDir, ".omq"), { recursive: true });
   });
 
   afterEach(() => {
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
     rmSync(testDir, { recursive: true, force: true });
   });
 

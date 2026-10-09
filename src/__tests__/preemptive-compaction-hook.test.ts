@@ -4,9 +4,6 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import { afterEach, describe, expect, it } from 'vitest';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'post-tool-verifier.mjs');
 const HOOKS_PATH = join(process.cwd(), 'hooks', 'hooks.json');
@@ -15,6 +12,7 @@ const tempDirs: string[] = [];
 
 function makeTempDir(): string {
   const dir = mkdtempSync(join(tmpdir(), 'omc-preemptive-hook-'));
+  execFileSync('git', ['init', '--quiet', dir], { stdio: 'ignore' });
   tempDirs.push(dir);
   return dir;
 }
@@ -101,7 +99,6 @@ afterEach(() => {
 });
 
 describe('post-tool-verifier preemptive compaction warnings', () => {
-  useDefaultStateRoot();
   it('keeps preemptive compaction on the existing PostToolUse runtime instead of a standalone script', () => {
     const hooksJson = JSON.parse(readFileSync(HOOKS_PATH, 'utf-8')) as {
       hooks: {
@@ -378,7 +375,6 @@ describe('post-tool-verifier preemptive compaction warnings', () => {
 });
 
 describe('post-tool-verifier Write/Edit response envelopes', () => {
-  useDefaultStateRoot();
   const longFailureProse = [
     'The following fixture text documents prior failures and must not be treated as the tool status.',
     'x'.repeat(430),

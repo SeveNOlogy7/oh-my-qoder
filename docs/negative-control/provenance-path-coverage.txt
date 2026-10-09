@@ -19,37 +19,36 @@
 
 ### Winning observation output after revert (last 2000 chars)
 ```
-ved:
-undefined
+defined
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:424:30
-    422|     expect(result.code).toBe(0);
-    423|     const parsed = JSON.parse(result.stdout);
-    424|     expect(parsed.namespace).toEqual([]);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:584:30
+    582|     expect(result.code).toBe(0);
+    583|     const parsed = JSON.parse(result.stdout);
+    584|     expect(parsed.namespace).toEqual([]);
        |                              ^
-    425|   });
-    426|
+    585|   });
+    586| 
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/19]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/27]⎯
 
  FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT apply to migration docs, which name the ancestor product on purpose
 AssertionError: expected undefined to deeply equal []
 
-- Expected:
+- Expected: 
 []
 
-+ Received:
++ Received: 
 undefined
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:437:30
-    435|     expect(result.code).toBe(0);
-    436|     const parsed = JSON.parse(result.stdout);
-    437|     expect(parsed.namespace).toEqual([]);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:597:30
+    595|     expect(result.code).toBe(0);
+    596|     const parsed = JSON.parse(result.stdout);
+    597|     expect(parsed.namespace).toEqual([]);
        |                              ^
-    438|   });
-    439|
+    598|   });
+    599| 
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/19]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/27]⎯
 
  FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > flags a foreign MCP tool name in guidance
 AssertionError: expected +0 to be 1 // Object.is equality
@@ -60,41 +59,41 @@ AssertionError: expected +0 to be 1 // Object.is equality
 - 1
 + 0
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:448:25
-    446|
-    447|     const result = runCheck(fixtureDir);
-    448|     expect(result.code).toBe(1);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:608:25
+    606| 
+    607|     const result = runCheck(fixtureDir);
+    608|     expect(result.code).toBe(1);
        |                         ^
-    449|     const parsed = JSON.parse(result.stdout);
-    450|     expect(parsed.namespace.length).toBe(1);
+    609|     const parsed = JSON.parse(result.stdout);
+    610|     expect(parsed.namespace.length).toBe(1);
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/19]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/27]⎯
 
  FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT flag prose that merely contains a colon inside backticks
 AssertionError: expected undefined to deeply equal []
 
-- Expected:
+- Expected: 
 []
 
-+ Received:
++ Received: 
 undefined
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:470:30
-    468|     expect(result.code).toBe(0);
-    469|     const parsed = JSON.parse(result.stdout);
-    470|     expect(parsed.namespace).toEqual([]);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:630:30
+    628|     expect(result.code).toBe(0);
+    629|     const parsed = JSON.parse(result.stdout);
+    630|     expect(parsed.namespace).toEqual([]);
        |                              ^
-    471|   });
-    472| });
+    631|   });
+    632| });
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/19]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/27]⎯
 
 
 ```
 
 ### Winning observation stderr after revert (last 1000 chars)
 ```
- in guidance
+ guidance
 AssertionError: expected +0 to be 1 // Object.is equality
 
 - Expected
@@ -103,34 +102,34 @@ AssertionError: expected +0 to be 1 // Object.is equality
 - 1
 + 0
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:448:25
-    446|
-    447|     const result = runCheck(fixtureDir);
-    448|     expect(result.code).toBe(1);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:608:25
+    606| 
+    607|     const result = runCheck(fixtureDir);
+    608|     expect(result.code).toBe(1);
        |                         ^
-    449|     const parsed = JSON.parse(result.stdout);
-    450|     expect(parsed.namespace.length).toBe(1);
+    609|     const parsed = JSON.parse(result.stdout);
+    610|     expect(parsed.namespace.length).toBe(1);
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/19]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/27]⎯
 
  FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT flag prose that merely contains a colon inside backticks
 AssertionError: expected undefined to deeply equal []
 
-- Expected:
+- Expected: 
 []
 
-+ Received:
++ Received: 
 undefined
 
- ❯ src/__tests__/canonical-identity-provenance.test.ts:470:30
-    468|     expect(result.code).toBe(0);
-    469|     const parsed = JSON.parse(result.stdout);
-    470|     expect(parsed.namespace).toEqual([]);
+ ❯ src/__tests__/canonical-identity-provenance.test.ts:630:30
+    628|     expect(result.code).toBe(0);
+    629|     const parsed = JSON.parse(result.stdout);
+    630|     expect(parsed.namespace).toEqual([]);
        |                              ^
-    471|   });
-    472| });
+    631|   });
+    632| });
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/19]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/27]⎯
 
 
 ```

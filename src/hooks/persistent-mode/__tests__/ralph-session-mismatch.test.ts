@@ -5,10 +5,9 @@
  * a long Ralph session, even though the Stop hook fires many times. The
  * iteration counter never increments past 1.
  *
- * Root cause: `checkRalphLoop` and `checkUltrawork` in
- * `src/hooks/persistent-mode/index.ts` re-applied a strict session-id
- * check on top of the lenient check already done by `readRalphState` /
- * `readUltraworkState`. The strict check `state.session_id !== sessionId`
+ * Root cause: `checkRalphLoop` in `src/hooks/persistent-mode/index.ts`
+ * re-applied a strict session-id check on top of the lenient check already
+ * done by `readRalphState`. The strict check `state.session_id !== sessionId`
  * rejected the legitimate case where ONE side is undefined and the other
  * is a UUID, causing the entire ralph/ultrawork loop to bail out before
  * `incrementRalphIteration()` could fire.
@@ -27,10 +26,6 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { checkPersistentModes } from '../index.js';
-
-// // Exercises the DEFAULT state-root branch over temp fixtures (#42): lift
-// // the per-file OMQ_STATE_DIR pin for every test in this describe.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 const tempDirs: string[] = [];
 
@@ -77,7 +72,6 @@ function writeRalphStateFile(
 }
 
 describe('persistent-mode ralph session-id mismatch (stuck counter regression)', () => {
-  useDefaultStateRoot();
   it('increments the counter when state file has no session_id but Stop hook supplies one', async () => {
     const tempDir = createGitProject();
     const sessionId = 'fresh-session-uuid-1';

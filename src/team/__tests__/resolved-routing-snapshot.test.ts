@@ -83,7 +83,7 @@ describe('buildResolvedRoutingSnapshot', () => {
     const snap = buildResolvedRoutingSnapshot(cfg);
     // primary is the explicit codex model
     expect(snap.critic.primary.model).toBe('gpt-5.3-codex');
-    // fallback is claude — must NOT echo the codex id; resolves to claude tier default for critic (HIGH = opus)
+    // fallback is qwen — must NOT echo the codex id; resolves to qwen tier default for critic (HIGH = max)
     expect(snap.critic.fallback.model).toBe(QWEN_FAMILY_DEFAULTS.MAX);
   });
 
@@ -92,13 +92,13 @@ describe('buildResolvedRoutingSnapshot', () => {
       team: { roleRouting: { executor: { provider: 'codex', model: 'HIGH' } } },
     };
     const snap = buildResolvedRoutingSnapshot(cfg);
-    // primary on codex: tier maps to codex builtin (tiers are claude-centric)
+    // primary on codex: tier maps to codex builtin (tiers are qwen-centric)
     expect(snap.executor.primary.model).toBe(BUILTIN_EXTERNAL_MODEL_DEFAULTS.codexModel);
-    // fallback on claude with same tier "HIGH" → claude opus
+    // fallback on qwen with same tier "HIGH" → qwen max
     expect(snap.executor.fallback.model).toBe(QWEN_FAMILY_DEFAULTS.MAX);
   });
 
-  it('orchestrator primary AND fallback are both claude (provider pinned)', () => {
+  it('orchestrator primary AND fallback are both qwen (provider pinned)', () => {
     const cfg: PluginConfig = {
       team: { roleRouting: { orchestrator: { model: 'HIGH' } } },
     };

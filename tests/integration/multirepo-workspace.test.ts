@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import {
   getOmcRoot,
   getProjectIdentifier,
@@ -26,12 +26,8 @@ describe('multi-repo workspace anchor', () => {
 
   beforeEach(() => {
     clearWorktreeCache();
-    // The marker/fallback tests below exercise the DEFAULT resolution chain in
-    // a controlled temp fixture (#42) — lift the per-file OMQ_STATE_DIR pin
-    // here; afterEach restores whatever the worker held.
-    delete process.env.OMQ_STATE_DIR;
     // Fresh temp parent dir per test — no .git, no .omq-workspace yet
-    parent = mkdtempSync(join(tmpdir(), 'omc-multirepo-'));
+    parent = mkdtempSync(join(homedir(), 'omc-multirepo-'));
     repoA = join(parent, 'repoA');
     repoB = join(parent, 'repoB');
     mkdirSync(repoA, { recursive: true });
@@ -49,7 +45,7 @@ describe('multi-repo workspace anchor', () => {
     if (parent) rmSync(parent, { recursive: true, force: true });
   });
 
-  it('sibling sub-repos both resolve .omq root to the parent workspace anchor', () => {
+  it('sibling sub-repos both resolve .omc root to the parent workspace anchor', () => {
     writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
@@ -106,7 +102,7 @@ describe('multi-repo workspace anchor', () => {
     writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 
-    const stateDir = mkdtempSync(join(tmpdir(), 'omc-statedir-'));
+    const stateDir = mkdtempSync(join(homedir(), 'omc-statedir-'));
     try {
       process.env.OMQ_STATE_DIR = stateDir;
       clearWorktreeCache();

@@ -69,7 +69,7 @@ const MAX_LOG_SIZE_BYTES = 1 * 1024 * 1024;
 /**
  * Allowlist of environment variables safe to pass to daemon child process.
  * This prevents leaking sensitive variables like ANTHROPIC_API_KEY, GITHUB_TOKEN, etc.
- * OMC_* notification env vars are forwarded so the daemon can call getNotificationConfig().
+ * OMQ_* notification env vars are forwarded so the daemon can call getNotificationConfig().
  */
 const DAEMON_ENV_ALLOWLIST = [
   'PATH', 'HOME', 'USERPROFILE',
@@ -982,7 +982,7 @@ async function pollLoop(): Promise<void> {
  * Start the reply listener daemon.
  *
  * Forks a daemon process that derives its config from getNotificationConfig().
- * OMC_* env vars are forwarded so the daemon can read both file and env config.
+ * OMQ_* env vars are forwarded so the daemon can read both file and env config.
  *
  * Idempotent: if daemon is already running, returns success.
  *

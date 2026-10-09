@@ -20,3 +20,4 @@ bridge/*
 
 __pycache__/
 *.py[cod]
+.omz/

@@ -1,5 +1,5 @@
 <!-- OMQ:START -->
-<!-- OMQ:VERSION:0.1.0 -->
+<!-- OMQ:VERSION:5.1.0 -->
 
 # oh-my-qoder - Intelligent Multi-Agent Orchestration
 
@@ -20,7 +20,7 @@ Route code to `executor` (use `model=opus` for complex work). Uncertain SDK usag
 </delegation_rules>
 
 <model_routing>
-`haiku` (quick lookups), `sonnet` (standard), `opus` (architecture, deep analysis).
+`haiku` (quick lookups), `sonnet` (standard), `opus` (architecture, deep analysis), `fable` (Claude Fable 5, above Opus).
 The session model set via `/model` governs the main loop only; delegated agents run on their pinned tier unless you pass `model` explicitly or set a per-agent `agents.<name>.model` override.
 Direct writes OK for: `~/.qoder/**`, `.omq/**`, `.qoder/**`, `CLAUDE.md`, `AGENTS.md`.
 </model_routing>

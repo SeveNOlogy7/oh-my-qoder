@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -19,23 +19,24 @@ import { tmpdir } from 'os';
 // Module-level mock for worktree-paths (required before any state-tool imports)
 // ============================================================================
 
-const mockGetOmqRoot = vi.fn<(worktreeRoot?: string) => string>();
+const mockGetOmcRoot = vi.fn<(worktreeRoot?: string) => string>();
 vi.mock('../lib/worktree-paths.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/worktree-paths.js')>();
   return {
     ...actual,
-    getOmqRoot: (...args: [string?]) => mockGetOmqRoot(...args),
+    getOmcRoot: (...args: [string?]) => mockGetOmcRoot(...args),
     validateWorkingDirectory: (dir?: string) => dir || '/tmp',
+    resolveStateWorkingDirectory: (dir?: string) => dir || '/tmp',
   };
 });
 
-// Mock mode-registry — clearModeState/isModeActive use getOmqRoot internally,
-// and we need them to honour the same mockGetOmqRoot as worktree-paths.
+// Mock mode-registry — clearModeState/isModeActive use getOmcRoot internally,
+// and we need them to honour the same mockGetOmcRoot as worktree-paths.
 vi.mock('../hooks/mode-registry/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../hooks/mode-registry/index.js')>();
   return {
     ...actual,
-    // Passthrough but ensure the mock getOmqRoot from worktree-paths is used
+    // Passthrough but ensure the mock getOmcRoot from worktree-paths is used
     canStartMode: () => ({ allowed: true }),
     registerActiveMode: vi.fn(),
     deregisterActiveMode: vi.fn(),
@@ -515,30 +516,32 @@ import {
 describe('SMOKE: State Cancel Cleanup — session-scoped I/O (issue #1143)', () => {
   let testDir: string;
   let omqDir: string;
-  // Some state helpers below resolve paths through the REAL getOmcRoot (only
-  // getOmqRoot is mocked), i.e. the DEFAULT state-root branch (#42): lift the
-  // per-file OMQ_STATE_DIR pin per test and restore it afterwards.
-  let pinnedStateDir: string | undefined;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+  let previousStateDir: string | undefined;
 
   beforeEach(() => {
-    testDir = join(
-      tmpdir(),
-      `smoke-state-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    );
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    testDir = mkdtempSync(join(tmpdir(), 'smoke-state-'));
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
+    delete process.env.OMQ_STATE_DIR;
     omqDir = join(testDir, '.omq');
     mkdirSync(omqDir, { recursive: true });
-    mockGetOmqRoot.mockReturnValue(omqDir);
-    pinnedStateDir = process.env.OMQ_STATE_DIR;
-    delete process.env.OMQ_STATE_DIR;
+    mockGetOmcRoot.mockReturnValue(omqDir);
   });
 
   afterEach(() => {
-    if (pinnedStateDir === undefined) {
-      delete process.env.OMQ_STATE_DIR;
-    } else {
-      process.env.OMQ_STATE_DIR = pinnedStateDir;
-    }
     if (existsSync(testDir)) rmSync(testDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
+    mockGetOmcRoot.mockReset();
   });
 
   // Helper: call a tool handler with merged defaults
@@ -609,7 +612,7 @@ describe('SMOKE: State Cancel Cleanup — session-scoped I/O (issue #1143)', () 
 
     // Compute path directly — avoids mock boundary issues with resolveSessionStatePath internals.
     // State tools write to: {omqRoot}/state/sessions/{sessionId}/cancel-signal-state.json
-    // omqRoot = getOmqRoot(root) = mockGetOmqRoot(testDir) = omqDir
+    // omqRoot = getOmcRoot(root) = mockGetOmcRoot(testDir) = omqDir
     const cancelSignalPath = join(omqDir, 'state', 'sessions', sessionId, 'cancel-signal-state.json');
     expect(existsSync(cancelSignalPath)).toBe(true);
 
@@ -653,7 +656,7 @@ describe('SMOKE: State Cancel Cleanup — session-scoped I/O (issue #1143)', () 
       mode: 'ultrawork',
       session_id: sessionId,
     });
-    expect(clearResult).toContain('ghost legacy file also removed');
+    expect(clearResult).toContain('Successfully cleared state');
     expect(existsSync(legacyPath)).toBe(false);
   });
 

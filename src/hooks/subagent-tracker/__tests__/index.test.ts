@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
-import { tmpdir } from "os";
+import { homedir } from "os";
 import {
   recordToolUsage,
   getAgentDashboard,
@@ -35,22 +35,28 @@ import {
 } from "../../../lib/file-lock.js";
 import { readMissionBoardState } from "../../../hud/mission-board.js";
 import { readReplayEvents, getReplaySummary } from "../session-replay.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe("subagent-tracker", () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
-    testDir = join(tmpdir(), `subagent-test-${Date.now()}`);
+    testDir = mkdtempSync(join(homedir(), "subagent-test-"));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
     mkdirSync(join(testDir, ".omq", "state"), { recursive: true });
   });
 
   afterEach(() => {
     flushPendingWrites();
     rmSync(testDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
   });
 
   describe("recordToolUsage", () => {

@@ -3,9 +3,9 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { tmuxExecAsync } from '../cli/tmux-utils.js';
 import type { CliAgentType } from './model-contract.js';
-import { buildWorkerArgv, resolveValidatedBinaryPath, getWorkerEnv as getModelWorkerEnv, isPromptModeAgent, getPromptModeArgs, resolveClaudeWorkerModel, assertHeadlessSupported } from './model-contract.js';
-import { isCliWorkerAgentType } from './cli-agent-types.js';
+import { buildWorkerArgv, resolveValidatedBinaryPath, getWorkerEnv as getModelWorkerEnv, isPromptModeAgent, getPromptModeArgs, resolveDefaultWorkerModel, assertHeadlessSupported } from './model-contract.js';
 import { validateTeamName } from './team-name.js';
+import { isCliWorkerAgentType } from './cli-agent-types.js';
 import {
   createTeamSession, spawnWorkerInPane, sendToWorker,
   isWorkerAlive, killTeamSession, resolveSplitPaneWorkerPaneIds, waitForPaneReady, applyMainVerticalLayout, killTeamPane, splitTeamWorkerPane,
@@ -21,6 +21,7 @@ import {
   writeTaskFailure,
   DEFAULT_MAX_TASK_RETRIES,
 } from './task-file-ops.js';
+import { normalizeTaskFileStem, teamStateRoot } from './state-paths.js';
 
 export interface TeamConfig {
   teamName: string;
@@ -116,7 +117,7 @@ function workerName(index: number): string {
 
 function stateRoot(cwd: string, teamName: string): string {
   validateTeamName(teamName);
-  return join(cwd, `.omq/state/team/${teamName}`);
+  return teamStateRoot(cwd, teamName);
 }
 
 async function writeJson(filePath: string, data: unknown): Promise<void> {
@@ -169,7 +170,7 @@ function parseWorkerIndex(workerNameValue: string): number {
 }
 
 function taskPath(root: string, taskId: string): string {
-  return join(root, 'tasks', `${taskId}.json`);
+  return join(root, 'tasks', `${normalizeTaskFileStem(taskId)}.json`);
 }
 
 async function writePanesTrackingFileIfPresent(runtime: TeamRuntime): Promise<void> {
@@ -351,9 +352,10 @@ function buildInitialTaskInstruction(
   teamName: string,
   workerName: string,
   task: { subject: string; description: string },
-  taskId: string
+  taskId: string,
+  teamStateRoot: string,
 ): string {
-  const donePath = `.omq/state/team/${teamName}/workers/${workerName}/done.json`;
+  const donePath = join(teamStateRoot, 'workers', workerName, 'done.json');
   return [
     `## Initial Task Assignment`,
     `Task ID: ${taskId}`,
@@ -397,7 +399,7 @@ export async function startTeam(config: TeamConfig): Promise<TeamRuntime> {
   // Create task files
   for (let i = 0; i < tasks.length; i++) {
     const taskId = String(i + 1);
-    await writeJson(join(root, 'tasks', `${taskId}.json`), {
+    await writeJson(taskPath(root, taskId), {
       id: taskId,
       subject: tasks[i].subject,
       description: tasks[i].description,
@@ -420,6 +422,7 @@ export async function startTeam(config: TeamConfig): Promise<TeamRuntime> {
       teamName, workerName: wName, agentType,
       tasks: tasks.map((t, idx) => ({ id: String(idx + 1), subject: t.subject, description: t.description })),
       cwd,
+      instructionStateRoot: root,
     });
   }
 
@@ -790,10 +793,14 @@ export async function spawnWorkerForTask(
     // Build the initial task instruction and write inbox before spawn.
     // For prompt-mode agents the instruction is passed via CLI flag;
     // for interactive agents it is sent via tmux send-keys after startup.
-    const instruction = buildInitialTaskInstruction(runtime.teamName, workerNameValue, task, taskId);
+    const instruction = buildInitialTaskInstruction(runtime.teamName, workerNameValue, task, taskId, root);
     await composeInitialInbox(runtime.teamName, workerNameValue, instruction, runtime.cwd);
 
-    const envVars = getModelWorkerEnv(runtime.teamName, workerNameValue, agentType);
+    const envVars = {
+      ...getModelWorkerEnv(runtime.teamName, workerNameValue, agentType),
+      OMQ_TEAM_STATE_ROOT: root,
+      OMQ_TEAM_LEADER_CWD: runtime.cwd,
+    };
     const resolvedBinaryPath = runtime.resolvedBinaryPaths?.[agentType] ?? resolveValidatedBinaryPath(agentType);
     if (!runtime.resolvedBinaryPaths) {
       runtime.resolvedBinaryPaths = {};
@@ -803,33 +810,7 @@ export async function spawnWorkerForTask(
     // Resolve model from environment variables based on agent type.
     // For Claude agents on Bedrock/Vertex, resolve the provider-specific model
     // so workers don't fall back to invalid Anthropic API model names. (#1695)
-    const modelForAgent = (() => {
-      if (agentType === 'codex') {
-        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL
-          || process.env.OMQ_CODEX_DEFAULT_MODEL
-          || undefined;
-      }
-      if (agentType === 'gemini') {
-        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL
-          || process.env.OMQ_GEMINI_DEFAULT_MODEL
-          || undefined;
-      }
-      if (agentType === 'antigravity') {
-        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL
-          || process.env.OMQ_ANTIGRAVITY_DEFAULT_MODEL
-          || undefined;
-      }
-      if (agentType === 'grok') {
-        return process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL
-          || process.env.OMQ_GROK_DEFAULT_MODEL
-          || undefined;
-      }
-      if (agentType === 'cursor') {
-        return undefined;
-      }
-      // Claude agents: resolve Bedrock/Vertex model when on those providers
-      return resolveClaudeWorkerModel();
-    })();
+    const modelForAgent = resolveDefaultWorkerModel(agentType, process.env);
 
     const [launchBinary, ...launchArgs] = buildWorkerArgv(agentType, {
       teamName: runtime.teamName,
@@ -845,7 +826,7 @@ export async function spawnWorkerForTask(
     // Codex and Claude team workers are persistent interactive panes and are
     // nudged through the inbox transport instead of `codex exec`/print modes.
     if (usePromptMode) {
-      const promptArgs = getPromptModeArgs(agentType, generateTriggerMessage(runtime.teamName, workerNameValue));
+      const promptArgs = getPromptModeArgs(agentType, generateTriggerMessage(runtime.teamName, workerNameValue, root));
       launchArgs.push(...promptArgs);
     }
 
@@ -896,7 +877,7 @@ export async function spawnWorkerForTask(
       const notified = await notifyPaneWithRetry(
         runtime.sessionName,
         paneId,
-        generateTriggerMessage(runtime.teamName, workerNameValue),
+        generateTriggerMessage(runtime.teamName, workerNameValue, root),
         1
       );
       if (!notified) {
@@ -955,7 +936,7 @@ export async function assignTask(
   cwd: string
 ): Promise<void> {
   const root = stateRoot(cwd, teamName);
-  const taskFilePath = join(root, 'tasks', `${taskId}.json`);
+  const taskFilePath = taskPath(root, taskId);
 
   // Update task ownership under an exclusive lock to prevent concurrent double-claims
   type TaskSnapshot = { status: string; owner: string | null; assignedAt: string | undefined };
@@ -978,7 +959,7 @@ export async function assignTask(
   // Write to worker inbox
   const inboxPath = join(root, 'workers', targetWorkerName, 'inbox.md');
   await mkdir(join(inboxPath, '..'), { recursive: true });
-  const msg = `\n\n---\n## New Task Assignment\nTask ID: ${taskId}\nClaim and execute task from: .omq/state/team/${teamName}/tasks/${taskId}.json\n`;
+  const msg = `\n\n---\n## New Task Assignment\nTask ID: ${taskId}\nClaim and execute task from: ${taskFilePath}\n`;
   const { appendFile } = await import('fs/promises');
   await appendFile(inboxPath, msg, 'utf-8');
 
@@ -1022,7 +1003,7 @@ export async function shutdownTeam(
 
   const configData = await readJsonSafe<TeamConfig>(join(root, 'config.json'));
 
-  // CLI workers (qoder/claude/codex/gemini/grok/cursor tmux pane processes) never write shutdown-ack.json.
+  // CLI workers (claude/codex/gemini/grok/cursor tmux pane processes) never write shutdown-ack.json.
   // Polling for ACK files on CLI worker teams wastes the full timeoutMs on every shutdown.
   // Detect CLI worker teams by checking if all agent types are known CLI types, and skip
   // ACK polling — the tmux kill below handles process cleanup instead.

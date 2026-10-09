@@ -15,26 +15,36 @@ describe('Wiki Session Hooks', () => {
   let tempDir: string;
   let configDir: string;
   let originalClaudeConfigDir: string | undefined;
+  let originalHome: string | undefined;
+  let originalUserProfile: string | undefined;
 
   beforeEach(async () => {
-    tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-session-hooks-'));
+    tempDir = await fsp.mkdtemp(path.join(os.homedir(), 'wiki-session-hooks-'));
+    originalHome = process.env.HOME;
+    originalUserProfile = process.env.USERPROFILE;
+    process.env.HOME = tempDir;
+    process.env.USERPROFILE = tempDir;
     configDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-session-config-'));
-    originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
-    process.env.QODER_CONFIG_DIR = configDir;
+    originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = configDir;
   });
 
   afterEach(async () => {
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     }
 
     await fsp.rm(tempDir, { recursive: true, force: true });
     await fsp.rm(configDir, { recursive: true, force: true });
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
   });
 
-  it('respects autoCapture=false from the active QODER_CONFIG_DIR', () => {
+  it('respects autoCapture=false from the active CLAUDE_CONFIG_DIR', () => {
     fs.writeFileSync(
       path.join(configDir, '.omq-config.json'),
       JSON.stringify({ wiki: { autoCapture: false } }),
@@ -54,22 +64,32 @@ describe('feedProjectMemory (environment.md)', () => {
   let tempDir: string;
   let configDir: string;
   let originalClaudeConfigDir: string | undefined;
+  let originalHome: string | undefined;
+  let originalUserProfile: string | undefined;
 
   beforeEach(async () => {
-    tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-pm-'));
+    tempDir = await fsp.mkdtemp(path.join(os.homedir(), 'wiki-pm-'));
+    originalHome = process.env.HOME;
+    originalUserProfile = process.env.USERPROFILE;
+    process.env.HOME = tempDir;
+    process.env.USERPROFILE = tempDir;
     configDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wiki-pm-config-'));
-    originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
-    process.env.QODER_CONFIG_DIR = configDir;
+    originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = configDir;
   });
 
   afterEach(async () => {
     if (originalClaudeConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     }
     await fsp.rm(tempDir, { recursive: true, force: true });
     await fsp.rm(configDir, { recursive: true, force: true });
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
   });
 
   function writeProjectMemory(memory: Record<string, unknown>): void {

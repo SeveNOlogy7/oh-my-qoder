@@ -6,9 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { existsSync, mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, rmSync, mkdtempSync, symlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import corpus from '../installer/__tests__/fixtures/legacy-guides.json' with { type: 'json' };
 
 // vi.hoisted runs before vi.mock hoisting — safe to reference in mock factories
 const { TEST_DIRS } = vi.hoisted(() => {
@@ -42,13 +43,11 @@ function writePluginRoot(root: string, content: string): void {
   writeFileSync(join(root, 'skills', 'omq-reference', 'SKILL.md'), content);
 }
 
-// Mock getQoderConfigDir before importing the module under test
-vi.mock('../utils/config-dir.js', () => ({
+// Mock the config-dir getters before importing the module under test
+vi.mock('../utils/config-dir.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils/config-dir.js')>()),
   getQoderConfigDir: () => TEST_DIRS.claudeDir,
-  getQoderRootConfigFileName: () => '.qoder.json',
-  getDefaultConfigDirShellPath: () => '$HOME/.qoder',
-  isDefaultQoderConfigDir: () => false,
-  resolveDefaultConfigDir: () => TEST_DIRS.claudeDir,
+  getClaudeConfigDir: () => TEST_DIRS.claudeDir,
 }));
 
 // Mock builtin skills to return a known list for testing
@@ -72,8 +71,9 @@ import {
   checkWorkspaceMarker,
   checkWindowsUnsafePluginHooks,
   runConflictCheck,
+  formatReport,
+  doctorConflictsCommand,
 } from '../cli/commands/doctor-conflicts.js';
-
 describe('doctor-conflicts: hook ownership classification', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
 
@@ -85,8 +85,8 @@ describe('doctor-conflicts: hook ownership classification', () => {
     }
     resetTestDirs();
     mkdirSync(TEST_PROJECT_CLAUDE_DIR, { recursive: true });
-    process.env.QODER_CONFIG_DIR = TEST_CLAUDE_DIR;
-    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.qwen.json');
+    process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
+    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
     process.env.OMQ_HOME = join(TEST_PROJECT_DIR, '.omq-home');
     process.env.CODEX_HOME = join(TEST_PROJECT_DIR, '.codex');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
@@ -94,7 +94,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
 
   afterEach(() => {
     cwdSpy?.mockRestore();
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
     delete process.env.OMQ_HOME;
     delete process.env.CODEX_HOME;
@@ -109,11 +109,36 @@ describe('doctor-conflicts: hook ownership classification', () => {
     // These are the actual commands OMQ installs into settings.json
     const settings = {
       hooks: {
-        UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node "$HOME/.qoder/hooks/keyword-detector.mjs"' }] }],
-        SessionStart: [{ hooks: [{ type: 'command', command: 'node "$HOME/.qoder/hooks/session-start.mjs"' }] }],
-        PreToolUse: [{ hooks: [{ type: 'command', command: 'node "$HOME/.qoder/hooks/pre-tool-use.mjs"' }] }],
-        PostToolUse: [{ hooks: [{ type: 'command', command: 'node "$HOME/.qoder/hooks/post-tool-use.mjs"' }] }],
-        Stop: [{ hooks: [{ type: 'command', command: 'node "$HOME/.qoder/hooks/persistent-mode.mjs"' }] }],
+        UserPromptSubmit: [{
+          hooks: [{
+            type: 'command',
+            command: 'node "$HOME/.claude/hooks/keyword-detector.mjs"',
+          }],
+        }],
+        SessionStart: [{
+          hooks: [{
+            type: 'command',
+            command: 'node "$HOME/.claude/hooks/session-start.mjs"',
+          }],
+        }],
+        PreToolUse: [{
+          hooks: [{
+            type: 'command',
+            command: 'node "$HOME/.claude/hooks/pre-tool-use.mjs"',
+          }],
+        }],
+        PostToolUse: [{
+          hooks: [{
+            type: 'command',
+            command: 'node "$HOME/.claude/hooks/post-tool-use.mjs"',
+          }],
+        }],
+        Stop: [{
+          hooks: [{
+            type: 'command',
+            command: 'node "$HOME/.claude/hooks/persistent-mode.mjs"',
+          }],
+        }],
       },
     };
 
@@ -130,7 +155,12 @@ describe('doctor-conflicts: hook ownership classification', () => {
   it('classifies Windows-style OMQ hook commands as OMQ-owned', () => {
     const settings = {
       hooks: {
-        PreToolUse: [{ hooks: [{ type: 'command', command: 'node "%USERPROFILE%\\.qwen\\hooks\\pre-tool-use.mjs"' }] }],
+        PreToolUse: [{
+          hooks: [{
+            type: 'command',
+            command: 'node "%USERPROFILE%\\.claude\\hooks\\pre-tool-use.mjs"',
+          }],
+        }],
       },
     };
 
@@ -149,29 +179,31 @@ describe('doctor-conflicts: hook ownership classification', () => {
       mkdirSync(join(pluginRoot, 'hooks'), { recursive: true });
       writeFileSync(join(pluginRoot, 'hooks', 'hooks.json'), JSON.stringify({
         hooks: {
-          Stop: [{ hooks: [{
+          Stop: [{
+            hooks: [{
               type: 'command',
-              command: 'sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/persistent-mode.mjs',
-            }] }],
-          SessionEnd: [{ hooks: [{
+              command: 'sh "$CLAUDE_PLUGIN_ROOT"/scripts/find-node.sh "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/persistent-mode.mjs',
+            }],
+          }],
+          SessionEnd: [{
+            hooks: [{
               type: 'command',
-              command: 'sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/session-end.mjs',
-            }] }],
+              command: 'node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/session-end.mjs',
+            }],
+          }],
         },
       }));
-      process.env.QODER_PLUGIN_ROOT = pluginRoot;
+      process.env.CLAUDE_PLUGIN_ROOT = pluginRoot;
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
 
       const unsafe = checkWindowsUnsafePluginHooks();
 
-      expect(unsafe).toHaveLength(2);
+      expect(unsafe).toHaveLength(1);
       expect(unsafe[0]).toMatchObject({ pluginRoot, event: 'Stop' });
       expect(unsafe[0].command).toContain('find-node.sh');
-      expect(unsafe[1]).toMatchObject({ pluginRoot, event: 'SessionEnd' });
-      expect(unsafe[1].command).toContain('find-node.sh');
       expect(runConflictCheck().hasConflicts).toBe(true);
     } finally {
-      delete process.env.QODER_PLUGIN_ROOT;
+      delete process.env.CLAUDE_PLUGIN_ROOT;
       if (originalPlatform) {
         Object.defineProperty(process, 'platform', originalPlatform);
       }
@@ -187,18 +219,22 @@ describe('doctor-conflicts: hook ownership classification', () => {
       mkdirSync(join(pluginRoot, 'hooks'), { recursive: true });
       writeFileSync(join(pluginRoot, 'hooks', 'hooks.json'), JSON.stringify({
         hooks: {
-          PostToolUse: [{ hooks: [{
+          PostToolUse: [{
+            hooks: [{
               type: 'command',
-              command: 'sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/post-tool-verifier.mjs',
-            }] }],
+              command: 'sh "$CLAUDE_PLUGIN_ROOT"/scripts/find-node.sh "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/post-tool-verifier.mjs',
+            }],
+          }],
         },
       }));
       writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify({
         hooks: {
-          PostToolUse: [{ hooks: [{
+          PostToolUse: [{
+            hooks: [{
               type: 'command',
-              command: 'node "$HOME/.qoder/hooks/post-tool-use.mjs"',
-            }] }],
+              command: 'node "$HOME/.claude/hooks/post-tool-use.mjs"',
+            }],
+          }],
         },
       }));
       mkdirSync(join(TEST_CLAUDE_DIR, 'plugins'), { recursive: true });
@@ -232,18 +268,20 @@ describe('doctor-conflicts: hook ownership classification', () => {
       mkdirSync(join(pluginRoot, 'hooks'), { recursive: true });
       writeFileSync(join(pluginRoot, 'hooks', 'hooks.json'), JSON.stringify({
         hooks: {
-          Stop: [{ hooks: [{
+          Stop: [{
+            hooks: [{
               type: 'command',
-              command: 'node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/persistent-mode.mjs',
-            }] }],
+              command: 'node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/persistent-mode.mjs',
+            }],
+          }],
         },
       }));
-      process.env.QODER_PLUGIN_ROOT = pluginRoot;
+      process.env.CLAUDE_PLUGIN_ROOT = pluginRoot;
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
 
       expect(checkWindowsUnsafePluginHooks()).toEqual([]);
     } finally {
-      delete process.env.QODER_PLUGIN_ROOT;
+      delete process.env.CLAUDE_PLUGIN_ROOT;
       if (originalPlatform) {
         Object.defineProperty(process, 'platform', originalPlatform);
       }
@@ -254,10 +292,12 @@ describe('doctor-conflicts: hook ownership classification', () => {
   it('classifies non-OMQ hooks as not OMQ-owned', () => {
     const settings = {
       hooks: {
-        PreToolUse: [{ hooks: [{
+        PreToolUse: [{
+          hooks: [{
             type: 'command',
             command: 'node ~/other-plugin/hooks/pre-tool.mjs',
-          }] }],
+          }],
+        }],
       },
     };
 
@@ -271,14 +311,18 @@ describe('doctor-conflicts: hook ownership classification', () => {
   it('correctly distinguishes OMQ and non-OMQ hooks in mixed config', () => {
     const settings = {
       hooks: {
-        PreToolUse: [{ hooks: [{
+        PreToolUse: [{
+          hooks: [{
             type: 'command',
-            command: 'node "$HOME/.qoder/hooks/pre-tool-use.mjs"',
-          }] }],
-        PostToolUse: [{ hooks: [{
+            command: 'node "$HOME/.claude/hooks/pre-tool-use.mjs"',
+          }],
+        }],
+        PostToolUse: [{
+          hooks: [{
             type: 'command',
-            command: 'node ~/other-plugin/hooks/post-tool.mjs',
-          }] }],
+            command: 'python ~/other-plugin/post-tool.py',
+          }],
+        }],
       },
     };
 
@@ -366,10 +410,12 @@ describe('doctor-conflicts: hook ownership classification', () => {
     // All-OMQ config: no conflicts
     const omqOnlySettings = {
       hooks: {
-        PreToolUse: [{ hooks: [{
+        PreToolUse: [{
+          hooks: [{
             type: 'command',
-            command: 'node "$HOME/.qoder/hooks/pre-tool-use.mjs"',
-          }] }],
+            command: 'node "$HOME/.claude/hooks/pre-tool-use.mjs"',
+          }],
+        }],
       },
     };
 
@@ -384,10 +430,12 @@ describe('doctor-conflicts: hook ownership classification', () => {
     // Only project-level settings, no profile-level
     const projectSettings = {
       hooks: {
-        PreToolUse: [{ hooks: [{
+        PreToolUse: [{
+          hooks: [{
             type: 'command',
-            command: 'node "$HOME/.qoder/hooks/pre-tool-use.mjs"',
-          }] }],
+            command: 'node "$HOME/.claude/hooks/pre-tool-use.mjs"',
+          }],
+        }],
       },
     };
 
@@ -402,18 +450,22 @@ describe('doctor-conflicts: hook ownership classification', () => {
   it('merges hooks from both profile and project settings (issue #669)', () => {
     const profileSettings = {
       hooks: {
-        SessionStart: [{ hooks: [{
+        SessionStart: [{
+          hooks: [{
             type: 'command',
-            command: 'node "$HOME/.qoder/hooks/session-start.mjs"',
-          }] }],
+            command: 'node "$HOME/.claude/hooks/session-start.mjs"',
+          }],
+        }],
       },
     };
     const projectSettings = {
       hooks: {
-        PreToolUse: [{ hooks: [{
+        PreToolUse: [{
+          hooks: [{
             type: 'command',
             command: 'python ~/my-project/hooks/lint.py',
-          }] }],
+          }],
+        }],
       },
     };
 
@@ -433,10 +485,12 @@ describe('doctor-conflicts: hook ownership classification', () => {
   it('deduplicates identical hooks present in both levels (issue #669)', () => {
     const sharedHook = {
       hooks: {
-        PreToolUse: [{ hooks: [{
+        PreToolUse: [{
+          hooks: [{
             type: 'command',
-            command: 'node "$HOME/.qoder/hooks/pre-tool-use.mjs"',
-          }] }],
+            command: 'node "$HOME/.claude/hooks/pre-tool-use.mjs"',
+          }],
+        }],
       },
     };
 
@@ -452,7 +506,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
   });
 });
 
-describe('doctor-conflicts: AGENTS.md companion file detection (issue #1101)', () => {
+describe('doctor-conflicts: CLAUDE.md companion file detection (issue #1101)', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -463,16 +517,18 @@ describe('doctor-conflicts: AGENTS.md companion file detection (issue #1101)', (
     }
     resetTestDirs();
     mkdirSync(TEST_PROJECT_CLAUDE_DIR, { recursive: true });
-    process.env.QODER_CONFIG_DIR = TEST_CLAUDE_DIR;
-    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.qwen.json');
+    process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
+    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
+    process.env.OMQ_MCP_REGISTRY_PATH = join(TEST_PROJECT_DIR, '.omq-home', 'mcp-registry.json');
+    process.env.CODEX_HOME = join(TEST_PROJECT_DIR, '.codex');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
   });
 
   afterEach(() => {
     cwdSpy?.mockRestore();
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
-    delete process.env.OMQ_HOME;
+    delete process.env.OMQ_MCP_REGISTRY_PATH;
     delete process.env.CODEX_HOME;
     for (const dir of [TEST_CLAUDE_DIR, TEST_PROJECT_DIR]) {
       if (dir && existsSync(dir)) {
@@ -481,53 +537,184 @@ describe('doctor-conflicts: AGENTS.md companion file detection (issue #1101)', (
     }
   });
 
-  it('detects OMQ markers in main AGENTS.md', () => {
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS.md'), '<!-- OMQ:START -->\n# OMQ Config\n<!-- OMQ:END -->\n');
+  it('detects OMQ markers in main CLAUDE.md', () => {
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMQ Config\n<!-- OMQ:END -->\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(true);
     expect(status!.companionFile).toBeUndefined();
   });
 
-  it('detects OMQ markers in companion file when main AGENTS.md lacks them', () => {
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS.md'), '# My custom config\n');
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# OMQ Config\n<!-- OMQ:END -->\n');
+  it('detects OMQ markers in companion file when main CLAUDE.md lacks them', () => {
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '# My custom config\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# OMQ Config\n<!-- OMQ:END -->\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(true);
-    expect(status!.companionFile).toContain('AGENTS-omq.md');
+    expect(status!.companionFile).toContain('CLAUDE-omc.md');
   });
 
   it('does not false-positive when companion file has no markers', () => {
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS.md'), '# My config\n');
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS-custom.md'), '# Custom stuff\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '# My config\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE-custom.md'), '# Custom stuff\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(false);
     expect(status!.companionFile).toBeUndefined();
   });
 
-  it('detects companion file reference in AGENTS.md', () => {
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS.md'), '# Config\nSee AGENTS-omq.md for OMQ settings\n');
+  it('detects companion file reference in CLAUDE.md', () => {
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '@CLAUDE-omc.md\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(false);
-    expect(status!.companionFile).toBe(join(TEST_CLAUDE_DIR, 'AGENTS-omq.md'));
+    expect(status!.companionFile).toBe(join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md'));
   });
 
   it('prefers main file markers over companion file', () => {
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS-omq.md'), '<!-- OMQ:START -->\n# Also OMQ\n<!-- OMQ:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md'), '<!-- OMQ:START -->\n# Also OMQ\n<!-- OMQ:END -->\n');
     const status = checkClaudeMdStatus();
     expect(status).not.toBeNull();
     expect(status!.hasMarkers).toBe(true);
     expect(status!.companionFile).toBeUndefined();
   });
 
-  it('returns null when no AGENTS.md exists', () => {
+  it('returns null when no CLAUDE.md exists', () => {
     const status = checkClaudeMdStatus();
     expect(status).toBeNull();
   });
+
+  it('inspects an orphan active companion when main CLAUDE.md is absent', () => {
+    const activePath = join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md');
+    const guide = Buffer.from(corpus.variants[0].dataBase64, 'base64');
+    writeFileSync(activePath, guide);
+
+    const status = checkClaudeMdStatus();
+
+    expect(status).not.toBeNull();
+    expect(status!.files.map(file => file.path)).toEqual([activePath]);
+    expect(status!.exactLegacyPaths).toEqual([activePath]);
+    expect(runConflictCheck().hasConflicts).toBe(true);
+  });
+  it('aggregates main, active, referenced, and generic companions in deterministic order', () => {
+    const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
+    const activePath = join(TEST_CLAUDE_DIR, 'CLAUDE-omc.md');
+    const referencedPath = join(TEST_CLAUDE_DIR, 'CLAUDE-referenced.md');
+    const genericPath = join(TEST_CLAUDE_DIR, 'CLAUDE-zebra.md');
+    writeFileSync(mainPath, '@CLAUDE-referenced.md\n<!-- OMQ:START -->\nmanaged\n<!-- OMQ:END -->\n');
+    writeFileSync(activePath, '<!-- OMQ:START -->\nactive\n<!-- OMQ:END -->\n');
+    writeFileSync(referencedPath, '<!-- OMQ:START -->\nreferenced\n<!-- OMQ:END -->\n');
+    writeFileSync(genericPath, 'later user content\n');
+
+    const status = checkClaudeMdStatus();
+    expect(status!.files.map(file => file.path)).toEqual([mainPath, activePath, referencedPath, genericPath]);
+    expect(status!.dirtyFiles).toEqual([mainPath, genericPath]);
+    expect(status!.hasMarkers).toBe(true);
+    expect(status!.hasUserContent).toBe(true);
+  });
+
+  it('rejects indirect references while retaining direct missing-reference compatibility', () => {
+    const missingPath = join(TEST_CLAUDE_DIR, 'CLAUDE-missing.md');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), 'See @CLAUDE-ignored.md\n@CLAUDE-missing.md\n@../CLAUDE-escape.md\n');
+
+    const status = checkClaudeMdStatus();
+    expect(status!.companionFile).toBe(missingPath);
+    expect(status!.files).toHaveLength(1);
+
+    const report = runConflictCheck();
+    expect(report.mcpRegistrySync.registryPath).toBe(join(TEST_PROJECT_DIR, '.omq-home', 'mcp-registry.json'));
+    expect(report.mcpRegistrySync.codexConfigPath).toBe(join(TEST_PROJECT_DIR, '.codex', 'config.toml'));
+    expect(report.hasConflicts).toBe(false);
+  });
+
+  it.each(corpus.variants)('classifies exact legacy %s in main and CRLF companion files without claiming guide ownership', async variant => {
+    const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
+    const companionPath = join(TEST_CLAUDE_DIR, 'CLAUDE-companion.md');
+    const guide = Buffer.from(variant.dataBase64, 'base64').toString('utf8');
+    const crlfGuide = guide.replace(/\n/g, '\r\n');
+    writeFileSync(mainPath, `@CLAUDE-companion.md\n${guide}MAIN-SUFFIX\n`);
+    writeFileSync(companionPath, `COMPANION-PREFIX\r\n${crlfGuide}COMPANION-SUFFIX\r\n`);
+
+    const report = runConflictCheck();
+    const status = report.claudeMdStatus!;
+    expect(status.companionFile).toBe(companionPath);
+    expect(status.exactLegacyPaths).toEqual([mainPath, companionPath]);
+    expect(status.dirtyFiles).toEqual([mainPath, companionPath]);
+    expect(status.files.map(file => file.hasUserContent)).toEqual([true, true]);
+    expect(report.hasConflicts).toBe(true);
+    expect(JSON.parse(formatReport(report, true)).claudeMdStatus.exactLegacyPaths).toEqual([mainPath, companionPath]);
+    expect(formatReport(report, false)).toContain('coordinator-backed cleanup with a verified backup');
+
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await expect(doctorConflictsCommand({ json: true })).resolves.toBe(1);
+    } finally {
+      consoleLogSpy.mockRestore();
+    }
+  });
+
+  it('treats an exact-only legacy guide as generated rather than user content', () => {
+    const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
+    const variant = corpus.variants[0];
+    writeFileSync(mainPath, Buffer.from(variant.dataBase64, 'base64'));
+
+    const status = checkClaudeMdStatus()!;
+    expect(status.exactLegacyPaths).toEqual([mainPath]);
+    expect(status.dirtyFiles).toEqual([]);
+    expect(status.hasUserContent).toBe(false);
+    expect(runConflictCheck().hasConflicts).toBe(true);
+  });
+
+  it('preserves a leading UTF-8 BOM when classifying legacy-looking user content', () => {
+    const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
+    const guide = Buffer.from(corpus.variants[0].dataBase64, 'base64');
+    writeFileSync(mainPath, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), guide]));
+
+    const status = checkClaudeMdStatus()!;
+
+    expect(status.exactLegacyPaths).toEqual([]);
+    expect(status.dirtyFiles).toEqual([mainPath]);
+  });
+
+  it.each([
+    '<!-- OMQ:START -->\n',
+    '<!-- OMQ:END -->\n',
+    '<!-- OMQ:START -->\n<!-- OMQ:START -->\n<!-- OMQ:END -->\n',
+  ])('marks malformed marker structures for manual review', content => {
+    const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
+    writeFileSync(mainPath, content);
+    const status = checkClaudeMdStatus();
+    expect(status!.files[0]).toMatchObject({ markerState: 'corrupt', hasUserContent: true });
+    expect(status!.manualReviewPaths).toEqual([mainPath]);
+    expect(runConflictCheck().hasConflicts).toBe(true);
+  });
+
+  it('includes aggregated analyzer findings in JSON and formatted reports', () => {
+    const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
+    writeFileSync(mainPath, '<!-- OMQ:END -->\n');
+    const report = runConflictCheck();
+    expect(JSON.parse(formatReport(report, true)).claudeMdStatus.manualReviewPaths).toEqual([mainPath]);
+    expect(formatReport(report, false)).toContain(mainPath);
+    expect(formatReport(report, false)).toContain('Inspection-only review required');
+    expect(formatReport(report, false)).toContain('never deleted automatically');
+    expect(report.hasConflicts).toBe(true);
+  });
+
+  it('records symlink and invalid UTF-8 companions without following them', () => {
+    const mainPath = join(TEST_CLAUDE_DIR, 'CLAUDE.md');
+    const symlinkPath = join(TEST_CLAUDE_DIR, 'CLAUDE-link.md');
+    const invalidPath = join(TEST_CLAUDE_DIR, 'CLAUDE-invalid.md');
+    writeFileSync(mainPath, 'user content\n');
+    symlinkSync(mainPath, symlinkPath);
+    writeFileSync(invalidPath, Buffer.from([0xff]));
+
+    const status = checkClaudeMdStatus();
+    expect(status!.files.map(file => file.markerState)).toContain('symlink');
+    expect(status!.files.map(file => file.markerState)).toContain('invalid-utf8');
+    expect(runConflictCheck().hasConflicts).toBe(true);
+  });
+
 });
 
 describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => {
@@ -546,7 +733,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
 
   afterEach(() => {
     cwdSpy?.mockRestore();
-    delete process.env.QODER_PLUGIN_ROOT;
+    delete process.env.CLAUDE_PLUGIN_ROOT;
     for (const dir of [TEST_CLAUDE_DIR, TEST_PROJECT_DIR]) {
       if (dir && existsSync(dir)) {
         rmSync(dir, { recursive: true, force: true });
@@ -634,13 +821,13 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     expect(collisions).toHaveLength(0);
   });
 
-  it('does NOT flag setup-installed omq-reference fallback when it matches QODER_PLUGIN_ROOT (issue #2992)', () => {
+  it('does NOT flag setup-installed omq-reference fallback when it matches CLAUDE_PLUGIN_ROOT (issue #2992)', () => {
     const currentContent = '# Current omq-reference skill\n';
     const sessionContent = '# Session root omq-reference skill\n';
     const sessionPluginRoot = join(TEST_PROJECT_DIR, 'session-plugin-root');
     writeCanonicalOmqReferenceSkill(currentContent);
     writePluginRoot(sessionPluginRoot, sessionContent);
-    process.env.QODER_PLUGIN_ROOT = sessionPluginRoot;
+    process.env.CLAUDE_PLUGIN_ROOT = sessionPluginRoot;
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
     writeFileSync(join(skillsDir, 'omq-reference', 'SKILL.md'), sessionContent);
@@ -676,7 +863,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
     writeFileSync(join(skillsDir, 'omq-reference', 'SKILL.md'), canonicalContent);
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
 
     const report = runConflictCheck();
     expect(report.legacySkills).toHaveLength(0);
@@ -687,8 +874,8 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(skillsDir, { recursive: true });
     writeFileSync(join(skillsDir, 'cancel.md'), '# Legacy cancel');
-    // Need an AGENTS.md for the report to work
-    writeFileSync(join(TEST_CLAUDE_DIR, 'AGENTS.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
+    // Need a CLAUDE.md for the report to work
+    writeFileSync(join(TEST_CLAUDE_DIR, 'CLAUDE.md'), '<!-- OMQ:START -->\n# OMQ\n<!-- OMQ:END -->\n');
 
     const report = runConflictCheck();
     expect(report.legacySkills).toHaveLength(1);
@@ -709,8 +896,8 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
     mkdirSync(TEST_PROJECT_CLAUDE_DIR, { recursive: true });
     mkdirSync(join(TEST_PROJECT_DIR, '.omq'), { recursive: true });
     mkdirSync(join(TEST_PROJECT_DIR, '.codex'), { recursive: true });
-    process.env.QODER_CONFIG_DIR = TEST_CLAUDE_DIR;
-    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.qwen.json');
+    process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
+    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
     process.env.OMQ_HOME = join(TEST_PROJECT_DIR, '.omq');
     process.env.CODEX_HOME = join(TEST_PROJECT_DIR, '.codex');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
@@ -718,7 +905,7 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
 
   afterEach(() => {
     cwdSpy?.mockRestore();
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
     delete process.env.OMQ_HOME;
     delete process.env.CODEX_HOME;
@@ -736,6 +923,7 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
         work: {
           enabled: true,
           discord: {
+            enabled: true,
             webhookUrl: 'https://discord.example.test/webhook',
           },
         },
@@ -754,7 +942,7 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
       team: {
         ops: {
           maxAgents: 20,
-          defaultAgentType: 'qwen',
+          defaultAgentType: 'claude',
         },
       },
     }, null, 2));
@@ -773,6 +961,15 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
     expect(checkConfigIssues().unknownFields).toEqual(['totallyMadeUpKey', 'anotherUnknown']);
     expect(runConflictCheck().hasConflicts).toBe(true);
   });
+
+  it('flags the retired defaultExecutionMode key as unknown (5.0.0 removed its last writer/reader)', () => {
+    writeFileSync(join(TEST_CLAUDE_DIR, '.omq-config.json'), JSON.stringify({
+      silentAutoUpdate: false,
+      defaultExecutionMode: 'ultrawork',
+    }, null, 2));
+
+    expect(checkConfigIssues().unknownFields).toEqual(['defaultExecutionMode']);
+  });
 });
 
 describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
@@ -788,8 +985,8 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
     }
     resetTestDirs();
     mkdirSync(TEST_PROJECT_CLAUDE_DIR, { recursive: true });
-    process.env.QODER_CONFIG_DIR = TEST_CLAUDE_DIR;
-    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.qwen.json');
+    process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
+    process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
     savedOmqStateDir = process.env.OMQ_STATE_DIR;
     delete process.env.OMQ_STATE_DIR;
@@ -798,7 +995,7 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
 
   afterEach(() => {
     cwdSpy?.mockRestore();
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
     if (savedOmqStateDir === undefined) {
       delete process.env.OMQ_STATE_DIR;

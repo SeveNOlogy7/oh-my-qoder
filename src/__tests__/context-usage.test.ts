@@ -5,12 +5,10 @@ import { join } from 'path';
 
 import { getContextPercent } from '../hud/stdin.js';
 import type { StatuslineStdin } from '../hud/types.js';
+import { getOmcRoot } from '../lib/worktree-paths.js';
 
 // @ts-expect-error Local hook helper is a JS module loaded directly by the tests.
 import { resolveContextPercent, resolveHookContextPercent, resolveHudCacheContextPercent, resolveTranscriptContextPercent } from '../../scripts/lib/context-usage.mjs';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const HUD_CACHE_FILENAME = 'hud-stdin-cache.json';
 
@@ -21,7 +19,7 @@ function writeTranscript(payload: unknown): string {
 }
 
 function writeHudCache(sessionId: string, payload: unknown): string {
-  const sessionDir = join(tempDir, '.omq', 'state', 'sessions', sessionId);
+  const sessionDir = join(getOmcRoot(tempDir), 'state', 'sessions', sessionId);
   mkdirSync(sessionDir, { recursive: true });
   const filePath = join(sessionDir, HUD_CACHE_FILENAME);
   writeFileSync(filePath, JSON.stringify(payload), 'utf-8');
@@ -46,11 +44,14 @@ function makeHudPayload(overrides: Record<string, unknown> = {}): Record<string,
 
 let tempDir: string;
 let originalPluginRoot: string | undefined;
+let originalStateDir: string | undefined;
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), 'omc-context-usage-'));
   originalPluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+  originalStateDir = process.env.OMQ_STATE_DIR;
   process.env.CLAUDE_PLUGIN_ROOT = process.cwd();
+  process.env.OMQ_STATE_DIR = tempDir;
 });
 
 afterEach(() => {
@@ -59,11 +60,12 @@ afterEach(() => {
   } else {
     process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
   }
+  if (originalStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = originalStateDir;
   rmSync(tempDir, { recursive: true, force: true });
 });
 
 describe('resolveTranscriptContextPercent', () => {
-  useDefaultStateRoot();
   it('returns null for production-shaped transcripts without context_window', () => {
     const transcriptPath = writeTranscript({
       message: {
@@ -98,7 +100,6 @@ describe('resolveTranscriptContextPercent', () => {
 });
 
 describe('resolveHookContextPercent', () => {
-  useDefaultStateRoot();
   it('prefers used_percentage when present', () => {
     expect(resolveHookContextPercent({
       context_window: { used_percentage: 53.6 },
@@ -128,7 +129,6 @@ describe('resolveHookContextPercent', () => {
 });
 
 describe('resolveHudCacheContextPercent', () => {
-  useDefaultStateRoot();
   it('uses HUD native used_percentage from the session cache', async () => {
     const sessionId = 'hud-native-session';
     const payload = makeHudPayload({
@@ -203,7 +203,7 @@ describe('resolveHudCacheContextPercent', () => {
   });
 
   it('falls back to the legacy flat cache before scanning sessions when no identity is known', async () => {
-    const legacyDir = join(tempDir, '.omq', 'state');
+    const legacyDir = join(getOmcRoot(tempDir), 'state');
     mkdirSync(legacyDir, { recursive: true });
     const legacyPayload = makeHudPayload({ context_window: { used_percentage: 55 } });
     writeFileSync(join(legacyDir, HUD_CACHE_FILENAME), JSON.stringify(legacyPayload), 'utf-8');
@@ -264,7 +264,7 @@ describe('resolveHudCacheContextPercent', () => {
   });
 
   it('falls back to the legacy flat cache when every identity candidate is invalid', async () => {
-    const legacyDir = join(tempDir, '.omq', 'state');
+    const legacyDir = join(getOmcRoot(tempDir), 'state');
     mkdirSync(legacyDir, { recursive: true });
     const legacyPayload = makeHudPayload({ context_window: { used_percentage: 38 } });
     writeFileSync(join(legacyDir, HUD_CACHE_FILENAME), JSON.stringify(legacyPayload), 'utf-8');
@@ -323,7 +323,7 @@ describe('resolveHudCacheContextPercent', () => {
   });
 
   it('returns null for a valid env-bound identity with no cache even when the legacy flat cache is populated', async () => {
-    const legacyDir = join(tempDir, '.omq', 'state');
+    const legacyDir = join(getOmcRoot(tempDir), 'state');
     mkdirSync(legacyDir, { recursive: true });
     writeFileSync(
       join(legacyDir, HUD_CACHE_FILENAME),
@@ -364,7 +364,6 @@ describe('resolveHudCacheContextPercent', () => {
 });
 
 describe('resolveContextPercent orchestration', () => {
-  useDefaultStateRoot();
   it('prefers transcript, then hook payload, then HUD cache', async () => {
     const transcriptPath = writeTranscript({
       message: {

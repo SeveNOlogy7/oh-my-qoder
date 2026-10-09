@@ -1,22 +1,18 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const NODE = process.execPath;
 const SESSION_START_SCRIPT = join(__dirname, '..', '..', 'scripts', 'wiki-session-start.mjs');
 const PRE_COMPACT_SCRIPT = join(__dirname, '..', '..', 'scripts', 'wiki-pre-compact.mjs');
 
 describe('wiki hook wrapper output', () => {
-  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omq-wiki-hook-format-'));
+    tempDir = mkdtempSync(join(homedir(), 'omq-wiki-hook-format-'));
     mkdirSync(join(tempDir, '.omq', 'wiki'), { recursive: true });
 
     writeFileSync(
@@ -51,6 +47,7 @@ describe('wiki hook wrapper output', () => {
       input: JSON.stringify({ cwd: tempDir }),
       encoding: 'utf-8',
       timeout: 15000,
+      env: { ...process.env, HOME: tempDir, USERPROFILE: tempDir },
     }).trim();
 
     return JSON.parse(raw) as {

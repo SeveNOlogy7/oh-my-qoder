@@ -370,10 +370,10 @@ describe("plan output configuration", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omq-plan-output-"));
 
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           planOutput: {
             directory: "docs/plans",
@@ -390,10 +390,6 @@ describe("plan output configuration", () => {
         filenameTemplate: "plan-{{name}}.md",
       });
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -424,10 +420,10 @@ describe("company context configuration", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-company-context-"));
 
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           companyContext: {
             tool: "mcp__vendor__get_company_context",
@@ -444,10 +440,6 @@ describe("company context configuration", () => {
         onError: "fail",
       });
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -487,10 +479,10 @@ describe("team.roleRouting (Option E)", () => {
   it("merges per-role file overrides into team.roleRouting", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: {
             roleRouting: {
@@ -510,10 +502,6 @@ describe("team.roleRouting (Option E)", () => {
         provider: "gemini",
       });
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -521,10 +509,10 @@ describe("team.roleRouting (Option E)", () => {
   it("accepts cursor as team defaultAgentType and executor roleRouting provider", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-cursor-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: {
             ops: { defaultAgentType: "cursor" },
@@ -539,38 +527,56 @@ describe("team.roleRouting (Option E)", () => {
       expect(config.team?.ops?.defaultAgentType).toBe("cursor");
       expect(config.team?.roleRouting?.executor).toEqual({ provider: "cursor" });
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
 
 
-  it("rejects cursor for non-executor team roleRouting providers", () => {
+  it("loads externalModels.defaults.cursorModel from config", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "omq-external-cursor-model-"));
+    try {
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
+      writeFileSync(
+        join(claudeDir, "omc.jsonc"),
+        JSON.stringify({
+          externalModels: { defaults: { cursorModel: "cursor-grok-4.6-high" } },
+        }),
+      );
+      process.chdir(tempDir);
+      expect(loadConfig().externalModels?.defaults?.cursorModel).toBe(
+        "cursor-grok-4.6-high",
+      );
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts cursor for reviewer team roleRouting providers (issue #3880)", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-cursor-reviewer-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: {
             roleRouting: {
-              "code-reviewer": { provider: "cursor" },
+              "code-reviewer": { provider: "cursor", model: "cursor-grok-4.6-high" },
+              "critic": { provider: "cursor" },
             },
           },
         }),
       );
       process.chdir(tempDir);
-      expect(() => loadConfig()).toThrow(/cursor is only supported for executor-style roles/);
+      const config = loadConfig();
+      expect(config.team?.roleRouting?.["code-reviewer"]).toEqual({
+        provider: "cursor",
+        model: "cursor-grok-4.6-high",
+      });
+      expect(config.team?.roleRouting?.critic).toEqual({ provider: "cursor" });
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -578,10 +584,10 @@ describe("team.roleRouting (Option E)", () => {
   it("OMQ_TEAM_ROLE_OVERRIDES env wins over file config", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-routing-env-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { critic: { provider: "claude", model: "HIGH" } } },
         }),
@@ -593,10 +599,6 @@ describe("team.roleRouting (Option E)", () => {
       const config = loadConfig();
       expect(config.team?.roleRouting?.critic?.provider).toBe("codex");
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -618,10 +620,10 @@ describe("team.roleRouting (Option E)", () => {
   it("rejects invalid provider value with descriptive error", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-bad-provider-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { critic: { provider: "openai" } } },
         }),
@@ -629,21 +631,17 @@ describe("team.roleRouting (Option E)", () => {
       process.chdir(tempDir);
       expect(() => loadConfig()).toThrow(/team\.roleRouting\.critic\.provider/);
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it("rejects orchestrator.provider override (orchestrator is pinned to claude)", () => {
+  it("rejects orchestrator.provider override (orchestrator is pinned to qwen)", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-orch-pin-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: {
             roleRouting: { orchestrator: { provider: "codex", model: "HIGH" } },
@@ -653,10 +651,6 @@ describe("team.roleRouting (Option E)", () => {
       process.chdir(tempDir);
       expect(() => loadConfig()).toThrow(/orchestrator: key "provider" is not allowed/);
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -664,10 +658,10 @@ describe("team.roleRouting (Option E)", () => {
   it("rejects unknown agent name", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-bad-agent-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { executor: { agent: "nonExistentAgent" } } },
         }),
@@ -675,10 +669,6 @@ describe("team.roleRouting (Option E)", () => {
       process.chdir(tempDir);
       expect(() => loadConfig()).toThrow(/team\.roleRouting\.executor\.agent/);
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -686,10 +676,10 @@ describe("team.roleRouting (Option E)", () => {
   it("accepts 'reviewer' alias and preserves the raw key for later alias-aware resolution", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-alias-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { reviewer: { provider: "codex" } } },
         }),
@@ -703,10 +693,6 @@ describe("team.roleRouting (Option E)", () => {
       const r = config.team?.roleRouting as Record<string, unknown>;
       expect(r["reviewer"]).toEqual({ provider: "codex" });
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -714,10 +700,10 @@ describe("team.roleRouting (Option E)", () => {
   it("rejects unsupported team.ops.defaultAgentType values", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-default-agent-type-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { ops: { defaultAgentType: "executor" } },
         }),
@@ -725,10 +711,6 @@ describe("team.roleRouting (Option E)", () => {
       process.chdir(tempDir);
       expect(() => loadConfig()).toThrow(/team\.ops\.defaultAgentType/);
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -736,10 +718,10 @@ describe("team.roleRouting (Option E)", () => {
   it("rejects unknown role with descriptive error", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-bad-role-"));
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           team: { roleRouting: { "totally-fake-role": { provider: "claude" } } },
         }),
@@ -747,10 +729,6 @@ describe("team.roleRouting (Option E)", () => {
       process.chdir(tempDir);
       expect(() => loadConfig()).toThrow(/unknown role "totally-fake-role"/);
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -790,10 +768,10 @@ describe("delegation routing deprecation warnings", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-delegation-routing-warning-"));
 
     try {
-      const qoderDir = join(tempDir, ".qoder");
-      require("node:fs").mkdirSync(qoderDir, { recursive: true });
+      const claudeDir = join(tempDir, ".claude");
+      require("node:fs").mkdirSync(claudeDir, { recursive: true });
       writeFileSync(
-        join(qoderDir, "omq.jsonc"),
+        join(claudeDir, "omc.jsonc"),
         JSON.stringify({
           delegationRouting: {
             enabled: true,
@@ -814,10 +792,6 @@ describe("delegation routing deprecation warnings", () => {
         expect.stringContaining("delegationRouting to Codex/Gemini is deprecated"),
       );
     } finally {
-      // Leave the directory before deleting it: on Windows a process whose cwd
-      // is inside a tree cannot have that tree removed (EPERM), and the describe's
-      // afterEach chdir runs too late for this cleanup.
-      process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -838,9 +812,9 @@ describe("loadConfig() — autopilot team worker config", () => {
   });
 
   it("loads autopilot.execution=team with Cursor team agentTypes", () => {
-    require("node:fs").mkdirSync(join(tempDir, ".qoder"), { recursive: true });
+    require("node:fs").mkdirSync(join(tempDir, ".claude"), { recursive: true });
     writeFileSync(
-      join(tempDir, ".qoder", "omq.jsonc"),
+      join(tempDir, ".claude", "omc.jsonc"),
       `{
         "autopilot": {
           "execution": "team",
@@ -856,9 +830,9 @@ describe("loadConfig() — autopilot team worker config", () => {
   });
 
   it("rejects unsupported autopilot team agentTypes", () => {
-    require("node:fs").mkdirSync(join(tempDir, ".qoder"), { recursive: true });
+    require("node:fs").mkdirSync(join(tempDir, ".claude"), { recursive: true });
     writeFileSync(
-      join(tempDir, ".qoder", "omq.jsonc"),
+      join(tempDir, ".claude", "omc.jsonc"),
       `{
         "autopilot": {
           "execution": "team",
@@ -883,17 +857,16 @@ describe("loadConfig() — autopilot team worker config", () => {
 describe("loadConfig() — autopilot.workflows", () => {
   const originalCwd = process.cwd();
   const originalConfigHome = process.env.XDG_CONFIG_HOME;
-  const originalAppData = process.env.APPDATA;
   let tempDir: string;
   let configHome: string;
 
   const writeProjectConfig = (content: string) => {
-    require("node:fs").mkdirSync(join(tempDir, ".qoder"), { recursive: true });
-    writeFileSync(join(tempDir, ".qoder", "omq.jsonc"), content);
+    require("node:fs").mkdirSync(join(tempDir, ".claude"), { recursive: true });
+    writeFileSync(join(tempDir, ".claude", "omc.jsonc"), content);
   };
 
   const writeUserConfig = (content: string) => {
-    const path = join(configHome, "qoder-omq");
+    const path = join(configHome, "claude-omc");
     require("node:fs").mkdirSync(path, { recursive: true });
     writeFileSync(join(path, "config.jsonc"), content);
   };
@@ -901,11 +874,7 @@ describe("loadConfig() — autopilot.workflows", () => {
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "omc-workflow-config-"));
     configHome = join(tempDir, "config");
-    // utils/paths.ts getConfigDir() reads APPDATA on win32 and XDG_CONFIG_HOME
-    // elsewhere, so pin both or the user-config half of this suite silently
-    // resolves to the developer's real config home on Windows.
     process.env.XDG_CONFIG_HOME = configHome;
-    process.env.APPDATA = configHome;
     process.chdir(tempDir);
   });
 
@@ -913,8 +882,6 @@ describe("loadConfig() — autopilot.workflows", () => {
     process.chdir(originalCwd);
     if (originalConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
     else process.env.XDG_CONFIG_HOME = originalConfigHome;
-    if (originalAppData === undefined) delete process.env.APPDATA;
-    else process.env.APPDATA = originalAppData;
     rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -1004,49 +971,5 @@ describe("loadConfig() — autopilot.workflows", () => {
     expect(workflows.additionalProperties?.additionalProperties).toBe(false);
     expect(workflows.additionalProperties?.required).toEqual(["version", "stages"]);
     expect(workflows.additionalProperties?.properties).not.toHaveProperty("stageModels");
-  });
-});
-
-describe("externalModels.fallbackPolicy env override", () => {
-  let saved: Record<string, string | undefined>;
-
-  beforeEach(() => {
-    saved = saveAndClear([
-      ...ALL_KEYS,
-      "OMQ_EXTERNAL_MODELS_FALLBACK_POLICY",
-      "OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL",
-    ] as const);
-    // The loader only materialises externalModels when something was actually
-    // configured, so pin a second key to keep the shape present in every case and
-    // let each assertion below compare an exact value instead of undefined.
-    process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL = "gemini-test-model";
-  });
-
-  afterEach(() => {
-    restore(saved);
-  });
-
-  it("accepts qwen_only, the spelling this fork's schema publishes", () => {
-    process.env.OMQ_EXTERNAL_MODELS_FALLBACK_POLICY = "qwen_only";
-
-    const config = loadConfig();
-
-    expect(config.externalModels?.fallbackPolicy?.onModelFailure).toBe("qwen_only");
-  });
-
-  it("accepts the ancestor-era claude_only spelling", () => {
-    process.env.OMQ_EXTERNAL_MODELS_FALLBACK_POLICY = "claude_only";
-
-    const config = loadConfig();
-
-    expect(config.externalModels?.fallbackPolicy?.onModelFailure).toBe("claude_only");
-  });
-
-  it("ignores an unknown policy and keeps the provider_chain default", () => {
-    process.env.OMQ_EXTERNAL_MODELS_FALLBACK_POLICY = "do-whatever";
-
-    const config = loadConfig();
-
-    expect(config.externalModels?.fallbackPolicy?.onModelFailure).toBe("provider_chain");
   });
 });

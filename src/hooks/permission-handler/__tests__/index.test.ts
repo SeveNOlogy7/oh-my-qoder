@@ -12,9 +12,6 @@ import {
   processPermissionRequest,
 } from '../index.js';
 import type { PermissionRequestInput } from '../index.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 function initializeGitRepo(directory: string): void {
   execFileSync('git', ['init', '--quiet'], {
@@ -24,7 +21,6 @@ function initializeGitRepo(directory: string): void {
 }
 
 describe('permission-handler', () => {
-  useDefaultStateRoot();
   describe('isSafeCommand', () => {
     describe('safe commands', () => {
       const safeCases = [
@@ -284,7 +280,7 @@ describe('permission-handler', () => {
       const safeCases = [
         {
           desc: 'git commit with HEREDOC message',
-          cmd: `git commit -m "$(cat <<'EOF'\nCommit message here.\n\nCo-Authored-By: Qwen Max <noreply@dashscope.aliyuncs.com>\nEOF\n)"`,
+          cmd: `git commit -m "$(cat <<'EOF'\nCommit message here.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n)"`,
         },
         {
           desc: 'git commit with unquoted EOF delimiter',
@@ -296,7 +292,7 @@ describe('permission-handler', () => {
         },
         {
           desc: 'git commit with long multi-line message',
-          cmd: `git commit -m "$(cat <<'EOF'\nfeat: add authentication module\n\nThis adds OAuth2 support with:\n- Google provider\n- GitHub provider\n- Session management\n\nCloses #123\n\nCo-Authored-By: Qwen Max <noreply@dashscope.aliyuncs.com>\nEOF\n)"`,
+          cmd: `git commit -m "$(cat <<'EOF'\nfeat: add authentication module\n\nThis adds OAuth2 support with:\n- Google provider\n- GitHub provider\n- Session management\n\nCloses #123\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n)"`,
         },
         {
           desc: 'git commit --amend with heredoc',
@@ -374,8 +370,14 @@ describe('permission-handler', () => {
   describe('isActiveModeRunning', () => {
     const testDir = '/tmp/omq-permission-test';
     const stateDir = path.join(testDir, '.omq', 'state');
+    let previousHome: string | undefined;
+    let previousUserProfile: string | undefined;
 
     beforeEach(() => {
+      previousHome = process.env.HOME;
+      previousUserProfile = process.env.USERPROFILE;
+      process.env.HOME = testDir;
+      process.env.USERPROFILE = testDir;
       // Clean up any existing test directory
       if (fs.existsSync(testDir)) {
         fs.rmSync(testDir, { recursive: true, force: true });
@@ -386,6 +388,10 @@ describe('permission-handler', () => {
       if (fs.existsSync(testDir)) {
         fs.rmSync(testDir, { recursive: true, force: true });
       }
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
     });
 
     it('should return false when no state directory exists', () => {
@@ -470,8 +476,14 @@ describe('permission-handler', () => {
   describe('processPermissionRequest', () => {
     const testDir = '/tmp/omq-permission-test';
     const stateDir = path.join(testDir, '.omq', 'state');
+    let previousHome: string | undefined;
+    let previousUserProfile: string | undefined;
 
     beforeEach(() => {
+      previousHome = process.env.HOME;
+      previousUserProfile = process.env.USERPROFILE;
+      process.env.HOME = testDir;
+      process.env.USERPROFILE = testDir;
       clearWorktreeCache();
       if (fs.existsSync(testDir)) {
         fs.rmSync(testDir, { recursive: true, force: true });
@@ -483,6 +495,10 @@ describe('permission-handler', () => {
         fs.rmSync(testDir, { recursive: true, force: true });
       }
       clearWorktreeCache();
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
     });
 
     const createInput = (command: string): PermissionRequestInput => ({
@@ -648,7 +664,7 @@ describe('permission-handler', () => {
       });
 
       it('should auto-allow git commit with heredoc message', () => {
-        const cmd = `git commit -m "$(cat <<'EOF'\nfeat: add new feature\n\nDetailed description here.\n\nCo-Authored-By: Qwen Max <noreply@dashscope.aliyuncs.com>\nEOF\n)"`;
+        const cmd = `git commit -m "$(cat <<'EOF'\nfeat: add new feature\n\nDetailed description here.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n)"`;
         const result = processPermissionRequest(createInput(cmd));
         expect(result.continue).toBe(true);
         expect(result.hookSpecificOutput?.decision?.behavior).toBe('allow');

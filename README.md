@@ -54,21 +54,31 @@ _Don't learn Claude Code. Just use OMC._
 
 **Step 1: Install**
 
-OMQ runs as a **Qoder CLI plugin**: its skills, agents and lifecycle hooks are embedded
-directly into your `qodercli` sessions. Qoder CLI installs a plugin from a **local
-directory** (`qodercli plugins install <path>`) — there is no marketplace or remote install,
-and that step does not run `npm`. So build the plugin first, then point Qoder CLI at your
-checkout:
+Marketplace/plugin install (recommended for most Claude Code users).
+These are Claude Code slash commands — enter them **one at a time** (pasting both lines at once will fail):
 
 ```bash
-git clone https://github.com/qoder-plugins/oh-my-qoder.git
-cd oh-my-qoder
-npm install
-npm run build
-qodercli plugins install "$(pwd)"
+/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode
 ```
 
-Restart Qoder CLI, or run `/plugins reload` inside a session, to activate it.
+Then:
+
+```bash
+/plugin install oh-my-claudecode
+```
+
+If you prefer the npm CLI/runtime path instead of the marketplace flow:
+
+```bash
+npm i -g oh-my-claude-sisyphus@latest
+```
+
+> **Known npm warning:** npm may print `deprecated prebuild-install@7.1.3` during the CLI install.
+> This currently comes from the upstream `better-sqlite3` native-addon dependency
+> (`better-sqlite3 -> prebuild-install`); `prebuild-install@7.1.3` is still the latest
+> published version, so there is no safe repo-side dependency bump or override to remove
+> the warning yet. The warning is tracked in [#2913](https://github.com/Yeachan-Heo/oh-my-claudecode/issues/2913)
+> and does not by itself mean the OMC CLI install failed.
 
 **Step 2: Setup**
 
@@ -208,7 +218,7 @@ For mixed Codex + Antigravity work in one command, run `/ask codex` and `/ask an
 | `omc team N:gemini "..."`       | N Gemini CLI panes            | UI/UX design, docs, large-context tasks (enterprise/API-key) |
 | `omc team N:antigravity "..."`  | N Antigravity (`agy`) panes   | UI/UX design, docs, large-context tasks                      |
 | `omc team N:grok "..."`         | N Grok Build CLI panes        | Code review, analysis cross-check            |
-| `omc team N:cursor "..."`       | N Cursor agent panes          | Executor-style implementation tasks          |
+| `omc team N:cursor "..."`       | N Cursor agent panes          | Implementation and reviewer-style tasks      |
 | `omc team N:claude "..."`       | N Claude CLI panes            | General tasks via Claude CLI in tmux         |
 | `/ask codex` + `/ask antigravity` | Tri-model advisor synthesis | Mixed Codex + Antigravity review in one pass |
 
@@ -225,7 +235,9 @@ Autopilot can prefer Cursor executor workers during team execution via `.claude/
 }
 ```
 
-This config makes the autopilot execution stage use `omc team 1:cursor "..."` or `/team 1:cursor "..."` for executor-style implementation work. Reviewer, critic, security-review, validation verdict, and final approval roles remain native Claude/OMC reviewer roles; Cursor requires an installed/authenticated `cursor-agent`.
+This config makes the autopilot execution stage use `omc team 1:cursor "..."` or `/team 1:cursor "..."` for implementation work. Cursor also supports reviewer-style roles (`critic`, `code-reviewer`, `security-reviewer`, `test-engineer`): those workers emit the structured verdict file the team leader consumes to transition the task, and final approval stays a lead-session responsibility. Cursor requires an installed/authenticated `cursor-agent`.
+
+Pin a Cursor model with the `OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL` environment variable, or per role with `team.roleRouting.<role>.model`. `externalModels.defaults.cursorModel` applies to workers routed through `team.roleRouting`. Ids come from `cursor-agent --list-models`, for example `cursor-grok-4.6-high` or `composer-2.5`. Left unset, `cursor-agent` chooses its own model.
 
 Native team worker worktrees are being added behind an opt-in/config gate. See [Native Team Worktree Mode](docs/TEAM-WORKTREE-MODE.md) for the workspace contract, canonical state-root rules, dirty-worktree preservation policy, and verification checklist.
 
@@ -314,7 +326,7 @@ For `/goal` behavior, rely on Claude Code/Anthropic sources: the [Claude Code `/
 
 ### Developer Experience
 
-- **Magic keywords** - `ralph`, `ulw`, `ralplan` (prompt triggers, not slash commands); Team stays explicit via `/team`
+- **Prompt triggers** - `ralph`, `ralplan`; Team stays explicit via `/team`
 - **HUD statusline** - Real-time orchestration metrics in your status bar
   - If you launch Claude Code directly with `claude --plugin-dir <path>` (bypassing the `omc` shim), export `OMQ_PLUGIN_ROOT=<path>` in your shell so the HUD bundle resolves to the same checkout as the plugin loader. See the [Plugin directory flags section in REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) for details.
 - **Skill learning** - Extract reusable patterns from your sessions
@@ -357,6 +369,8 @@ OMC writes runtime state, session data, plans, logs, handoffs, research notes, a
 
 For linked git worktrees, the default `.omq/` directory lives inside that worktree, so deleting the worktree deletes its local OMC state. Set `OMQ_STATE_DIR` if you want state to survive worktree deletion, or add a `.omq-workspace` marker when several independent repos should share one parent-level state root. See [OMC state, gitignore, worktree, and workspace contract](docs/REFERENCE.md#omc-state-gitignore-worktree-and-workspace-contract).
 
+Outside a git repository, OMC uses one canonical safe state root at `~/.omq/` (or `$OMQ_STATE_DIR/non-git` when centralized state is configured); it does not create a new state root for every cwd or write state into sensitive directories such as `~/.ssh`, `~/Downloads`, or descendants of the system temp root. Legacy cwd-local state is untouched until explicitly migrated with `state_migrate_non_git`. State MCP tools honor an explicit `workingDirectory` while retaining repository-boundary checks for git-backed sessions.
+
 [Full feature list →](docs/REFERENCE.md)
 
 ### Multi-repo workspaces
@@ -386,7 +400,6 @@ These shortcuts run **inside a Claude Code / OMC session**, not as terminal CLI 
 | `/autopilot` / `autopilot` | Skill / prompt trigger | Full autonomous execution              | `/autopilot "build a todo app"`                |
 | `/execute`                 | Slash skill            | Carry an approved task through to verified code | `/execute "refactor auth"`           |
 | `/ralph` / `ralph`         | Skill / prompt trigger | Persistence mode                       | `/ralph "refactor auth"`                       |
-| `ulw`                      | Prompt trigger         | Maximum-parallelism keyword mode       | `ulw fix all lint errors`                      |
 | `/ralplan` / `ralplan`     | Skill / prompt trigger | Iterative planning consensus           | `/ralplan "plan this feature"`                 |
 | `/deep-interview`          | Slash skill            | Socratic requirements clarification    | `/deep-interview "vague idea"`                 |
 | `deepsearch`               | Prompt trigger         | Codebase-focused search routing        | `deepsearch for auth middleware`               |
@@ -395,7 +408,7 @@ These shortcuts run **inside a Claude Code / OMC session**, not as terminal CLI 
 
 **Notes:**
 
-- **ralph includes ultrawork behavior**: when you activate ralph mode, it automatically includes maximum-parallelism execution.
+- **Parallel work uses Team or executor delegation**: choose `/team` for coordinated lanes or delegate implementation tasks to executors; use Ralph when persistence until verified completion is the priority.
 - `swarm` compatibility alias has been removed; migrate existing prompts to `/team` syntax.
 - `plan this` / `plan the` keyword triggers were removed; use `ralplan` or explicit `/oh-my-claudecode:plan`.
 
@@ -631,20 +644,21 @@ MIT
 
 Top personal non-fork, non-archived repos from all-time OMC contributors (100+ GitHub stars).
 
-- [@Yeachan-Heo](https://github.com/Yeachan-Heo) — [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) (⭐ 38k)
-- [@junhoyeo](https://github.com/junhoyeo) — [tokscale](https://github.com/junhoyeo/tokscale) (⭐ 4.8k)
-- [@psmux](https://github.com/psmux) — [psmux](https://github.com/psmux/psmux) (⭐ 3.2k)
-- [@MeroZemory](https://github.com/MeroZemory) — [ida-multi-mcp](https://github.com/MeroZemory/ida-multi-mcp) (⭐ 375)
-- [@devswha](https://github.com/devswha) — [patina](https://github.com/devswha/patina) (⭐ 312)
+- [@Yeachan-Heo](https://github.com/Yeachan-Heo) — [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) (⭐ 39k)
+- [@junhoyeo](https://github.com/junhoyeo) — [tokscale](https://github.com/junhoyeo/tokscale) (⭐ 5.2k)
+- [@psmux](https://github.com/psmux) — [psmux](https://github.com/psmux/psmux) (⭐ 3.4k)
+- [@MeroZemory](https://github.com/MeroZemory) — [ida-multi-mcp](https://github.com/MeroZemory/ida-multi-mcp) (⭐ 405)
+- [@GeiserX](https://github.com/GeiserX) — [awesome-spain](https://github.com/GeiserX/awesome-spain) (⭐ 332)
+- [@devswha](https://github.com/devswha) — [patina](https://github.com/devswha/patina) (⭐ 327)
 - [@BowTiedSwan](https://github.com/BowTiedSwan) — [buildflow](https://github.com/BowTiedSwan/buildflow) (⭐ 295)
 - [@J-Pster](https://github.com/J-Pster) — [Psters_AI_Workflow](https://github.com/J-Pster/Psters_AI_Workflow) (⭐ 291)
 - [@alohays](https://github.com/alohays) — [awesome-visual-representation-learning-with-transformers](https://github.com/alohays/awesome-visual-representation-learning-with-transformers) (⭐ 271)
-- [@jcwleo](https://github.com/jcwleo) — [random-network-distillation-pytorch](https://github.com/jcwleo/random-network-distillation-pytorch) (⭐ 263)
-- [@HaD0Yun](https://github.com/HaD0Yun) — [Doyunha-Gopeak](https://github.com/HaD0Yun/Doyunha-Gopeak) (⭐ 238)
-- [@shaun0927](https://github.com/shaun0927) — [openchrome](https://github.com/shaun0927/openchrome) (⭐ 231)
-- [@emgeee](https://github.com/emgeee) — [mean-tutorial](https://github.com/emgeee/mean-tutorial) (⭐ 200)
-- [@anduinnn](https://github.com/anduinnn) — [HiFiNi-Auto-CheckIn](https://github.com/anduinnn/HiFiNi-Auto-CheckIn) (⭐ 171)
-- [@changeroa](https://github.com/changeroa) — [StyleGallery](https://github.com/changeroa/StyleGallery) (⭐ 154)
+- [@jcwleo](https://github.com/jcwleo) — [random-network-distillation-pytorch](https://github.com/jcwleo/random-network-distillation-pytorch) (⭐ 264)
+- [@HaD0Yun](https://github.com/HaD0Yun) — [Doyunha-Gopeak](https://github.com/HaD0Yun/Doyunha-Gopeak) (⭐ 248)
+- [@shaun0927](https://github.com/shaun0927) — [openchrome](https://github.com/shaun0927/openchrome) (⭐ 235)
+- [@changeroa](https://github.com/changeroa) — [StyleGallery](https://github.com/changeroa/StyleGallery) (⭐ 221)
+- [@emgeee](https://github.com/emgeee) — [mean-tutorial](https://github.com/emgeee/mean-tutorial) (⭐ 199)
+- [@anduinnn](https://github.com/anduinnn) — [HiFiNi-Auto-CheckIn](https://github.com/anduinnn/HiFiNi-Auto-CheckIn) (⭐ 172)
 - [@Znuff](https://github.com/Znuff) — [consolas-powerline](https://github.com/Znuff/consolas-powerline) (⭐ 145)
 
 <!-- OMC:FEATURED-CONTRIBUTORS:END -->

@@ -1,8 +1,8 @@
 /**
- * Hook Scripts for Qoder CLI
- * Hook system inspired by oh-my-opencode, adapted for Qoder CLI's native hooks
+ * Hook Scripts for Claude Code
+ * Hook system inspired by oh-my-opencode, adapted for Claude Code's native hooks
  *
- * Qoder CLI hooks are configured in settings.json and run as shell commands.
+ * Claude Code hooks are configured in settings.json and run as shell commands.
  * These scripts receive JSON input via stdin and output JSON to modify behavior.
  *
  * This module provides Node.js scripts (.mjs) for cross-platform support (Windows, macOS, Linux).
@@ -12,8 +12,8 @@
 import { join, dirname } from "path";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
-import { getQoderConfigDir, getDefaultConfigDirShellPath, isDefaultQoderConfigDir as matchesDefaultConfigDir } from '../utils/config-dir.js';
-import { getDefaultUltraworkMessage } from '../hooks/keyword-detector/ultrawork/index.js';
+import { homedir } from "os";
+import { getClaudeConfigDir } from '../utils/config-dir.js';
 
 // =============================================================================
 // TEMPLATE LOADER (loads hook scripts from templates/hooks/)
@@ -72,7 +72,7 @@ export function isWindows(): boolean {
 
 /** Get the hooks directory path */
 export function getHooksDir(): string {
-  return join(getQoderConfigDir(), "hooks");
+  return join(getClaudeConfigDir(), "hooks");
 }
 
 /**
@@ -83,8 +83,12 @@ export function getHomeEnvVar(): string {
   return isWindows() ? "%USERPROFILE%" : "$HOME";
 }
 
-function isDefaultQoderConfigDir(): boolean {
-  return matchesDefaultConfigDir(getQoderConfigDir());
+function normalizePath(value: string): string {
+  return value.replace(/\\/g, '/').replace(/\/+$/, '');
+}
+
+function isDefaultClaudeConfigDir(): boolean {
+  return normalizePath(getClaudeConfigDir()) === normalizePath(join(homedir(), '.claude'));
 }
 
 function quoteCommandPath(path: string): string {
@@ -93,25 +97,15 @@ function quoteCommandPath(path: string): string {
 
 function buildHookCommand(filename: string): string {
   if (isWindows()) {
-    if (isDefaultQoderConfigDir()) {
-      return `node "\${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hooks/${filename}"`;
-    }
-
-    return `node ${quoteCommandPath(join(getQoderConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;
+    return `node ${quoteCommandPath(join(getClaudeConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;
   }
 
-  if (isDefaultQoderConfigDir()) {
-    return `node "\${QODER_CONFIG_DIR:-${getDefaultConfigDirShellPath()}}/hooks/${filename}"`;
+  if (isDefaultClaudeConfigDir()) {
+    return `node "\${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/${filename}"`;
   }
 
-  return `node ${quoteCommandPath(join(getQoderConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;
+  return `node ${quoteCommandPath(join(getClaudeConfigDir(), 'hooks', filename).replace(/\\/g, '/'))}`;
 }
-
-/**
- * Ultrawork message - injected when ultrawork/ulw keyword detected
- * Ported from oh-my-opencode's keyword-detector/constants.ts
- */
-export const ULTRAWORK_MESSAGE = getDefaultUltraworkMessage();
 
 /**
  * Ultrathink/Think mode message
@@ -241,16 +235,15 @@ Incomplete tasks remain in your todo list. Continue working on the next pending 
 
 /**
  * Ralph mode message - injected when ralph keyword detected
- * Auto-activates ultrawork for parallel execution
  */
-export const RALPH_MESSAGE = `[RALPH + ULTRAWORK MODE ACTIVATED]
+export const RALPH_MESSAGE = `[RALPH MODE ACTIVATED]
 
-Ralph mode auto-activates Ultrawork for maximum parallel execution. Follow these rules:
+Ralph mode persists until the requested work is verified complete. Follow these rules:
 
-### Parallel Execution
-- **PARALLEL**: Fire independent calls simultaneously - NEVER wait sequentially
-- **BACKGROUND FIRST**: Use Task(run_in_background=true) for long operations
-- **DELEGATE**: Route tasks to specialist agents immediately
+### Execution
+- Work through every remaining requirement
+- Delegate independent specialist work when it improves correctness
+- Keep the durable Ralph state aligned with actual progress
 
 ### Completion Requirements
 - Verify ALL requirements from the original task are met

@@ -3,14 +3,21 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
+import { clearWorktreeCache, resolveSessionStatePaths } from '../lib/worktree-paths.js';
 
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'keyword-detector.mjs');
 const NODE = process.execPath;
 
 const tempDirs: string[] = [];
+const fixtureEnvironments = new Map<string, NodeJS.ProcessEnv>();
+const ROOT_ENV_KEYS = [
+  'HOME',
+  'USERPROFILE',
+  'OMQ_STATE_DIR',
+  'CLAUDE_CONFIG_DIR',
+  'CLAUDE_PLUGIN_ROOT',
+  'OMQ_DISABLE_MULTIREPO',
+] as const;
 
 function makeCwd(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
@@ -19,6 +26,7 @@ function makeCwd(prefix: string): string {
 }
 
 afterEach(() => {
+  fixtureEnvironments.clear();
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
     if (dir) {
@@ -28,7 +36,31 @@ afterEach(() => {
 });
 
 function runKeywordDetector(prompt: string, cwd: string, sessionId: string) {
+  // Hook subprocesses must not inherit the runner's state/config roots. A
+  // per-invocation OMQ_STATE_DIR also exercises the same non-git canonical
+  // resolver path used in production without writing into the checkout or
+  // the host user's home directory.
+  const homeDir = mkdtempSync(join(tmpdir(), 'kd-echo-home-'));
+  tempDirs.push(homeDir);
+  const childEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    NODE_ENV: 'test',
+    DISABLE_OMQ: '',
+    OMQ_SKIP_HOOKS: '',
+    OMQ_TEAM_WORKER: '',
+    OMQ_DISABLE_MULTIREPO: '',
+    OMQ_STATE_DIR: join(homeDir, 'omq-state'),
+    CLAUDE_PLUGIN_ROOT: '',
+    HOME: homeDir,
+    USERPROFILE: homeDir,
+    CLAUDE_CONFIG_DIR: join(homeDir, '.claude'),
+    XDG_CONFIG_HOME: join(homeDir, '.config'),
+    APPDATA: join(homeDir, 'AppData', 'Roaming'),
+  };
+  fixtureEnvironments.set(cwd, childEnv);
+
   const raw = execFileSync(NODE, [SCRIPT_PATH], {
+    cwd,
     input: JSON.stringify({
       hook_event_name: 'UserPromptSubmit',
       cwd,
@@ -36,11 +68,7 @@ function runKeywordDetector(prompt: string, cwd: string, sessionId: string) {
       prompt,
     }),
     encoding: 'utf-8',
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      OMQ_SKIP_HOOKS: '',
-    },
+    env: childEnv,
     timeout: 15000,
   }).trim();
 
@@ -55,36 +83,41 @@ function runKeywordDetector(prompt: string, cwd: string, sessionId: string) {
 }
 
 function stateFile(cwd: string, sessionId: string, name: string) {
-  return join(cwd, '.omq', 'state', 'sessions', sessionId, `${name}-state.json`);
+  const fixtureEnv = fixtureEnvironments.get(cwd);
+  if (!fixtureEnv) throw new Error(`Missing fixture environment for ${cwd}`);
+
+  const previousValues = new Map<typeof ROOT_ENV_KEYS[number], string | undefined>();
+  try {
+    for (const key of ROOT_ENV_KEYS) {
+      previousValues.set(key, process.env[key]);
+      const value = fixtureEnv[key];
+      if (value === undefined || value === '') {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+    clearWorktreeCache();
+    return resolveSessionStatePaths(name, sessionId, cwd).effectiveWrite;
+  } finally {
+    for (const key of ROOT_ENV_KEYS) {
+      const value = previousValues.get(key);
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+    clearWorktreeCache();
+  }
 }
 
 describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
-  useDefaultStateRoot();
   // Primary regression: user pastes a bare [RALPH LOOP - ITERATION N] block
   // (no other user request). Must NOT re-activate ralph.
   it('does NOT re-activate ralph for a bare [RALPH LOOP - ITERATION] paste', () => {
     const cwd = makeCwd('kd-echo-bare-ralph-');
     const sid = 'sess-bare-ralph';
-    const prompt = [
-      '[RALPH LOOP - ITERATION 3/100] Work is NOT done. Continue working.',
-      'When FULLY complete (after Architect verification), run /oh-my-claudecode:cancel to cleanly exit ralph mode and clean up all state files. If cancel fails, retry with /oh-my-claudecode:cancel --force.',
-      'Task: keep iterating on ralph until tests pass',
-    ].join('\n');
-
-    const output = runKeywordDetector(prompt, cwd, sid);
-
-    expect(output.continue).toBe(true);
-    expect(existsSync(stateFile(cwd, sid, 'ralph'))).toBe(false);
-    expect(existsSync(stateFile(cwd, sid, 'ultrawork'))).toBe(false);
-  });
-
-  // ae9f57f made persistent-mode emit the fork's own cancel line, so the block a
-  // user actually pastes out of a live session now reads `/oh-my-qoder:cancel`.
-  // The guard has to recognize the text this product prints, not only the older
-  // spelling.
-  it('does NOT re-activate ralph for a paste using this plugin\'s own cancel line', () => {
-    const cwd = makeCwd('kd-echo-fork-ns-');
-    const sid = 'sess-fork-ns';
     const prompt = [
       '[RALPH LOOP - ITERATION 3/100] Work is NOT done. Continue working.',
       'When FULLY complete (after Architect verification), run /oh-my-qoder:cancel to cleanly exit ralph mode and clean up all state files. If cancel fails, retry with /oh-my-qoder:cancel --force.',
@@ -146,7 +179,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
     const prompt = [
       'Stop hook feedback:',
       '[RALPH LOOP - ITERATION 5/100] Work is NOT done.',
-      'When FULLY complete (after Architect verification), run /oh-my-claudecode:cancel ...',
+      'When FULLY complete (after Architect verification), run /oh-my-qoder:cancel ...',
       'Task: previous ralph task prompt',
     ].join('\n');
 
@@ -170,7 +203,7 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
 
   // Regression for Codex automated review P1/P2 (third round): the previous
   // revision added standalone single-line strippers for `Task:\s`,
-  // `When FULLY complete`, and `run /oh-my-claudecode:cancel`, which meant
+  // `When FULLY complete`, and `run /oh-my-qoder:cancel`, which meant
   // a user's legitimate "Task: ralph로 이거 해줘" prompt would have its
   // only line removed before keyword dispatch. Continuation stripping must
   // happen ONLY in the context of an echo block header.
@@ -249,7 +282,6 @@ describe('keyword-detector.mjs — pasted system-echo re-entry guard', () => {
 });
 
 describe('keyword-detector.mjs — state.prompt sanitization', () => {
-  useDefaultStateRoot();
   it('truncates oversized prompts when writing ralph state', () => {
     const cwd = makeCwd('kd-prompt-len-');
     const sid = 'sess-prompt-len';
@@ -279,50 +311,12 @@ describe('keyword-detector.mjs — state.prompt sanitization', () => {
     expect(Number.isFinite(new Date(state.awaiting_confirmation_set_at).getTime())).toBe(true);
   });
 
-  it('records awaiting_confirmation_set_at on ultrawork state', () => {
+  it('does not create ultrawork state for retired ulw alias', () => {
     const cwd = makeCwd('kd-setat-ultrawork-');
     const sid = 'sess-setat-uw';
 
     runKeywordDetector('ulw로 시작해주세요', cwd, sid);
     const path = stateFile(cwd, sid, 'ultrawork');
-    expect(existsSync(path)).toBe(true);
-
-    const state = JSON.parse(readFileSync(path, 'utf-8'));
-    expect(state.awaiting_confirmation).toBe(true);
-    expect(typeof state.awaiting_confirmation_set_at).toBe('string');
-  });
-  // The cancel-echo matchers (ECHO_CONTINUATION / SYSTEM_ECHO_SIGNATURES)
-  // accept all four family prefixes: a paste from a live session may carry the
-  // short fork form /omq:cancel or the ancestor /omc:cancel form.
-  it('does NOT re-activate ralph for a paste using the short fork /omq:cancel line', () => {
-    const cwd = makeCwd('kd-echo-omq-cancel-');
-    const sid = 'sess-omq-cancel';
-    const prompt = [
-      '[RALPH LOOP - ITERATION 4/100] Work is NOT done. Continue working.',
-      'When FULLY complete (after Architect verification), run /omq:cancel to cleanly exit ralph mode and clean up all state files. If cancel fails, retry with /omq:cancel --force.',
-      'Task: keep iterating on ralph until tests pass',
-    ].join('\n');
-
-    const output = runKeywordDetector(prompt, cwd, sid);
-
-    expect(output.continue).toBe(true);
-    expect(existsSync(stateFile(cwd, sid, 'ralph'))).toBe(false);
-    expect(existsSync(stateFile(cwd, sid, 'ultrawork'))).toBe(false);
-  });
-
-  it('does NOT re-activate ralph for a paste using the ancestor /omc:cancel line', () => {
-    const cwd = makeCwd('kd-echo-omc-cancel-');
-    const sid = 'sess-omc-cancel';
-    const prompt = [
-      '[RALPH LOOP - ITERATION 5/100] Work is NOT done. Continue working.',
-      'When FULLY complete (after Architect verification), run /omc:cancel to cleanly exit ralph mode and clean up all state files. If cancel fails, retry with /omc:cancel --force.',
-      'Task: keep iterating on ralph until tests pass',
-    ].join('\n');
-
-    const output = runKeywordDetector(prompt, cwd, sid);
-
-    expect(output.continue).toBe(true);
-    expect(existsSync(stateFile(cwd, sid, 'ralph'))).toBe(false);
-    expect(existsSync(stateFile(cwd, sid, 'ultrawork'))).toBe(false);
+    expect(existsSync(path)).toBe(false);
   });
 });

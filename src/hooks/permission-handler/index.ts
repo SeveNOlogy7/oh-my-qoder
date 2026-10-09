@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { getOmqRoot, getWorktreeRoot } from '../../lib/worktree-paths.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
+import { getOmqRoot, getGitTopLevel } from '../../lib/worktree-paths.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
 
 export interface PermissionRequestInput {
   session_id: string;
@@ -106,7 +106,7 @@ function readPermissionStringEntries(filePath: string, key: 'allow' | 'ask'): st
 
 export function getClaudePermissionAllowEntries(directory: string): string[] {
   const projectSettingsPath = path.join(directory, '.claude', 'settings.local.json');
-  const globalConfigDir = getQoderConfigDir();
+  const globalConfigDir = getClaudeConfigDir();
   const candidatePaths = [
     projectSettingsPath,
     path.join(globalConfigDir, 'settings.local.json'),
@@ -153,7 +153,7 @@ export function hasClaudePermissionApproval(
 
 export function getClaudePermissionAskEntries(directory: string): string[] {
   const projectSettingsPath = path.join(directory, '.claude', 'settings.local.json');
-  const globalConfigDir = getQoderConfigDir();
+  const globalConfigDir = getClaudeConfigDir();
   const candidatePaths = [
     projectSettingsPath,
     path.join(globalConfigDir, 'settings.local.json'),
@@ -345,7 +345,9 @@ function isSafeRepoPath(
     return false;
   }
 
-  const worktreeRoot = getWorktreeRoot(cwd);
+  // Literal git toplevel (no submodule→superproject climb) so the containment
+  // boundary stays the actual repo the path lives in (#3349 / PR #3350).
+  const worktreeRoot = getGitTopLevel(cwd);
   if (!worktreeRoot) {
     return false;
   }
@@ -577,7 +579,7 @@ export function isSafeCommand(command: string): boolean {
 export function isHeredocWithSafeBase(command: string): boolean {
   const trimmed = command.trim();
 
-  // Heredoc commands from Qoder CLI are always multi-line
+  // Heredoc commands from Claude Code are always multi-line
   if (!trimmed.includes('\n')) {
     return false;
   }
@@ -595,7 +597,7 @@ export function isHeredocWithSafeBase(command: string): boolean {
 }
 
 /**
- * Check if an active mode (autopilot/ultrawork/ralph/team) is running
+ * Check if an active supported mode is running
  */
 export function isActiveModeRunning(directory: string): boolean {
   const stateDir = path.join(getOmqRoot(directory), 'state');
@@ -607,7 +609,6 @@ export function isActiveModeRunning(directory: string): boolean {
   const activeStateFiles = [
     'autopilot-state.json',
     'ralph-state.json',
-    'ultrawork-state.json',
     'team-state.json',
     'omq-teams-state.json',
   ];

@@ -16,21 +16,27 @@ import {
 } from "../state.js";
 import { createWorkflowDescriptor } from "../pipeline.js";
 import { validateNamedWorkflowStateStructure } from "../named-workflow-resume-validator.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 
 describe("AutopilotState", () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), "autopilot-test-"));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
     delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
   });
 
@@ -106,15 +112,24 @@ describe("AutopilotState", () => {
 });
 
 describe('workflow profile state contract (#3487)', () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), 'workflow-profile-state-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
   });
 
 

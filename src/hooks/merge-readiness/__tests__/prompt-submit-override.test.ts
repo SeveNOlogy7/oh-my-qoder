@@ -11,7 +11,7 @@ import {
 } from "../runtime.js";
 
 // Carrier for the `--override` spelling of handleMergeReadinessPromptSubmit
-// (merge-readiness runtime, the `/^\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?merge-readiness\s+--override\s+(.+)$/i`
+// (merge-readiness runtime, the `/^\/(?:oh-my-qoder:|omq:|oh-my-qoder:|omc:)?merge-readiness\s+--override\s+(.+)$/i`
 // site). The widening from the ancestor-only prefix to the four-prefix union
 // previously shipped with no test, because the state reachable from
 // createInitialMergeReadinessState alone is result:"blocked" in a bare temp
@@ -27,7 +27,7 @@ const COMMAND_FORMS = [
   '/omq:merge-readiness',
   '/oh-my-qoder:merge-readiness',
   '/omc:merge-readiness',
-  '/oh-my-claudecode:merge-readiness',
+  '/oh-my-qoder:merge-readiness',
 ] as const;
 
 describe("handleMergeReadinessPromptSubmit --override spelling", () => {

@@ -6,21 +6,19 @@
  * Cross-platform: Windows, macOS, Linux
  *
  * Supported keywords (in priority order):
- * 1. cancelomc/stopomc: Stop active modes
+ * 1. cancelomq/stopomq: Stop active modes
  * 2. ralph: Persistence mode until task completion
  * 3. autopilot: Full autonomous execution
  * 4. team: Explicit-only via /team (not auto-triggered)
- * 5. ultrawork/ulw: Maximum parallel execution
- * 6. ccg: Claude-Codex-Gemini tri-model orchestration
- * 7. ralplan: Iterative planning with consensus
- * 8. deep interview: Socratic interview workflow
- * 9. ai-slop-cleaner: Cleanup/deslop anti-slop workflow
- * 10. tdd: Test-driven development
- * 11. code review: Comprehensive review mode
- * 12. security review: Security-focused review mode
- * 13. ultrathink: Extended reasoning
- * 14. deepsearch: Codebase search (restricted patterns)
- * 15. analyze: Analysis mode (restricted patterns)
+ * 5. ralplan: Iterative planning with consensus
+ * 6. deep interview: Socratic interview workflow
+ * 7. ai-slop-cleaner: Cleanup/deslop anti-slop workflow
+ * 8. tdd: Test-driven development
+ * 9. code review: Comprehensive review mode
+ * 10. security review: Security-focused review mode
+ * 11. ultrathink: Extended reasoning
+ * 12. deepsearch: Codebase search (restricted patterns)
+ * 13. analyze: Analysis mode (restricted patterns)
  */
 
 import { writeFileSync, mkdirSync, existsSync, unlinkSync, readFileSync } from 'fs';
@@ -150,6 +148,10 @@ function isExplicitAskSlashInvocation(prompt) {
   return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?ask\s+(?:claude|codex|gemini|grok)\b/i.test(prompt);
 }
 
+function isRetiredSlashInvocation(prompt) {
+  return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?(?:ultrawork|ulw|uw|울트라워크|ウルトラワーク|ccg|claude-codex-gemini|씨씨지|シーシージー)(?=\s|$|[?!.,;:])/i.test(prompt);
+}
+
 // Sanitize text to prevent false positives from code blocks, XML tags, URLs, and file paths
 const ANTI_SLOP_EXPLICIT_PATTERN = /\b(ai[\s-]?slop|anti[\s-]?slop|deslop|de[\s-]?slop)\b/i;
 const ANTI_SLOP_ACTION_PATTERN = /\b(clean(?:\s*up)?|cleanup|refactor|simplify|dedupe|de-duplicate|prune)\b/i;
@@ -214,7 +216,7 @@ const PASTED_MAGIC_KEYWORD_HEADER_PATTERN =
 const ROLE_BOUNDARY_PATTERN =
   /^<\s*\/?\s*(system|human|assistant|user|tool_use|tool_result)\b[^>]*>/i;
 const SKILL_TRANSCRIPT_LINE_PATTERN =
-  /^\s*Skill:\s+oh-my-(?:claudecode|codex):/i;
+  /^\s*Skill:\s+(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:|oh-my-codex:)/i;
 const USER_REQUEST_LINE_PATTERN = /^\s*User request(?:\s*\([^)]*\))?:\s*$/i;
 const SHELL_TRANSCRIPT_LINE_PATTERN = /^\s*[$%❯]\s+/;
 const GIT_DIFF_START_PATTERNS = [
@@ -546,7 +548,7 @@ function hasActivationIntentNearKeyword(context, keyword) {
 
 function hasDirectInvocationPrefix(text, position) {
   const prefix = text.slice(0, position);
-  return /^\s*(?:[$/!]\s*|force:\s*|oh-my-(?:claudecode|codex):\s*)?$/i.test(prefix);
+  return /^\s*(?:[$/!]\s*|force:\s*|(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:|oh-my-codex:)\s*)?$/i.test(prefix);
 }
 
 function hasConversationalInvocationNearKeyword(text, position, _keywordLength, _keywordText) {
@@ -586,7 +588,7 @@ function hasExplicitRalphInvocationContext(text, position, keywordLength, keywor
   const prefix = text.slice(0, position);
   const suffix = text.slice(position + keywordLength);
 
-  if (/^\s*(?:[$/!]\s*|force:\s*|\/?oh-my-(?:claudecode|codex):\s*)$/i.test(prefix)) {
+  if (/^\s*(?:[$/!]\s*|force:\s*|\/?(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:|oh-my-codex:)\s*)$/i.test(prefix)) {
     return true;
   }
 
@@ -1101,7 +1103,7 @@ Arguments: ${args}` : '';
   const skillPath = resolveSkillPath(skillName);
   const pathStatus = existsSync(skillPath)
     ? `Read fallback: open ${skillPath} and follow its SKILL.md instructions.`
-    : `Read fallback: locate skills/${skillName}/SKILL.md in the active oh-my-qoder plugin/install and follow it.`;
+    : `Read fallback: locate skills/${skillName}/SKILL.md in the active oh-my-claudecode plugin/install and follow it.`;
   const ralphLoopNotice = skillName === 'ralph' ? findOfficialRalphLoopNotice(directory) : '';
 
   return `[MAGIC KEYWORD: ${skillName.toUpperCase()}]
@@ -1132,13 +1134,13 @@ function createMultiSkillInvocation(skills, originalPrompt, directory = '') {
     const argsText = s.args ? ` ${s.args}` : '';
     const pathStatus = existsSync(skillPath)
       ? `Read fallback: ${skillPath}`
-      : `Read fallback: locate skills/${s.name}/SKILL.md in the active oh-my-qoder plugin/install`;
+      : `Read fallback: locate skills/${s.name}/SKILL.md in the active oh-my-claudecode plugin/install`;
     return `### Skill ${i + 1}: ${s.name.toUpperCase()}
 Preferred invocation: /oh-my-qoder:${s.name}${argsText}
 ${pathStatus}`;
   }).join('\n\n');
 
-  // Multi-skill routing (e.g. `/ralph ultrawork`) must carry the same
+  // Multi-skill routing (e.g. `/ralph deep-interview`) must carry the same
   // disambiguation notice as the single-skill path, or it becomes a bypass.
   const ralphLoopNotice = skills.some((s) => s.name === 'ralph')
     ? findOfficialRalphLoopNotice(directory)
@@ -1174,8 +1176,8 @@ function resolveConflicts(matches) {
   // Team keyword detection removed — team is now explicit-only via /team skill.
 
   // Sort by priority order
-  const priorityOrder = ['cancel','ralph','autopilot','ultrawork',
-    'ccg','ralplan','deep-interview','ai-slop-cleaner','tdd','code-review','security-review','ultrathink','deepsearch','analyze'];
+  const priorityOrder = ['cancel','ralph','autopilot','ralplan',
+    'deep-interview','ai-slop-cleaner','tdd','code-review','security-review','ultrathink','deepsearch','analyze'];
   resolved.sort((a, b) => priorityOrder.indexOf(a.name) - priorityOrder.indexOf(b.name));
 
   return resolved;
@@ -1461,9 +1463,7 @@ function loadJsoncConfig(path) {
 
 /**
  * Skills the user opted out of via `keywordDetector.disabled` in the OMQ
- * config: project `.qoder/qoder.jsonc` first, then the ancestor
- * `.claude/omc.jsonc` as read-only compat for one release (#53 — inbound
- * tolerated, never emitted), then user
+ * config: project `.claude/omc.jsonc` first, then user
  * `~/.config/claude-omc/config.jsonc`, the same JSONC surface
  * src/config/loader.ts reads. Empty when unset, so default behavior is
  * unchanged. `cancel` is never disableable: it is the emergency stop.
@@ -1471,10 +1471,8 @@ function loadJsoncConfig(path) {
  * @returns {Set<string>} disabled skill names (never includes 'cancel')
  */
 function loadDisabledKeywords(directory) {
-  const projectRoot = directory || process.cwd();
   const configPaths = [
-    join(projectRoot, '.qoder', 'qoder.jsonc'),
-    join(projectRoot, '.claude', 'omc.jsonc'),
+    join(directory || process.cwd(), '.claude', 'omc.jsonc'),
     join(getOmcUserConfigDir(), 'claude-omc', 'config.jsonc'),
   ];
   for (const configPath of configPaths) {
@@ -1554,6 +1552,11 @@ async function main() {
       return;
     }
 
+    if (isRetiredSlashInvocation(prompt)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
     // `/ask <provider> ...` delegates the remainder of the prompt to an
     // advisor process. Magic keywords inside that delegated payload must not
     // activate modes in the current Claude Code session.
@@ -1568,7 +1571,7 @@ async function main() {
     const matches = [];
 
     // Cancel keywords
-    if (hasActionableKeyword(cleanPrompt, /\b(cancelomc|stopomc)\b/i)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(cancelomq|stopomq)\b/i)) {
       matches.push({ name: 'cancel', args: '' });
     }
 
@@ -1587,17 +1590,6 @@ async function main() {
 
     // Team keyword detection removed — team mode is now explicit-only via /team skill.
     // This prevents infinite spawning when Claude workers receive prompts containing "team".
-
-    // Ultrawork keywords
-    if (hasActionableKeyword(cleanPrompt, /\b(ultrawork|ulw)\b|(울트라워크)|(ウルトラワーク)/i)) {
-      matches.push({ name: 'ultrawork', args: '' });
-    }
-
-
-    // CCG keywords (Claude-Codex-Gemini tri-model orchestration)
-    if (hasActionableKeyword(cleanPrompt, /\b(ccg|claude-codex-gemini)\b|(씨씨지)|(シーシージー)/i)) {
-      matches.push({ name: 'ccg', args: '' });
-    }
 
     // Ralplan keyword
     if (hasActionableRalplanKeyword(cleanPrompt, /\b(ralplan)\b|(랄플랜)|(ラルプラン)/i)) {
@@ -1690,20 +1682,13 @@ async function main() {
 
     // Activate states for modes that need them
     const sessionId = data.sessionId || data.session_id || data.sessionid || '';
-    const stateModes = resolved.filter(m => ['ralph', 'autopilot', 'ultrawork'].includes(m.name));
+    const stateModes = resolved.filter(m => ['ralph', 'autopilot'].includes(m.name));
     for (const mode of stateModes) {
       const activationError = await activateState(directory, prompt, mode.name, sessionId);
       if (activationError === 'workflow_descriptor_integrity_failed') {
         console.log(JSON.stringify(createHookOutput('workflow_descriptor_integrity_failed')));
         return;
       }
-    }
-
-    // Special: Ralph with ultrawork (ralph always includes ultrawork)
-    const hasRalph = resolved.some(m => m.name === 'ralph');
-    const hasUltrawork = resolved.some(m => m.name === 'ultrawork');
-    if (hasRalph && !hasUltrawork) {
-      await activateState(directory, prompt, 'ultrawork', sessionId);
     }
 
     const additionalContextParts = [];

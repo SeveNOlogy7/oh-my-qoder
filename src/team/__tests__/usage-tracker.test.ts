@@ -8,19 +8,30 @@ import {
   generateUsageReport,
 } from '../usage-tracker.js';
 import type { TaskUsageRecord } from '../usage-tracker.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('usage-tracker', () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+  let previousStateDir: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), 'usage-tracker-test-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
+    delete process.env.OMQ_STATE_DIR;
   });
 
   afterEach(() => {
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
     rmSync(testDir, { recursive: true, force: true });
   });
 

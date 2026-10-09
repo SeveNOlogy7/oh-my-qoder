@@ -2,8 +2,8 @@
  * Configuration Loader
  *
  * Handles loading and merging configuration from multiple sources:
- * - User config: ~/.config/qoder-omq/config.jsonc
- * - Project config: .qoder/omq.jsonc
+ * - User config: ~/.config/claude-omc/config.jsonc
+ * - Project config: .claude/omc.jsonc
  * - Environment variables
  */
 
@@ -19,7 +19,6 @@ import type {
 } from "../shared/types.js";
 import {
   CANONICAL_TEAM_ROLES,
-  CURSOR_EXECUTOR_TEAM_ROLES,
   KNOWN_AGENT_NAMES,
 } from "../shared/types.js";
 import { getConfigDir } from "../utils/paths.js";
@@ -90,7 +89,6 @@ export function buildDefaultConfig(): PluginConfig {
       maxBackgroundTasks: 5,
     },
     magicKeywords: {
-      ultrawork: ["ultrawork", "ulw", "uw"],
       search: ["search", "find", "locate"],
       analyze: ["analyze", "investigate", "examine"],
       ultrathink: ["ultrathink", "think", "reason", "ponder"],
@@ -200,7 +198,7 @@ export function buildDefaultConfig(): PluginConfig {
         context: ["CONTEXT"],
       },
       blockingTools: ["Edit", "MultiEdit", "Write", "Agent", "Task"],
-      executionKeywords: ["ralph", "ultrawork", "autopilot"],
+      executionKeywords: ["ralph", "autopilot"],
     },
   };
 }
@@ -214,8 +212,8 @@ export function getConfigPaths(): { user: string; project: string } {
   const userConfigDir = getConfigDir();
 
   return {
-    user: join(userConfigDir, "qoder-omq", "config.jsonc"),
-    project: join(process.cwd(), ".qoder", "omq.jsonc"),
+    user: join(userConfigDir, "claude-omc", "config.jsonc"),
+    project: join(process.cwd(), ".claude", "omc.jsonc"),
   };
 }
 
@@ -336,7 +334,7 @@ export function loadEnvConfig(): Partial<PluginConfig> {
   }
 
   // Model alias overrides from environment (issue #1211, issue #3726)
-  const aliasKeys = ["LOW", "MEDIUM", "HIGH", "HAIKU", "SONNET", "OPUS", "FABLE"] as const;
+  const aliasKeys = ["HAIKU", "SONNET", "OPUS", "FABLE"] as const;
   const modelAliases: Record<string, string> = {};
   for (const key of aliasKeys) {
     const envVal = process.env[`OMQ_MODEL_ALIAS_${key}`];
@@ -395,6 +393,14 @@ export function loadEnvConfig(): Partial<PluginConfig> {
     externalModelsDefaults.grokModel = process.env.OMQ_GROK_DEFAULT_MODEL;
   }
 
+  if (process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL) {
+    externalModelsDefaults.cursorModel =
+      process.env.OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL;
+  } else if (process.env.OMQ_CURSOR_DEFAULT_MODEL) {
+    // Legacy fallback
+    externalModelsDefaults.cursorModel = process.env.OMQ_CURSOR_DEFAULT_MODEL;
+  }
+
   if (process.env.OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL) {
     externalModelsDefaults.antigravityModel =
       process.env.OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL;
@@ -412,11 +418,7 @@ export function loadEnvConfig(): Partial<PluginConfig> {
     if (
       policy === "provider_chain" ||
       policy === "cross_provider" ||
-      policy === "claude_only" ||
-      // Same policy under two names: this fork defaults to a Qwen host, so
-      // `qwen_only` is what its own published config schema advertises. Both
-      // spellings must be accepted here or the value is dropped in silence.
-      policy === "qwen_only"
+      policy === "claude_only"
     ) {
       externalModelsFallback.onModelFailure = policy;
     }
@@ -501,10 +503,9 @@ function warnOnDeprecatedDelegationRouting(config: PluginConfig): void {
  * Throws a descriptive error naming offending key + allowed values.
  */
 const CANONICAL_TEAM_ROLE_SET = new Set<string>(CANONICAL_TEAM_ROLES);
-const CURSOR_EXECUTOR_TEAM_ROLE_SET = new Set<string>(CURSOR_EXECUTOR_TEAM_ROLES);
 const KNOWN_AGENT_NAME_SET = new Set<string>(KNOWN_AGENT_NAMES);
 // /team CLI workers — codex/gemini/grok/cursor here are CLI integrations, NOT the deprecated MCP delegationRouting providers.
-const TEAM_ROLE_PROVIDERS = new Set(["qwen", "claude", "codex", "gemini", "grok", "cursor", "antigravity"]);
+const TEAM_ROLE_PROVIDERS = new Set(["claude", "codex", "gemini", "grok", "cursor", "antigravity"]);
 const TEAM_ROLE_TIERS = new Set(["HIGH", "MEDIUM", "LOW"]);
 
 export function validateTeamConfig(config: PluginConfig): void {
@@ -558,7 +559,7 @@ export function validateTeamConfig(config: PluginConfig): void {
       for (const key of Object.keys(spec)) {
         if (key !== "model") {
           throw new Error(
-            `[OMC] team.roleRouting.orchestrator: key "${key}" is not allowed (orchestrator is pinned to claude; only "model" is configurable)`,
+            `[OMC] team.roleRouting.orchestrator: key "${key}" is not allowed (orchestrator is pinned to qwen; only "model" is configurable)`,
           );
         }
       }
@@ -574,11 +575,6 @@ export function validateTeamConfig(config: PluginConfig): void {
       if (typeof spec.provider !== "string" || !TEAM_ROLE_PROVIDERS.has(spec.provider)) {
         throw new Error(
           `[OMC] team.roleRouting.${rawRoleKey}.provider: invalid value "${String(spec.provider)}". Allowed: ${[...TEAM_ROLE_PROVIDERS].join(", ")}`,
-        );
-      }
-      if (spec.provider === "cursor" && !CURSOR_EXECUTOR_TEAM_ROLE_SET.has(normalized)) {
-        throw new Error(
-          `[OMC] team.roleRouting.${rawRoleKey}.provider: cursor is only supported for executor-style roles (${[...CURSOR_EXECUTOR_TEAM_ROLE_SET].join(", ")})`,
         );
       }
     }
@@ -602,7 +598,6 @@ export function validateTeamConfig(config: PluginConfig): void {
 const AUTOPILOT_EXECUTION_BACKENDS = new Set(["team", "solo"]);
 const AUTOPILOT_PLANNING_MODES = new Set(["ralplan", "direct"]);
 const AUTOPILOT_TEAM_AGENT_TYPES = new Set([
-  "qwen",
   "claude",
   "codex",
   "gemini",
@@ -838,7 +833,6 @@ export function loadConfig(): PluginConfig {
   // ANTHROPIC_BASE_URL, AWS Bedrock (CLAUDE_CODE_USE_BEDROCK=1), and
   // Google Vertex AI (CLAUDE_CODE_USE_VERTEX=1). Passing Claude-specific
   // tier names (sonnet/opus/haiku) causes 400 errors on these platforms.
-  // CN fork: also triggers for non-Qwen models on DashScope.
   if (
     config.routing?.forceInherit !== true &&
     process.env.OMQ_ROUTING_FORCE_INHERIT === undefined &&
@@ -1149,7 +1143,6 @@ export function generateConfigSchema(): object {
         type: "object",
         description: "Magic keyword triggers",
         properties: {
-          ultrawork: { type: "array", items: { type: "string" } },
           search: { type: "array", items: { type: "string" } },
           analyze: { type: "array", items: { type: "string" } },
           ultrathink: { type: "array", items: { type: "string" } },
@@ -1199,7 +1192,7 @@ export function generateConfigSchema(): object {
             properties: {
               provider: {
                 type: "string",
-                enum: ["qwen", "codex", "gemini", "antigravity"],
+                enum: ["codex", "gemini", "antigravity"],
                 description: "Default external provider",
               },
               codexModel: {
@@ -1221,6 +1214,10 @@ export function generateConfigSchema(): object {
                 default: BUILTIN_EXTERNAL_MODEL_DEFAULTS.antigravityModel,
                 description: "Default Antigravity model",
               },
+              cursorModel: {
+                type: "string",
+                description: "Default Cursor model (ids from `cursor-agent --list-models`)",
+              },
             },
           },
           rolePreferences: {
@@ -1229,7 +1226,7 @@ export function generateConfigSchema(): object {
             additionalProperties: {
               type: "object",
               properties: {
-                provider: { type: "string", enum: ["qwen", "codex", "gemini", "antigravity"] },
+                provider: { type: "string", enum: ["codex", "gemini", "antigravity"] },
                 model: { type: "string" },
               },
               required: ["provider", "model"],
@@ -1241,7 +1238,7 @@ export function generateConfigSchema(): object {
             additionalProperties: {
               type: "object",
               properties: {
-                provider: { type: "string", enum: ["qwen", "codex", "gemini", "antigravity"] },
+                provider: { type: "string", enum: ["codex", "gemini", "antigravity"] },
                 model: { type: "string" },
               },
               required: ["provider", "model"],
@@ -1253,7 +1250,7 @@ export function generateConfigSchema(): object {
             properties: {
               onModelFailure: {
                 type: "string",
-                enum: ["provider_chain", "cross_provider", "claude_only", "qwen_only"],
+                enum: ["provider_chain", "cross_provider", "claude_only"],
                 default: "provider_chain",
                 description: "Fallback strategy when a model fails",
               },
@@ -1264,7 +1261,7 @@ export function generateConfigSchema(): object {
               },
               crossProviderOrder: {
                 type: "array",
-                items: { type: "string", enum: ["qwen", "codex", "gemini", "antigravity"] },
+                items: { type: "string", enum: ["codex", "gemini", "antigravity"] },
                 default: ["codex", "gemini"],
                 description: "Order of providers for cross-provider fallback",
               },
@@ -1285,7 +1282,7 @@ export function generateConfigSchema(): object {
           },
           defaultProvider: {
             type: "string",
-            enum: ["qwen", "claude", "codex", "gemini"],
+            enum: ["claude", "codex", "gemini"],
             default: "claude",
             description:
               "Default provider for delegation routing when no specific role mapping exists",
@@ -1298,7 +1295,7 @@ export function generateConfigSchema(): object {
               properties: {
                 provider: {
                   type: "string",
-                  enum: ["qwen", "claude", "codex", "gemini"],
+                  enum: ["claude", "codex", "gemini"],
                 },
                 tool: { type: "string", enum: ["Task"] },
                 model: { type: "string" },
@@ -1380,7 +1377,7 @@ export function generateConfigSchema(): object {
                 type: "array",
                 items: {
                   type: "string",
-                  enum: ["qwen", "claude", "codex", "gemini", "grok", "cursor", "antigravity"],
+                  enum: ["claude", "codex", "gemini", "grok", "cursor", "antigravity"],
                 },
                 description:
                   "Preferred CLI worker types for executor-style autopilot team execution tasks",
@@ -1399,7 +1396,7 @@ export function generateConfigSchema(): object {
               maxAgents: { type: "integer", minimum: 1 },
               defaultAgentType: {
                 type: "string",
-                enum: ["qwen", "claude", "codex", "gemini", "grok", "cursor", "antigravity"],
+                enum: ["claude", "codex", "gemini", "grok", "cursor", "antigravity"],
                 default: "claude",
               },
               monitorIntervalMs: { type: "integer", minimum: 1 },
@@ -1413,7 +1410,7 @@ export function generateConfigSchema(): object {
             additionalProperties: {
               type: "object",
               properties: {
-                provider: { type: "string", enum: ["qwen", "claude", "codex", "gemini", "grok", "cursor", "antigravity"] },
+                provider: { type: "string", enum: ["claude", "codex", "gemini", "grok", "cursor", "antigravity"] },
                 model: { type: "string" },
                 agent: { type: "string" },
               },

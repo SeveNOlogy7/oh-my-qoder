@@ -12,22 +12,28 @@ import {
   planningArtifactTimestamp,
   selectMatchingTestSpecsForPrd,
 } from "../artifact-names.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe("planning/artifacts", () => {
-  useDefaultStateRoot();
   let testDir: string;
   let plansDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), "artifacts-test-"));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
     plansDir = join(testDir, ".omq", "plans");
     mkdirSync(plansDir, { recursive: true });
   });
 
   afterEach(() => {
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
     rmSync(testDir, { recursive: true, force: true });
   });
 
@@ -46,7 +52,7 @@ describe("planning/artifacts", () => {
         "## Requirement coverage map",
         "- req -> impl",
         "",
-        'omc team 3:qwen "implement auth"',
+        'omc team 3:claude "implement auth"',
         "",
       ].join("\n"),
     );
@@ -426,7 +432,7 @@ describe("planning/artifacts", () => {
       expect(result!.mode).toBe("team");
       expect(result!.task).toBe("implement auth");
       expect(result!.workerCount).toBe(3);
-      expect(result!.agentType).toBe("qwen");
+      expect(result!.agentType).toBe("claude");
       expect(result!.linkedRalph).toBe(false);
       expect(result!.sourcePath).toContain("prd-feature.md");
     });
@@ -443,7 +449,7 @@ describe("planning/artifacts", () => {
           "## Requirement coverage map",
           "- req -> impl",
           "",
-          'omc team 3:qwen "implement auth"',
+          'omc team 3:claude "implement auth"',
           "",
         ].join("\n"),
       );
@@ -495,7 +501,7 @@ describe("planning/artifacts", () => {
     });
 
     it("resolves exact team launch hints by command when tasks repeat", () => {
-      const firstCommand = 'omc team 2:qwen "ship it"';
+      const firstCommand = 'omc team 2:claude "ship it"';
       const secondCommand = 'omc team 4:codex "ship it"';
       writeFileSync(
         join(plansDir, "prd-feature.md"),

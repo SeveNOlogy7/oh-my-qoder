@@ -13,8 +13,8 @@ import { homedir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { getClaudeConfigDir, getUpdateCheckCachePath } from './lib/config-dir.mjs';
 import { resolveOmqStateRoot } from './lib/state-root.mjs';
-import { pathIdentity, publishCacheOccupancy, readOccupiedPluginRoots } from './lib/cache-occupancy.mjs';
 import { resolvePluginCacheBase } from './lib/plugin-cache-dir.mjs';
+import { pathIdentity, publishCacheOccupancy, readOccupiedPluginRoots } from './lib/cache-occupancy.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -601,8 +601,7 @@ function isManagedPluginCacheRoot(pluginRoot) {
   if (isPathInsideOrEqual(cacheBase, normalizedRoot)) return true;
 
   // A stale root can come from an older config-dir location; the canonical
-  // cache path shape still proves it is a managed cache version. The
-  // marketplace segment varies, so match any slug under this package name.
+  // cache path shape still proves it is an OMQ managed cache version.
   const unixRoot = normalizedRoot.replace(/\\/g, '/');
   return /\/plugins\/cache\/[^/]+\/oh-my-qoder\/\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(unixRoot);
 }
@@ -1001,43 +1000,12 @@ async function main() {
     const hudCheck = await checkHudInstallation();
     if (!hudCheck.installed) {
       messages.push(`<system-reminder>
-[OMQ] HUD not configured (${hudCheck.reason}). Run /hud setup then restart Qoder CLI.
+[OMQ] HUD not configured (${hudCheck.reason}). Run /hud setup then restart Claude Code.
 </system-reminder>`);
     }
 
     if (shouldEmitModelRoutingOverride(directory)) {
       messages.push(MODEL_ROUTING_OVERRIDE_MESSAGE);
-    }
-
-    // Check for ultrawork state - only restore if session matches (issue #311)
-    // Session-scoped ONLY when session_id exists — no legacy fallback
-    let ultraworkState = null;
-    if (sessionId && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/.test(sessionId)) {
-      // Session-scoped ONLY — no legacy fallback
-      ultraworkState = readJsonFile(join(omcRoot, 'state', 'sessions', sessionId, 'ultrawork-state.json'));
-      // Validate session identity
-      if (ultraworkState && ultraworkState.session_id && ultraworkState.session_id !== sessionId) {
-        ultraworkState = null;
-      }
-    } else {
-      // No session_id — legacy behavior for backward compat
-      ultraworkState = readJsonFile(join(omcRoot, 'state', 'ultrawork-state.json'));
-    }
-
-    if (shouldRestoreModeState(omcRoot, 'ultrawork', ultraworkState, sessionId)) {
-      messages.push(`<session-restore>
-
-[ULTRAWORK MODE RESTORED]
-
-You have an active ultrawork session from ${ultraworkState.started_at}.
-Original task: ${ultraworkState.original_prompt}
-
-Treat this as prior-session context only. Prioritize the user's newest request, and resume ultrawork only if the user explicitly asks to continue it.
-
-</session-restore>
-
----
-`);
     }
 
     // Check for ralph loop state

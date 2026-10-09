@@ -6,14 +6,14 @@ import type { CanonicalTeamRole, PluginConfig, RoleAssignment } from '../../shar
 /**
  * AC-3: With empty `team.roleRouting`, snapshot must mirror pre-patch behavior:
  * - Every role resolves to provider='qwen'
- * - Models match the role's tier-default (claude-only world)
+ * - Models match the role's tier-default (qwen-default world)
  * - Agents match the canonical role→agent map
  * - Snapshot is a pure function of config (no env/IO surprises)
  */
 describe('AC-3: behavior snapshot — empty config preserves pre-patch /team semantics', () => {
   const EMPTY: PluginConfig = {};
 
-  it('every canonical role resolves to provider=claude when no routing is configured', () => {
+  it('every canonical role resolves to provider=qwen when no routing is configured', () => {
     for (const role of CANONICAL_TEAM_ROLES) {
       const out = resolveRoleAssignment(role, EMPTY);
       expect(out.provider, `role=${role}`).toBe('qwen');
@@ -41,7 +41,7 @@ describe('AC-3: behavior snapshot — empty config preserves pre-patch /team sem
     expect(JSON.parse(JSON.stringify(snap))).toEqual(snap);
   });
 
-  it('orchestrator pinned to claude even when explicitly routed elsewhere (immutable invariant)', () => {
+  it('orchestrator pinned to qwen even when explicitly routed elsewhere (immutable invariant)', () => {
     const cfg: PluginConfig = {
       team: { roleRouting: { orchestrator: { model: 'HIGH' } } },
     };
@@ -50,13 +50,13 @@ describe('AC-3: behavior snapshot — empty config preserves pre-patch /team sem
     expect(snap.orchestrator.fallback.provider).toBe('qwen');
   });
 
-  it('externally-routed role keeps non-routed siblings on claude (per-role isolation)', () => {
+  it('externally-routed role keeps non-routed siblings on qwen (per-role isolation)', () => {
     const cfg: PluginConfig = {
       team: { roleRouting: { critic: { provider: 'codex' } } },
     };
     const snap = buildResolvedRoutingSnapshot(cfg);
     expect(snap.critic.primary.provider).toBe('codex');
-    // Siblings: every other role still claude
+    // Siblings: every other role still qwen
     for (const role of CANONICAL_TEAM_ROLES) {
       if (role === 'critic') continue;
       expect(snap[role].primary.provider, `sibling role=${role}`).toBe('qwen');

@@ -7,32 +7,80 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-// Resolves state through the DEFAULT state-root branch over temp roots (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test here.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 const RESOLVER = join(process.cwd(), 'skills', 'self-improve', 'scripts', 'resolve-paths.mjs');
+const ISOLATED_ENV_KEYS = [
+  'HOME',
+  'USERPROFILE',
+  'OMQ_STATE_DIR',
+  'CLAUDE_CONFIG_DIR',
+  'XDG_CONFIG_HOME',
+  'CLAUDE_PLUGIN_ROOT',
+  'OMQ_SESSION_ID',
+  'OMQ_DISABLE_MULTIREPO',
+  'NODE_ENV',
+] as const;
 
-function readJson(command: string, args: string[], extraEnv: Record<string, string | undefined> = {}) {
-  const env = { ...process.env, ...extraEnv };
-  return JSON.parse(execFileSync(command, args, { encoding: 'utf-8', env }));
+type IsolatedEnvKey = typeof ISOLATED_ENV_KEYS[number];
+
+let fixtureEnv: Record<IsolatedEnvKey, string | undefined>;
+
+function restoreFixtureEnv() {
+  for (const key of ISOLATED_ENV_KEYS) {
+    const value = fixtureEnv[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+}
+
+function readJson(command: string, args: string[], env: NodeJS.ProcessEnv = {}) {
+  return JSON.parse(execFileSync(command, args, {
+    encoding: 'utf-8',
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      OMQ_STATE_DIR: '',
+      CLAUDE_PLUGIN_ROOT: '',
+      ...env,
+    },
+  }));
 }
 
 describe('self-improve session isolation (Wave B2)', () => {
-  useDefaultStateRoot();
-
   let root: string;
+  let environmentRoot: string;
 
   beforeEach(() => {
+    fixtureEnv = Object.fromEntries(
+      ISOLATED_ENV_KEYS.map((key) => [key, process.env[key]]),
+    ) as Record<IsolatedEnvKey, string | undefined>;
     root = mkdtempSync(join(tmpdir(), 'omq-si-session-isolation-'));
+    environmentRoot = mkdtempSync(join(tmpdir(), 'omq-si-session-isolation-env-'));
+    const home = join(environmentRoot, 'home');
+    const claudeConfigDir = join(home, '.claude');
+    mkdirSync(claudeConfigDir, { recursive: true });
+    mkdirSync(join(home, '.config'), { recursive: true });
+    execFileSync('git', ['init', '--quiet'], { cwd: root, stdio: 'pipe' });
+
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    process.env.OMQ_STATE_DIR = '';
+    process.env.CLAUDE_CONFIG_DIR = claudeConfigDir;
+    process.env.XDG_CONFIG_HOME = join(home, '.config');
+    process.env.CLAUDE_PLUGIN_ROOT = '';
+    process.env.OMQ_SESSION_ID = '';
+    process.env.OMQ_DISABLE_MULTIREPO = '';
+    process.env.NODE_ENV = 'test';
   });
 
   afterEach(() => {
+    restoreFixtureEnv();
     rmSync(root, { recursive: true, force: true });
+    rmSync(environmentRoot, { recursive: true, force: true });
   });
 
   it('two runs with same topic slug but different session IDs resolve to distinct dirs', () => {
@@ -63,8 +111,8 @@ describe('self-improve session isolation (Wave B2)', () => {
   it('without session-id, two runs with same slug share the same topic root', () => {
     const slug = 'shared-topic';
 
-    const pathsA = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMQ_SESSION_ID: undefined });
-    const pathsB = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMQ_SESSION_ID: undefined });
+    const pathsA = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug]);
+    const pathsB = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug]);
 
     expect(pathsA.root).toBe(pathsB.root);
     expect(pathsA.scope_mode).toBe('topic-scoped');
@@ -82,7 +130,6 @@ describe('self-improve session isolation (Wave B2)', () => {
     writeFileSync(join(pathsA.state_dir, 'iteration_state.json'), JSON.stringify({ active: true, session: sidA }));
 
     // Session B's state dir should not contain that file
-    const { existsSync } = require('node:fs');
     expect(existsSync(join(pathsB.state_dir, 'iteration_state.json'))).toBe(false);
   });
 
@@ -98,7 +145,7 @@ describe('self-improve session isolation (Wave B2)', () => {
   it('session_id is null when not provided', () => {
     const slug = 'no-session';
 
-    const paths = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug], { OMQ_SESSION_ID: undefined });
+    const paths = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug]);
 
     expect(paths.session_id).toBeNull();
   });

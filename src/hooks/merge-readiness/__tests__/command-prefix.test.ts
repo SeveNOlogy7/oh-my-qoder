@@ -12,7 +12,7 @@ const COMMAND_FORMS = [
   '/omq:merge-readiness',
   '/oh-my-qoder:merge-readiness',
   '/omc:merge-readiness',
-  '/oh-my-claudecode:merge-readiness',
+  '/oh-my-qoder:merge-readiness',
 ] as const;
 
 function withTempDir<T>(run: (dir: string) => T): T {

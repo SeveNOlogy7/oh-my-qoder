@@ -19,15 +19,15 @@ import {
   buildWorkerArgv,
   clearResolvedPathCache,
   getWorkerEnv as getModelWorkerEnv,
-  resolveClaudeWorkerModel,
+  resolveDefaultWorkerModel,
   assertHeadlessSupported,
   resolveValidatedBinaryPath,
   validateWorkerLaunchDescriptor,
   type CliAgentType,
 } from './model-contract.js';
-import { CLI_WORKER_AGENT_TYPES } from './cli-agent-types.js';
 import { CANONICAL_TEAM_ROLES } from '../shared/types.js';
 import type { CanonicalTeamRole } from '../shared/types.js';
+import { CLI_WORKER_AGENT_TYPES } from './cli-agent-types.js';
 import { normalizeDelegationRole } from '../features/delegation-routing/types.js';
 import { routeTaskToRole } from './role-router.js';
 import {
@@ -51,7 +51,7 @@ import {
   type StartupPaneContext,
   type WorkerPaneOwnership,
 } from './tmux-session.js';
-import { TeamPaths, absPath } from './state-paths.js';
+import { TeamPaths, absPath, teamStateRoot as resolveTeamStateRoot } from './state-paths.js';
 import { writeWorkerOverlay } from './worker-bootstrap.js';
 import {
   ensureWorkerWorktree,
@@ -316,7 +316,7 @@ export async function scaleUpOwned(
       return { ok: false, error: released ? 'team_mutation_busy' : 'scale_up_fence_release_failed' };
     }
 
-    const teamStateRoot = config.team_state_root ?? `${leaderCwd}/.omq/state/team/${sanitized}`;
+    const teamStateRoot = config.team_state_root ?? resolveTeamStateRoot(leaderCwd, sanitized);
     const worktreeMode: TeamWorktreeMode = config.worktree_mode ?? 'disabled';
 
     // Resolve the monotonic worker index counter
@@ -530,8 +530,12 @@ export async function scaleUpOwned(
       // from an explicit `task.role` (user opt-in). Pre-patch semantics: callers
       // passing `--agent-type codex` stay on codex regardless of task text.
       const hasExplicitOwnedRole = ownedRoles.length === 1;
-      const routedPair = hasExplicitOwnedRole && canonical
-        ? config.resolved_routing?.[canonical]
+      const resolvedRoute = canonical === null ? undefined : config.resolved_routing?.[canonical];
+      const hasLegacyConfiguredRoute = config.resolved_routing_roles === undefined && resolvedRoute !== undefined;
+      const hasConfiguredRoute = canonical !== null
+        && (config.resolved_routing_roles?.includes(canonical) === true || hasLegacyConfiguredRoute);
+      const routedPair = canonical && hasExplicitOwnedRole && (hasConfiguredRoute || workerAgentType === 'claude')
+        ? resolvedRoute
         : undefined;
       if (routedPair) {
         const { primary } = routedPair;
@@ -540,9 +544,14 @@ export async function scaleUpOwned(
           workerAgentType = primaryProvider;
           workerModel = primary.model;
         }
-      } else if (cliAgentType === 'claude') {
-        // Honor Bedrock/Vertex default-model resolution for non-routed claude workers.
-        workerModel = resolveClaudeWorkerModel(env);
+        if (!workerModel) {
+          const modelEnv = workerAgentType === 'claude' || config.external_models_defaults === undefined ? env : {};
+          workerModel = resolveDefaultWorkerModel(workerAgentType, modelEnv, config.external_models_defaults);
+        }
+      } else {
+        // Honor provider-specific default-model resolution for non-routed workers.
+        const modelEnv = workerAgentType === 'claude' || config.external_models_defaults === undefined ? env : {};
+        workerModel = resolveDefaultWorkerModel(workerAgentType, modelEnv, config.external_models_defaults);
       }
 
       let launchBinary: string;

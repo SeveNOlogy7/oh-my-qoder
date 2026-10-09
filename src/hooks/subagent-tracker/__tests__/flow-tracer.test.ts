@@ -18,10 +18,14 @@ describe('flow-tracer', () => {
   beforeEach(() => {
     testDir = join(tmpdir(), `flow-tracer-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(join(testDir, '.omq', 'state'), { recursive: true });
+    // Pin the state root: a git-less tmpdir otherwise falls through getOmqRoot to the
+    // process cwd, so writes land in the repository's own .omq/state and accumulate.
+    process.env.OMQ_STATE_DIR = join(testDir, '.omq-state');
     resetSessionStartTimes();
   });
 
   afterEach(() => {
+    delete process.env.OMQ_STATE_DIR;
     rmSync(testDir, { recursive: true, force: true });
   });
 

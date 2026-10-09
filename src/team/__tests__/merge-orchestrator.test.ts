@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
 
 // ---------------------------------------------------------------------------
 // Hoisted mock state (must be declared before vi.mock factories run).
@@ -104,9 +105,6 @@ import {
 } from '../merge-orchestrator.js';
 import { sanitizeName } from '../tmux-session.js';
 import { atomicWriteJson } from '../fs-utils.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -114,7 +112,14 @@ import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.
 
 function makeRepoRoot(): string {
   const dir = mkdtempSync(join(tmpdir(), 'merge-orchestrator-test-'));
+  process.env.HOME = dir;
+  process.env.USERPROFILE = dir;
+  delete process.env.OMQ_STATE_DIR;
   return dir;
+}
+
+function omcPath(repoRoot: string, ...segments: string[]): string {
+  return join(getOmcRoot(repoRoot), ...segments);
 }
 
 function defaultConfig(repoRoot: string): OrchestratorConfig {
@@ -175,13 +180,19 @@ function defaultHappyPath(_repoRoot: string, leaderBranch: string): void {
   );
 }
 
+let previousHome: string | undefined;
+let previousUserProfile: string | undefined;
+let previousOmcStateDir: string | undefined;
+
 beforeEach(() => {
   mocks.reset();
+  previousHome = process.env.HOME;
+  previousUserProfile = process.env.USERPROFILE;
+  previousOmcStateDir = process.env.OMQ_STATE_DIR;
   process.env.OMQ_RUNTIME_V2 = '1';
 });
 
 describe('Git process construction', () => {
-  useDefaultStateRoot();
   it('uses git argv with hidden-window options for merger worktree setup', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -211,6 +222,12 @@ describe('Git process construction', () => {
 
 afterEach(() => {
   delete process.env.OMQ_RUNTIME_V2;
+  if (previousHome === undefined) delete process.env.HOME;
+  else process.env.HOME = previousHome;
+  if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = previousUserProfile;
+  if (previousOmcStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = previousOmcStateDir;
 });
 
 // ---------------------------------------------------------------------------
@@ -218,7 +235,6 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('M3 leader-branch guard', () => {
-  useDefaultStateRoot();
   it('rejects "main"', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -278,7 +294,6 @@ describe('M3 leader-branch guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateBranchName guard', () => {
-  useDefaultStateRoot();
   it('rejects leader branch name that looks like a flag (--upload-pack=...)', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -305,7 +320,6 @@ describe('validateBranchName guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('M5 v2 gate', () => {
-  useDefaultStateRoot();
   it('allows unset OMQ_RUNTIME_V2 because runtime v2 is default-on', async () => {
     delete process.env.OMQ_RUNTIME_V2;
     const repoRoot = makeRepoRoot();
@@ -336,7 +350,6 @@ describe('M5 v2 gate', () => {
 // ---------------------------------------------------------------------------
 
 describe('commit watcher + auto-merge', () => {
-  useDefaultStateRoot();
   it('detects a SHA change and triggers a merge', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -404,9 +417,8 @@ describe('commit watcher + auto-merge', () => {
 
       await new Promise((r) => setTimeout(r, 200));
 
-      const persistedPath = join(
+      const persistedPath = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -598,9 +610,8 @@ describe('commit watcher + auto-merge', () => {
 
       await new Promise((r) => setTimeout(r, 200));
 
-      const eventLog = join(
+      const eventLog = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -668,7 +679,6 @@ describe('commit watcher + auto-merge', () => {
 // ---------------------------------------------------------------------------
 
 describe('M1 existing-rebase short-circuit', () => {
-  useDefaultStateRoot();
   it('skips rebase fan-out when .git/rebase-merge exists in the other worker worktree', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -676,9 +686,8 @@ describe('M1 existing-rebase short-circuit', () => {
       defaultHappyPath(repoRoot, cfg.leaderBranch);
 
       // Create a fake worktree dir with .git/rebase-merge for "bob".
-      const bobWtPath = join(
+      const bobWtPath = omcPath(
         repoRoot,
-        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
@@ -718,9 +727,8 @@ describe('M1 existing-rebase short-circuit', () => {
       expect(rebaseCalls.length).toBe(0);
 
       // The skip event should be in the orchestrator event log.
-      const eventLog = join(
+      const eventLog = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -753,7 +761,6 @@ describe('M1 existing-rebase short-circuit', () => {
 // ---------------------------------------------------------------------------
 
 describe('M4 dirty-tree audit', () => {
-  useDefaultStateRoot();
   it('appends an audit message when worker worktree is dirty after rebase resolution', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -763,9 +770,8 @@ describe('M4 dirty-tree audit', () => {
       // Pre-stage: bob's worktree exists and we'll simulate a rebase that
       // conflicts (rebase command throws), then we remove .git/rebase-merge to
       // simulate the worker resolving it. The status mock returns dirty files.
-      const bobWtPath = join(
+      const bobWtPath = omcPath(
         repoRoot,
-        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
@@ -834,9 +840,8 @@ describe('M4 dirty-tree audit', () => {
       await new Promise((r) => setTimeout(r, 250));
 
       // Inbox should contain the audit message.
-      const inboxPath = join(
+      const inboxPath = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         cfg.teamName,
@@ -861,46 +866,41 @@ describe('M4 dirty-tree audit', () => {
 // ---------------------------------------------------------------------------
 
 describe('M6 recoverFromRestart', () => {
-  useDefaultStateRoot();
   it('loads persisted SHA state and reports orphaned rebases', async () => {
     const repoRoot = makeRepoRoot();
     try {
       const cfg = defaultConfig(repoRoot);
 
       // Seed persisted state.
-      const persistedPath = join(
+      const persistedPath = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
         'auto-merge-state.json',
       );
-      mkdirSync(join(repoRoot, '.omq', 'state', 'team', sanitizeName(cfg.teamName)), {
+      mkdirSync(omcPath(repoRoot, 'state', 'team', sanitizeName(cfg.teamName)), {
         recursive: true,
       });
       atomicWriteJson(persistedPath, { lastShas: { alice: 'sha-1', bob: 'sha-2' } });
 
       // Seed worktrees.json metadata.
-      const worktreesMetaPath = join(
+      const worktreesMetaPath = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees.json',
       );
-      const aliceWtPath = join(
+      const aliceWtPath = omcPath(
         repoRoot,
-        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
         'alice',
       );
-      const bobWtPath = join(
+      const bobWtPath = omcPath(
         repoRoot,
-        '.omq',
         'team',
         sanitizeName(cfg.teamName),
         'worktrees',
@@ -933,9 +933,8 @@ describe('M6 recoverFromRestart', () => {
       expect(result.orphanedRebases).toEqual(['bob']);
 
       // Bob should have received the recovery message.
-      const bobInbox = join(
+      const bobInbox = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         cfg.teamName,
@@ -957,7 +956,6 @@ describe('M6 recoverFromRestart', () => {
 // ---------------------------------------------------------------------------
 
 describe('drainAndStop', () => {
-  useDefaultStateRoot();
   it('returns no unmerged when all workers are up to date', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -1009,9 +1007,8 @@ describe('drainAndStop', () => {
       expect(result.unmerged[0].workerName).toBe('alice');
 
       // Teardown audit row should have been written.
-      const auditPath = join(
+      const auditPath = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),
@@ -1032,7 +1029,6 @@ describe('drainAndStop', () => {
 // ---------------------------------------------------------------------------
 
 describe('worker registration', () => {
-  useDefaultStateRoot();
   it('seeds lastSha from current HEAD on register', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -1107,7 +1103,6 @@ describe('worker registration', () => {
 // ---------------------------------------------------------------------------
 
 describe('drainAndStop suppresses fan-out rebase', () => {
-  useDefaultStateRoot();
   it('emits no rebase_triggered events for merges that complete during drain', async () => {
     const repoRoot = makeRepoRoot();
     try {
@@ -1151,9 +1146,8 @@ describe('drainAndStop suppresses fan-out rebase', () => {
 
       // Read the orchestrator event log: there must be no rebase_triggered or
       // rebase_succeeded events emitted (fan-out is suppressed after stop).
-      const eventLog = join(
+      const eventLog = omcPath(
         repoRoot,
-        '.omq',
         'state',
         'team',
         sanitizeName(cfg.teamName),

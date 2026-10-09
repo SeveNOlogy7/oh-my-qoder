@@ -4,9 +4,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { createWorkerWorktree } from '../../team/git-worktree.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
 
 const tmuxMocks = vi.hoisted(() => ({
   killWorkerPanes: vi.fn(async () => undefined),
@@ -41,17 +39,29 @@ async function importTeamServerWithJobsDir(jobsDir: string) {
 }
 
 describe('team-server artifact convergence + scoped cleanup', () => {
-  useDefaultStateRoot();
   let testRoot: string;
   let jobsDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+
+  const teamStateDir = (cwd: string, teamName: string): string =>
+    join(getOmcRoot(cwd), 'state', 'team', teamName);
 
   beforeEach(() => {
     testRoot = join(tmpdir(), `omq-team-server-test-${process.pid}-${Date.now()}`);
     jobsDir = join(testRoot, 'jobs');
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testRoot;
+    process.env.USERPROFILE = testRoot;
     mkdirSync(jobsDir, { recursive: true });
   });
 
   afterEach(() => {
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
     rmSync(testRoot, { recursive: true, force: true });
     process.env = { ...originalEnv };
     vi.clearAllMocks();
@@ -124,8 +134,8 @@ describe('team-server artifact convergence + scoped cleanup', () => {
 
     const jobId = 'omq-art3';
     const cwd = join(testRoot, 'workspace');
-    const teamOneDir = join(cwd, '.omq', 'state', 'team', 'team-one');
-    const teamTwoDir = join(cwd, '.omq', 'state', 'team', 'team-two');
+    const teamOneDir = teamStateDir(cwd, 'team-one');
+    const teamTwoDir = teamStateDir(cwd, 'team-two');
 
     mkdirSync(teamOneDir, { recursive: true });
     mkdirSync(teamTwoDir, { recursive: true });
@@ -155,7 +165,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
 
     const jobId = 'omq-art5';
     const cwd = join(testRoot, 'workspace-live-pane');
-    const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
+    const teamDir = teamStateDir(cwd, 'team-one');
     mkdirSync(teamDir, { recursive: true });
 
     writeFileSync(
@@ -186,7 +196,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
 
     const jobId = 'omq-art9';
     const cwd = join(testRoot, 'workspace-unknown-probe');
-    const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
+    const teamDir = teamStateDir(cwd, 'team-one');
     mkdirSync(teamDir, { recursive: true });
     writeFileSync(
       join(jobsDir, `${jobId}.json`),
@@ -222,7 +232,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
     execFileSync('git', ['add', 'README.md'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['commit', '-m', 'init'], { cwd, stdio: 'pipe' });
 
-    const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
+    const teamDir = teamStateDir(cwd, 'team-one');
     mkdirSync(teamDir, { recursive: true });
     const worktree = createWorkerWorktree('team-one', 'worker1', cwd);
     writeFileSync(join(worktree.path, 'dirty.txt'), 'uncommitted\n', 'utf-8');
@@ -255,7 +265,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
 
     const jobId = 'omq-art7';
     const cwd = join(testRoot, 'workspace-unknown-liveness');
-    const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
+    const teamDir = teamStateDir(cwd, 'team-one');
     mkdirSync(teamDir, { recursive: true });
     writeFileSync(join(teamDir, 'config.json'), JSON.stringify({
       name: 'team-one',
@@ -296,7 +306,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
 
     const jobId = 'omq-art8';
     const cwd = join(testRoot, 'workspace-backup-only');
-    const teamDir = join(cwd, '.omq', 'state', 'team', 'team-one');
+    const teamDir = teamStateDir(cwd, 'team-one');
     const backupPath = join(teamDir, 'workers', 'worker-1', 'worktree-root-agents.json');
     mkdirSync(join(teamDir, 'workers', 'worker-1'), { recursive: true });
     writeFileSync(backupPath, JSON.stringify({
@@ -336,7 +346,7 @@ describe('team-server artifact convergence + scoped cleanup', () => {
     execFileSync('git', ['add', 'README.md'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['commit', '-m', 'init'], { cwd, stdio: 'pipe' });
 
-    const teamOneDir = join(cwd, '.omq', 'state', 'team', 'team-one');
+    const teamOneDir = teamStateDir(cwd, 'team-one');
     mkdirSync(teamOneDir, { recursive: true });
     const worktree = createWorkerWorktree('team-one', 'worker1', cwd);
     expect(existsSync(worktree.path)).toBe(true);

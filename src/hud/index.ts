@@ -2,8 +2,8 @@
 /**
  * OMQ HUD - Main Entry Point
  *
- * Statusline command that visualizes oh-my-qoder state.
- * Receives stdin JSON from Qoder CLI and outputs formatted statusline.
+ * Statusline command that visualizes oh-my-claudecode state.
+ * Receives stdin JSON from Claude Code and outputs formatted statusline.
  */
 
 import {
@@ -26,7 +26,6 @@ import {
 } from "./state.js";
 import {
   readRalphStateForHud,
-  readUltraworkStateForHud,
   readPrdStateForHud,
   readAutopilotStateForHud,
 } from "./omq-state.js";
@@ -56,7 +55,7 @@ import { join, basename, dirname } from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { getOmqRoot } from "../lib/worktree-paths.js";
-import { getQoderConfigDir, getUpdateCheckCachePath } from "../utils/config-dir.js";
+import { getClaudeConfigDir, getUpdateCheckCachePath } from "../utils/config-dir.js";
 
 /**
  * Extract session ID (UUID) from a transcript path.
@@ -217,7 +216,7 @@ async function calculateSessionHealth(
  */
 function showDiagnostic(): void {
   const version = getRuntimePackageVersion();
-  const configDir = getQoderConfigDir();
+  const configDir = getClaudeConfigDir();
   const hudScript = join(configDir, "hud", "omq-hud.mjs");
   const settingsFile = join(configDir, "settings.json");
 
@@ -245,7 +244,7 @@ function showDiagnostic(): void {
   if (!hudExists || !statusLineOk) {
     console.log("  Run /oh-my-qoder:hud setup to fix.");
   } else {
-    console.log("  HUD renders automatically inside Qoder CLI sessions.");
+    console.log("  HUD renders automatically inside Claude Code sessions.");
   }
 }
 
@@ -255,7 +254,7 @@ function showDiagnostic(): void {
  */
 async function main(watchMode = false, skipInit = false): Promise<void> {
   try {
-    // Read stdin from Qoder CLI
+    // Read stdin from Claude Code
     const previousStdinCache = readStdinCache();
     let stdin = await readStdin();
 
@@ -320,10 +319,6 @@ async function main(watchMode = false, skipInit = false): Promise<void> {
 
     // Read OMQ state files
     const ralph = readRalphStateForHud(cwd, currentSessionId ?? undefined);
-    const ultrawork = readUltraworkStateForHud(
-      cwd,
-      currentSessionId ?? undefined,
-    );
     const prd = readPrdStateForHud(cwd);
     const autopilot = readAutopilotStateForHud(
       cwd,
@@ -360,11 +355,14 @@ async function main(watchMode = false, skipInit = false): Promise<void> {
       writeHudState(stateToWrite, cwd, currentSessionId ?? undefined);
     }
 
-    // Merge Qoder CLI stdin generic buckets with API/cache-specific fields.
+    // Merge Claude Code stdin generic buckets with API/cache-specific fields.
     // Stdin owns fresher five-hour/seven-day values, while getUsage() may provide
     // Sonnet/Opus weekly, monthly, extra, stale, and error metadata.
     const stdinRateLimits = getRateLimitsFromStdin(stdin);
-    const usageResult = config.elements.rateLimits === false ? null : await getUsage();
+    const usageResult =
+      config.elements.rateLimits === false
+        ? null
+        : await getUsage({ clientVersion: stdin.version });
     const rateLimitsResult =
       config.elements.rateLimits === false
         ? null
@@ -462,7 +460,7 @@ async function main(watchMode = false, skipInit = false): Promise<void> {
       modelName: getModelName(stdin),
       modelId: getModelId(stdin),
       ralph,
-      ultrawork,
+      ultrawork: null,
       prd,
       autopilot,
       activeAgents: transcriptData.agents.filter((a) => a.status === "running"),
@@ -489,10 +487,11 @@ async function main(watchMode = false, skipInit = false): Promise<void> {
       apiKeySource: config.elements.apiKeySource
         ? detectApiKeySource(cwd)
         : null,
+      apiKeyMode: detectApiKeySource(cwd) !== null,
       subscriptionType: subscriptionInfo.subscriptionType,
       rateLimitTier: subscriptionInfo.rateLimitTier,
-      profileName: process.env.QODER_CONFIG_DIR
-        ? basename(process.env.QODER_CONFIG_DIR).replace(/^\./, "")
+      profileName: process.env.CLAUDE_CONFIG_DIR
+        ? basename(process.env.CLAUDE_CONFIG_DIR).replace(/^\./, "")
         : null,
       sessionSummary,
       lastToolName: transcriptData.lastToolName,
@@ -513,7 +512,7 @@ async function main(watchMode = false, skipInit = false): Promise<void> {
 
     // autoCompact: write trigger file when token context exceeds threshold.
     // Payload pressure is warning-only for now because statusline hooks can
-    // estimate from local transcript artifacts but do not receive Qoder CLI's
+    // estimate from local transcript artifacts but do not receive Claude Code's
     // exact serialized API request body.
     // A companion hook can read this file to inject a /compact suggestion.
     if (

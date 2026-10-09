@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, readFileSync, rmSync, existsSync, realpathSync } from 'fs';
-import { join, sep } from 'path';
+import { join } from 'path';
 import { tmpdir } from 'os';
 import {
   leaderInboxPath,
@@ -11,12 +11,27 @@ import {
 
 const TEST_CWD = join(tmpdir(), `omq-test-leader-inbox-${process.pid}`);
 const TEST_TEAM = 'my-team';
+let previousHome: string | undefined;
+let previousUserProfile: string | undefined;
+let previousStateDir: string | undefined;
 
 beforeEach(() => {
+  previousHome = process.env.HOME;
+  previousUserProfile = process.env.USERPROFILE;
+  previousStateDir = process.env.OMQ_STATE_DIR;
+  process.env.HOME = TEST_CWD;
+  process.env.USERPROFILE = TEST_CWD;
+  delete process.env.OMQ_STATE_DIR;
   mkdirSync(TEST_CWD, { recursive: true });
 });
 
 afterEach(() => {
+  if (previousHome === undefined) delete process.env.HOME;
+  else process.env.HOME = previousHome;
+  if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = previousUserProfile;
+  if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = previousStateDir;
   rmSync(TEST_CWD, { recursive: true, force: true });
 });
 
@@ -35,7 +50,7 @@ describe('leaderInboxPath', () => {
     const p = leaderInboxPath('my team!', TEST_CWD);
     expect(p).not.toContain('!');
     expect(p).not.toContain(' ');
-    expect(p).toContain(join('leader', 'inbox.md'));
+    expect(p).toContain('leader/inbox.md');
   });
 
   it('prevents traversal via team name: dots and slashes stripped', () => {
@@ -174,11 +189,9 @@ describe('extendLeaderBootstrapPrompt', () => {
   it('path in prompt matches leaderInboxPath relative segment', () => {
     const prompt = extendLeaderBootstrapPrompt(TEST_TEAM);
     const fullPath = leaderInboxPath(TEST_TEAM, TEST_CWD);
-    // The prompt uses a workspace-relative POSIX literal while leaderInboxPath()
-    // returns a host-shaped absolute path, so the two only agree once the
-    // separators are folded -- on POSIX that fold is the identity.
+    // The prompt uses relative path; fullPath has cwd prefix
     const relSegment = `.omq/state/team/my-team/leader/inbox.md`;
-    expect(fullPath.split(sep).join('/')).toContain(relSegment);
+    expect(fullPath).toContain(relSegment);
     expect(prompt).toContain(relSegment);
   });
 });

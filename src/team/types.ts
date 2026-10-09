@@ -9,7 +9,7 @@
 import type { TeamTaskStatus } from './contracts.js';
 import type { TeamPhase } from './phase-controller.js';
 import type { TeamLeaderNextAction } from './leader-nudge-guidance.js';
-import type { CanonicalTeamRole, RoleAssignment } from '../shared/types.js';
+import type { CanonicalTeamRole, ExternalModelsDefaults, RoleAssignment } from '../shared/types.js';
 
 /** Bridge daemon configuration — passed via --config file to bridge-entry.ts */
 export interface BridgeConfig {
@@ -203,6 +203,7 @@ export interface TeamTask {
   owner?: string;
   result?: string;
   error?: string;
+  metadata?: Record<string, unknown>;
   blocked_by?: string[];
   depends_on?: string[];
   version?: number;
@@ -378,7 +379,7 @@ export interface TeamRecoveryAttempt {
 
 export interface WorkerLaunchDescriptor {
   schema_version: 1;
-  provider: 'claude' | 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
+  provider: 'qwen' | 'claude' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
   model: string | null;
   binary: string;
   args: string[];
@@ -456,6 +457,9 @@ export interface TeamManifestV2 {
   resize_hook_name: string | null;
   resize_hook_target: string | null;
   next_worker_index?: number;
+  resolved_routing?: Record<CanonicalTeamRole, { primary: RoleAssignment; fallback: RoleAssignment }>;
+  resolved_routing_roles?: CanonicalTeamRole[];
+  external_models_defaults?: ExternalModelsDefaults;
   service_descriptor?: TeamServiceDescriptor;
 }
 
@@ -477,8 +481,8 @@ export interface WorkerInfo {
   team_state_root?: string;
   /**
    * Verdict-output file path for CLI-worker output contract (AC-7).
-   * Set when the worker was spawned for a reviewer role on codex/gemini/grok.
-   * Consumed by the worker-completion handler in runtime-v2.
+   * Set when the worker was spawned for a reviewer role on any non-Claude
+   * provider. Consumed by the worker-completion handler in runtime-v2.
    */
   output_file?: string;
   recovery_id?: string;
@@ -540,6 +544,10 @@ export interface TeamConfig {
    * `scaleUp`, worker restart, and spawn paths. Immutable for the team's lifetime.
    */
   resolved_routing?: Record<CanonicalTeamRole, { primary: RoleAssignment; fallback: RoleAssignment }>;
+  /** Canonical roles explicitly configured for routing; defaults are not opt-in routes. */
+  resolved_routing_roles?: CanonicalTeamRole[];
+  /** Immutable provider defaults captured at team creation for scale-up parity. */
+  external_models_defaults?: ExternalModelsDefaults;
   state_revision?: number;
   runtime_owner_epoch?: TeamRuntimeOwnerEpoch;
   active_recovery?: TeamRecoveryAttempt;

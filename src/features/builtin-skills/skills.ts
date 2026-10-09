@@ -107,7 +107,7 @@ function readDeepInterviewThresholdFromSettings(
 
   // 'omq' is this product's own section name inside the CLI's settings.json; 'omc'
   // is kept as a fallback so pre-hop configuration still resolves. Same shape as
-  // hud/state.ts's `settings.omqHud ?? settings.omcHud`.
+  // hud/state.ts's `settings.omqHud ?? settings.omqHud`.
   for (const sectionKey of ['omq', 'omc'] as const) {
     const section = settings[sectionKey];
     if (!section || typeof section !== 'object' || Array.isArray(section)) continue;

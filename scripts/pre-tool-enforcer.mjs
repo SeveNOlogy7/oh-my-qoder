@@ -25,12 +25,6 @@ import { isSkillVisibleToUser } from './lib/skill-entitlements.mjs';
 // Inlined from src/config/models.ts — avoids a dist/ import so the hook works
 // before a build and stays consistent with the TypeScript source.
 function isProviderSpecificModelId(modelId) {
-  // The hop left only the ancestor's shapes here, so the two fork forms went
-  // missing: `dashscope/...` (present in models.ts:isProviderSpecificModelId) and
-  // the bare `qwen-*` IDs this fork hands out as tier defaults (present at
-  // b37141e). Without them the hook denies a perfectly valid Qwen model ID.
-  if (/^qwen-/i.test(modelId)) return true;
-  if (modelId.toLowerCase().startsWith('dashscope/')) return true;
   if (/^((us|eu|ap|global)\.anthropic\.|anthropic\.claude)/i.test(modelId)) return true;
   if (/^arn:aws(-[^:]+)?:bedrock:/i.test(modelId)) return true;
   if (modelId.toLowerCase().startsWith('vertex_ai/')) return true;
@@ -42,83 +36,26 @@ function hasExtendedContextSuffix(modelId) {
 function isSubagentSafeModelId(modelId) {
   return isProviderSpecificModelId(modelId) && !hasExtendedContextSuffix(modelId);
 }
-// Session model vars differ per distribution: this fork publishes QODER_MODEL /
-// DASHSCOPE_MODEL, the ancestor chain CLAUDE_MODEL / ANTHROPIC_MODEL. Provider
-// detection that reads only the second pair answers "Anthropic" on a CN install,
-// which then steers every routing decision and every guidance string the wrong way
-// (b37141e read the fork pair; the hop restored the ancestor one).
-//
-// But it has to answer about the ONE model the runtime will actually use.
-// src/config/models.ts:getProviderDetectionModelEnvValues() takes the first non-empty
-// direct var (getDirectModelEnvValue) and consults the tier-default chain only when no
-// direct var is set. ORing across all four -- which is what b37141e's two-var version
-// grew into -- reclassifies a session from a var the runtime never reads: a stale
-// ANTHROPIC_MODEL on a Claude box suppressed real denials, and a stale Bedrock-shaped
-// QODER_MODEL on a proxy box tripped the Bedrock branch for a call that would not use it.
-const DIRECT_MODEL_ENV_KEYS = ['QODER_MODEL', 'DASHSCOPE_MODEL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL'];
-const INHERIT_TIER_PRIORITY = ['medium', 'high', 'low'];
-function activeModelIds() {
-  for (const key of DIRECT_MODEL_ENV_KEYS) {
-    const value = (process.env[key] || '').trim();
-    if (value) return [value];
-  }
-  const values = new Set();
-  for (const tier of INHERIT_TIER_PRIORITY) {
-    // First hit per tier, mirroring resolveTierModelFromEnv: the chain is a
-    // precedence list, not a set of candidates to vote over.
-    const hit = (TIER_TO_DEFAULT_ENV_KEYS[tier] || [])
-      .map((key) => (process.env[key] || '').trim())
-      .find(Boolean);
-    if (hit) values.add(hit);
-  }
-  return [...values];
-}
 function isBedrockProviderEnv() {
   if (process.env.CLAUDE_CODE_USE_BEDROCK === '1') return true;
-  return activeModelIds().some((modelId) => {
-    if (/^((us|eu|ap|global)\.anthropic\.|anthropic\.claude)/i.test(modelId)) return true;
-    if (
-      /^arn:aws(-[^:]+)?:bedrock:/i.test(modelId)
-      && /:(inference-profile|application-inference-profile)\//i.test(modelId)
-      && modelId.toLowerCase().includes('claude')
-    ) {
-      return true;
-    }
-    return false;
-  });
+  const modelId = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || '';
+  if (/^((us|eu|ap|global)\.anthropic\.|anthropic\.claude)/i.test(modelId)) return true;
+  if (
+    /^arn:aws(-[^:]+)?:bedrock:/i.test(modelId)
+    && /:(inference-profile|application-inference-profile)\//i.test(modelId)
+    && modelId.toLowerCase().includes('claude')
+  ) {
+    return true;
+  }
+  return false;
 }
 function isVertexProviderEnv() {
   if (process.env.CLAUDE_CODE_USE_VERTEX === '1') return true;
-  return activeModelIds().some((modelId) => modelId.toLowerCase().startsWith('vertex_ai/'));
+  const modelId = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || '';
+  return !!modelId && modelId.toLowerCase().startsWith('vertex_ai/');
 }
 function getActiveModelIds() {
-  return activeModelIds();
-}
-// An endpoint var points at first-party infrastructure only when the URL's own host IS
-// that host or a subdomain of it. A substring match accepted
-// `dashscope.aliyuncs.com.attacker.test` and `https://x.test/?k=anthropic.com` as
-// first-party, so a proxy install was classified as native and the denials built on that
-// answer stopped firing. src/utils/ssrf-guard.ts:validateUrlForSSRF is what the runtime
-// does, and this file's contract is that the inlined copy is no looser than it.
-function isFirstPartyEndpoint(rawUrl, trustedHost) {
-  let parsed;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-  const host = parsed.hostname.toLowerCase();
-  return host === trustedHost || host.endsWith(`.${trustedHost}`);
-}
-// A hook reason is read back as JSON and injected into the agent's context, so any value
-// this file echoes into one has to stay single-line: an operator-set model env (or a
-// model param) carrying CR/LF or ESC bytes would otherwise forge extra lines of the
-// message the model is being told to obey. Capped well above any real model ID.
-function asHookVisibleText(value, max = 200) {
-  return String(value ?? '')
-    .replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
-    .slice(0, max);
+  return [process.env.CLAUDE_MODEL || '', process.env.ANTHROPIC_MODEL || ''].filter(Boolean);
 }
 function isNormalClaudeModelId(modelId) {
   const lower = (modelId || '').toLowerCase();
@@ -133,14 +70,10 @@ function isConfigForceInheritProxyEnv() {
 }
 function isNonClaudeProviderEnv() {
   if (isBedrockProviderEnv() || isVertexProviderEnv()) return true;
-  if (activeModelIds().some((modelId) => !modelId.toLowerCase().includes('claude'))) return true;
+  const modelId = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || '';
+  if (modelId && !modelId.toLowerCase().includes('claude')) return true;
   const baseUrl = process.env.ANTHROPIC_BASE_URL || '';
-  if (baseUrl && !isFirstPartyEndpoint(baseUrl, 'anthropic.com')) return true;
-  // DASHSCOPE_BASE_URL is this fork's endpoint var; reading only the Anthropic one
-  // made a proxy install look like a first-class Anthropic setup (b37141e checked
-  // both).
-  const dashscopeBaseUrl = process.env.DASHSCOPE_BASE_URL || '';
-  if (dashscopeBaseUrl && !isFirstPartyEndpoint(dashscopeBaseUrl, 'dashscope.aliyuncs.com')) return true;
+  if (baseUrl && !baseUrl.includes('anthropic.com')) return true;
   return isConfigForceInheritProxyEnv();
 }
 function acceptsProxyAnthropicDefaultTierValue(key, value) {
@@ -150,11 +83,7 @@ function acceptsProxyAnthropicDefaultTierValue(key, value) {
     && !isBedrockProviderEnv()
     && !isVertexProviderEnv();
 }
-// Both vocabularies have to resolve: this fork routes on tier aliases that fold to
-// DashScope/Qwen defaults, and the ancestor chain (kept) resolves Claude aliases to
-// Bedrock/Anthropic vars. Dropping either one makes a valid config unreadable to the
-// hook, which then denies or stays silent depending on provider.
-const TIER_ALIASES = new Set(['low', 'medium', 'high', 'sonnet', 'opus', 'haiku', 'fable']);
+const TIER_ALIASES = new Set(['sonnet', 'opus', 'haiku', 'fable']);
 function isTierAlias(modelId) {
   return TIER_ALIASES.has((modelId || '').toLowerCase());
 }
@@ -167,9 +96,6 @@ function isTierAlias(modelId) {
 // (sonnet/haiku/opus). Allowing OMQ_MODEL_* as proof would let the hook pass while CC
 // still fails to route the alias, reintroducing the downstream deadlock this gate prevents.
 const TIER_TO_DEFAULT_ENV_KEYS = {
-  low:    ['OMQ_SUBAGENT_MODEL', 'DASHSCOPE_DEFAULT_LOW_MODEL'],
-  medium: ['OMQ_SUBAGENT_MODEL', 'DASHSCOPE_DEFAULT_MEDIUM_MODEL'],
-  high:   ['OMQ_SUBAGENT_MODEL', 'DASHSCOPE_DEFAULT_HIGH_MODEL'],
   haiku:  ['OMQ_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',  'ANTHROPIC_DEFAULT_HAIKU_MODEL'],
   sonnet: ['OMQ_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL'],
   opus:   ['OMQ_SUBAGENT_MODEL', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL',   'ANTHROPIC_DEFAULT_OPUS_MODEL'],
@@ -184,13 +110,8 @@ function resolveTierAliasToSafeModel(tierAlias) {
     // model resolution, which handles [1m] suffixes correctly for explicit model= calls.
     // OMC-internal vars (OMQ_SUBAGENT_MODEL, OMQ_MODEL_*) are not read by CC, so a [1m]
     // value there is not a valid routing proof — keep the stricter isSubagentSafeModelId check.
-    // DASHSCOPE_DEFAULT_* keeps the shape requirement but NOT the suffix exemption:
-    // b37141e skipped the suffix check here, but src/config/models.ts
-    // :isSubagentSafeModelId is the authority for what the sub-agent runtime can take, and
-    // it says a context-window suffix is precisely what it cannot handle. Accepting one as
-    // proof would point the guidance at an ID that fails downstream anyway.
-    const isNativeCcVar = key.startsWith('ANTHROPIC_DEFAULT_')
-      || key.startsWith('CLAUDE_CODE_BEDROCK_');
+    const isAnthropicDefaultTierVar = key.startsWith('ANTHROPIC_DEFAULT_');
+    const isNativeCcVar = isAnthropicDefaultTierVar || key.startsWith('CLAUDE_CODE_BEDROCK_');
     const validator = isNativeCcVar ? isProviderSpecificModelId : isSubagentSafeModelId;
     if (value && (validator(value) || acceptsProxyAnthropicDefaultTierValue(key, value))) return value;
   }
@@ -205,30 +126,6 @@ function normalizeToCcAlias(model) {
   if (lower.includes('haiku'))  return 'haiku';
   if (lower.includes('fable'))  return 'fable';
   return null;
-}
-/** Which provider env var a tier alias resolves through, so guidance names a var the
- *  user's install actually reads instead of one from the other distribution. */
-function tierEnvVarPrefix(tierAlias) {
-  const lower = (tierAlias || '').toLowerCase();
-  return lower === 'low' || lower === 'medium' || lower === 'high'
-    ? 'DASHSCOPE_DEFAULT_'
-    : 'ANTHROPIC_DEFAULT_';
-}
-/**
- * Fold a configured model to the alias vocabulary the runtime accepts. This fork
- * routes on tier aliases (low/medium/high) and its agent config legitimately
- * carries Qwen provider IDs as defaults, so both have to land on an alias --
- * mirroring normalizeToTierAlias in src/features/delegation-enforcer.ts. Claude
- * IDs keep the ancestor's alias vocabulary; the two families are disjoint.
- */
-function normalizeToTierAlias(model) {
-  if (!model) return null;
-  const lower = model.toLowerCase();
-  if (lower === 'low' || lower === 'medium' || lower === 'high') return lower;
-  if (lower.includes('qwen-max')) return 'high';
-  if (lower.includes('qwen-plus')) return 'medium';
-  if (lower.includes('qwen-turbo')) return 'low';
-  return normalizeToCcAlias(model);
 }
 /**
  * Read the `model:` field from an OMC agent definition's YAML frontmatter.
@@ -272,7 +169,7 @@ function readAgentDefinitionModel(subagentType) {
 // Skill vs agent namespace guard (issue #3667)
 //
 // Task/Agent subagent_type identifiers and bundled skills share the same
-// plugin namespace, so a caller can hand a skill name to
+// `oh-my-qoder:` namespace, so a caller can hand a skill name to
 // Task(subagent_type=...) and receive only Claude Code's generic native
 // "Agent type not found". OMQ owns both registries (agents/*.md and
 // skills/*/SKILL.md), so the PreToolUse hook denies the call BEFORE the
@@ -280,9 +177,6 @@ function readAgentDefinitionModel(subagentType) {
 // identifier, and forbids closest-match substitution.
 // ---------------------------------------------------------------------------
 
-// This plugin registers as `oh-my-qoder` (.qoder-plugin/plugin.json), so its own
-// prefixes come first; the ancestor spellings stay because installed hooks, pasted
-// guidance and older sessions still send them.
 const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-qoder:', 'omq:', 'oh-my-claudecode:', 'omc:'];
 const SKILL_IDENTIFIER_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -352,7 +246,7 @@ function parseSkillFrontmatterIdentifiers(content) {
 }
 
 /**
- * Qoder CLI native command names that must not be shadowed by OMQ skill
+ * Claude Code native command names that must not be shadowed by OMQ skill
  * short names. Mirrors src/features/builtin-skills/skills.ts:CC_NATIVE_COMMANDS
  * and toSafeSkillName (plan -> omq-plan).
  */
@@ -371,7 +265,7 @@ const CC_NATIVE_SKILL_COMMANDS = new Set([
 
 function toSafeSkillName(name) {
   const normalized = name.trim();
-  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omq-${normalized}` : normalized;
+  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omc-${normalized}` : normalized;
 }
 /**
  * Whether a bundled skill directory is visible to the current user, mirroring
@@ -508,8 +402,8 @@ function evaluateSkillAsAgentCall(toolName, toolInput, directory) {
   const { name } = splitAgentNamespace(subagentType);
   // Always suggest the canonical plugin-namespaced identifier. A bare skill
   // name can resolve to a different project/user skill or fail: bundled
-  // skills are exposed under this plugin's own `oh-my-qoder:` namespace (issue
-  // #3667 review), so the recovery must be unambiguous regardless of the caller's
+  // skills are exposed under the `oh-my-qoder:` namespace (issue #3667
+  // review), so the recovery must be unambiguous regardless of the caller's
   // input namespace form.
   const skillIdentifier = `oh-my-qoder:${skill.primary}`;
   const isPrimaryMatch = name.toLowerCase() === skill.primary.toLowerCase();
@@ -777,7 +671,6 @@ const MODE_STATE_FILES = [
   'ultrapilot-state.json',
   'ralph-state.json',
   'ultragoal-state.json',
-  'ultrawork-state.json',
   'pipeline-state.json',
   'team-state.json',
   'omc-teams-state.json',
@@ -1596,12 +1489,12 @@ const SKILL_PROTECTION_MAP = {
   'deep-interview': 'heavy',
   review: 'medium', 'external-context': 'medium',
   'ai-slop-cleaner': 'medium',
-  sciomc: 'medium', learner: 'medium', 'omc-setup': 'medium',
+  sciomc: 'medium', learner: 'medium', 'omq-setup': 'medium', 'omc-setup': 'medium',
   setup: 'medium',        // alias for omc-setup
   'mcp-setup': 'medium', 'project-session-manager': 'medium',
   psm: 'medium',          // alias for project-session-manager
   'writer-memory': 'medium', 'ralph-init': 'medium',
-  release: 'medium', ccg: 'medium',
+  release: 'medium',
 
   // === Heavy protection (long-running, 10 reinforcements) ===
   deepinit: 'heavy',
@@ -1738,13 +1631,9 @@ function confirmSkillModeStates(stateDir, skillName, sessionId) {
   switch (skillName) {
     case 'ralph':
       clearAwaitingConfirmationFlag(stateDir, 'ralph', sessionId);
-      clearAwaitingConfirmationFlag(stateDir, 'ultrawork', sessionId);
       break;
     case 'ultragoal':
       clearAwaitingConfirmationFlag(stateDir, 'ultragoal', sessionId);
-      break;
-    case 'ultrawork':
-      clearAwaitingConfirmationFlag(stateDir, 'ultrawork', sessionId);
       break;
     case 'autopilot':
       clearAwaitingConfirmationFlag(stateDir, 'autopilot', sessionId);
@@ -1864,22 +1753,16 @@ async function main() {
         // Check both vars: if either carries [1m] the session model is unsafe for sub-agents.
         // Avoids a split-brain between the hook and runtime code that may read the vars in
         // different orders (e.g. model-contract.ts uses ANTHROPIC_MODEL first).
-        // Session model lives in different vars per distribution: this fork and CN
-        // installs publish QODER_MODEL / DASHSCOPE_MODEL, the ancestor chain publishes
-        // CLAUDE_MODEL / ANTHROPIC_MODEL. Reading only the second pair made the hook
-        // blind to the real session model here, so a [1m] Qwen session passed the
-        // gate and the sub-agent failed downstream.
-        const sessionVars = [
-          process.env.QODER_MODEL || '',
-          process.env.DASHSCOPE_MODEL || '',
-          process.env.CLAUDE_MODEL || '',
-          process.env.ANTHROPIC_MODEL || '',
-        ].filter(Boolean);
-        const lmSuffixedVar = sessionVars.find((v) => hasExtendedContextSuffix(v)) || '';
-        const sessionHasLmSuffix = Boolean(lmSuffixedVar);
+        const claudeModel = process.env.CLAUDE_MODEL || '';
+        const anthropicModel = process.env.ANTHROPIC_MODEL || '';
+        const sessionHasLmSuffix =
+          hasExtendedContextSuffix(claudeModel) || hasExtendedContextSuffix(anthropicModel);
         // For error messages: prefer whichever var actually carries the [1m] suffix.
-        // Sanitised at the source so every use of it in a model-visible string is single-line.
-        const sessionModel = asHookVisibleText(lmSuffixedVar || sessionVars[0] || '');
+        const sessionModel = hasExtendedContextSuffix(claudeModel)
+          ? claudeModel
+          : hasExtendedContextSuffix(anthropicModel)
+            ? anthropicModel
+            : claudeModel || anthropicModel;
 
         if (toolModel) {
           // Allow tier aliases (sonnet/opus/haiku) when a subagent-safe model can be
@@ -1889,18 +1772,16 @@ async function main() {
             // fall through to continue — tier alias resolves to a safe provider-specific ID
           } else if (!isSubagentSafeModelId(toolModel)) {
             const tierUpper = isTierAlias(toolModel) ? toolModel.toUpperCase() : '';
-            const derivedAlias = tierUpper ? toolModel.toUpperCase() : normalizeToTierAlias(toolModel);
-            const derivedTier = (derivedAlias || '').toUpperCase();
-            const proxyProvider = isNonClaudeProviderEnv();
+            const derivedTier = tierUpper || (normalizeToCcAlias(toolModel) || '').toUpperCase();
             const guidance = derivedTier
-              ? `Set ${tierEnvVarPrefix(derivedAlias)}${derivedTier}_MODEL=<valid-model-id> in settings.json env, or set OMQ_SUBAGENT_MODEL as a global override.`
-              : `Remove the \`model\` parameter, or set ${proxyProvider ? 'DASHSCOPE_DEFAULT_MEDIUM_MODEL=<valid-model-id>' : 'ANTHROPIC_DEFAULT_SONNET_MODEL=<valid-bedrock-id>'} in settings.json env.`;
+              ? `Set ANTHROPIC_DEFAULT_${derivedTier}_MODEL=<valid-bedrock-id> in settings.json env, or set OMQ_SUBAGENT_MODEL as a global override.`
+              : `Remove the \`model\` parameter, or set ANTHROPIC_DEFAULT_SONNET_MODEL=<valid-bedrock-id> in settings.json env.`;
             console.log(JSON.stringify({
               continue: true,
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',
                 permissionDecision: 'deny',
-                permissionDecisionReason: `[MODEL ROUTING] This environment uses a non-standard provider (Bedrock/Vertex/proxy). ${guidance} The model "${asHookVisibleText(toolModel)}" is not valid for this provider.`
+                permissionDecisionReason: `[MODEL ROUTING] This environment uses a non-standard provider (Bedrock/Vertex/proxy). ${guidance} The model "${toolModel}" is not valid for this provider.`
               }
             }));
             return;
@@ -1912,13 +1793,11 @@ async function main() {
           // Anthropic model ID (e.g. claude-sonnet-5) which is invalid on Bedrock.
           // Fix: pass a tier alias (sonnet/haiku/opus). The Agent tool schema only accepts
           // tier aliases for the model param — full Bedrock IDs are rejected by the schema.
-          const tierAlias = normalizeToTierAlias(sessionModel)
-            || (isNonClaudeProviderEnv() ? 'medium' : 'sonnet');
+          const tierAlias = normalizeToCcAlias(sessionModel) || 'sonnet';
           const resolvedSafe = resolveTierAliasToSafeModel(tierAlias);
-          const resolvesOnBedrock = tierEnvVarPrefix(tierAlias) === 'ANTHROPIC_DEFAULT_';
           const suggestion = resolvedSafe
-            ? `Pass model="${tierAlias}" explicitly on this ${toolName} call — tier aliases resolve cleanly${resolvesOnBedrock ? ' on Bedrock' : ''}.`
-            : `Pass model="${tierAlias}" explicitly on this ${toolName} call, and set ${tierEnvVarPrefix(tierAlias)}${tierAlias.toUpperCase()}_MODEL=<valid-model-id> in settings.json env.`;
+            ? `Pass model="${tierAlias}" explicitly on this ${toolName} call — tier aliases resolve cleanly on Bedrock.`
+            : `Pass model="${tierAlias}" explicitly on this ${toolName} call, and set ANTHROPIC_DEFAULT_${tierAlias.toUpperCase()}_MODEL=<valid-bedrock-id> in settings.json env.`;
           console.log(JSON.stringify({
             continue: true,
             hookSpecificOutput: {
@@ -1939,7 +1818,7 @@ async function main() {
           // Only deny when a safe routing target exists for the derived tier alias.
           // Without a routing target the tier-alias escape hatch doesn't exist, so blocking
           // would strand Claude in a retry loop with no viable path forward.
-          const defTierAlias = agentDefModel ? normalizeToTierAlias(agentDefModel) : null;
+          const defTierAlias = agentDefModel ? normalizeToCcAlias(agentDefModel) : null;
           const resolvedModel = defTierAlias ? resolveTierAliasToSafeModel(defTierAlias) : '';
           const hasSafeRouting = !!resolvedModel;
           if (agentDefModel && !isSubagentSafeModelId(agentDefModel) && !isTierAlias(agentDefModel)
@@ -1967,7 +1846,7 @@ async function main() {
         // updatedInput so the spawned subagent runs on the configured model.
         const configuredModel = resolveConfiguredAgentModel(toolInput.subagent_type, directory);
         if (configuredModel && configuredModel !== 'inherit') {
-          const normalizedModel = normalizeToTierAlias(configuredModel);
+          const normalizedModel = normalizeToCcAlias(configuredModel);
           if (normalizedModel) {
             updatedToolInput = { ...toolInput, model: normalizedModel };
           }

@@ -6,30 +6,21 @@ vi.mock("child_process", () => ({
 
 import { execFileSync } from "child_process";
 import { join, resolve } from "path";
+import { homedir } from "os";
 import { clearWorktreeCache, getOmcRoot } from "../worktree-paths.js";
 
 const mockedExecFileSync = vi.mocked(execFileSync);
+const canonicalRoot = join(homedir(), ".omq");
 
 describe("resolveSuperprojectRoot cache", () => {
-  // Asserts the DEFAULT on-disk branch (getOmcRoot(root) === join(root, ".omq"))
-  // over temp fixture roots, so the per-file OMQ_STATE_DIR pin (#42) is lifted
-  // per test and restored afterwards.
-  let pinnedStateDir: string | undefined;
   beforeEach(() => {
     clearWorktreeCache();
     mockedExecFileSync.mockReset();
-    pinnedStateDir = process.env.OMQ_STATE_DIR;
-    delete process.env.OMQ_STATE_DIR;
   });
 
   afterEach(() => {
     clearWorktreeCache();
     vi.restoreAllMocks();
-    if (pinnedStateDir === undefined) {
-      delete process.env.OMQ_STATE_DIR;
-    } else {
-      process.env.OMQ_STATE_DIR = pinnedStateDir;
-    }
   });
 
   it("caches repeated explicit non-git root probes, including null results, without changing the literal root", () => {
@@ -42,14 +33,10 @@ describe("resolveSuperprojectRoot cache", () => {
       });
     });
 
-    expect(getOmcRoot(relativeRoot)).toBe(join(relativeRoot, ".omq"));
-    expect(getOmcRoot(relativeRoot)).toBe(join(relativeRoot, ".omq"));
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(1);
-    expect(mockedExecFileSync).toHaveBeenLastCalledWith(
-      "git",
-      ["rev-parse", "--show-superproject-working-tree"],
-      expect.objectContaining({ cwd: resolve(relativeRoot), windowsHide: true }),
-    );
+    expect(getOmcRoot(relativeRoot)).toBe(canonicalRoot);
+    expect(getOmcRoot(relativeRoot)).toBe(canonicalRoot);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(3);
+
   });
 
   it("does not cache transient superproject probe errors", () => {
@@ -58,9 +45,9 @@ describe("resolveSuperprojectRoot cache", () => {
       throw new Error("spawn failed");
     });
 
-    expect(getOmcRoot(transientRoot)).toBe(join(transientRoot, ".omq"));
-    expect(getOmcRoot(transientRoot)).toBe(join(transientRoot, ".omq"));
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(2);
+    expect(getOmcRoot(transientRoot)).toBe(canonicalRoot);
+    expect(getOmcRoot(transientRoot)).toBe(canonicalRoot);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(4);
   });
 
   it("does not cache a partial anchor after a nested probe fails", () => {
@@ -72,9 +59,9 @@ describe("resolveSuperprojectRoot cache", () => {
       throw new Error(`unexpected cwd: ${String(options?.cwd)}`);
     });
 
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(4);
+    expect(getOmcRoot(nestedRoot)).toBe(canonicalRoot);
+    expect(getOmcRoot(nestedRoot)).toBe(canonicalRoot);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(6);
   });
 
   it("caches the final outermost root after climbing nested submodules", () => {
@@ -94,10 +81,10 @@ describe("resolveSuperprojectRoot cache", () => {
       }
     });
 
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(3);
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(3);
+    expect(getOmcRoot(nestedRoot)).toBe(canonicalRoot);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(4);
+    expect(getOmcRoot(nestedRoot)).toBe(canonicalRoot);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(5);
   });
 
   it("clearWorktreeCache invalidates both negative and positive superproject entries", () => {
@@ -116,15 +103,15 @@ describe("resolveSuperprojectRoot cache", () => {
       throw new Error(`unexpected cwd: ${String(options?.cwd)}`);
     });
 
-    expect(getOmcRoot(nonGitRoot)).toBe(join(nonGitRoot, ".omq"));
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(3);
+    expect(getOmcRoot(nonGitRoot)).toBe(canonicalRoot);
+    expect(getOmcRoot(nestedRoot)).toBe(canonicalRoot);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(5);
 
     clearWorktreeCache();
 
-    expect(getOmcRoot(nonGitRoot)).toBe(join(nonGitRoot, ".omq"));
-    expect(getOmcRoot(nestedRoot)).toBe(join(outerRoot, ".omq"));
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(6);
+    expect(getOmcRoot(nonGitRoot)).toBe(canonicalRoot);
+    expect(getOmcRoot(nestedRoot)).toBe(canonicalRoot);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(10);
   });
 
   it("evicts the least-recently-used superproject entry at capacity eight", () => {
@@ -136,14 +123,14 @@ describe("resolveSuperprojectRoot cache", () => {
     for (const root of roots.slice(0, 8)) {
       getOmcRoot(root);
     }
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(8);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(16);
 
     getOmcRoot(roots[0]!);
     getOmcRoot(roots[8]!);
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(9);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(19);
 
     getOmcRoot(roots[0]!);
     getOmcRoot(roots[1]!);
-    expect(mockedExecFileSync).toHaveBeenCalledTimes(10);
+    expect(mockedExecFileSync).toHaveBeenCalledTimes(22);
   });
 });

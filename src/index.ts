@@ -53,7 +53,7 @@ export {
   REPO_OWNER,
   REPO_NAME,
   GITHUB_API_URL,
-  QODER_CONFIG_DIR,
+  QODER_CONFIG_DIR as CLAUDE_CONFIG_DIR,
   VERSION_FILE,
   // Auto-update functions
   getInstalledVersion,
@@ -207,7 +207,7 @@ export {
   isInstalled,
   getInstallInfo,
   isClaudeInstalled,
-  QODER_CONFIG_DIR as INSTALLER_QODER_CONFIG_DIR,
+  QODER_CONFIG_DIR as INSTALLER_CLAUDE_CONFIG_DIR,
   AGENTS_DIR,
   COMMANDS_DIR,
   VERSION as INSTALLER_VERSION,
@@ -277,7 +277,7 @@ export interface OmcSession {
  *
  * // Use with Claude Agent SDK
  * for await (const message of query({
- *   prompt: session.processPrompt("ultrawork refactor the authentication module"),
+ *   prompt: session.processPrompt("analyze the authentication module"),
  *   ...session.queryOptions
  * })) {
  *   console.log(message);
@@ -425,5 +425,3 @@ export function getOmqSystemPrompt(options?: {
 
   return prompt;
 }
-
-// Ancestor-spelling alias for the same prompt text.

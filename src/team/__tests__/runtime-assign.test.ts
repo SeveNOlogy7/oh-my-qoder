@@ -1,10 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const mocks = vi.hoisted(() => ({
   sendToWorker: vi.fn(),
@@ -19,18 +16,36 @@ vi.mock('../tmux-session.js', async () => {
 });
 
 describe('assignTask trigger delivery', () => {
-  useDefaultStateRoot();
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+  let previousStateDir: string | undefined;
+
   beforeEach(() => {
     mocks.sendToWorker.mockReset();
+  });
+
+  afterEach(() => {
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
   });
 
   it('rolls task assignment back when tmux trigger cannot be delivered', async () => {
     const { assignTask } = await import('../runtime.js');
     const cwd = mkdtempSync(join(tmpdir(), 'team-runtime-assign-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    process.env.HOME = cwd;
+    process.env.USERPROFILE = cwd;
+    delete process.env.OMQ_STATE_DIR;
     const teamName = 'assign-team';
     const root = join(cwd, '.omq', 'state', 'team', teamName);
     mkdirSync(join(root, 'tasks'), { recursive: true });
-    writeFileSync(join(root, 'tasks', '1.json'), JSON.stringify({
+    writeFileSync(join(root, 'tasks', 'task-1.json'), JSON.stringify({
       id: '1',
       subject: 's',
       description: 'd',
@@ -44,7 +59,7 @@ describe('assignTask trigger delivery', () => {
     await expect(assignTask(teamName, '1', 'worker-1', '%1', 'session:0', cwd))
       .rejects.toThrow('worker_notify_failed:worker-1:new-task:1');
 
-    const task = JSON.parse(readFileSync(join(root, 'tasks', '1.json'), 'utf-8')) as {
+    const task = JSON.parse(readFileSync(join(root, 'tasks', 'task-1.json'), 'utf-8')) as {
       status: string;
       owner: string | null;
     };
@@ -52,6 +67,37 @@ describe('assignTask trigger delivery', () => {
     expect(task.owner).toBeNull();
     expect(mocks.sendToWorker).toHaveBeenCalledTimes(6);
 
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it('instructs the worker to use the canonical task file that was updated', async () => {
+    const { assignTask } = await import('../runtime.js');
+    const cwd = mkdtempSync(join(tmpdir(), 'team-runtime-assign-success-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = cwd;
+    process.env.USERPROFILE = cwd;
+    const root = join(cwd, '.omq', 'state', 'team', 'assign-team');
+    mkdirSync(join(root, 'tasks'), { recursive: true });
+    writeFileSync(join(root, 'tasks', 'task-1.json'), JSON.stringify({
+      id: '1',
+      subject: 's',
+      description: 'd',
+      status: 'pending',
+      owner: null,
+      createdAt: new Date().toISOString(),
+    }), 'utf-8');
+    mocks.sendToWorker.mockResolvedValue(true);
+
+    await assignTask('assign-team', '1', 'worker-1', '%1', 'session:0', cwd);
+
+    const inbox = readFileSync(join(root, 'workers', 'worker-1', 'inbox.md'), 'utf-8');
+    expect(inbox).toContain(join(root, 'tasks', 'task-1.json'));
+    const task = JSON.parse(readFileSync(join(root, 'tasks', 'task-1.json'), 'utf-8')) as {
+      status: string;
+      owner: string | null;
+    };
+    expect(task).toMatchObject({ status: 'in_progress', owner: 'worker-1' });
     rmSync(cwd, { recursive: true, force: true });
   });
 });

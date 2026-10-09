@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { execFileSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
@@ -9,16 +10,6 @@ import { renderAutopilot } from '../elements/autopilot.js';
 import { redactAutopilotPublicState } from '../../tools/state-tools.js';
 import { formatAutopilotRuntimeInsight } from '../../hooks/autopilot/runtime-insight.js';
 import { writeHudState } from '../state.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
-// Anchors the redaction test hud-state write: its in-repo .tmp fixture
-// would be normalized up to the repo toplevel by validateWorkingDirectory
-// (#576) and land in the real .omq/state. Under the per-test cwd fixture
-// it resolves inside the throwaway dir instead (T16b).
-import { useCwdFixture } from '../../__tests__/helpers/cwd-fixture.js';
-
-useCwdFixture();
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -39,10 +30,7 @@ const profileHash = createHash('sha256').update(canonicalJson({
 
 function workflowState(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const sessionId = '11111111-1111-4111-8111-111111111111';
-  // Platform-absolute root: the structural validator requires transcriptPath
-  // to BE a resolved absolute path, and a POSIX-literal '/tmp/...' string is
-  // not one on win32 (drive-relative resolution).
-  const transcriptRoot = join(tmpdir(), 'omc-autopilot-profile-transcripts');
+  const transcriptRoot = '/tmp/omc-autopilot-profile-transcripts';
   const initialIdentity = {
     device: 0,
     inode: 0,
@@ -53,7 +41,7 @@ function workflowState(overrides: Record<string, unknown> = {}): Record<string, 
   };
   const stableIdentity = { ...initialIdentity, size: 1, contentSha256: '1'.repeat(64) };
   const activationBoundary = {
-    transcriptPath: join(transcriptRoot, `${sessionId}.jsonl`),
+    transcriptPath: `${transcriptRoot}/${sessionId}.jsonl`,
     transcriptRoot,
     transcriptBasename: `${sessionId}.jsonl`,
     sessionId,
@@ -109,10 +97,32 @@ function workflowState(overrides: Record<string, unknown> = {}): Record<string, 
 }
 
 describe('autopilot workflow profile observability', () => {
-  useDefaultStateRoot();
   const directories: string[] = [];
+  const restorers: Array<() => void> = [];
+
+  function makeFixture(prefix: string): string {
+    const directory = mkdtempSync(join(tmpdir(), prefix));
+    execFileSync('git', ['init'], { cwd: directory, stdio: 'pipe' });
+    const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
+    const previousStateDir = process.env.OMQ_STATE_DIR;
+    process.env.HOME = directory;
+    process.env.USERPROFILE = directory;
+    delete process.env.OMQ_STATE_DIR;
+    directories.push(directory);
+    restorers.push(() => {
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
+      if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+      else process.env.OMQ_STATE_DIR = previousStateDir;
+    });
+    return directory;
+  }
 
   afterEach(() => {
+    for (const restore of restorers.splice(0).reverse()) restore();
     for (const directory of directories.splice(0)) {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -126,8 +136,7 @@ describe('autopilot workflow profile observability', () => {
       stages,
     })).digest('hex');
 
-    const directory = mkdtempSync(join(tmpdir(), 'omc-autopilot-profile-'));
-    directories.push(directory);
+    const directory = makeFixture('omc-autopilot-profile-');
     const statePath = join(directory, '.omq', 'state', 'autopilot-state.json');
     mkdirSync(join(statePath, '..'), { recursive: true });
     writeFileSync(statePath, JSON.stringify(workflowState({
@@ -148,8 +157,7 @@ describe('autopilot workflow profile observability', () => {
   });
 
   it('marks a malformed workflow descriptor invalid when reading HUD state', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'omc-autopilot-profile-'));
-    directories.push(directory);
+    const directory = makeFixture('omc-autopilot-profile-');
     const statePath = join(directory, '.omq', 'state', 'autopilot-state.json');
     mkdirSync(join(statePath, '..'), { recursive: true });
     writeFileSync(statePath, JSON.stringify(workflowState({
@@ -162,8 +170,7 @@ describe('autopilot workflow profile observability', () => {
   });
 
   it('marks a falsy named-workflow marker invalid instead of rendering legacy autopilot state', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'omc-autopilot-profile-'));
-    directories.push(directory);
+    const directory = makeFixture('omc-autopilot-profile-');
     const statePath = join(directory, '.omq', 'state', 'autopilot-state.json');
     mkdirSync(join(statePath, '..'), { recursive: true });
     writeFileSync(statePath, JSON.stringify({
@@ -208,8 +215,7 @@ describe('autopilot workflow profile observability', () => {
   });
 
   it('bounds and redacts Stop-facing runtime insight fields', () => {
-    const directory = mkdtempSync(join(process.cwd(), '.tmp-omc-runtime-insight-profile-'));
-    directories.push(directory);
+    const directory = makeFixture('.tmp-omc-runtime-insight-profile-');
     writeHudState({
       timestamp: new Date().toISOString(),
       backgroundTasks: [{

@@ -3,9 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { getSessionStartTime, recordSessionMetrics, type SessionEndInput } from '../index.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 /**
  * Tests for issue #573: session duration was overreported because
@@ -15,6 +12,8 @@ import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-ro
  */
 
 let tmpDir: string;
+let previousHome: string | undefined;
+let previousUserProfile: string | undefined;
 
 function stateDir(): string {
   return path.join(tmpDir, '.omq', 'state');
@@ -40,14 +39,21 @@ function makeInput(overrides?: Partial<SessionEndInput>): SessionEndInput {
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-duration-test-'));
+  previousHome = process.env.HOME;
+  previousUserProfile = process.env.USERPROFILE;
+  process.env.HOME = tmpDir;
+  process.env.USERPROFILE = tmpDir;
 });
 
 afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
+  if (previousHome === undefined) delete process.env.HOME;
+  else process.env.HOME = previousHome;
+  if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = previousUserProfile;
 });
 
 describe('getSessionStartTime', () => {
-  useDefaultStateRoot();
   it('returns undefined when state dir does not exist', () => {
     expect(getSessionStartTime(tmpDir, 'any-session')).toBeUndefined();
   });
@@ -240,7 +246,6 @@ describe('getSessionStartTime', () => {
 });
 
 describe('recordSessionMetrics - duration accuracy (issue #573)', () => {
-  useDefaultStateRoot();
   it('computes correct duration when matching session state exists', () => {
     writeState('ultrawork-state.json', {
       active: true,

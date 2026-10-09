@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { clearWorktreeCache } from '../../lib/worktree-paths.js';
 import { logAuditEvent, readAuditLog } from '../audit-log.js';
@@ -28,12 +28,8 @@ import {
   installWorktreeRootAgents,
   restoreWorktreeRootAgents,
 } from '../git-worktree.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe('multi-repo workspace team writes', () => {
-  useDefaultStateRoot();
   let parent: string;
   let api: string;
   const teamName = 'multi-repo-team';
@@ -41,7 +37,7 @@ describe('multi-repo workspace team writes', () => {
   beforeEach(() => {
     clearWorktreeCache();
     // Non-git parent holding the workspace marker, with a git sub-repo inside.
-    parent = mkdtempSync(join(tmpdir(), 'omq-multirepo-team-'));
+    parent = mkdtempSync(join(homedir(), 'omq-multirepo-team-'));
     writeFileSync(join(parent, '.omq-workspace'), '{}');
     api = join(parent, 'api');
     mkdirSync(api, { recursive: true });
@@ -62,7 +58,7 @@ describe('multi-repo workspace team writes', () => {
     if (parent) rmSync(parent, { recursive: true, force: true });
   });
 
-  const sharedOmq = () => join(parent, '.omq');
+  const sharedOmc = () => join(parent, '.omq');
 
   it('audit log writes land under the shared .omq, not the sub-repo', () => {
     const event: AuditEvent = {
@@ -74,7 +70,7 @@ describe('multi-repo workspace team writes', () => {
 
     expect(() => logAuditEvent(api, event)).not.toThrow();
 
-    const logPath = join(sharedOmq(), 'logs', `team-bridge-${teamName}.jsonl`);
+    const logPath = join(sharedOmc(), 'logs', `team-bridge-${teamName}.jsonl`);
     expect(existsSync(logPath)).toBe(true);
     // Must NOT have written into the sub-repo's local .omq.
     expect(existsSync(join(api, '.omq', 'logs', `team-bridge-${teamName}.jsonl`))).toBe(false);
@@ -96,14 +92,14 @@ describe('multi-repo workspace team writes', () => {
 
     expect(() => recordTaskUsage(api, teamName, record)).not.toThrow();
 
-    const logPath = join(sharedOmq(), 'logs', `team-usage-${teamName}.jsonl`);
+    const logPath = join(sharedOmc(), 'logs', `team-usage-${teamName}.jsonl`);
     expect(existsSync(logPath)).toBe(true);
   });
 
   it('restart state writes under the shared .omq without traversal error', () => {
     expect(() => recordRestart(api, teamName, 'worker1')).not.toThrow();
 
-    const statePath = join(sharedOmq(), 'state', 'team-bridge', teamName, 'worker1.restart.json');
+    const statePath = join(sharedOmc(), 'state', 'team-bridge', teamName, 'worker1.restart.json');
     expect(existsSync(statePath)).toBe(true);
 
     const state = readRestartState(api, teamName, 'worker1');
@@ -117,9 +113,9 @@ describe('multi-repo workspace team writes', () => {
     }).not.toThrow();
 
     // Worktree and metadata live under the shared workspace .omq, above the repo.
-    expect(info.path.startsWith(join(sharedOmq(), 'team'))).toBe(true);
+    expect(info.path.startsWith(join(sharedOmc(), 'team'))).toBe(true);
     expect(existsSync(info.path)).toBe(true);
-    expect(existsSync(join(sharedOmq(), 'state', 'team', teamName, 'worktrees.json'))).toBe(true);
+    expect(existsSync(join(sharedOmc(), 'state', 'team', teamName, 'worktrees.json'))).toBe(true);
     expect(listTeamWorktrees(teamName, api).map(w => w.workerName)).toContain('worker1');
 
     expect(() =>

@@ -235,8 +235,14 @@ function main() {
         process.exit(2);
       }
       const uncounted = uncountedFailEntries(vitestOutput);
-      if (tally.tests !== null && actualFailures.length !== tally.tests + tally.collection + uncounted.length) {
-        console.error(`\n❌ Incomplete parse: ${actualFailures.length} FAIL entries read, but vitest reported`
+      // `parseVitestOutput` dedupes; the raw FAIL-line count is what equals the
+      // tally's arithmetic. Measured 2026-10-09 on the v5.1.0 transition log:
+      // 1455 deduped + 2 duplicate lines = 1457 = 1445 failed tests + 11
+      // collection errors + 1 uncounted line. Comparing the deduped count alone
+      // refused every log carrying a retried attempt.
+      const collapsed = collapsedFailLines(vitestOutput);
+      if (tally.tests !== null && actualFailures.length + collapsed !== tally.tests + tally.collection + uncounted.length) {
+        console.error(`\n❌ Incomplete parse: ${actualFailures.length} FAIL entries (+${collapsed} collapsed duplicate line(s)) read, but vitest reported`
           + ` ${tally.tests} failed tests + ${tally.collection} module-level collection errors`
           + ` + ${uncounted.length} uncounted FAIL line(s) = ${tally.tests + tally.collection + uncounted.length}.`
           + ` The log is truncated or the parser stopped matching.`);
@@ -251,7 +257,6 @@ function main() {
         + ` across ${parsedFiles} files (vitest tally agrees)`);
       // Say it out loud rather than absorb it: collapsing is right for retries, but the
       // same shape also hides two tests that share a title, and that is a test-side bug.
-      const collapsed = collapsedFailLines(vitestOutput);
       if (collapsed) {
         console.log(`Note:    ${collapsed} duplicate FAIL line(s) collapsed -- retried attempts, or two tests sharing a title.`);
       }

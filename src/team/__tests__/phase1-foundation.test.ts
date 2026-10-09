@@ -5,13 +5,26 @@ import { tmpdir } from 'os';
 
 import type { TeamConfig, TeamManifestV2 } from '../types.js';
 import { executeTeamApiOperation } from '../api-interop.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
+
+function isolateFixtureRoot(root: string): () => void {
+  const home = process.env.HOME;
+  const userProfile = process.env.USERPROFILE;
+  const stateDir = process.env.OMQ_STATE_DIR;
+  process.env.HOME = root;
+  process.env.USERPROFILE = root;
+  delete process.env.OMQ_STATE_DIR;
+  return () => {
+    if (home === undefined) delete process.env.HOME;
+    else process.env.HOME = home;
+    if (userProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = userProfile;
+    if (stateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = stateDir;
+  };
+}
 
 // Step 1.1: lifecycle_profile type compilation tests
 describe('lifecycle_profile type field', () => {
-  useDefaultStateRoot();
   it('TeamConfig accepts lifecycle_profile as optional field', () => {
     const config: Partial<TeamConfig> = {
       lifecycle_profile: 'default',
@@ -53,8 +66,8 @@ describe('lifecycle_profile type field', () => {
 
 // Step 1.2: state root resolution priority tests
 describe('state root resolution priority: config > manifest > cwd-walk', () => {
-  useDefaultStateRoot();
   let cwd: string;
+  let restoreFixtureEnv: (() => void) | undefined;
   const teamName = 'priority-test-team';
 
   async function seedBase(): Promise<string> {
@@ -75,11 +88,18 @@ describe('state root resolution priority: config > manifest > cwd-walk', () => {
 
   beforeEach(async () => {
     cwd = await mkdtemp(join(tmpdir(), 'omq-phase1-priority-'));
+    restoreFixtureEnv = isolateFixtureRoot(cwd);
   });
 
   afterEach(async () => {
-    delete process.env.OMQ_TEAM_STATE_ROOT;
-    await rm(cwd, { recursive: true, force: true });
+    const restore = restoreFixtureEnv;
+    restoreFixtureEnv = undefined;
+    try {
+      restore?.();
+    } finally {
+      delete process.env.OMQ_TEAM_STATE_ROOT;
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it('uses config.team_state_root when only config is present', async () => {
@@ -87,10 +107,10 @@ describe('state root resolution priority: config > manifest > cwd-walk', () => {
     await writeFile(join(base, 'config.json'), JSON.stringify({
       name: teamName,
       task: 'test',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_count: 1,
       max_workers: 20,
-      workers: [{ name: 'worker-1', index: 1, role: 'qwen', assigned_tasks: [] }],
+      workers: [{ name: 'worker-1', index: 1, role: 'claude', assigned_tasks: [] }],
       created_at: '2026-03-15T00:00:00.000Z',
       next_task_id: 2,
       team_state_root: base,
@@ -126,10 +146,10 @@ describe('state root resolution priority: config > manifest > cwd-walk', () => {
     await writeFile(join(base, 'config.json'), JSON.stringify({
       name: teamName,
       task: 'test',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_count: 1,
       max_workers: 20,
-      workers: [{ name: 'worker-1', index: 1, role: 'qwen', assigned_tasks: [] }],
+      workers: [{ name: 'worker-1', index: 1, role: 'claude', assigned_tasks: [] }],
       created_at: '2026-03-15T00:00:00.000Z',
       next_task_id: 2,
       team_state_root: base,
@@ -151,10 +171,10 @@ describe('state root resolution priority: config > manifest > cwd-walk', () => {
     await writeFile(join(base, 'config.json'), JSON.stringify({
       name: teamName,
       task: 'test',
-      agent_type: 'qwen',
+      agent_type: 'claude',
       worker_count: 1,
       max_workers: 20,
-      workers: [{ name: 'worker-1', index: 1, role: 'qwen', assigned_tasks: [] }],
+      workers: [{ name: 'worker-1', index: 1, role: 'claude', assigned_tasks: [] }],
       created_at: '2026-03-15T00:00:00.000Z',
       next_task_id: 2,
       team_state_root: base,

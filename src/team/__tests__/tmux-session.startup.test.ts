@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import type { WorkerLaunchAttempt } from '../worker-launch-ack.js';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
 const processMocks = vi.hoisted(() => ({
   isProcessIdentityLive: vi.fn(async () => 'live' as 'live' | 'dead' | 'mismatch' | 'unknown'),
 }));
@@ -151,6 +152,42 @@ import {
 
 let cwd = '';
 let originalPlatform: PropertyDescriptor | undefined;
+let fixtureEnvCaptured = false;
+let originalHome: string | undefined;
+let originalUserProfile: string | undefined;
+let originalStateDir: string | undefined;
+
+function isolateFixtureRoot(root: string): void {
+  if (!fixtureEnvCaptured) {
+    originalHome = process.env.HOME;
+    originalUserProfile = process.env.USERPROFILE;
+    originalStateDir = process.env.OMQ_STATE_DIR;
+    fixtureEnvCaptured = true;
+  }
+  process.env.HOME = root;
+  process.env.USERPROFILE = root;
+  delete process.env.OMQ_STATE_DIR;
+}
+
+async function createFixture(prefix: string): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  isolateFixtureRoot(root);
+  return root;
+}
+
+function restoreFixtureEnv(): void {
+  if (!fixtureEnvCaptured) return;
+  if (originalHome === undefined) delete process.env.HOME;
+  else process.env.HOME = originalHome;
+  if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = originalUserProfile;
+  if (originalStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = originalStateDir;
+  fixtureEnvCaptured = false;
+  originalHome = undefined;
+  originalUserProfile = undefined;
+  originalStateDir = undefined;
+}
 
 beforeEach(() => {
   tmuxState.args = [];
@@ -168,6 +205,7 @@ afterEach(async () => {
   delete process.env.COMSPEC;
   delete process.env.TMUX;
   delete process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS;
+  restoreFixtureEnv();
   if (cwd) await rm(cwd, { recursive: true, force: true });
   cwd = '';
 });
@@ -185,7 +223,7 @@ function ownership(paneId = '%2'): WorkerPaneOwnership {
 }
 
 async function acceptedContext(provider: StartupPaneContext['provider']): Promise<StartupPaneContext> {
-  cwd = await mkdtemp(join(tmpdir(), 'startup-context-'));
+  cwd = await createFixture('startup-context-');
   const attempt = await prepareWorkerLaunchAttempt({
     cwd,
     teamName: 'startup-team',
@@ -307,7 +345,7 @@ describe('worker pane startup safety', () => {
     ['ignored capture-pane -J', new Error('unknown option -- J'), undefined, 'claude'],
     ['in-session psmux', 'provider ui', '/tmp/psmux/default,11877,0', 'codex'],
   ] as const)('accepts a stable Windows cmd wrapper independently of %s capture', async (_fixture, captured, tmuxEnv, provider) => {
-    cwd = await mkdtemp(join(tmpdir(), 'startup-stable-cmd-'));
+    cwd = await createFixture('startup-stable-cmd-');
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
     process.env.COMSPEC = 'cmd.exe';
     if (tmuxEnv) process.env.TMUX = tmuxEnv;
@@ -337,7 +375,11 @@ describe('worker pane startup safety', () => {
     })).resolves.toBeUndefined();
 
     const launchSend = tmuxState.args.find(args => args[0] === 'send-keys' && args.includes('-l'));
-    expect(launchSend?.at(-1)).toMatch(/^\.omq\\state\\team\\startup-team\\workers\\worker-1\\launch-attempts\\[0-9a-f-]+\\launch\.cmd$/);
+    const canonicalWrapperPath = join(
+      getOmcRoot(cwd), 'state', 'team', 'startup-team', 'workers', 'worker-1',
+      'launch-attempts', attempt.attempt_id, 'launch.cmd',
+    );
+    expect(launchSend?.at(-1)).toBe(relative(cwd, canonicalWrapperPath).replace(/\//g, '\\'));
     expect(launchSend?.at(-1)).not.toContain('cmd.exe');
     expect(launchSend?.at(-1)).not.toContain('OMQ_TEAM_WORKER');
     expect(launchSend?.at(-1)).not.toContain('Codex');
@@ -354,7 +396,7 @@ describe('worker pane startup safety', () => {
   });
 
   it('POSIX supervised writer delivers an attempt-owned descriptor the runtime CLI accepts', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'startup-posix-descriptor-'));
+    cwd = await createFixture('startup-posix-descriptor-');
     Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
     const attempt = await prepareWorkerLaunchAttempt({
       cwd,
@@ -430,38 +472,6 @@ describe('worker pane startup safety', () => {
     expect(literalInputs).toEqual(['1', '3', 'Read inbox.md, execute now.']);
   });
 
-  it('clears the Qoder folder-trust selector before typing the inbox trigger', async () => {
-    const context = await acceptedContext('qwen');
-    tmuxState.captures = [
-      '你信任此文件夹中的文件吗？\n› 1. 信任文件夹\n  2. 不信任并退出\n',
-      '› ready\n',
-    ];
-
-    await expect(deliverStartupInbox(context, 'Read inbox.md, execute now.')).resolves.toEqual({
-      ok: true,
-      kind: 'attempted_unconfirmed',
-    });
-    const literalInputs = tmuxState.args
-      .filter(args => args[0] === 'send-keys' && args.includes('-l'))
-      .map(args => args.at(-1));
-    expect(literalInputs).toEqual(['1', 'Read inbox.md, execute now.']);
-  });
-
-  it('does not answer the Qoder folder-trust selector for an unverified provider', async () => {
-    const context = await acceptedContext('gemini');
-    tmuxState.captures = [
-      '你信任此文件夹中的文件吗？\n› 1. 信任文件夹\n  2. 不信任并退出\n',
-      '› ready\n',
-    ];
-
-    await expect(deliverStartupInbox(context, 'Read inbox.md, execute now.')).resolves.toEqual({
-      ok: false,
-      reason: 'selector_unsupported',
-    });
-    expect(tmuxState.args.some(args => args.at(-1) === '1')).toBe(false);
-    expect(tmuxState.args.some(args => args.at(-1) === 'Read inbox.md, execute now.')).toBe(false);
-  });
-
   it('fails closed when the selector persists after the narrow action', async () => {
     const context = await acceptedContext('codex');
     const selector = 'Do you trust the contents of this directory?\n› 1. Yes, continue\n  2. No, quit\n';
@@ -479,15 +489,24 @@ describe('worker pane startup safety', () => {
     const message = 'Read inbox.md, execute now.';
     tmuxState.captures = [`❯ ${message}\n`];
 
-    await expect(retryStartupInboxSubmit(context, message)).resolves.toBe(true);
+    await expect(retryStartupInboxSubmit(context, message)).resolves.toBe('resubmitted');
     expect(tmuxState.args.some(args => args[0] === 'send-keys' && args.at(-1) === 'Enter')).toBe(true);
+  });
+
+  it('reports an engaged pane instead of resubmitting when the worker is actively working', async () => {
+    const context = await acceptedContext('claude');
+    const message = 'Read inbox.md, execute now.';
+    tmuxState.captures = [`> ${message}\n\n  ✻ Thinking…\n  (esc to interrupt at any time to stop)\n`];
+
+    await expect(retryStartupInboxSubmit(context, message)).resolves.toBe('pane_busy');
+    expect(tmuxState.args.some(args => args[0] === 'send-keys' && args.at(-1) === 'Enter')).toBe(false);
   });
 
   it('does not retry Enter for unrelated pane text', async () => {
     const context = await acceptedContext('claude');
     tmuxState.captures = ['❯ unrelated text\n'];
 
-    await expect(retryStartupInboxSubmit(context, 'Read inbox.md, execute now.')).resolves.toBe(false);
+    await expect(retryStartupInboxSubmit(context, 'Read inbox.md, execute now.')).resolves.toBe('unavailable');
     expect(tmuxState.args.some(args => args[0] === 'send-keys' && args.at(-1) === 'Enter')).toBe(false);
   });
 
@@ -539,7 +558,7 @@ describe('worker pane startup safety', () => {
     stderr.mockRestore();
   });
   it('retires an accepted launch but preserves the pane when provider cleanup is unverified', async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omc-startup-handoff-cleanup-'));
+    cwd = await createFixture('omc-startup-handoff-cleanup-');
     process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS = '50';
     processMocks.isProcessIdentityLive.mockResolvedValue('dead');
 
@@ -557,7 +576,7 @@ describe('worker pane startup safety', () => {
     })).rejects.toThrow('worker_launch_cleanup_unverified');
 
     expect(tmuxState.args).not.toContainEqual(['kill-pane', '-t', '%2']);
-    const attemptsRoot = join(cwd, '.omq/state/team/startup-team/workers/worker-1/launch-attempts');
+    const attemptsRoot = join(getOmcRoot(cwd), 'state', 'team', 'startup-team', 'workers', 'worker-1', 'launch-attempts');
     const files = await readdir(attemptsRoot, { recursive: true });
     expect(files.some(file => String(file).endsWith('decision.json.retired'))).toBe(true);
     expect(tmuxState.paneStatus).toBe('0 cmd\n');

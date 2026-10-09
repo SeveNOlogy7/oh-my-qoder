@@ -3,11 +3,8 @@ import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { clearWorktreeCache } from '../../lib/worktree-paths.js';
-// Drives real artifact writers through the DEFAULT state-root branch over temp
-// repos (#42): lift the per-file OMQ_STATE_DIR pin for every test in this file.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 import {
   addUltragoalGoal,
   buildClaudeGoalInstruction,
@@ -21,9 +18,21 @@ import {
 
 async function withTempRepo<T>(run: (cwd: string) => Promise<T>): Promise<T> {
   const cwd = await mkdtemp(join(tmpdir(), 'omc-ultragoal-'));
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+  const originalStateDir = process.env.OMQ_STATE_DIR;
+  process.env.HOME = cwd;
+  process.env.USERPROFILE = cwd;
+  delete process.env.OMQ_STATE_DIR;
   try {
     return await run(cwd);
   } finally {
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
+    if (originalStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = originalStateDir;
     await rm(cwd, { recursive: true, force: true });
   }
 }
@@ -37,8 +46,6 @@ function cleanQualityGate(): object {
 }
 
 describe('ultragoal artifacts', () => {
-  useDefaultStateRoot();
-
   it('creates brief, goals, and ledger artifacts under .omq/ultragoal', async () => {
     await withTempRepo(async (cwd) => {
       const plan = await createUltragoalPlan(cwd, {
@@ -694,7 +701,7 @@ describe('ultragoal artifacts', () => {
 
   describe('multi-repo workspace anchor', () => {
     it('writes artifacts to the workspace anchor .omq/ when .omq-workspace marker exists in a parent dir', async () => {
-      const workspaceRoot = await mkdtemp(join(tmpdir(), 'omc-workspace-anchor-'));
+      const workspaceRoot = await mkdtemp(join(homedir(), 'omc-workspace-anchor-'));
       try {
         // Create workspace marker so getOmcRoot() anchors to workspaceRoot
         writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');

@@ -11,14 +11,14 @@
   },
   "adoptionTarget": {
     "repo": "Yeachan-Heo/oh-my-claudecode",
-    "tag": "v5.0.0",
-    "tagSha": "2813054f14f80c602bd8ef5dd1814e89459857bc",
-    "commitSha": "08db8be068c2d5e12c061958952715555dc6d1b0",
-    "treeSha": "f1e8c7c94671fad150b3cc972d79887669bca72d",
-    "commitDate": "2026-08-24T04:23:04Z",
-    "publishedAt": "2026-08-24T04:37:07Z",
-    "blobCount": 6790,
-    "treeCache": ".omq/cache/ancestor-v5.0.0-tree.json"
+    "tag": "v5.1.0",
+    "tagSha": "f4efe929c84e8b625f5dd1c784d74b0ade7711fb",
+    "commitSha": "e9e8fa3847ce0b3529b84d895e841988c7308f3d",
+    "treeSha": "b02469f1da0f1ef9e363acaee7f1a634825270f6",
+    "commitDate": "2026-08-31T07:34:56Z",
+    "publishedAt": "2026-08-31T07:59:13Z",
+    "blobCount": 6812,
+    "treeCache": ".omq/cache/ancestor-v5.1.0-tree.json"
   },
   "patchLayer": {
     "baseCommit": "9ba1359c8f8cab5d72d7ffc543d3e35f676a4709",
@@ -31,6 +31,6 @@
       }
     ]
   },
-  "recordedAt": "2026-09-25T00:00:00Z",
+  "recordedAt": "2026-10-08T00:00:00Z",
   "note": "OMQ is an attribution-style reimplementation, not a GitHub fork"
 }

@@ -18,22 +18,23 @@ const STALE_PIPELINE_SNIPPETS = [
 ];
 
 function runKeywordHook(scriptPath: string, prompt: string) {
-  // Run against a throwaway cwd with the per-file OMQ_STATE_DIR pin lifted
-  // (#42): the keyword hook writes activation state under its resolution root,
-  // which historically was this repository's real .omq/state/.
-  const fixture = mkdtempSync(join(tmpdir(), 'hook-template-keyword-'));
-  try {
-    return JSON.parse(
-      execFileSync('node', [scriptPath], {
-        cwd: fixture,
-        input: JSON.stringify({ prompt, cwd: fixture }),
-        encoding: 'utf-8',
-        env: { ...process.env, OMQ_STATE_DIR: undefined },
-      }),
-    ) as Record<string, unknown>;
-  } finally {
-    rmSync(fixture, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
-  }
+  return JSON.parse(
+    execFileSync('node', [scriptPath], {
+      cwd: packageRoot,
+      input: JSON.stringify({ prompt }),
+      encoding: 'utf-8',
+    }),
+  ) as Record<string, unknown>;
+}
+
+function runPersistentModeHook(scriptPath: string, payload: Record<string, unknown>) {
+  const output = execFileSync('node', [scriptPath], {
+    cwd: packageRoot,
+    input: JSON.stringify(payload),
+    encoding: 'utf-8',
+  }).trim();
+  const lines = output ? output.split('\n') : [];
+  return JSON.parse(lines.at(-1) ?? '{}') as Record<string, unknown>;
 }
 
 function runPreToolHook(scriptPath: string, command: string) {
@@ -48,25 +49,14 @@ function runPreToolPayload(
   payload: Record<string, unknown>,
   env: Record<string, string | undefined> = {},
 ) {
-  // Run against a throwaway cwd with the per-file OMQ_STATE_DIR pin lifted
-  // (#42): hooks without an explicit payload cwd used to fall back to this
-  // repository's real .omq/state/ both for reads and for routing writes.
-  const fixture = payload.cwd === undefined ? mkdtempSync(join(tmpdir(), 'hook-template-pretool-')) : undefined;
-  const effective = fixture === undefined ? payload : { cwd: fixture, ...payload };
-  try {
-    return JSON.parse(
-      execFileSync('node', [scriptPath], {
-        cwd: fixture ?? packageRoot,
-        input: JSON.stringify(effective),
-        encoding: 'utf-8',
-        env: { ...process.env, OMQ_STATE_DIR: undefined, ...env },
-      }),
-    ) as Record<string, unknown>;
-  } finally {
-    if (fixture !== undefined) {
-      rmSync(fixture, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
-    }
-  }
+  return JSON.parse(
+    execFileSync('node', [scriptPath], {
+      cwd: packageRoot,
+      input: JSON.stringify(payload),
+      encoding: 'utf-8',
+      env: { ...process.env, ...env },
+    }),
+  ) as Record<string, unknown>;
 }
 
 describe('keyword-detector packaged artifacts', () => {
@@ -123,10 +113,10 @@ describe('keyword-detector packaged artifacts', () => {
 
   it('keeps multi-skill keyword payloads under a compact budget', () => {
     const pluginPath = join(packageRoot, 'scripts', 'keyword-detector.mjs');
-    const result = runKeywordHook(pluginPath, 'ralph this with ultrawork and plan this migration');
+    const result = runKeywordHook(pluginPath, 'ralph this with deep interview and plan this migration');
     const context = JSON.stringify(result);
 
-    expect(context).toContain('[MAGIC KEYWORDS DETECTED: RALPH, ULTRAWORK]');
+    expect(context).toContain('[MAGIC KEYWORDS DETECTED: RALPH, DEEP-INTERVIEW]');
     expect(context).toContain('Do not inline full SKILL.md files');
     expect(context).not.toContain('[RALPH + ULTRAWORK');
     expect(context.length).toBeLessThan(4000);
@@ -176,7 +166,7 @@ describe('keyword-detector packaged artifacts', () => {
         execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
         execFileSync('node', [scriptPath], {
           cwd: packageRoot,
-          env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome },
+          env: { ...process.env, HOME: fakeHome },
           input: JSON.stringify({
             prompt: 'ralph fix the regression in src/hooks/bridge.ts after issue #1795',
             directory: tempDir,
@@ -217,7 +207,7 @@ describe('keyword-detector packaged artifacts', () => {
 
       execFileSync('node', [templatePath], {
         cwd: packageRoot,
-        env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
+        env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
         input: JSON.stringify({ prompt: 'autopilot fix the regression', directory: projectA, cwd: projectA, session_id: 'project-a-session' }),
         encoding: 'utf-8',
       });
@@ -230,7 +220,7 @@ describe('keyword-detector packaged artifacts', () => {
       writeFileSync(malformedJournalPath, '{not-json');
       execFileSync('node', [templatePath], {
         cwd: packageRoot,
-        env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
+        env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: emptyXdg, NODE_ENV: 'test' },
         input: JSON.stringify({ prompt: 'autopilot fix another regression', directory: projectA, cwd: projectA, session_id: 'project-a-session-2' }),
         encoding: 'utf-8',
       });
@@ -313,7 +303,7 @@ OMC Ultrawork = "특수부대 작전 반"
       JSON.parse(
         execFileSync('node', [scriptPath], {
           cwd: packageRoot,
-          env: { ...process.env, OMQ_STATE_DIR: undefined, XDG_CONFIG_HOME: emptyXdg },
+          env: { ...process.env, XDG_CONFIG_HOME: emptyXdg },
           input: JSON.stringify({ prompt, cwd: dir, directory: dir }),
           encoding: 'utf-8',
         }),
@@ -360,13 +350,10 @@ OMC Ultrawork = "특수부대 작전 반"
       execFileSync('node', [scriptPath], {
         cwd: packageRoot,
         env: {
-          // Lift the per-file OMQ_STATE_DIR pin (#42): these hooks must
-          // resolve state through the DEFAULT branch via payload cwd.
-          OMQ_STATE_DIR: undefined,
           ...process.env,
           HOME: fakeHome,
           XDG_CONFIG_HOME: join(fakeHome, '.xdg'),
-          QODER_CONFIG_DIR: configDir,
+          CLAUDE_CONFIG_DIR: configDir,
           ...env,
         },
         input: JSON.stringify({
@@ -488,7 +475,7 @@ OMC Ultrawork = "특수부대 작전 반"
         const result = JSON.parse(
           execFileSync('node', [scriptPath], {
             cwd: packageRoot,
-            env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
+            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), CLAUDE_CONFIG_DIR: configDir },
             input: JSON.stringify({ prompt: 'autopilot build me a CLI', cwd: projectDir, directory: projectDir, session_id: `autopilot-${basename(scriptPath)}` }),
             encoding: 'utf-8',
           }),
@@ -502,7 +489,7 @@ OMC Ultrawork = "특수부대 작전 반"
         const result = JSON.parse(
           execFileSync('node', [scriptPath], {
             cwd: packageRoot,
-            env: { ...process.env, OMQ_STATE_DIR: undefined, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), QODER_CONFIG_DIR: configDir },
+            env: { ...process.env, HOME: fakeHome, XDG_CONFIG_HOME: join(fakeHome, '.xdg'), CLAUDE_CONFIG_DIR: configDir },
             input: JSON.stringify({ prompt: '/ralph-loop fix the parser', cwd: projectDir, directory: projectDir, session_id: `ralphloop-cmd-${basename(scriptPath)}` }),
             encoding: 'utf-8',
           }),
@@ -563,7 +550,7 @@ OMC Ultrawork = "특수부대 작전 반"
         expect(contextOf(runIn(scriptPath, `ralph-malformed-${basename(scriptPath)}`))).not.toContain('ralph-loop');
       }
 
-      // N. Config-root variant: settings lives at HOME/.claude and QODER_CONFIG_DIR is
+      // N. Config-root variant: settings lives at HOME/.claude and CLAUDE_CONFIG_DIR is
       //    unset (HOME-derived root) -> the notice still resolves the same config root.
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
@@ -572,7 +559,7 @@ OMC Ultrawork = "특수부대 작전 반"
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         const result = runWithEnv(scriptPath, `ralph-homeroot-${basename(scriptPath)}`, '/ralph fix the parser', {
-          QODER_CONFIG_DIR: undefined,
+          CLAUDE_CONFIG_DIR: undefined,
         });
         expect(result.hookSpecificOutput?.additionalContext ?? '').toContain('ralph-loop');
       }
@@ -618,7 +605,7 @@ OMC Ultrawork = "특수부대 작전 반"
         expect(contextOf(runIn(scriptPath, `ralph-canonical-wins-${basename(scriptPath)}`))).not.toContain('ralph-loop');
       }
 
-      // P. Multi-skill routing (`ralph ultrawork`) carries the same notice as the
+      // P. Multi-skill routing (`ralph deep interview`) carries the same notice as the
       //    single-skill path; otherwise combining keywords bypasses disambiguation.
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
@@ -626,15 +613,15 @@ OMC Ultrawork = "특수부대 작전 반"
         'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
-        const context = contextOf(runIn(scriptPath, `ralph-multi-${basename(scriptPath)}`, '/ralph ultrawork fix the parser'));
-        expect(context).toContain('[MAGIC KEYWORDS DETECTED: RALPH, ULTRAWORK]');
+        const context = contextOf(runIn(scriptPath, `ralph-multi-${basename(scriptPath)}`, '/ralph deep interview fix the parser'));
+        expect(context).toContain('[MAGIC KEYWORDS DETECTED: RALPH, DEEP-INTERVIEW]');
         expect(context).toContain('official Anthropic `ralph-loop` plugin is also installed');
         expect(context).toContain('use `/ralph-loop` for the official plugin');
       }
 
       // P2. Multi-skill routing without ralph never carries the notice.
       for (const scriptPath of [templatePath, pluginPath]) {
-        const context = contextOf(runIn(scriptPath, `nonralph-multi-${basename(scriptPath)}`, 'autopilot and ultrawork this repo'));
+        const context = contextOf(runIn(scriptPath, `nonralph-multi-${basename(scriptPath)}`, 'autopilot and deep interview this repo'));
         expect(context).toContain('[MAGIC KEYWORDS DETECTED:');
         expect(context).not.toContain('ralph-loop');
       }
@@ -642,7 +629,7 @@ OMC Ultrawork = "특수부대 작전 반"
       // P3. Multi-skill routing stays silent when the official plugin is disabled.
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': false } });
       for (const scriptPath of [templatePath, pluginPath]) {
-        expect(contextOf(runIn(scriptPath, `ralph-multi-disabled-${basename(scriptPath)}`, '/ralph ultrawork fix the parser'))).not.toContain('ralph-loop');
+        expect(contextOf(runIn(scriptPath, `ralph-multi-disabled-${basename(scriptPath)}`, '/ralph deep interview fix the parser'))).not.toContain('ralph-loop');
       }
 
       // Q. Plugin enablement is resolved across Claude Code settings scopes, not
@@ -661,7 +648,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeProjectSettings(projectSettingsPath, { enabledPlugins: { 'ralph-loop@claude-plugins-official': false } });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-proj-off-${basename(scriptPath)}`))).not.toContain('ralph-loop');
-        expect(contextOf(runIn(scriptPath, `ralph-proj-off-multi-${basename(scriptPath)}`, '/ralph ultrawork fix the parser'))).not.toContain('ralph-loop');
+        expect(contextOf(runIn(scriptPath, `ralph-proj-off-multi-${basename(scriptPath)}`, '/ralph deep interview fix the parser'))).not.toContain('ralph-loop');
       }
 
       // Q2. `.claude/settings.local.json` outranks `.claude/settings.json`.
@@ -725,7 +712,7 @@ OMC Ultrawork = "특수부대 작전 반"
               ...process.env,
               HOME: fakeHome,
               XDG_CONFIG_HOME: join(fakeHome, '.xdg'),
-              QODER_CONFIG_DIR: configDir,
+              CLAUDE_CONFIG_DIR: configDir,
             },
             input: JSON.stringify({
               prompt: '/ralph fix the parser',
@@ -790,7 +777,7 @@ describe('pre-tool-use packaged artifacts', () => {
     }
   });
 
-  it('does not warn for .json commands just because .js is a substring', () => {
+  it('warns based on the output target rather than source-like input names', () => {
     const scriptPath = join(packageRoot, 'templates', 'hooks', 'pre-tool-use.mjs');
 
     expect(runPreToolHook(scriptPath, 'cat settings.json > backup.txt')).toEqual({
@@ -798,7 +785,16 @@ describe('pre-tool-use packaged artifacts', () => {
       suppressOutput: true,
     });
 
-    expect(JSON.stringify(runPreToolHook(scriptPath, 'cat app.js > backup.txt'))).toContain(
+    expect(runPreToolHook(scriptPath, 'cat app.js > backup.txt')).toEqual({
+      continue: true,
+      suppressOutput: true,
+    });
+
+    expect(JSON.stringify(runPreToolHook(scriptPath, 'cat fixture.txt > src/app.js'))).toContain(
+      'Bash command may modify source files',
+    );
+
+    expect(JSON.stringify(runPreToolHook(scriptPath, 'printf x | tee -- -generated.ts'))).toContain(
       'Bash command may modify source files',
     );
   });
@@ -810,7 +806,7 @@ describe('pre-tool-use packaged artifacts', () => {
     const fakeHome = mkdtempSync(join(tmpdir(), 'pre-tool-template-home-'));
     const env = {
       CLAUDE_PLUGIN_ROOT: packageRoot,
-      QODER_CONFIG_DIR: join(fakeHome, '.claude'),
+      CLAUDE_CONFIG_DIR: join(fakeHome, '.claude'),
       HOME: fakeHome,
       USER_TYPE: '',
     };
@@ -846,7 +842,7 @@ describe('pre-tool-use packaged artifacts', () => {
             cwd: tempDir,
             directory: tempDir,
             tool_input: {
-              subagent_type: 'oh-my-claudecode:code-simplifier',
+              subagent_type: 'oh-my-qoder:code-simplifier',
               description: 'Simplify the change',
               prompt: 'Review and simplify the changed files',
             },
@@ -865,7 +861,7 @@ describe('pre-tool-use packaged artifacts', () => {
               cwd: tempDir,
               directory: tempDir,
               tool_input: {
-                subagent_type: `oh-my-claudecode:${skill}`,
+                subagent_type: `oh-my-qoder:${skill}`,
                 description: `Run ${skill}`,
                 prompt: `Run the ${skill} skill`,
               },
@@ -898,7 +894,7 @@ describe('pre-tool-use packaged artifacts', () => {
     writeFileSync(join(pluginRoot, 'skills', 'wiki', 'SKILL.md'), '---\nname: wiki\n---\nskill body\n');
     const env = {
       CLAUDE_PLUGIN_ROOT: pluginRoot,
-      QODER_CONFIG_DIR: join(fakeHome, '.claude'),
+      CLAUDE_CONFIG_DIR: join(fakeHome, '.claude'),
       HOME: fakeHome,
       USER_TYPE: '',
     };
@@ -912,7 +908,7 @@ describe('pre-tool-use packaged artifacts', () => {
             cwd: tempDir,
             directory: tempDir,
             tool_input: {
-              subagent_type: 'oh-my-claudecode:WIKI',
+              subagent_type: 'oh-my-qoder:WIKI',
               description: 'Use the colliding agent',
               prompt: 'Run the agent',
             },
@@ -956,7 +952,7 @@ describe('pre-tool-use packaged artifacts', () => {
 
     try {
       const env = {
-        QODER_CONFIG_DIR: configDir,
+        CLAUDE_CONFIG_DIR: configDir,
         CLAUDE_PLUGIN_ROOT: undefined,
         HOME: fakeHome,
         USER_TYPE: '',
@@ -968,7 +964,7 @@ describe('pre-tool-use packaged artifacts', () => {
           cwd: configDir,
           directory: configDir,
           tool_input: {
-            subagent_type: 'oh-my-claudecode:ai-slop-cleaner',
+            subagent_type: 'oh-my-qoder:ai-slop-cleaner',
             description: 'Run the cleaner',
             prompt: 'Clean the changed files',
           },
@@ -989,7 +985,7 @@ describe('pre-tool-use packaged artifacts', () => {
           cwd: configDir,
           directory: configDir,
           tool_input: {
-            subagent_type: 'oh-my-claudecode:executor',
+            subagent_type: 'oh-my-qoder:executor',
             description: 'Implement the change',
             prompt: 'Implement the requested change',
           },
@@ -1049,6 +1045,43 @@ describe('atomic write packaged helpers', () => {
 });
 
 describe('workflow profile runtime packaged artifacts (#3487)', () => {
+  it('ignores legacy Ultrawork state in packaged persistent hooks', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'persistent-mode-retired-ultrawork-'));
+    const sessionId = 'retired-ultrawork-template-test';
+    const sessionDir = join(tempDir, '.omq', 'state', 'sessions', sessionId);
+    const statePath = join(sessionDir, 'ultrawork-state.json');
+    const legacyState = {
+      active: true,
+      session_id: sessionId,
+      started_at: new Date().toISOString(),
+      last_checked_at: new Date().toISOString(),
+      reinforcement_count: 0,
+      original_prompt: 'legacy Ultrawork work must not block the stop hook',
+    };
+
+    try {
+      mkdirSync(sessionDir, { recursive: true });
+      writeFileSync(statePath, JSON.stringify(legacyState));
+      execFileSync('git', ['init', '-q'], { cwd: tempDir });
+
+      for (const script of [
+        join(packageRoot, 'scripts', 'persistent-mode.mjs'),
+        join(packageRoot, 'templates', 'hooks', 'persistent-mode.mjs'),
+      ]) {
+        const output = runPersistentModeHook(script, {
+          cwd: tempDir,
+          directory: tempDir,
+          session_id: sessionId,
+        });
+        expect(output.continue).toBe(true);
+        expect(output.decision).not.toBe('block');
+        expect(JSON.parse(readFileSync(statePath, 'utf-8'))).toEqual(legacyState);
+      }
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('ships the same descriptor and stop-transition helper with plugin and standalone hook payloads', () => {
     const templateHelper = readFileSync(join(packageRoot, 'templates', 'hooks', 'lib', 'workflow-profile-runtime.mjs'), 'utf-8');
     const pluginHelper = readFileSync(join(packageRoot, 'scripts', 'lib', 'workflow-profile-runtime.mjs'), 'utf-8');
@@ -1069,42 +1102,5 @@ describe('workflow profile runtime packaged artifacts (#3487)', () => {
       expect(payload).toContain('advanceWorkflowOnStop');
       expect(payload).toContain('pipelineTracking?.trackingRevision');
     }
-  });
-  // Family prefix convention: matchers accept all four namespace prefixes.
-  // The fork's own /omq: and /oh-my-qoder: spellings used to be invisible to
-  // the packaged keyword-detector copies; both sides must behave identically,
-  // and each relaxation carries a negative control (never "match anything").
-  it('delegates /omq:ask on BOTH packaged keyword-detector copies (fork prefix union)', () => {
-    const templatePath = join(packageRoot, 'templates', 'hooks', 'keyword-detector.mjs');
-    const pluginPath = join(packageRoot, 'scripts', 'keyword-detector.mjs');
-
-    for (const scriptPath of [templatePath, pluginPath]) {
-      const result = runKeywordHook(scriptPath, '/omq:ask claude review this ralplan plan');
-      expect(result.continue).toBe(true);
-      expect(result.suppressOutput).toBe(true);
-    }
-  });
-
-  it('negative control: /omq:askew is not an ask delegation on either copy', () => {
-    const templatePath = join(packageRoot, 'templates', 'hooks', 'keyword-detector.mjs');
-    const pluginPath = join(packageRoot, 'scripts', 'keyword-detector.mjs');
-
-    for (const scriptPath of [templatePath, pluginPath]) {
-      const result = runKeywordHook(scriptPath, '/omq:askew claude run ralph now');
-      expect(JSON.stringify(result)).toContain('[MAGIC KEYWORD: RALPH]');
-    }
-  });
-
-  it('keeps SKILL_AGENT_NAMESPACE_PREFIXES identical between pre-tool-use template and enforcer', () => {
-    const extract = (filePath: string): string[] => {
-      const source = readFileSync(filePath, 'utf-8');
-      const match = source.match(/const SKILL_AGENT_NAMESPACE_PREFIXES = \[([^\]]+)\];/);
-      expect(match, `constant missing in ${filePath}`).toBeTruthy();
-      return (match as RegExpMatchArray)[1].split(',').map((entry) => entry.trim().replace(/^'|'$/g, ''));
-    };
-
-    const expected = ['oh-my-qoder:', 'omq:', 'oh-my-claudecode:', 'omc:'];
-    expect(extract(join(packageRoot, 'templates', 'hooks', 'pre-tool-use.mjs'))).toEqual(expected);
-    expect(extract(join(packageRoot, 'scripts', 'pre-tool-enforcer.mjs'))).toEqual(expected);
   });
 });

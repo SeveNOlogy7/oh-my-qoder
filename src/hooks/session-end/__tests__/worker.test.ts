@@ -29,14 +29,17 @@ vi.mock('../action-runner.js', () => actionRunner);
 
 import { isManifestTerminal, mutateSessionEndJob, prepareCoreManifest, readSessionEndJob, sealCoreManifest, sealWikiManifest, takeSessionEndDiscoveryPage } from '../cleanup-manifest.js';
 import { processSessionEndWorker, reconcileSessionEndJobs, workerEnvironment } from '../worker.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 const directories: string[] = [];
+let previousHome: string | undefined;
+let previousUserProfile: string | undefined;
 
 function project(): string {
   const directory = mkdtempSync(join(tmpdir(), 'omq-session-end-worker-'));
+  previousHome = process.env.HOME;
+  previousUserProfile = process.env.USERPROFILE;
+  process.env.HOME = directory;
+  process.env.USERPROFILE = directory;
   directories.push(directory);
   return directory;
 }
@@ -47,10 +50,13 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
   vi.useRealTimers();
   vi.unstubAllEnvs();
+  if (previousHome === undefined) delete process.env.HOME;
+  else process.env.HOME = previousHome;
+  if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = previousUserProfile;
 });
 
 describe('SessionEnd durable worker', () => {
-  useDefaultStateRoot();
   it('concurrent workers execute each action at most once and leave a recoverable manifest', async () => {
     const directory = project();
     const sessionId = 'two-workers';

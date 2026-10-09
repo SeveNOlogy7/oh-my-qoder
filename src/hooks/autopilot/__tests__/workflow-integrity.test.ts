@@ -22,27 +22,32 @@ import {
   refreshNamedWorkflowBoundaryForCommit,
   validateNamedWorkflowState,
   validateNamedWorkflowStateStructure,
-  namedWorkflowRuntimeSupported,
 } from "../named-workflow-resume-validator.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe("workflow descriptor integrity enforcement (#3487)", () => {
-  useDefaultStateRoot();
   let testDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), "workflow-integrity-"));
-    process.env.QODER_CONFIG_DIR = join(testDir, "claude-config");
-    mkdirSync(join(process.env.QODER_CONFIG_DIR, "projects"), {
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
+    process.env.CLAUDE_CONFIG_DIR = join(testDir, "claude-config");
+    mkdirSync(join(process.env.CLAUDE_CONFIG_DIR, "projects"), {
       recursive: true,
     });
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
-    delete process.env.QODER_CONFIG_DIR;
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
 
   });
@@ -117,10 +122,7 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
     expect(readFileSync(statePath)).toEqual(before);
   });
 
-  // Dispatch requires the no-follow runtime (O_NOFOLLOW + /proc/self/fd);
-  // elsewhere checkAutopilot fails closed with the UNSUPPORTED notice by
-  // contract, which the structural-failure cases above already pin.
-  it.skipIf(!namedWorkflowRuntimeSupported())("dispatches a valid named state without legacy mutation", async () => {
+  it("dispatches a valid named state without legacy mutation", async () => {
     const sessionId = "named-reader-session";
     const base = initAutopilot(testDir, "ship the release", sessionId)!;
     const descriptor = createWorkflowDescriptor("release-flow", {
@@ -326,7 +328,7 @@ describe("workflow descriptor integrity enforcement (#3487)", () => {
     });
   });
 
-  it.skipIf(!namedWorkflowRuntimeSupported())("authenticates an exact named completion signal and advances without legacy state", async () => {
+  it("authenticates an exact named completion signal and advances without legacy state", async () => {
     const sessionId = "named-advance-session";
     const base = initAutopilot(testDir, "ship the release", sessionId)!;
     const descriptor = createWorkflowDescriptor("release-flow", {

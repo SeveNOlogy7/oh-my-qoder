@@ -1,24 +1,32 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, realpathSync } from 'fs';
+import { mkdirSync, mkdtempSync, rmSync, realpathSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { getTeamStatus } from '../team-status.js';
 import { atomicWriteJson } from '../fs-utils.js';
 import { appendOutbox } from '../inbox-outbox.js';
 import { recordTaskUsage } from '../usage-tracker.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
 import type { HeartbeatData, TaskFile, OutboxMessage, McpWorkerMember } from '../types.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const TEST_TEAM = 'test-team-status';
 let WORK_DIR: string;
 // Canonical tasks dir: {WORK_DIR}/.omq/state/team/{TEST_TEAM}/tasks/
 let TASKS_DIR: string;
+let previousHome: string | undefined;
+let previousUserProfile: string | undefined;
+let previousOmcStateDir: string | undefined;
 
 beforeEach(() => {
-  WORK_DIR = join(realpathSync(tmpdir()), `omq-team-status-test-${Date.now()}`);
+  previousHome = process.env.HOME;
+  previousUserProfile = process.env.USERPROFILE;
+  previousOmcStateDir = process.env.OMQ_STATE_DIR;
+
+  WORK_DIR = mkdtempSync(join(realpathSync(tmpdir()), 'omq-team-status-test-'));
+  process.env.HOME = WORK_DIR;
+  process.env.USERPROFILE = WORK_DIR;
+  delete process.env.OMQ_STATE_DIR;
+
   TASKS_DIR = join(WORK_DIR, '.omq', 'state', 'team', TEST_TEAM, 'tasks');
   mkdirSync(TASKS_DIR, { recursive: true });
   mkdirSync(join(WORK_DIR, '.omq', 'state', 'team-bridge', TEST_TEAM), { recursive: true });
@@ -26,9 +34,18 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  const outboxDir = join(getClaudeConfigDir(), 'teams', TEST_TEAM);
+
+  if (previousHome === undefined) delete process.env.HOME;
+  else process.env.HOME = previousHome;
+  if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = previousUserProfile;
+  if (previousOmcStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = previousOmcStateDir;
+
   rmSync(WORK_DIR, { recursive: true, force: true });
-  // Clean up outbox files written to ~/.qoder/teams/ by appendOutbox
-  rmSync(join(getQoderConfigDir(), 'teams', TEST_TEAM), { recursive: true, force: true });
+  // Clean up outbox files written to ~/.claude/teams/ by appendOutbox
+  rmSync(outboxDir, { recursive: true, force: true });
 });
 
 function writeWorkerRegistry(workers: McpWorkerMember[]): void {
@@ -84,7 +101,6 @@ function makeTask(id: string, owner: string, status: 'pending' | 'in_progress' |
 }
 
 describe('getTeamStatus', () => {
-  useDefaultStateRoot();
   it('returns empty status when no workers registered', () => {
     const status = getTeamStatus(TEST_TEAM, WORK_DIR);
     expect(status.teamName).toBe(TEST_TEAM);

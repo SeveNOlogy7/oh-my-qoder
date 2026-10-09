@@ -3,9 +3,6 @@ import { mkdtemp, rm, mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { teamCommand, parseTeamArgs, buildStartupTasks, buildTeamLaunchTasks, resolveAvailableTeamName, resolveTeamFanoutLimit, splitTaskString, assertTeamSpawnAllowed } from '../team.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 /** Helper: capture console.log output during a callback */
 async function captureLog(fn: () => Promise<void>): Promise<string[]> {
@@ -39,7 +36,6 @@ async function initTeamState(teamName: string, wd: string): Promise<void> {
 }
 
 describe('teamCommand help output', () => {
-  useDefaultStateRoot();
   it('prints team help for --help', async () => {
     const logs = await captureLog(() => teamCommand(['--help']));
     expect(logs[0]).toContain('omq team api <operation>');
@@ -72,13 +68,30 @@ describe('teamCommand help output', () => {
 });
 
 describe('teamCommand api operations', () => {
-  useDefaultStateRoot();
   let wd: string;
   let previousCwd: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+  let previousStateDir: string | undefined;
+
+  const isolateFixtureHome = (directory: string) => {
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    process.env.HOME = directory;
+    process.env.USERPROFILE = directory;
+    delete process.env.OMQ_STATE_DIR;
+  };
 
   afterEach(async () => {
     if (previousCwd) process.chdir(previousCwd);
     if (wd) await rm(wd, { recursive: true, force: true }).catch(() => {});
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
     process.exitCode = 0;
   });
 
@@ -96,6 +109,7 @@ describe('teamCommand api operations', () => {
 
   it('executes send-message with stable JSON envelope', async () => {
     wd = await mkdtemp(join(tmpdir(), 'omc-team-cli-'));
+    isolateFixtureHome(wd);
     previousCwd = process.cwd();
     process.chdir(wd);
     await initTeamState('cli-test', wd);
@@ -122,6 +136,7 @@ describe('teamCommand api operations', () => {
 
   it('supports claim-safe lifecycle: create -> claim -> transition', async () => {
     wd = await mkdtemp(join(tmpdir(), 'omc-team-lifecycle-'));
+    isolateFixtureHome(wd);
     previousCwd = process.cwd();
     process.chdir(wd);
     await initTeamState('lifecycle', wd);
@@ -217,6 +232,7 @@ describe('teamCommand api operations', () => {
 
   it('ignores stale team state without a live tmux session when enforcing leader spawn gate', async () => {
     wd = await mkdtemp(join(tmpdir(), 'omc-team-stale-gate-'));
+    isolateFixtureHome(wd);
     const stale = join(wd, '.omq', 'state', 'team', 'stale-team');
     await mkdir(stale, { recursive: true });
     await writeFile(join(stale, 'config.json'), JSON.stringify({
@@ -237,6 +253,7 @@ describe('teamCommand api operations', () => {
 
   it('allows nested team spawn only when parent governance enables it', async () => {
     wd = await mkdtemp(join(tmpdir(), 'omc-team-governance-'));
+    isolateFixtureHome(wd);
     previousCwd = process.cwd();
     process.chdir(wd);
     const base = join(wd, '.omq', 'state', 'team', 'demo-team');
@@ -286,7 +303,6 @@ describe('teamCommand api operations', () => {
 });
 
 describe('parseTeamArgs comma-separated multi-type specs', () => {
-  useDefaultStateRoot();
 
   it('honors N multipliers and duplicate agent entries in comma specs', () => {
     const mixed = parseTeamArgs(['1:claude,2:codex', 'execute fixed plan']);
@@ -448,8 +464,16 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
     expect(parsed.teamName.endsWith('-')).toBe(false);
 
     const slugWd = await mkdtemp(join(tmpdir(), 'omc-team-slug-'));
+    const originalHome = process.env.HOME;
+    const originalUserProfile = process.env.USERPROFILE;
+    process.env.HOME = slugWd;
+    process.env.USERPROFILE = slugWd;
     await mkdir(join(slugWd, '.omq', 'state', 'team', parsed.teamName), { recursive: true });
     expect(resolveAvailableTeamName(parsed.teamName, slugWd)).toBe(`${parsed.teamName.slice(0, 28).replace(/-$/g, '')}-2`);
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
     await rm(slugWd, { recursive: true, force: true });
   });
 
@@ -539,13 +563,23 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
     expect(parsed.task).toBe('compare edits');
   });
 
-  it('rejects cursor with non-executor explicit roles', () => {
-    expect(() => parseTeamArgs(['1:cursor:architect', 'design auth'])).toThrow(
-      /Cursor workers are executor-style only/,
-    );
-    expect(() => parseTeamArgs(['1:cursor:security-reviewer', 'review auth'])).toThrow(
-      /Cursor workers are executor-style only/,
-    );
+  it('accepts cursor with non-executor explicit roles (issue #3880)', () => {
+    expect(parseTeamArgs(['1:cursor:architect', 'design auth']).workerSpecs).toEqual([
+      { agentType: 'cursor', role: 'architect' },
+    ]);
+    expect(parseTeamArgs(['1:cursor:security-reviewer', 'review auth']).workerSpecs).toEqual([
+      { agentType: 'cursor', role: 'security-reviewer' },
+    ]);
+  });
+
+  it('accepts a mixed cursor-reviewer / codex-critic spec (issue #3880)', () => {
+    const parsed = parseTeamArgs(['1:cursor:code-reviewer,1:codex:critic', 'review the change']);
+    expect(parsed.workerCount).toBe(2);
+    expect(parsed.agentTypes).toEqual(['cursor', 'codex']);
+    expect(parsed.workerSpecs).toEqual([
+      { agentType: 'cursor', role: 'code-reviewer' },
+      { agentType: 'codex', role: 'critic' },
+    ]);
   });
 
   it('parses single-type spec 2:antigravity into uniform agentTypes', () => {
@@ -666,7 +700,6 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
 
 
 describe('buildStartupTasks', () => {
-  useDefaultStateRoot();
   it('adds owner-aware fanout for explicit per-worker roles', () => {
     const parsed = parseTeamArgs(['1:codex:architect,1:gemini:writer', 'draft launch plan']);
     expect(buildStartupTasks(parsed)).toEqual([

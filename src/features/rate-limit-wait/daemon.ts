@@ -2,7 +2,7 @@
  * Rate Limit Wait Daemon
  *
  * Background daemon that monitors rate limits and auto-resumes
- * Qoder CLI sessions when rate limits reset.
+ * Claude Code sessions when rate limits reset.
  *
  * Security considerations:
  * - State/PID/log files use restrictive permissions (0600)
@@ -59,11 +59,13 @@ const SECURE_FILE_MODE = 0o600;
 
 /**
  * Allowlist of environment variables safe to pass to daemon child process.
- * This prevents leaking sensitive variables like DASHSCOPE_API_KEY, GITHUB_TOKEN, etc.
+ * This prevents leaking sensitive variables like ANTHROPIC_API_KEY, GITHUB_TOKEN, etc.
  */
 const DAEMON_ENV_ALLOWLIST = [
   // Core system paths
   'PATH', 'HOME', 'USERPROFILE',
+  // OMQ state/profile context (non-secret paths)
+  'OMQ_STATE_DIR', 'CLAUDE_CONFIG_DIR',
   // User identification
   'USER', 'USERNAME', 'LOGNAME',
   // Locale settings

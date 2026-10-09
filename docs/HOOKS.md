@@ -306,7 +306,7 @@ When a session ID is present, state is stored in session scope under `.omq/state
 #### Canceling a Mode
 
 ```
-cancelomc
+cancelomq
 ```
 
 or
@@ -410,7 +410,7 @@ These keywords invoke a skill and create a state file.
 
 | Keyword | Skill | Description |
 |---------|-------|-------------|
-| `cancelomc`, `stopomc` | cancel | Cancels all active modes |
+| `cancelomq`, `stopomq` | cancel | Cancels all active modes |
 | `ralph`, `don't stop`, `must complete`, `until done` | ralph | Persistent execution until verification completes |
 | `autopilot`, `build me`, `I want a`, `handle it all`, `end to end`, `auto-pilot`, `full auto`, `fullsend`, `e2e this` | autopilot | Fully autonomous execution |
 | `ultrawork`, `ulw`, `uw` | ultrawork | Maximum parallel execution |
@@ -504,7 +504,7 @@ implement password validation with tdd
 code review the recent changes
 
 # Cancel
-stopomc
+stopomq
 ```
 
 ### Note on the `team` Keyword

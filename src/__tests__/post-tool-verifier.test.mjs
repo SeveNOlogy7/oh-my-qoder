@@ -4,15 +4,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { join } from 'path';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import process from 'process';
 import { detectAnnouncedBackgroundLaunch, detectBashFailure, detectWriteFailure, isBackgroundToolInvocation, isClaudeCodeWriteSuccess, isNonZeroExitWithOutput, summarizeAgentResult } from '../../scripts/post-tool-verifier.mjs';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../__tests__/helpers/default-state-root.js';
 
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'post-tool-verifier.mjs');
 const TEMPLATE_HOOK_PATH = join(process.cwd(), 'templates', 'hooks', 'post-tool-use.mjs');
@@ -41,14 +38,50 @@ function runPostToolVerifier(input, env = {}) {
   return runHookScript(SCRIPT_PATH, input, env);
 }
 
+function scopedHookEnvironment(cwd, env) {
+  const homeDir = mkdtempSync(join(tmpdir(), 'post-tool-verifier-home-'));
+  if (cwd && cwd !== process.cwd() && !existsSync(join(cwd, '.git'))) {
+    execFileSync('git', ['init', '--quiet'], { cwd, stdio: 'pipe' });
+  }
+
+  const effectiveHome = env.HOME || homeDir;
+  const childEnv = {
+    ...process.env,
+    NODE_ENV: 'test',
+    DISABLE_OMQ: '',
+    OMQ_SKIP_HOOKS: '',
+    OMQ_QUIET: '0',
+    OMQ_STATE_DIR: '',
+    CLAUDE_PLUGIN_ROOT: '',
+    HOME: effectiveHome,
+    USERPROFILE: env.USERPROFILE || effectiveHome,
+    CLAUDE_CONFIG_DIR: env.CLAUDE_CONFIG_DIR || join(effectiveHome, '.claude'),
+    ...env,
+  };
+
+  return {
+    childEnv,
+    cleanup() {
+      rmSync(homeDir, { recursive: true, force: true });
+    },
+  };
+}
+
 function runHookScript(scriptPath, input, env = {}) {
-  const stdout = execSync(`node "${scriptPath}"`, {
-    input: JSON.stringify(input),
-    encoding: 'utf-8',
-    timeout: 5000,
-    env: { ...process.env, NODE_ENV: 'test', ...env },
-  });
-  return JSON.parse(stdout.trim());
+  const cwd = typeof input?.cwd === 'string' && input.cwd.length > 0 ? input.cwd : process.cwd();
+  const fixture = scopedHookEnvironment(cwd, env);
+  try {
+    const stdout = execSync(`node "${scriptPath}"`, {
+      cwd,
+      input: JSON.stringify(input),
+      encoding: 'utf-8',
+      timeout: 5000,
+      env: fixture.childEnv,
+    });
+    return JSON.parse(stdout.trim());
+  } finally {
+    fixture.cleanup();
+  }
 }
 
 function withTempDir(fn) {
@@ -112,7 +145,6 @@ function writeRalplanStateFixture(tempDir, sessionId, overrides = {}) {
 }
 
 describe('detectBashFailure', () => {
-  useDefaultStateRoot();
   describe('Claude Code temp CWD false positives (issue #696)', () => {
     it('should not flag macOS temp CWD permission error as a failure', () => {
       const output = 'zsh:1: permission denied: /var/folders/xx/yyyyyyy/T/claude-abc123def-cwd';
@@ -239,7 +271,6 @@ describe('detectBashFailure', () => {
 });
 
 describe('isNonZeroExitWithOutput (issue #960)', () => {
-  useDefaultStateRoot();
   describe('should return true for non-zero exit with valid stdout', () => {
     it('gh pr checks with pending checks (exit code 8)', () => {
       const output = [
@@ -334,7 +365,6 @@ describe('isNonZeroExitWithOutput (issue #960)', () => {
 });
 
 describe('isClaudeCodeWriteSuccess', () => {
-  useDefaultStateRoot();
   it('detects canonical edit success output', () => {
     expect(isClaudeCodeWriteSuccess('The file /tmp/doc.md has been updated successfully.')).toBe(true);
   });
@@ -359,7 +389,6 @@ describe('isClaudeCodeWriteSuccess', () => {
 });
 
 describe('detectWriteFailure', () => {
-  useDefaultStateRoot();
   describe('Claude Code temp CWD false positives (issue #696)', () => {
     it('should not flag macOS temp CWD permission error as a write failure', () => {
       const output = 'zsh:1: permission denied: /var/folders/xx/yyyyyyy/T/claude-abc123def-cwd';
@@ -481,7 +510,6 @@ describe('detectWriteFailure', () => {
 });
 
 describe('agent output summarization / truncation (issue #1373)', () => {
-  useDefaultStateRoot();
   it('summarizes multi-line agent output into concise single-line context', () => {
     const output = [
       'Completed worker step A',
@@ -519,7 +547,6 @@ describe('agent output summarization / truncation (issue #1373)', () => {
 });
 
 describe('post-tool hook regression coverage (issue #2615)', () => {
-  useDefaultStateRoot();
   it('prefers canonical edit success output over embedded markdown diagnostics', () => {
     const out = runPostToolVerifier({
       tool_name: 'Edit',
@@ -608,7 +635,6 @@ describe('post-tool hook regression coverage (issue #2615)', () => {
 });
 
 describe('post-tool hook structured Write/Edit envelopes (issue #2840)', () => {
-  useDefaultStateRoot();
   it('trusts real Edit success envelopes before scanning embedded source fields', () => {
     const out = runPostToolVerifier({
       tool_name: 'Edit',
@@ -852,7 +878,6 @@ describe('post-tool hook structured Write/Edit envelopes (issue #2840)', () => {
 });
 
 describe('OMQ_QUIET hook message suppression (issue #1646)', () => {
-  useDefaultStateRoot();
   it('suppresses routine success/advice messages at OMQ_QUIET=1 while keeping failures', () => {
     const edit = runPostToolVerifier(
       {
@@ -933,7 +958,6 @@ describe('OMQ_QUIET hook message suppression (issue #1646)', () => {
 });
 
 describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
-  useDefaultStateRoot();
   it('clears session and legacy skill-active-state files for Skill completion in post-tool-verifier', () => {
     withTempDir((tempDir) => {
       const sessionId = 'skill-clear-script';
@@ -988,6 +1012,30 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
       expect(out).toEqual({ continue: true, suppressOutput: true });
       expect(existsSync(skillStatePath(tempDir, sessionId))).toBe(false);
       expect(existsSync(legacySkillStatePath(tempDir))).toBe(false);
+    });
+  });
+
+  it('activates only ralph state for the template post-tool hook path', () => {
+    withTempDir((tempDir) => {
+      const sessionId = 'ralph-template-no-ultrawork';
+      // Redirect HOME so the template hook's shared-home global fallback write
+      // (~/.omq/state/ralph-state.json) lands in the sandbox instead of the
+      // real home. Leaving it in the real home leaks active ralph state into
+      // other suites (e.g. cancel-integration's broad-clear location count).
+      const homeDir = join(tempDir, 'home');
+      mkdirSync(homeDir, { recursive: true });
+      const out = runHookScript(TEMPLATE_HOOK_PATH, {
+        tool_name: 'Skill',
+        tool_input: { skill: 'oh-my-claudecode:ralph' },
+        tool_response: { ok: true },
+        session_id: sessionId,
+        cwd: tempDir,
+      }, { HOME: homeDir });
+
+      expect(out).toEqual({ continue: true, suppressOutput: true });
+      const stateDir = join(tempDir, '.omq', 'state', 'sessions', sessionId);
+      expect(existsSync(join(stateDir, 'ralph-state.json'))).toBe(true);
+      expect(existsSync(join(stateDir, 'ultrawork-state.json'))).toBe(false);
     });
   });
 
@@ -1080,7 +1128,6 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 });
 
 describe('background operation detection (issue #3578)', () => {
-  useDefaultStateRoot();
   const TRIGGER_WORDS = ['started', 'running', 'background', 'async', 'task_id', 'spawned'];
 
   describe('isBackgroundToolInvocation', () => {

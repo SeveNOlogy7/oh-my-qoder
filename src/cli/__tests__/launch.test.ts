@@ -297,10 +297,10 @@ describe('runClaude OMC HUD behavior', () => {
     runClaude('/tmp/cwd', [], 'test-session');
 
     const calls = vi.mocked(buildTmuxShellCommand).mock.calls;
-    const omcHudCall = calls.find(
+    const omqHudCall = calls.find(
       ([cmd, args]) => cmd === 'node' && Array.isArray(args) && args.includes('hud'),
     );
-    expect(omcHudCall).toBeUndefined();
+    expect(omqHudCall).toBeUndefined();
   });
 
   it('does not add split-window HUD pane args when launching outside tmux', () => {

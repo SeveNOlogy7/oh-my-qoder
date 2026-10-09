@@ -10,7 +10,7 @@ Initializes OMC directory structure and environment on first run or explicit set
 **What it does:**
 - Creates required directories: `.omq/state/`, `.omq/logs/`, `.omq/notepads/`, `.omq/state/checkpoints/`, `.omq/plans/`
 - Validates existing config files (`.omc-config.json`)
-- Sets environment variables (`OMC_INITIALIZED=true`) if `CLAUDE_ENV_FILE` is available
+- Sets environment variables (`OMQ_INITIALIZED=true`) if `CLAUDE_ENV_FILE` is available
 
 **Example Input:**
 ```json
@@ -30,7 +30,7 @@ Initializes OMC directory structure and environment on first run or explicit set
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "Setup",
-    "additionalContext": "OMC initialized:\n- 5 directories created\n- 1 configs validated\n- Environment variables set: OMC_INITIALIZED"
+    "additionalContext": "OMC initialized:\n- 5 directories created\n- 1 configs validated\n- Environment variables set: OMQ_INITIALIZED"
   }
 }
 ```
@@ -108,7 +108,7 @@ Sets environment variables for OMC initialization.
 
 ```typescript
 const envVars = setEnvironmentVariables();
-// => ['OMC_INITIALIZED']
+// => ['OMQ_INITIALIZED']
 ```
 
 ### Maintenance

@@ -59,7 +59,11 @@ describe('daemon bootstrap', () => {
 
     process.env.PATH = '/usr/bin:/bin';
     process.env.TMUX = '/tmp/tmux-1000/default,100,0';
-    process.env.DASHSCOPE_API_KEY = 'super-secret';
+    process.env.OMQ_STATE_DIR = '/tmp/omq-central-state';
+    process.env.CLAUDE_CONFIG_DIR = '/tmp/claude-profile';
+    process.env.CLAUDE_SESSION_ID = 'session-current';
+    process.env.CLAUDECODE_SESSION_ID = 'session-legacy-alias';
+    process.env.ANTHROPIC_API_KEY = 'super-secret';
     process.env.GITHUB_TOKEN = 'token-should-not-leak';
 
     const config: DaemonConfig = {
@@ -93,7 +97,14 @@ describe('daemon bootstrap', () => {
     const childEnv = spawnOptions?.env as Record<string, string | undefined>;
     expect(childEnv.PATH).toBe('/usr/bin:/bin');
     expect(childEnv.TMUX).toBe('/tmp/tmux-1000/default,100,0');
-    expect(childEnv.DASHSCOPE_API_KEY).toBeUndefined();
+    expect(childEnv.OMQ_STATE_DIR).toBe('/tmp/omq-central-state');
+    expect(childEnv.CLAUDE_CONFIG_DIR).toBe('/tmp/claude-profile');
+    // A detached daemon must not pin itself to the launching session: that
+    // session's cache is removed at session end, while another live session
+    // may have the version the daemon should use on its next poll.
+    expect(childEnv.CLAUDE_SESSION_ID).toBeUndefined();
+    expect(childEnv.CLAUDECODE_SESSION_ID).toBeUndefined();
+    expect(childEnv.ANTHROPIC_API_KEY).toBeUndefined();
     expect(childEnv.GITHUB_TOKEN).toBeUndefined();
 
     const configPath = childEnv.OMQ_DAEMON_CONFIG_FILE;
@@ -107,7 +118,7 @@ describe('daemon bootstrap', () => {
   it('uses a file URL in daemon import script so Windows backslashes are not parsed as JS escapes', () => {
     const unref = vi.fn();
     mockSpawn.mockReturnValue({ pid: 4243, unref } as any);
-    mockResolveDaemonModulePath.mockReturnValue('C:\\Users\\soung\\AppData\\Roaming\\npm\\node_modules\\oh-my-qoder\\dist\\features\\rate-limit-wait\\daemon.js');
+    mockResolveDaemonModulePath.mockReturnValue('C:\\Users\\soung\\AppData\\Roaming\\npm\\node_modules\\oh-my-claude-sisyphus\\dist\\features\\rate-limit-wait\\daemon.js');
 
     const config: DaemonConfig = {
       stateFilePath: join(testDir, 'state.json'),

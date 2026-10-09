@@ -1,13 +1,14 @@
-import { qoderCliBinary } from '../lib/qoder-cli.js';
 import { spawnSync } from 'child_process';
-import { isAbsolute, normalize, win32 as win32Path } from 'path';
+import { isAbsolute, normalize, sep, win32 as win32Path } from 'path';
 import { validateTeamName } from './team-name.js';
-import { normalizeToCcAlias, normalizeToTierAlias } from '../features/delegation-enforcer.js';
+import { normalizeToCcAlias } from '../features/delegation-enforcer.js';
 import { isBedrock, isVertexAI, isProviderSpecificModelId } from '../config/models.js';
 import { isExternalLLMDisabled } from '../lib/security-config.js';
+import { qoderCliBinary } from '../lib/qoder-cli.js';
 import type { WorkerLaunchDescriptor } from './types.js';
+import type { ExternalModelsDefaults } from '../shared/types.js';
 
-export type CliAgentType = 'claude' | 'qwen' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
+export type CliAgentType = 'qwen' | 'claude' | 'codex' | 'gemini' | 'cursor' | 'grok' | 'antigravity';
 
 export interface CliAgentContract {
   agentType: CliAgentType;
@@ -54,35 +55,9 @@ const UNTRUSTED_PATH_PATTERNS: RegExp[] = [
   /^\/tmp(\/|$)/,
   /^\/var\/tmp(\/|$)/,
   /^\/dev\/shm(\/|$)/,
-  // The REAL Windows temp locations, in the forward-slash form
-  // resolveCliBinaryPath matches against (#63): C:\Windows\Temp and the
-  // per-user %LOCALAPPDATA%\Temp (= C:\Users\<u>\AppData\Local\Temp).
-  // Case-insensitive and drive-letter agnostic; the trailing boundary keeps
-  // siblings like C:\Windows\Tempx trusted.
-  /^([A-Za-z]:)\/windows\/temp(\/|$)/i,
-  /^([A-Za-z]:)\/users\/[^/]+\/appdata\/local\/temp(\/|$)/i,
 ];
 
-/**
- * Split OMQ_TRUSTED_CLI_DIRS (#63). Windows path lists are ';'-delimited and
- * drive-letter entries contain ':' themselves, so a blind ':' split corrupts
- * both (shredding 'C:\tools\bin' into 'C' and '\tools\bin'). Rule:
- *   1. the value carries ';'  -> split on ';' (Windows list, or any list that
- *      uses the Windows separator)
- *   2. no ';' but a drive-letter path on win32 -> single entry (the colon is
- *      the drive separator, not a list separator)
- *   3. otherwise -> the historic ':' split, so existing POSIX colon lists are
- *      interpreted exactly as before
- */
-function splitTrustedDirList(raw: string, platform: NodeJS.Platform = process.platform): string[] {
-  const value = raw.trim();
-  if (!value) return [];
-  if (value.includes(';')) return value.split(';');
-  if (platform === 'win32' && /^[A-Za-z]:[\\/]/.test(value)) return [value];
-  return value.split(':');
-}
-
-function getTrustedPrefixes(platform: NodeJS.Platform = process.platform): string[] {
+function getTrustedPrefixes(): string[] {
   const trusted = [
     '/usr/local/bin',
     '/usr/bin',
@@ -97,7 +72,8 @@ function getTrustedPrefixes(platform: NodeJS.Platform = process.platform): strin
     trusted.push(`${home}/.grok/bin`);
   }
 
-  const custom = splitTrustedDirList(process.env.OMQ_TRUSTED_CLI_DIRS ?? '', platform)
+  const custom = (process.env.OMQ_TRUSTED_CLI_DIRS ?? '')
+    .split(':')
     .map(part => part.trim())
     .filter(Boolean)
     .filter(part => isAbsolute(part));
@@ -107,19 +83,16 @@ function getTrustedPrefixes(platform: NodeJS.Platform = process.platform): strin
 }
 
 function isTrustedPrefix(resolvedPath: string): boolean {
-  const normalized = normalize(resolvedPath).replace(/\\/g, '/');
+  const normalized = normalize(resolvedPath);
   return getTrustedPrefixes().some(prefix => {
     // `normalize` strips trailing separators, so a plain `startsWith` would treat
     // a sibling whose name merely begins with the prefix as trusted — e.g.
     // `/usr/bin` would match `/usr/bin-malicious/grok`, and `~/.local/bin` would
     // match `~/.local/bin-evil/x`. Enforce a directory boundary: the resolved
     // path must be the trusted dir itself or a true descendant (prefix + sep).
-    // Comparison is done in forward-slash form because the prefix list is POSIX-shaped
-    // and win32 `normalize` would rewrite a '/usr/…' value into '\usr\…', which starts
-    // with nothing in the list.
-    const p = normalize(prefix).replace(/\\/g, '/');
+    const p = normalize(prefix);
     if (normalized === p) return true;
-    const withSep = p.endsWith('/') ? p : p + '/';
+    const withSep = p.endsWith(sep) ? p : p + sep;
     return normalized.startsWith(withSep);
   });
 }
@@ -157,22 +130,16 @@ export function resolveCliBinaryPath(binary: string): string {
     throw new Error(`CLI binary '${binary}' not found in PATH`);
   }
 
-  // Keep the finder's own spelling: win32 normalize() turned a '/usr/local/bin/claude'
-  // result into '\usr\local\bin\claude', which is a path nothing can exec.
-  const resolvedPath = firstLine;
-  // Matching happens in forward-slash form. UNTRUSTED_PATH_PATTERNS are anchored on '/',
-  // so a normalized backslash path was absolute to win32 yet matched no pattern — the
-  // untrusted-location check silently passed for /tmp, /var/tmp and /dev/shm on Windows.
-  const matchPath = resolvedPath.replace(/\\/g, '/');
-  if (!isAbsolute(resolvedPath) && !matchPath.startsWith('/')) {
+  const resolvedPath = normalize(firstLine);
+  if (!isAbsolute(resolvedPath)) {
     throw new Error(`Resolved CLI binary '${binary}' to relative path`);
   }
 
-  if (UNTRUSTED_PATH_PATTERNS.some(pattern => pattern.test(matchPath))) {
+  if (UNTRUSTED_PATH_PATTERNS.some(pattern => pattern.test(resolvedPath))) {
     throw new Error(`Resolved CLI binary '${binary}' to untrusted location: ${resolvedPath}`);
   }
 
-  if (!isTrustedPrefix(matchPath)) {
+  if (!isTrustedPrefix(resolvedPath)) {
     console.warn(`[omc:cli-security] CLI binary '${binary}' resolved to non-standard path: ${resolvedPath}`);
   }
 
@@ -232,7 +199,7 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
         // Normalizing them to tier aliases like "medium" causes Qoder CLI to expand
         // them to default Qwen API names (qwen-plus) which are invalid on
         // non-standard providers. (issue #1695)
-        const resolved = isProviderSpecificModelId(model) ? model : normalizeToTierAlias(model);
+        const resolved = isProviderSpecificModelId(model) ? model : normalizeToCcAlias(model);
         args.push('--model', resolved);
       }
       return [...args, ...extraFlags];
@@ -350,15 +317,23 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     agentType: 'cursor',
     binary: 'cursor-agent',
     installInstructions: 'Install Cursor Agent CLI: see https://docs.cursor.com/cli',
-    // cursor-agent runs as an interactive REPL — no exit-on-complete prompt mode.
-    // Keep supportsPromptMode false so the verdict-file contract path
-    // (CONTRACT_ROLES + shouldInjectContract) skips this provider; cursor
-    // workers participate as executors only.
+    // Team workers must be persistent interactive panes, so the one-shot
+    // `-p/--print` path is deliberately unused here (same stance as codex).
     supportsPromptMode: false,
-    buildLaunchArgs(_model?: string, extraFlags: string[] = []): string[] {
-      // Minimal flags — cursor-agent owns its own session/auth state.
-      // The model is selected interactively inside cursor-agent itself.
-      return [...extraFlags];
+    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+      // `--force` suppresses per-command approval prompts and `--trust` accepts
+      // the workspace, which together are cursor-agent's equivalent of the
+      // approval bypass every other provider already passes. Without them a
+      // worker pane opened on a directory cursor has not seen before stops at
+      // "Workspace Trust Required" and exits; team worktrees are freshly
+      // created per worker, so they always hit that path. `omc ask cursor`
+      // already launches with `--force --trust` for the same reason.
+      const args = ['--force', '--trust'];
+      const extra = extraFlags.filter(flag => !['--force', '-f', '--yolo', '--trust'].includes(flag));
+      // `--model <id>` is a documented global option; ids come from
+      // `cursor-agent --list-models` (e.g. cursor-grok-4.6-high, composer-2.5).
+      if (model) args.push('--model', model);
+      return [...args, ...extra];
     },
     parseOutput(rawOutput: string): string {
       return rawOutput.trim();
@@ -475,12 +450,19 @@ export function validateWorkerLaunchDescriptor(value: unknown): WorkerLaunchDesc
     throw new Error('Invalid worker launch descriptor');
   }
   getContract(descriptor.provider as CliAgentType);
+  const args = descriptor.provider === 'cursor'
+    ? [
+        '--force',
+        '--trust',
+        ...descriptor.args.filter(flag => !['--force', '-f', '--yolo', '--trust'].includes(flag)),
+      ]
+    : [...descriptor.args];
   return {
     schema_version: 1,
     provider: descriptor.provider as CliAgentType,
     model: descriptor.model,
     binary: descriptor.binary,
-    args: [...descriptor.args],
+    args,
   };
 }
 
@@ -596,27 +578,96 @@ export function resolveClaudeWorkerModel(
   }
 
   // Direct model env vars — highest priority
-  const directModel = env.ANTHROPIC_MODEL || env.CLAUDE_MODEL || '';
+  const directModel = [env.ANTHROPIC_MODEL, env.CLAUDE_MODEL]
+    .map(value => value?.trim())
+    .find(Boolean) ?? '';
   if (directModel) {
     return directModel;
   }
 
   // Fallback: Bedrock tier-specific env vars (default to sonnet tier)
-  const bedrockModel =
-    env.CLAUDE_CODE_BEDROCK_SONNET_MODEL ||
-    env.ANTHROPIC_DEFAULT_SONNET_MODEL ||
-    '';
+  const bedrockModel = [env.CLAUDE_CODE_BEDROCK_SONNET_MODEL, env.ANTHROPIC_DEFAULT_SONNET_MODEL]
+    .map(value => value?.trim())
+    .find(Boolean) ?? '';
   if (bedrockModel) {
     return bedrockModel;
   }
 
   // OMC tier env vars
-  const omcModel = env.OMQ_MODEL_MEDIUM || '';
+  const omcModel = env.OMQ_MODEL_MEDIUM?.trim() ?? '';
   if (omcModel) {
     return omcModel;
   }
 
   return undefined;
+}
+
+/**
+ * Resolve the default model for any team worker provider from the process
+ * environment. Explicit routing/configured models are applied by callers
+ * before this fallback; this helper only owns provider-specific env precedence.
+ */
+export function resolveDefaultWorkerModel(
+  agentType: CliAgentType,
+  env: NodeJS.ProcessEnv = process.env,
+  defaults?: ExternalModelsDefaults,
+): string | undefined {
+  if (agentType === 'claude') return resolveClaudeWorkerModel(env);
+  const providerConfigKeys: Record<Exclude<CliAgentType, 'claude'>, keyof ExternalModelsDefaults> = {
+    qwen: 'qwenModel',
+    codex: 'codexModel',
+    gemini: 'geminiModel',
+    antigravity: 'antigravityModel',
+    grok: 'grokModel',
+    cursor: 'cursorModel',
+  };
+  const configuredValue = defaults?.[providerConfigKeys[agentType]];
+  const configured = typeof configuredValue === 'string' ? configuredValue.trim() : undefined;
+  if (configured) return configured;
+
+  const providerName = agentType.toUpperCase();
+  const envKeys = [
+    `OMQ_EXTERNAL_MODELS_DEFAULT_${providerName}_MODEL`,
+    `OMQ_${providerName}_DEFAULT_MODEL`,
+  ];
+  for (const key of envKeys) {
+    const value = env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+/** Keep persisted provider defaults to trimmed, non-sensitive model names. */
+export function normalizeExternalModelsDefaults(defaults?: ExternalModelsDefaults): ExternalModelsDefaults | undefined {
+  if (!defaults || typeof defaults !== 'object') return undefined;
+  const normalized: ExternalModelsDefaults = {};
+  for (const key of ['qwenModel', 'codexModel', 'geminiModel', 'grokModel', 'antigravityModel', 'cursorModel'] as const) {
+    const value = defaults[key];
+    if (typeof value === 'string' && value.trim()) normalized[key] = value.trim();
+  }
+  if (defaults.provider === 'codex' || defaults.provider === 'gemini' || defaults.provider === 'antigravity') {
+    normalized.provider = defaults.provider;
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+/** Capture the effective provider defaults at team creation for env-removal parity. */
+export function resolveExternalModelsDefaults(
+  defaults?: ExternalModelsDefaults,
+  env: NodeJS.ProcessEnv = process.env,
+): ExternalModelsDefaults {
+  const normalized = normalizeExternalModelsDefaults(defaults) ?? {};
+  for (const [provider, key] of [
+    ['CODEX', 'codexModel'], ['GEMINI', 'geminiModel'], ['GROK', 'grokModel'],
+    ['CURSOR', 'cursorModel'], ['ANTIGRAVITY', 'antigravityModel'],
+  ] as const) {
+    if (normalized[key]) continue;
+    const value = [env[`OMQ_EXTERNAL_MODELS_DEFAULT_${provider}_MODEL`], env[`OMC_${provider}_DEFAULT_MODEL`]]
+      .map(candidate => candidate?.trim())
+      .find(Boolean);
+    if (value) normalized[key] = value;
+  }
+  return normalized;
 }
 
 /**

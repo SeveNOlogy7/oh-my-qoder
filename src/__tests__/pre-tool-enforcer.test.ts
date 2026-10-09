@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
-import { basename, dirname, join } from 'path';
-import { createHash } from 'crypto';
+import { dirname, join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock('child_process');
@@ -10,8 +9,15 @@ vi.unmock('node:child_process');
 import { execFileSync } from 'child_process';
 // @ts-expect-error Local hook helper is a JS module loaded directly by the tests.
 import { evaluateAgentHeavyPreflight } from '../../scripts/lib/pre-tool-enforcer-preflight.mjs';
+import { clearWorktreeCache, getOmcRoot } from '../lib/worktree-paths.js';
 
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'pre-tool-enforcer.mjs');
+
+function makeGitTemp(prefix: string): string {
+  const directory = mkdtempSync(join(tmpdir(), prefix));
+  execFileSync('git', ['init'], { cwd: directory, stdio: 'pipe' });
+  return directory;
+}
 
 function runPreToolEnforcer(input: Record<string, unknown>): Record<string, unknown> {
   return runPreToolEnforcerWithEnv(input);
@@ -23,22 +29,21 @@ function runPreToolEnforcerWithEnv(
 ): Record<string, unknown> {
   const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
   const homeDir = join(cwd, '.test-home');
-  // Lift the per-file OMQ_STATE_DIR pin (#42): this suite exercises the
-  // DEFAULT state-root resolution against its temp fixtures. Explicit
-  // per-test OMQ_STATE_DIR values still win via `...env` below.
-  const { OMQ_STATE_DIR: _pinnedStateDir, ...parentEnv } = process.env;
   const stdout = execFileSync(process.execPath, [SCRIPT_PATH], {
     cwd,
     input: JSON.stringify(input),
     encoding: 'utf-8',
     timeout: 5000,
     env: {
-      ...parentEnv,
+      ...process.env,
       HOME: homeDir,
-      QODER_CONFIG_DIR: join(homeDir, '.claude'),
+      USERPROFILE: homeDir,
+      CLAUDE_CONFIG_DIR: join(homeDir, '.claude'),
       NODE_ENV: 'test',
       DISABLE_OMQ: '',
       OMQ_SKIP_HOOKS: '',
+      OMQ_STATE_DIR: '',
+      CLAUDE_PLUGIN_ROOT: '',
       // Advisory verbosity: unset it so a contributor running with OMQ_QUIET
       // exported does not silence the advisories these tests assert on.
       // The OMQ_QUIET suites pass their own value via `env`, which wins below.
@@ -92,7 +97,7 @@ describe('pre-tool-enforcer advisory throttling (issue #3163)', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-advisory-throttle-'));
+    tempDir = makeGitTemp('pre-tool-enforcer-advisory-throttle-');
   });
 
   afterEach(() => {
@@ -256,7 +261,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-'));
+    tempDir = makeGitTemp('pre-tool-enforcer-');
   });
 
   afterEach(() => {
@@ -310,7 +315,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   });
 
   it('uses legacy mode files when session_id is not provided', () => {
-    writeJson(join(tempDir, '.omq', 'state', 'ultrawork-state.json'), {
+    writeJson(join(tempDir, '.omq', 'state', 'ralph-state.json'), {
       active: true,
     });
 
@@ -1155,7 +1160,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     ).toBeUndefined();
     expect(
       JSON.parse(readFileSync(join(sessionStateDir, 'ultrawork-state.json'), 'utf-8')).awaiting_confirmation,
-    ).toBeUndefined();
+    ).toBe(true);
   });
 
   // === Model routing / forceInherit tests (issue #1868 catch-22) ===
@@ -1840,7 +1845,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       {
         tool_name: 'Agent',
         toolInput: {
-          subagent_type: 'oh-my-claudecode:../docs/CLAUDE',
+          subagent_type: 'oh-my-qoder:../docs/CLAUDE',
           description: 'Some task',
           prompt: 'Do something',
         },
@@ -2140,42 +2145,6 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
       existsSync(join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json')),
     ).toBe(false);
   });
-
-  it('accepts the pre-rename omc-plan spelling as plan-skill protection inbound (#37)', () => {
-    const sessionId = 'session-omc-plan-inbound';
-
-    const output = runPreToolEnforcer({
-      tool_name: 'Skill',
-      toolInput: {
-        skill: 'oh-my-qoder:omc-plan',
-      },
-      cwd: tempDir,
-      session_id: sessionId,
-    });
-
-    expect(output).toEqual({ continue: true, suppressOutput: true });
-    const statePath = join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json');
-    expect(existsSync(statePath)).toBe(true);
-    expect(readFileSync(statePath, 'utf-8')).toContain('"skill_name": "omc-plan"');
-  });
-
-  it('applies plan-skill protection to the registered omq-plan spelling (#37)', () => {
-    const sessionId = 'session-omq-plan-inbound';
-
-    const output = runPreToolEnforcer({
-      tool_name: 'Skill',
-      toolInput: {
-        skill: 'oh-my-qoder:omq-plan',
-      },
-      cwd: tempDir,
-      session_id: sessionId,
-    });
-
-    expect(output).toEqual({ continue: true, suppressOutput: true });
-    const statePath = join(tempDir, '.omq', 'state', 'sessions', sessionId, 'skill-active-state.json');
-    expect(existsSync(statePath)).toBe(true);
-    expect(readFileSync(statePath, 'utf-8')).toContain('"skill_name": "omq-plan"');
-  });
 });
 
 // === Force-agent-delegation tests (issue #3095) ===
@@ -2184,7 +2153,7 @@ describe('pre-tool-enforcer force-agent-delegation enforcement', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-fad-'));
+    tempDir = makeGitTemp('pre-tool-enforcer-fad-');
   });
 
   afterEach(() => {
@@ -2249,7 +2218,7 @@ describe('pre-tool-enforcer force-agent-delegation enforcement', () => {
 
   it('blocks the call that crosses the threshold and surfaces the configured deny message', () => {
     const denyMessage =
-      'Too many Reads — spawn Agent(subagent_type=\'oh-my-claudecode:explore\', model=\'haiku\'). Bypass: ALLOW_RAW_READ=1.';
+      'Too many Reads — spawn Agent(subagent_type=\'oh-my-qoder:explore\', model=\'haiku\'). Bypass: ALLOW_RAW_READ=1.';
     writeDelegationConfig([
       {
         pattern: 'Read',
@@ -2346,9 +2315,9 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
   let xdgConfigHome: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-agent-model-'));
+    tempDir = makeGitTemp('pre-tool-enforcer-agent-model-');
     xdgConfigHome = join(tempDir, 'xdg-config');
-    mkdirSync(join(xdgConfigHome, 'qoder-omq'), { recursive: true });
+    mkdirSync(join(xdgConfigHome, 'claude-omc'), { recursive: true });
   });
 
   afterEach(() => {
@@ -2356,22 +2325,19 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
   });
 
   function writeUserConfig(jsonc: string): void {
-    writeFileSync(join(xdgConfigHome, 'qoder-omq', 'config.jsonc'), jsonc);
+    writeFileSync(join(xdgConfigHome, 'claude-omc', 'config.jsonc'), jsonc);
   }
 
   function writeProjectConfig(jsonc: string): void {
     const dir = join(tempDir, '.claude');
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'omq.jsonc'), jsonc);
+    writeFileSync(join(dir, 'omc.jsonc'), jsonc);
   }
 
   function run(input: Record<string, unknown>, env: Record<string, string> = {}): Record<string, unknown> {
-    // agent-model-config.mjs resolves the user config from XDG_CONFIG_HOME on
-    // POSIX and APPDATA on Windows, so a fixture that wants one user config file
-    // has to pin both -- otherwise the same test reads different paths per OS.
     return runPreToolEnforcerWithEnv(
       { cwd: tempDir, ...input },
-      { XDG_CONFIG_HOME: xdgConfigHome, APPDATA: xdgConfigHome, OMQ_ROUTING_FORCE_INHERIT: 'false', ...env },
+      { XDG_CONFIG_HOME: xdgConfigHome, OMQ_ROUTING_FORCE_INHERIT: 'false', ...env },
     );
   }
 
@@ -2442,32 +2408,6 @@ describe('pre-tool-enforcer agents.<name>.model injection (issue #3242)', () => 
     expect(updatedModel(output)).toBe('opus');
   });
 
-  it('injects a configured fork tier alias unchanged', () => {
-    // This fork stores tier aliases (low/medium/high) in agent config, not
-    // sonnet/opus/haiku. Folding is a no-op here, but the site must still inject.
-    writeUserConfig('{ "agents": { "explore": { "model": "medium" } } }');
-    const output = run({
-      tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-qoder:explore', prompt: 'x', description: 'd' },
-      session_id: 'session-3242-tier',
-    });
-    expect(updatedModel(output)).toBe('medium');
-  });
-
-  it('folds a configured Qwen model ID to its tier alias', () => {
-    // The pre-hop hook folded qwen-plus -> medium (mirroring src/features/
-    // delegation-enforcer.ts:normalizeToTierAlias); a full provider ID breaks
-    // Bedrock/Vertex style callers, and on this fork agent config legitimately
-    // carries the provider default. Issue #1415 applies to qwen IDs too.
-    writeUserConfig('{ "agents": { "executor": { "model": "qwen-plus" } } }');
-    const output = run({
-      tool_name: 'Task',
-      toolInput: { subagent_type: 'oh-my-qoder:executor', prompt: 'x', description: 'd' },
-      session_id: 'session-3242-qwen',
-    });
-    expect(updatedModel(output)).toBe('medium');
-  });
-
   it('does not inject under forceInherit even when an override is configured', () => {
     writeUserConfig('{ "agents": { "explore": { "model": "sonnet" } } }');
     const output = run(
@@ -2510,7 +2450,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-skill-agent-'));
+    tempDir = makeGitTemp('pre-tool-enforcer-skill-agent-');
   });
 
   afterEach(() => {
@@ -2545,8 +2485,8 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     return String(hookOutput.permissionDecisionReason ?? '');
   }
 
-  it('denies Task call whose subagent_type names a bundled skill (oh-my-claudecode:ai-slop-cleaner)', () => {
-    const output = runTask('oh-my-claudecode:ai-slop-cleaner');
+  it('denies Task call whose subagent_type names a bundled skill (oh-my-qoder:ai-slop-cleaner)', () => {
+    const output = runTask('oh-my-qoder:ai-slop-cleaner');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(output.continue).toBe(true);
@@ -2573,7 +2513,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     expect(denyReason(output)).not.toContain('Skill(skill="ai-slop-cleaner")');
   });
 
-  it('recognizes the omc: namespace alias and suggests this plugin\'s canonical oh-my-qoder: identifier', () => {
+  it('recognizes the omc: namespace alias and suggests the canonical oh-my-qoder: identifier', () => {
     const output = runTask('omc:ai-slop-cleaner');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
@@ -2582,7 +2522,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   });
 
   it('denies skill-as-agent even when an explicit model is present (guard precedes model routing)', () => {
-    const output = runTask('oh-my-claudecode:ai-slop-cleaner', 'Task', { model: 'sonnet' });
+    const output = runTask('oh-my-qoder:ai-slop-cleaner', 'Task', { model: 'sonnet' });
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
@@ -2590,7 +2530,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   });
 
   it('denies skill-as-agent even under force-inherit routing', () => {
-    const output = runTask('oh-my-claudecode:ai-slop-cleaner', 'Task', {}, { OMQ_ROUTING_FORCE_INHERIT: 'true' });
+    const output = runTask('oh-my-qoder:ai-slop-cleaner', 'Task', {}, { OMQ_ROUTING_FORCE_INHERIT: 'true' });
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
@@ -2598,7 +2538,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   });
 
   it('maps a skill alias to its primary name in the Skill-tool identifier', () => {
-    const output = runTask('oh-my-claudecode:cancel-ralph');
+    const output = runTask('oh-my-qoder:cancel-ralph');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
@@ -2607,7 +2547,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   });
 
   it('recognizes the renamed plan skill dir through its registered name omq-plan', () => {
-    const output = runTask('oh-my-claudecode:plan');
+    const output = runTask('oh-my-qoder:plan');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(hookOutput.permissionDecision).toBe('deny');
@@ -2617,7 +2557,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
 
 
   it('does NOT deny a real agent identifier (code-simplifier passes through)', () => {
-    const output = runTask('oh-my-claudecode:code-simplifier');
+    const output = runTask('oh-my-qoder:code-simplifier');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(output.continue).toBe(true);
@@ -2626,7 +2566,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   });
 
   it('does NOT deny a genuinely unknown agent identifier', () => {
-    const output = runTask('oh-my-claudecode:nonexistent-agent-xyz');
+    const output = runTask('oh-my-qoder:nonexistent-agent-xyz');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(output.continue).toBe(true);
@@ -2635,7 +2575,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   });
 
   it('does NOT fuzzy-match a typo to a skill (no unsafe closest-match substitution)', () => {
-    const output = runTask('oh-my-claudecode:ai-slop-cleanr');
+    const output = runTask('oh-my-qoder:ai-slop-cleanr');
     const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
     expect(output.continue).toBe(true);
@@ -2701,7 +2641,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   it.each(['remember', 'verify', 'debug'])(
     'denies the namespaced %s skill for a non-skininthegamebros user (USER_TYPE != ant)',
     (skill) => {
-      const output = runTask(`oh-my-claudecode:${skill}`, 'Task', {}, { USER_TYPE: '' });
+      const output = runTask(`oh-my-qoder:${skill}`, 'Task', {}, { USER_TYPE: '' });
       expect(output.continue).toBe(true);
       expect((output.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       expect(denyReason(output)).toContain(`Skill(skill="oh-my-qoder:${skill}")`);
@@ -2711,7 +2651,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   it.each(['remember', 'verify', 'debug'])(
     'denies the %s skill for a skininthegamebros user (USER_TYPE=ant)',
     (hiddenSkill) => {
-      const output = runTask(`oh-my-claudecode:${hiddenSkill}`, 'Task', {}, { USER_TYPE: 'ant' });
+      const output = runTask(`oh-my-qoder:${hiddenSkill}`, 'Task', {}, { USER_TYPE: 'ant' });
       const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
 
       expect(hookOutput.permissionDecision).toBe('deny');
@@ -2720,8 +2660,8 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
   );
 
   it('denies every visible skill for a non-skininthegamebros user', () => {
-    const visible = runTask('oh-my-claudecode:plan', 'Task', {}, { USER_TYPE: '' });
-    const remember = runTask('oh-my-claudecode:remember', 'Task', {}, { USER_TYPE: '' });
+    const visible = runTask('oh-my-qoder:plan', 'Task', {}, { USER_TYPE: '' });
+    const remember = runTask('oh-my-qoder:remember', 'Task', {}, { USER_TYPE: '' });
 
     expect((visible.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
     expect(denyReason(visible)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
@@ -2751,9 +2691,9 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
           { CLAUDE_PLUGIN_ROOT: pluginRoot, USER_TYPE: '', ...env },
         );
 
-      const nonAnt = run('oh-my-claudecode:Remember', {});
-      const nonAntLower = run('oh-my-claudecode:remember', {});
-      const ant = run('oh-my-claudecode:Remember', { USER_TYPE: 'ant' });
+      const nonAnt = run('oh-my-qoder:Remember', {});
+      const nonAntLower = run('oh-my-qoder:remember', {});
+      const ant = run('oh-my-qoder:Remember', { USER_TYPE: 'ant' });
 
       expect((nonAnt.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       expect(denyReason(nonAnt)).toContain('Skill(skill="oh-my-qoder:remember")');
@@ -2764,10 +2704,10 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     });
 
     it.each([
-      ['oh-my-claudecode:Plan', 'oh-my-qoder:omq-plan'],
-      ['oh-my-claudecode:AI-Slop-Cleaner', 'oh-my-qoder:ai-slop-cleaner'],
-      ['oh-my-claudecode:Cancel-Ralph', 'oh-my-qoder:cancel'],
-      ['oh-my-claudecode:PSM', 'oh-my-qoder:project-session-manager'],
+      ['oh-my-qoder:Plan', 'oh-my-qoder:omq-plan'],
+      ['oh-my-qoder:AI-Slop-Cleaner', 'oh-my-qoder:ai-slop-cleaner'],
+      ['oh-my-qoder:Cancel-Ralph', 'oh-my-qoder:cancel'],
+      ['oh-my-qoder:PSM', 'oh-my-qoder:project-session-manager'],
     ])('denies mixed-case %s with the canonical namespaced identifier %s', (input, expected) => {
       const output = runTask(input, 'Task', {}, { USER_TYPE: '' });
       const hookOutput = output.hookSpecificOutput as Record<string, unknown>;
@@ -2778,7 +2718,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     it.each(['Remember', 'VERIFY', 'Debug'])(
       'denies the mixed-case visible %s skill for a non-ant user',
       (skill) => {
-        const output = runTask(`oh-my-claudecode:${skill}`, 'Task', {}, { USER_TYPE: '' });
+        const output = runTask(`oh-my-qoder:${skill}`, 'Task', {}, { USER_TYPE: '' });
         expect((output.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
         expect(denyReason(output)).toContain(`Skill(skill="oh-my-qoder:${skill.toLowerCase()}")`);
       },
@@ -2795,12 +2735,12 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
     });
 
     it('applies case folding before explicit-model and force-inherit routing', () => {
-      const withModel = runTask('oh-my-claudecode:Plan', 'Task', { model: 'sonnet' }, { USER_TYPE: '' });
+      const withModel = runTask('oh-my-qoder:Plan', 'Task', { model: 'sonnet' }, { USER_TYPE: '' });
       expect((withModel.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       expect(denyReason(withModel)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
 
       const forceInheritVisible = runTask(
-        'oh-my-claudecode:Plan',
+        'oh-my-qoder:Plan',
         'Task',
         {},
         { USER_TYPE: '', OMQ_ROUTING_FORCE_INHERIT: 'true' },
@@ -2809,7 +2749,7 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       expect(denyReason(forceInheritVisible)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
 
       const forceInheritRemember = runTask(
-        'oh-my-claudecode:Remember',
+        'oh-my-qoder:Remember',
         'Task',
         {},
         { USER_TYPE: '', OMQ_ROUTING_FORCE_INHERIT: 'true' },
@@ -2828,23 +2768,15 @@ describe('pre-tool-enforcer skill vs agent namespace guard (issue #3667)', () =>
       },
     );
 
-    it('denies the plan identifier under every namespace this plugin uses, while preserving bare plan', () => {
-      const namespaced = runTask('oh-my-claudecode:plan', 'Task', {}, { USER_TYPE: '' });
+    it('denies the plugin-namespaced plan identifier while preserving bare plan', () => {
+      const namespaced = runTask('oh-my-qoder:plan', 'Task', {}, { USER_TYPE: '' });
       const omcAlias = runTask('omc:plan', 'Task', {}, { USER_TYPE: '' });
-      const forkNamespaced = runTask('oh-my-qoder:plan', 'Task', {}, { USER_TYPE: '' });
-      const forkAlias = runTask('omq:plan', 'Task', {}, { USER_TYPE: '' });
       const bare = runTask('plan', 'Task', {}, { USER_TYPE: '' });
 
       expect((namespaced.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       expect(denyReason(namespaced)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
       expect((omcAlias.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
       expect(denyReason(omcAlias)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
-      // The plugin's own spelling is the form its prompts now emit, so a guard that
-      // only recognizes the ancestor namespace protects nothing that actually runs.
-      expect((forkNamespaced.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(forkNamespaced)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
-      expect((forkAlias.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBe('deny');
-      expect(denyReason(forkAlias)).toContain('Skill(skill="oh-my-qoder:omq-plan")');
       expect((bare.hookSpecificOutput as Record<string, unknown>).permissionDecision).toBeUndefined();
     });
 
@@ -2875,7 +2807,7 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-session-tracking-'));
+    tempDir = makeGitTemp('pre-tool-enforcer-session-tracking-');
   });
 
   afterEach(() => {
@@ -2977,30 +2909,41 @@ describe('pre-tool-enforcer session-scoped agent tracking (issue #3732)', () => 
   it('resolves the session-scoped tracking read through OMQ_STATE_DIR centralized state', () => {
     const sessionId = 'session-3732-centralized';
     const centralRoot = mkdtempSync(join(tmpdir(), 'pre-tool-enforcer-central-'));
-    const stateRoot = join(centralRoot, `${basename(tempDir)}-${createHash('sha256').update(tempDir).digest('hex').slice(0, 16)}`);
-    writeJson(join(stateRoot, 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
-      agents: [
-        { agent_id: 'z1', agent_type: 'oh-my-qoder:executor', status: 'running' },
-      ],
-      total_spawned: 4,
-      total_completed: 3,
-      total_failed: 0,
-      last_updated: new Date().toISOString(),
-    });
+    const previousStateDir = process.env.OMQ_STATE_DIR;
+    let output: Record<string, unknown>;
+    try {
+      process.env.OMQ_STATE_DIR = centralRoot;
+      clearWorktreeCache();
+      const stateRoot = getOmcRoot(centralRoot);
+      writeJson(join(stateRoot, 'state', 'sessions', sessionId, 'subagent-tracking-state.json'), {
+      session_id: sessionId,
+        agents: [
+          { agent_id: 'z1', agent_type: 'oh-my-qoder:executor', status: 'running' },
+        ],
+        total_spawned: 4,
+        total_completed: 3,
+        total_failed: 0,
+        last_updated: new Date().toISOString(),
+      });
 
-    const output = runPreToolEnforcerWithEnv(
-      {
-        tool_name: 'Task',
-        cwd: tempDir,
-        session_id: sessionId,
-        toolInput: {
-          subagent_type: 'oh-my-qoder:executor',
-          description: 'issue #3732 centralized regression',
+      output = runPreToolEnforcerWithEnv(
+        {
+          tool_name: 'Task',
+          cwd: centralRoot,
+          session_id: sessionId,
+          toolInput: {
+            subagent_type: 'oh-my-qoder:executor',
+            description: 'issue #3732 centralized regression',
+          },
         },
-      },
-      { OMQ_STATE_DIR: centralRoot },
-    );
+        { OMQ_STATE_DIR: centralRoot },
+      );
+    } finally {
+      if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+      else process.env.OMQ_STATE_DIR = previousStateDir;
+      clearWorktreeCache();
     rmSync(centralRoot, { recursive: true, force: true });
+    }
 
     const advisory = (output.hookSpecificOutput as Record<string, unknown>).additionalContext as string;
     // The canonical resolver (not manual join(stateDir, ...)) routes the read

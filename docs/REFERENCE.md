@@ -14,8 +14,9 @@ Complete reference for oh-my-claudecode. For quick start, see the main [README.m
 - [Legacy MCP Team Runtime Tools (Deprecated)](#legacy-mcp-team-runtime-tools-deprecated-opt-in-only)
 - [Agents (29 Total)](#agents-29-total)
 - [Goal Workflow UX: `/goal`, Ralph, Team, Ultragoal](#goal-workflow-ux-goal-ralph-team-ultragoal)
-- [Skills (33 Total)](#skills-33-total)
+- [Skills (35 Total)](#skills-35-total)
 - [Slash Commands](#slash-commands)
+- [Shipyard Methodology](./shipyard.md) — governed delivery & shared harness map
 - [Claude Code `/goal` Adapter Design](#claude-code-goal-adapter-design)
 - [Hooks System](#hooks-system)
 - [Magic Keywords](#magic-keywords)
@@ -93,7 +94,7 @@ Configure omc for all Claude Code sessions:
 | Feature           | Without     | With omc Config         |
 | ----------------- | ----------- | ----------------------- |
 | Agent delegation  | Manual only | Automatic based on task |
-| Keyword detection | Disabled    | ultrawork, search       |
+| Keyword detection | Disabled    | supported prompt triggers |
 | Todo continuation | Basic       | Enforced completion     |
 | Model routing     | Default     | Smart tier selection    |
 | Skill composition | None        | Auto-combines skills    |
@@ -151,9 +152,28 @@ Git handling is intentionally conservative. The repository `.gitignore` keeps `.
 Worktree behavior follows the resolved state root:
 
 - **Default single repo / monorepo**: `getOmcRoot()` uses the git toplevel, so every package below one git root shares `{repo}/.omq/`.
+- **Git-less directories**: all cwd variants use the canonical `$HOME/.omq/` root; with `OMQ_STATE_DIR`, they use `$OMQ_STATE_DIR/non-git`. Existing cwd-local `.omq/` trees are never adopted or mutated implicitly. Protected locations such as `~/.ssh`, `~/.claude`, `~/.config`, user content directories, and descendants of system temp/OS roots are rejected as migration sources. Use the explicit `state_migrate_non_git` tool for owner-checked, non-overwriting migration. Session ownership still comes from `session_id`, and no time-based cleanup is performed.
 - **Linked git worktrees**: without `OMQ_STATE_DIR`, each linked worktree has its own `{worktree}/.omq/`; removing that worktree removes its local OMC state. Re-run setup from the worktree you are actively using so installed hooks and generated instructions match that checkout.
 - **Persistent state across worktree deletion**: set `OMQ_STATE_DIR`; OMC writes to `$OMQ_STATE_DIR/{project-id}/`, where the project id is stable across linked worktrees when a remote or primary git dir is available.
 - **Multi-repo workspace**: add `.omq-workspace` to a non-git parent when independent sibling repos should share `{parent}/.omq/`. This is for multi-repo workspaces, not ordinary monorepos.
+
+State MCP tools honor an explicit `workingDirectory`. In a git-less session, it identifies the legacy source for explicit migration while state storage follows the canonical non-git root; in a git-backed session, repository and linked-worktree boundary checks remain enforced. A path from another repository or a failed Git probe is rejected rather than silently substituted with the session cwd.
+
+The `state_migrate_non_git` tool is the only supported non-git legacy migration
+path. It requires the exact owning `session_id`, reads only
+`.omq/state/sessions/<session_id>/*.json`, copies records whose embedded owner
+matches that ID into the canonical root, never overwrites an existing
+destination, preserves source bytes, and reports copied/skipped/rejected
+filenames. It never deletes or mutates the legacy source and refuses Git,
+sensitive, system-temp, and symlinked legacy roots.
+
+#### Session-scoped state cannot capture another session (#3873)
+
+Mode-state files that carry a `session_id` under `.omq/state/sessions/<id>/` are authoritative only for that session. They cannot attach to, resume, or disarm a different session. Only legacy flat-layout files without a `session_id` can bind to whatever session starts next in that directory.
+
+Do not treat idle time as evidence that a session has ended. OMC performs no time-based cancellation of session-scoped state; cleanup tooling must preserve session-owned files and must not use a time threshold to delete active state.
+
+When migrating to `OMQ_STATE_DIR`, remember that setting the variable does not migrate existing contents. Copy or migrate legacy state first, then enable the centralized root; otherwise old plans, notepads, and project memory remain in their original `.omq/` location and are no longer visible.
 
 Plan persistence follows the same rule. Default generated plans under `.omq/plans/` are local operational artifacts and are ignored. If a plan should become durable project documentation, move it to a tracked docs path or configure `planOutput.directory` to a reviewed directory such as `docs/plans`; keep machine-local session state in `.omq/`.
 
@@ -781,7 +801,7 @@ Per story, `acceptanceCriteria` holds the currently governing criteria, and the 
 
 Programmatic API (from `src/hooks/ralph`): `amendCriterion(dir, storyId, { original, replacement, reason, evidence, authority })` replaces an active criterion and inserts the corrected one at its position; `supersedeCriterion(dir, storyId, { original, reason, evidence, authority })` removes it with no replacement. Both require non-empty reason/authority and bounded evidence (`MIN_CRITERION_EVIDENCE_LENGTH = 10`); failures return closed error codes and never mutate the PRD.
 
-Fail-closed invariants: a malformed ledger entry, an amended original that is still active, or an original amended twice makes the PRD invalid on read (`readPrd` → `null`), matching existing invalid-PRD startup behavior. Backward compatible: legacy PRDs without `criterionAmendments` read, format, and write unchanged; an empty `[]` ledger is treated as absent. Older builds that rewrite a PRD serialize only fields their own normalizer knows, so amendment records are only preserved by builds that ship this schema. See [ADR 03664](./adr/03664-ralph-prd-criterion-amendment.md) for the decision record.
+Fail-closed invariants: a malformed ledger entry, an amended original that is still active, or an original amended twice makes the PRD invalid on read (`readPrd` → `null`), matching existing invalid-PRD startup behavior. Legacy PRDs without `criterionAmendments` still read and format normally, but a completion or architect-verification claim lacking its governing-criteria revision is reopened and requires current-criteria re-verification before it can progress. An empty `[]` ledger is treated as absent. Older builds that rewrite a PRD serialize only fields their own normalizer knows, so amendment records are only preserved by builds that ship this schema. See [ADR 03664](./adr/03664-ralph-prd-criterion-amendment.md) for the decision record.
 
 ## Named autopilot stage profiles (v1)
 
@@ -821,7 +841,7 @@ Autopilot continues to own cancel, resume, cleanup, state inspection, HUD, and S
 
 V1 deliberately defers `stageModels` and all model/provider/role routing, inline/no-spawn execution, dynamic commands/modes/state files, arbitrary stages/prompts/plugins and control-flow extensions, and the separate custom-skill inline-array frontmatter parser mismatch. See [ADR 03487](./adr/03487-named-autopilot-stage-profiles.md) for the decision record.
 
-## Skills (33 Total)
+## Skills (35 Total)
 
 Includes bundled workflow, utility, domain, and compatibility skills. Runtime truth comes from the builtin skill loader scanning `skills/*/SKILL.md` and expanding aliases declared in frontmatter.
 
@@ -841,9 +861,12 @@ Marketplace/plugin installs compact the native plugin `skills/*/SKILL.md` files 
 | `debug`                   | Diagnose the current OMC session or repository state                           | `/oh-my-claudecode:debug`                   |
 | `deep-interview`          | Socratic deep interview with ambiguity gating                                  | `/deep-interview`                           |
 | `deepinit`                | Generate hierarchical AGENTS.md documentation                                  | `/oh-my-claudecode:deepinit`                |
+| `drydock`                 | Shipyard harness scaffold: 4-pillar shared environment, --check drift audit    | `/oh-my-claudecode:drydock`                 |
 | `execute`                 | Carry an approved task through to working, verified code                       | `/oh-my-claudecode:execute`                |
 | `external-context`        | Parallel document-specialist research                                          | `/oh-my-claudecode:external-context`       |
 | `hud`                     | Configure HUD/statusline                                                        | `/oh-my-claudecode:hud`                     |
+| `launch`                  | Shipyard governed delivery pipeline: spec, tickets, frontier execution          | `/oh-my-claudecode:launch`                  |
+| `minimal-code-discipline` | YAGNI-ladder writing-time discipline: reuse first, shortest correct diff        | `/oh-my-claudecode:minimal-code-discipline` |
 | `omc-doctor`              | Diagnose and fix installation issues                                           | `/oh-my-claudecode:omc-doctor`              |
 | `omc-plan`                | Strategic planning with optional interview and consensus modes                 | `/oh-my-claudecode:omc-plan`               |
 | `omc-review`              | Evaluate finished work for defects, risk, and simplification                   | `/oh-my-claudecode:omc-review`             |
@@ -888,6 +911,9 @@ Most installed skills are exposed as `/oh-my-claudecode:<skill-name>`. Deep Inte
 | `/oh-my-claudecode:execute <task>`                      | Carry an approved task through to working, verified code                                      |
 | `/oh-my-claudecode:external-context <topic>`             | Run parallel document-specialist research                                                     |
 | `/oh-my-claudecode:hud [setup\|minimal\|focused\|full\|status]` | Configure HUD/statusline                                                               |
+| `/oh-my-claudecode:drydock [--check]`                   | Lay the shipyard harness keel in a repo (5 surfaces); --check audits drift                     |
+| `/oh-my-claudecode:launch <brief\|spec-path> [--serial]` | Run the shipyard governed delivery pipeline (spec -> tickets -> frontier)                      |
+| `/oh-my-claudecode:minimal-code-discipline`              | Apply the YAGNI-ladder writing-time discipline while implementing                              |
 | `/oh-my-claudecode:omc-doctor`                           | Diagnose and fix installation issues                                                          |
 | `/oh-my-claudecode:omc-plan <description>`               | Start planning session (supports consensus structured deliberation)                           |
 | `/oh-my-claudecode:omc-review [path]`                    | Review finished work for defects and risk                                                       |
@@ -969,7 +995,7 @@ For each UserPromptSubmit command, 30s is the outer host fuse, including any lau
 
 The `workflow-drift-guard` blocks only supported source-associated local selection forks with a known minimum of two live alternatives—including exact binary questions and cardinality templates; explicit open input and every unsupported or ambiguous form fail open.
 
-> **Note**: autopilot, ralph, and ultrawork are **skills** (activated via keyword-detector), not hooks. The `persistent-mode.mjs` hook enforces their continuation by blocking the Stop event. A fresh unconfirmed ultragoal does not enforce matching `/goal`; confirmed runs remain fail-closed.
+> **Note**: autopilot and ralph are **skills** (activated via keyword-detector), not hooks. The `persistent-mode.mjs` hook enforces their continuation by blocking the Stop event. A fresh unconfirmed ultragoal does not enforce matching `/goal`; confirmed runs remain fail-closed.
 
 ### Code Simplifier Hook
 
@@ -1024,11 +1050,9 @@ Use these trigger phrases in natural language prompts to activate enhanced modes
 
 | Keyword                                                                        | Effect                                                                                        |
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `ultrawork`, `ulw`, `uw`                                                       | Activates parallel agent orchestration                                                        |
 | `autopilot`, `build me`, `I want a`, `handle it all`, `end to end`, `e2e this` | Full autonomous execution                                                                     |
 | `deslop`, `anti-slop`, cleanup/refactor + slop smells                          | Anti-slop cleanup workflow (`ai-slop-cleaner`)                                                |
 | `ralph`, `don't stop`, `must complete`, `until done`                           | Persistence until verified complete                                                           |
-| `ccg`, `claude-codex-gemini`                                                   | Claude-Codex-Gemini orchestration (use `antigravity` when using the Antigravity CLI)         |
 | `ralplan`                                                                      | Iterative planning consensus with structured deliberation (`--deliberate` for high-risk mode) |
 | `deep interview`, `ouroboros`                                                  | Deep Socratic interview with mathematical clarity gating                                      |
 | `deepsearch`, `search the codebase`, `find in codebase`                        | Codebase-focused search mode                                                                  |
@@ -1037,7 +1061,7 @@ Use these trigger phrases in natural language prompts to activate enhanced modes
 | `tdd`, `test first`, `red green`                                               | TDD workflow enforcement                                                                      |
 | `code review`, `review code`                                                   | Comprehensive code review mode                                                                |
 | `security review`, `review security`                                           | Security-focused review mode                                                                  |
-| `cancelomc`, `stopomc`                                                         | Unified cancellation                                                                          |
+| `cancelomq`, `stopomq`                                                         | Unified cancellation                                                                          |
 
 ### Localized triggers (Korean / Japanese)
 
@@ -1047,10 +1071,8 @@ The keyword detector recognizes localized aliases in addition to the English tri
 | ---------------- | ----------- | ------------------ |
 | `ralph`          | 랄프        | ラルフ             |
 | `autopilot`      | 오토파일럿  | オートパイロット   |
-| `ultrawork`      | 울트라워크  | ウルトラワーク     |
 | `ralplan`        | 랄플랜      | ラルプラン         |
 | `ultrathink`     | 울트라씽크  | ウルトラシンク     |
-| `ccg`            | 씨씨지      | シーシージー       |
 | `deep-interview` | 딥인터뷰    | ディープインタビュー |
 | `tdd`            | 테스트 퍼스트 | テスト ファースト |
 | `code-review`    | 코드 리뷰   | コード レビュー    |
@@ -1058,7 +1080,7 @@ The keyword detector recognizes localized aliases in addition to the English tri
 | `deepsearch`     | 딥 서치     | ディープ サーチ    |
 | `analyze`        | 딥 분석     | ディープ アナライズ |
 
-`cancelomc` / `stopomc` have no localized alias (cancellation is matched only by the English tokens).
+`cancelomq` / `stopomq` have no localized alias (cancellation is matched only by the English tokens).
 
 #### Localized routing behavior
 
@@ -1071,9 +1093,6 @@ The keyword detector recognizes localized aliases in addition to the English tri
 
 ```bash
 # In Claude Code:
-
-# Maximum parallelism
-ultrawork implement user authentication with OAuth
 
 # Enhanced search
 deepsearch for files that import the utils module
@@ -1097,7 +1116,7 @@ ralplan this feature
 tdd: implement password validation
 
 # Stop active orchestration
-stopomc
+stopomq
 ```
 
 ---

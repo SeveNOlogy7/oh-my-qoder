@@ -34,29 +34,29 @@ import {
 describe("Skill Bridge Module", () => {
   let testProjectRoot: string;
   let originalCwd: string;
-  // Exercises the DEFAULT state-root branch against a temp project root
-  // (#42): lift the per-file OMQ_STATE_DIR pin per test, restore afterwards.
-  let pinnedStateDir: string | undefined;
+  let originalHome: string | undefined;
+  let originalUserProfile: string | undefined;
 
   beforeEach(() => {
     clearSkillMetadataCache();
     clearSkillSession("emitted-learner-session");
     contextCollector.clear("emitted-learner-session");
     originalCwd = process.cwd();
-    pinnedStateDir = process.env.OMQ_STATE_DIR;
-    delete process.env.OMQ_STATE_DIR;
     testProjectRoot = join(tmpdir(), `omc-bridge-test-${Date.now()}`);
+    originalHome = process.env.HOME;
+    originalUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testProjectRoot;
+    process.env.USERPROFILE = testProjectRoot;
     mkdirSync(testProjectRoot, { recursive: true });
     process.chdir(testProjectRoot);
   });
 
   afterEach(() => {
     process.chdir(originalCwd);
-    if (pinnedStateDir === undefined) {
-      delete process.env.OMQ_STATE_DIR;
-    } else {
-      process.env.OMQ_STATE_DIR = pinnedStateDir;
-    }
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
     contextCollector.clear("emitted-learner-session");
     clearSkillSession("emitted-learner-session");
     if (existsSync(testProjectRoot)) {

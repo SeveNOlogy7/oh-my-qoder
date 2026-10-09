@@ -15,12 +15,12 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  mkdirSync, writeFileSync, rmSync, existsSync,
+  mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync,
   readFileSync, appendFileSync, realpathSync
 } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
 
 // --- task-file-ops imports ---
 import {
@@ -52,9 +52,6 @@ import {
   readProbeResult, writeProbeResult,
   registerMcpWorker, unregisterMcpWorker, isMcpWorker, listMcpWorkers
 } from '../team-registration.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 
 // ============================================================
@@ -67,13 +64,30 @@ const EDGE_TEAM_IO = 'test-edge-io';
 // task-file-ops tests use canonical path via cwd
 let TASK_TEST_CWD: string;
 let TASKS_DIR: string;
+let restoreTaskFixtureEnv: (() => void) | undefined;
 
-const TEAMS_IO_DIR = join(getQoderConfigDir(), 'teams', EDGE_TEAM_IO);
-
-const HB_DIR = join(tmpdir(), 'test-edge-hb');
-const REG_DIR = join(tmpdir(), 'test-edge-reg');
+let TEAMS_IO_DIR: string;
+let HB_DIR: string;
+let REG_DIR: string;
 const REG_TEAM = 'test-edge-reg-team';
-const CONFIG_DIR = join(getQoderConfigDir(), 'teams', REG_TEAM);
+let CONFIG_DIR: string;
+
+function isolateFixtureRoot(root: string): () => void {
+  const home = process.env.HOME;
+  const userProfile = process.env.USERPROFILE;
+  const stateDir = process.env.OMQ_STATE_DIR;
+  process.env.HOME = root;
+  process.env.USERPROFILE = root;
+  delete process.env.OMQ_STATE_DIR;
+  return () => {
+    if (home === undefined) delete process.env.HOME;
+    else process.env.HOME = home;
+    if (userProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = userProfile;
+    if (stateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = stateDir;
+  };
+}
 
 function writeTaskHelper(task: TaskFile): void {
   mkdirSync(TASKS_DIR, { recursive: true });
@@ -99,15 +113,21 @@ function makeHeartbeat(overrides?: Partial<HeartbeatData>): HeartbeatData {
 // ============================================================
 
 describe('task-file-ops edge cases', () => {
-  useDefaultStateRoot();
   beforeEach(() => {
-    TASK_TEST_CWD = join(realpathSync(tmpdir()), `omq-edge-tasks-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    TASK_TEST_CWD = mkdtempSync(join(realpathSync(tmpdir()), 'omq-edge-tasks-'));
+    restoreTaskFixtureEnv = isolateFixtureRoot(TASK_TEST_CWD);
     TASKS_DIR = join(TASK_TEST_CWD, '.omq', 'state', 'team', EDGE_TEAM_TASKS, 'tasks');
     mkdirSync(TASKS_DIR, { recursive: true });
   });
 
   afterEach(() => {
-    rmSync(TASK_TEST_CWD, { recursive: true, force: true });
+    const restore = restoreTaskFixtureEnv;
+    restoreTaskFixtureEnv = undefined;
+    try {
+      restore?.();
+    } finally {
+      rmSync(TASK_TEST_CWD, { recursive: true, force: true });
+    }
   });
 
   describe('updateTask on non-existent file', () => {
@@ -301,15 +321,26 @@ describe('task-file-ops edge cases', () => {
 // ============================================================
 
 describe('inbox-outbox edge cases', () => {
-  useDefaultStateRoot();
+  let inboxFixtureRoot: string;
+  let restoreInboxFixtureEnv: (() => void) | undefined;
+
   beforeEach(() => {
+    inboxFixtureRoot = mkdtempSync(join(realpathSync(tmpdir()), 'omq-edge-io-'));
+    restoreInboxFixtureEnv = isolateFixtureRoot(inboxFixtureRoot);
+    TEAMS_IO_DIR = join(getClaudeConfigDir(), 'teams', EDGE_TEAM_IO);
     mkdirSync(join(TEAMS_IO_DIR, 'inbox'), { recursive: true });
     mkdirSync(join(TEAMS_IO_DIR, 'outbox'), { recursive: true });
     mkdirSync(join(TEAMS_IO_DIR, 'signals'), { recursive: true });
   });
 
   afterEach(() => {
-    rmSync(TEAMS_IO_DIR, { recursive: true, force: true });
+    const restore = restoreInboxFixtureEnv;
+    restoreInboxFixtureEnv = undefined;
+    try {
+      restore?.();
+    } finally {
+      rmSync(inboxFixtureRoot, { recursive: true, force: true });
+    }
   });
 
   describe('readNewInboxMessages with malformed JSONL mixed with valid', () => {
@@ -550,13 +581,22 @@ describe('inbox-outbox edge cases', () => {
 // ============================================================
 
 describe('heartbeat edge cases', () => {
-  useDefaultStateRoot();
+  let restoreHeartbeatFixtureEnv: (() => void) | undefined;
+
   beforeEach(() => {
+    HB_DIR = mkdtempSync(join(realpathSync(tmpdir()), 'test-edge-hb-'));
+    restoreHeartbeatFixtureEnv = isolateFixtureRoot(HB_DIR);
     mkdirSync(HB_DIR, { recursive: true });
   });
 
   afterEach(() => {
-    rmSync(HB_DIR, { recursive: true, force: true });
+    const restore = restoreHeartbeatFixtureEnv;
+    restoreHeartbeatFixtureEnv = undefined;
+    try {
+      restore?.();
+    } finally {
+      rmSync(HB_DIR, { recursive: true, force: true });
+    }
   });
 
   describe('isWorkerAlive with maxAgeMs of 0', () => {
@@ -669,7 +709,6 @@ describe('heartbeat edge cases', () => {
 // ============================================================
 
 describe('tmux-session edge cases', () => {
-  useDefaultStateRoot();
   describe('sanitizeName with empty string', () => {
     it('throws for empty string', () => {
       expect(() => sanitizeName('')).toThrow('no valid characters');
@@ -714,9 +753,9 @@ describe('tmux-session edge cases', () => {
     it('each part is truncated to 50 chars independently', () => {
       const longName = 'a'.repeat(100);
       const result = sessionName(longName, longName);
-      // 'omq-team-' + 50 chars + '-' + 50 chars = 110 total
+      // 'omc-team-' + 50 chars + '-' + 50 chars = 110 total
       expect(result.length).toBe(110);
-      expect(result).toBe(`omq-team-${'a'.repeat(50)}-${'a'.repeat(50)}`);
+      expect(result).toBe(`omc-team-${'a'.repeat(50)}-${'a'.repeat(50)}`);
     });
   });
 
@@ -733,16 +772,26 @@ describe('tmux-session edge cases', () => {
 // ============================================================
 
 describe('team-registration edge cases', () => {
-  useDefaultStateRoot();
+  let restoreRegistrationFixtureEnv: (() => void) | undefined;
+
   beforeEach(() => {
+    REG_DIR = mkdtempSync(join(realpathSync(tmpdir()), 'test-edge-reg-'));
+    restoreRegistrationFixtureEnv = isolateFixtureRoot(REG_DIR);
+    CONFIG_DIR = join(getClaudeConfigDir(), 'teams', REG_TEAM);
     mkdirSync(REG_DIR, { recursive: true });
     mkdirSync(join(REG_DIR, '.omq', 'state'), { recursive: true });
     mkdirSync(CONFIG_DIR, { recursive: true });
   });
 
   afterEach(() => {
-    rmSync(REG_DIR, { recursive: true, force: true });
-    rmSync(CONFIG_DIR, { recursive: true, force: true });
+    const restore = restoreRegistrationFixtureEnv;
+    restoreRegistrationFixtureEnv = undefined;
+    try {
+      restore?.();
+    } finally {
+      rmSync(REG_DIR, { recursive: true, force: true });
+      rmSync(CONFIG_DIR, { recursive: true, force: true });
+    }
   });
 
   describe('readProbeResult with corrupt JSON', () => {
@@ -884,7 +933,7 @@ describe('team-registration edge cases', () => {
       writeFileSync(configPath, JSON.stringify({
         teamName: REG_TEAM,
         members: [
-          { name: 'claude-agent', backendType: 'subprocess', agentType: 'qwen' },
+          { name: 'claude-agent', backendType: 'subprocess', agentType: 'claude' },
           { name: 'mcp-w1', backendType: 'tmux', agentType: 'mcp-codex' },
         ],
       }));

@@ -11,11 +11,8 @@ import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { clearWorktreeCache } from '../../lib/worktree-paths.js';
-// These tests drive real artifact writers through the workspace-marker branch
-// of getOmqRoot() (#42): lift the per-file OMQ_STATE_DIR pin for every test.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 import {
   createUltragoalPlan,
   startNextUltragoal,
@@ -32,10 +29,8 @@ function cleanQualityGate(): object {
 }
 
 describe('ultragoal artifacts — multi-repo workspace anchor', () => {
-  useDefaultStateRoot();
-
   it('writes artifacts to workspace anchor .omq/ when .omq-workspace marker is in a parent dir', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'omq-multirepo-anchor-'));
+    const workspaceRoot = await mkdtemp(join(homedir(), 'omq-multirepo-anchor-'));
     try {
       // Drop workspace marker so getOmqRoot() anchors to workspaceRoot
       writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
@@ -59,7 +54,7 @@ describe('ultragoal artifacts — multi-repo workspace anchor', () => {
   });
 
   it('sibling sub-repos share one workspace .omq/ when rooted at the same .omq-workspace', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'omq-multirepo-sibling-'));
+    const workspaceRoot = await mkdtemp(join(homedir(), 'omq-multirepo-sibling-'));
     try {
       writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
 
@@ -96,7 +91,7 @@ describe('ultragoal artifacts — multi-repo workspace anchor', () => {
   });
 
   it('full lifecycle (start → checkpoint) resolves through workspace anchor', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'omq-multirepo-lifecycle-'));
+    const workspaceRoot = await mkdtemp(join(homedir(), 'omq-multirepo-lifecycle-'));
     try {
       writeFileSync(join(workspaceRoot, '.omq-workspace'), '{}');
 

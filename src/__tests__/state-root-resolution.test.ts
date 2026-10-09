@@ -15,7 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { getOmqRoot, clearWorktreeCache } from '../lib/worktree-paths.js';
+import { getOmqRoot, clearWorktreeCache, validateWorkingDirectory } from '../lib/worktree-paths.js';
 
 const NODE = process.execPath;
 const REPO_ROOT = resolve(join(__dirname, '..', '..'));
@@ -31,7 +31,8 @@ function buildHookEnv(extraEnv: Record<string, string> = {}): Record<string, str
   }
   // Remove OMQ_STATE_DIR from parent env so only extraEnv controls it.
   delete env.OMQ_STATE_DIR;
-  return { ...env, QODER_PLUGIN_ROOT: REPO_ROOT, ...extraEnv };
+  delete env.CLAUDE_PLUGIN_ROOT;
+  return { ...env, ...extraEnv };
 }
 
 /** Run a hook script synchronously and return the parsed JSON output. */
@@ -115,40 +116,36 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
   let tempDir: string;
   let fakeProject: string;
   let fakeStateDir: string;
-  // These tests exercise BOTH env branches with their own fixtures and child
-  // env stripping (#42). Lift the per-file pin per test and restore it, so the
-  // unset can never leak into the shared worker.
-  let pinnedStateDir: string | undefined;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+  let previousStateDir: string | undefined;
 
   beforeEach(() => {
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    previousStateDir = process.env.OMQ_STATE_DIR;
     tempDir = mkdtempSync(join(tmpdir(), 'omq-state-root-'));
     fakeProject = join(tempDir, 'project');
     fakeStateDir = join(tempDir, 'centralized-state');
     mkdirSync(fakeProject, { recursive: true });
-    // session-start validateCwd requires a real workspace anchor (.git / .omq-workspace)
-    mkdirSync(join(fakeProject, '.git'), { recursive: true });
+    // Hook probes require valid Git metadata rather than an empty .git dir.
+    execFileSync('git', ['init'], { cwd: fakeProject, stdio: 'pipe' });
     mkdirSync(fakeStateDir, { recursive: true });
-    pinnedStateDir = process.env.OMQ_STATE_DIR;
+    process.env.HOME = tempDir;
+    process.env.USERPROFILE = tempDir;
     delete process.env.OMQ_STATE_DIR;
     clearWorktreeCache();
   });
 
   afterEach(() => {
-    if (pinnedStateDir === undefined) {
-      delete process.env.OMQ_STATE_DIR;
-    } else {
-      process.env.OMQ_STATE_DIR = pinnedStateDir;
-    }
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
     clearWorktreeCache();
-    // Best-effort cleanup: the spawned hooks in this file can still hold the
-    // temp dir open for a heartbeat when afterEach fires, and on Windows that
-    // surfaces as a spurious EPERM. Never let cleanup fail an assertion that
-    // already passed — a leaked %TEMP% dir is acceptable (#42 batch evidence).
-    try {
-      rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch {
-      /* non-fatal */
-    }
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -258,9 +255,9 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
     runHookViaRunner(SESSION_START, {
       hook_event_name: 'SessionStart',
       session_id: priorSessionId,
-      transcript_path: join(fakeProject, '.qwen', 'projects', 'prior.jsonl'),
+      transcript_path: join(fakeProject, '.claude', 'projects', 'prior.jsonl'),
       source: 'startup',
-      model: 'qwen-plus',
+      model: 'claude-sonnet-4-6',
       cwd: fakeProject,
     });
 
@@ -273,9 +270,9 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
     runHookViaRunner(SESSION_START, {
       hook_event_name: 'SessionStart',
       session_id: currentSessionId,
-      transcript_path: join(fakeProject, '.qwen', 'projects', 'current.jsonl'),
+      transcript_path: join(fakeProject, '.claude', 'projects', 'current.jsonl'),
       source: 'startup',
-      model: 'qwen-plus',
+      model: 'claude-sonnet-4-6',
       cwd: fakeProject,
     });
 
@@ -316,7 +313,7 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
     expect(context).toContain('Centralized-state task');
   });
 
-  it('session-start reads ultrawork state from centralized path when OMQ_STATE_DIR is set', () => {
+  it('session-start does not restore retired ultrawork state from centralized paths', () => {
     const sessionId = 'test-session-uw-central';
     const centralizedOmqRoot = getCentralizedOmqRoot(fakeProject, fakeStateDir);
     const stateDir = join(centralizedOmqRoot, 'state', 'sessions', sessionId);
@@ -339,8 +336,8 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
 
     const context = (output as { hookSpecificOutput?: { additionalContext?: string } })
       .hookSpecificOutput?.additionalContext ?? '';
-    expect(context).toContain('[ULTRAWORK MODE RESTORED]');
-    expect(context).toContain('Centralized ultrawork task');
+    expect(context).not.toContain('[ULTRAWORK MODE RESTORED]');
+    expect(context).not.toContain('Centralized ultrawork task');
   });
 
   it('session-start does NOT restore state when OMQ_STATE_DIR is set but state is only in default .omq', () => {
@@ -567,7 +564,7 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
       {
         hook_event_name: 'PreToolUse',
         tool_name: 'Skill',
-        // `skill` needs a non-'none' protection level. The OMQ-prefixed `skill`
+        // `skill` needs a non-'none' protection level. The OMC-prefixed `skill`
         // slash-command maps to 'light' protection, which triggers the write.
         tool_input: { skill: 'oh-my-qoder:skill' },
         session_id: sessionId,
@@ -593,5 +590,110 @@ describe('OMQ_STATE_DIR state-root resolution (issue #2532)', () => {
     );
     expect(existsSync(centralizedPath)).toBe(true);
     expect(existsSync(defaultPath)).toBe(false);
+  });
+
+  it('anchors git-less directories at one stable home state root', () => {
+    const fakeHome = join(tempDir, 'home');
+    const firstCwd = join(fakeHome, 'workspace', 'first');
+    const secondCwd = join(fakeHome, 'workspace', 'second', 'nested');
+    mkdirSync(firstCwd, { recursive: true });
+    mkdirSync(secondCwd, { recursive: true });
+
+    const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
+    const previousCwd = process.cwd();
+    process.env.HOME = fakeHome;
+    process.env.USERPROFILE = fakeHome;
+    try {
+      clearWorktreeCache();
+      const expected = join(fakeHome, '.omq');
+      process.chdir(firstCwd);
+      expect(getOmqRoot()).toBe(expected);
+      process.chdir(secondCwd);
+      expect(getOmqRoot()).toBe(expected);
+      expect(existsSync(join(firstCwd, '.omq'))).toBe(false);
+      expect(existsSync(join(secondCwd, '.omq'))).toBe(false);
+    } finally {
+      process.chdir(previousCwd);
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
+      clearWorktreeCache();
+    }
+  });
+
+  it('does not implicitly adopt an existing git-less state root', () => {
+    const fakeHome = join(tempDir, 'home');
+    const project = join(fakeHome, 'workspace', 'project');
+    const nestedCwd = join(project, 'deep', 'path');
+    mkdirSync(join(project, '.omq'), { recursive: true });
+    mkdirSync(nestedCwd, { recursive: true });
+
+    const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
+    const previousCwd = process.cwd();
+    process.env.HOME = fakeHome;
+    process.env.USERPROFILE = fakeHome;
+    try {
+      clearWorktreeCache();
+      process.chdir(nestedCwd);
+      expect(getOmqRoot()).toBe(join(fakeHome, '.omq'));
+    } finally {
+      process.chdir(previousCwd);
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
+      clearWorktreeCache();
+    }
+  });
+
+  it('does not reuse state roots under protected home directories', () => {
+    const fakeHome = join(tempDir, 'home');
+    const sensitiveCwd = join(fakeHome, '.ssh', 'nested');
+    mkdirSync(join(fakeHome, '.ssh', '.omq'), { recursive: true });
+    mkdirSync(sensitiveCwd, { recursive: true });
+
+    const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = fakeHome;
+    process.env.USERPROFILE = fakeHome;
+    try {
+      clearWorktreeCache();
+      expect(getOmqRoot(sensitiveCwd)).toBe(join(fakeHome, '.omq'));
+    } finally {
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
+      clearWorktreeCache();
+    }
+  });
+
+  it('honors an explicit workingDirectory when both directories are git-less', () => {
+    const fakeHome = join(tempDir, 'home');
+    const currentCwd = join(fakeHome, 'current');
+    const requestedCwd = join(currentCwd, 'requested');
+    mkdirSync(currentCwd, { recursive: true });
+    mkdirSync(requestedCwd, { recursive: true });
+
+    const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
+    const originalCwd = process.cwd();
+    process.env.HOME = fakeHome;
+    process.env.USERPROFILE = fakeHome;
+    process.chdir(currentCwd);
+    try {
+      clearWorktreeCache();
+      expect(validateWorkingDirectory(requestedCwd)).toBe(resolve(requestedCwd));
+    } finally {
+      process.chdir(originalCwd);
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
+      clearWorktreeCache();
+    }
   });
 });

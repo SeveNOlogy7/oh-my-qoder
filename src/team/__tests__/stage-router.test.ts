@@ -15,9 +15,12 @@ const ENV_KEYS = [
   'DASHSCOPE_DEFAULT_MAX_MODEL',
   'DASHSCOPE_DEFAULT_PLUS_MODEL',
   'DASHSCOPE_DEFAULT_TURBO_MODEL',
-  'DASHSCOPE_DEFAULT_MAX_MODEL',
-  'DASHSCOPE_DEFAULT_PLUS_MODEL',
-  'DASHSCOPE_DEFAULT_TURBO_MODEL',
+  'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
+  'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
+  'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
+  'ANTHROPIC_DEFAULT_OPUS_MODEL',
+  'ANTHROPIC_DEFAULT_SONNET_MODEL',
+  'ANTHROPIC_DEFAULT_HAIKU_MODEL',
 ];
 
 const savedEnv: Record<string, string | undefined> = {};
@@ -60,7 +63,7 @@ const EXPECTED_DEFAULTS: Record<CanonicalTeamRole, { model: string; agent: strin
 describe('stage-router resolveRoleAssignment', () => {
   describe('defaults (no team.roleRouting)', () => {
     for (const role of CANONICAL_TEAM_ROLES) {
-      it(`resolves ${role} → claude + tier-default model + canonical agent`, () => {
+      it(`resolves ${role} → qwen + tier-default model + canonical agent`, () => {
         const out = resolveRoleAssignment(role, EMPTY);
         expect(out.provider).toBe('qwen');
         expect(out.agent).toBe(EXPECTED_DEFAULTS[role].agent);
@@ -97,7 +100,7 @@ describe('stage-router resolveRoleAssignment', () => {
       const out = resolveRoleAssignment('code-reviewer', cfg);
       expect(out.provider).toBe('grok');
       // grok has no builtin default model and none configured → resolves to ''
-      // (NOT a Claude tier model id).
+      // (NOT a Qwen tier model id).
       expect(out.model).toBe('');
       expect(out.model).not.toBe(QWEN_FAMILY_DEFAULTS.MAX);
       expect(out.agent).toBe('codeReviewer');
@@ -124,6 +127,18 @@ describe('stage-router resolveRoleAssignment', () => {
       expect(out.agent).toBe('executor');
     });
 
+
+    it('accepts provider=cursor for reviewer/verdict roles (issue #3880)', () => {
+      // Cursor reviewers emit the verdict-file contract like every other
+      // non-Claude provider, so the role gate that used to throw here is gone.
+      for (const role of ['code-reviewer', 'critic', 'security-reviewer', 'test-engineer'] as const) {
+        const cfg: PluginConfig = {
+          team: { roleRouting: { [role]: { provider: 'cursor' } } },
+        };
+        expect(resolveRoleAssignment(role, cfg).provider).toBe('cursor');
+      }
+    });
+
     it('grok resolves configured externalModels.defaults.grokModel when model omitted', () => {
       const cfg: PluginConfig = {
         externalModels: { defaults: { grokModel: 'grok-code-fast-1' } },
@@ -134,18 +149,53 @@ describe('stage-router resolveRoleAssignment', () => {
       expect(out.model).toBe('grok-code-fast-1');
     });
 
-    it('tier name on grok provider falls back to provider default (tiers are claude-centric)', () => {
+    it('cursor resolves configured externalModels.defaults.cursorModel when model omitted', () => {
+      const cfg: PluginConfig = {
+        externalModels: { defaults: { cursorModel: 'cursor-grok-4.6-high' } },
+        team: { roleRouting: { 'code-reviewer': { provider: 'cursor' } } },
+      };
+      const out = resolveRoleAssignment('code-reviewer', cfg);
+      expect(out.provider).toBe('cursor');
+      expect(out.model).toBe('cursor-grok-4.6-high');
+    });
+
+    it('tier name on cursor provider falls back to configured cursorModel', () => {
+      // Previously a tier resolved to '' with no diagnostic, so a user asking
+      // for HIGH silently got whatever cursor-agent defaults to.
+      const cfg: PluginConfig = {
+        externalModels: { defaults: { cursorModel: 'cursor-grok-4.6-high' } },
+        team: { roleRouting: { executor: { provider: 'cursor', model: 'HIGH' } } },
+      };
+      expect(resolveRoleAssignment('executor', cfg).model).toBe('cursor-grok-4.6-high');
+    });
+
+    it('explicit cursor model id outranks the configured default', () => {
+      const cfg: PluginConfig = {
+        externalModels: { defaults: { cursorModel: 'composer-2.5' } },
+        team: { roleRouting: { executor: { provider: 'cursor', model: 'cursor-grok-4.6-xhigh' } } },
+      };
+      expect(resolveRoleAssignment('executor', cfg).model).toBe('cursor-grok-4.6-xhigh');
+    });
+
+    it('unconfigured cursor stays empty so cursor-agent picks its own model', () => {
+      const cfg: PluginConfig = {
+        team: { roleRouting: { executor: { provider: 'cursor' } } },
+      };
+      expect(resolveRoleAssignment('executor', cfg).model).toBe('');
+    });
+
+    it('tier name on grok provider falls back to provider default (tiers are qwen-centric)', () => {
       const cfg: PluginConfig = {
         team: { roleRouting: { executor: { provider: 'grok', model: 'HIGH' } } },
       };
       const out = resolveRoleAssignment('executor', cfg);
       expect(out.provider).toBe('grok');
-      // tier names are claude-centric → grok ignores them and uses its (empty) default
+      // tier names are qwen-centric → grok ignores them and uses its (empty) default
       expect(out.model).toBe('');
       expect(out.model).not.toBe(QWEN_FAMILY_DEFAULTS.MAX);
     });
 
-    it('resolves tier name (HIGH) into Claude opus model for claude provider', () => {
+    it('resolves tier name (HIGH) into Qwen max model for qwen provider', () => {
       const cfg: PluginConfig = {
         team: { roleRouting: { executor: { provider: 'qwen', model: 'HIGH' } } },
       };
@@ -154,7 +204,7 @@ describe('stage-router resolveRoleAssignment', () => {
       expect(out.model).toBe(QWEN_FAMILY_DEFAULTS.MAX);
     });
 
-    it('tier name on external provider falls back to provider builtin (tiers are claude-centric)', () => {
+    it('tier name on external provider falls back to provider builtin (tiers are qwen-centric)', () => {
       const cfg: PluginConfig = {
         team: { roleRouting: { executor: { provider: 'codex', model: 'HIGH' } } },
       };
@@ -171,7 +221,7 @@ describe('stage-router resolveRoleAssignment', () => {
       expect(out.agent).toBe('debugger');
     });
 
-    it('respects routing.tierModels overrides for claude tier resolution', () => {
+    it('respects routing.tierModels overrides for qwen tier resolution', () => {
       const cfg: PluginConfig = {
         routing: { tierModels: { HIGH: 'claude-opus-custom-id' } },
         team: { roleRouting: { critic: { provider: 'qwen', model: 'HIGH' } } },
@@ -182,7 +232,7 @@ describe('stage-router resolveRoleAssignment', () => {
   });
 
   describe('orchestrator pinning', () => {
-    it('orchestrator provider always pinned to claude even when user specifies codex', () => {
+    it('orchestrator provider always pinned to qwen even when user specifies codex', () => {
       const cfg: PluginConfig = {
         team: { roleRouting: { orchestrator: { model: 'HIGH' } } },
       };

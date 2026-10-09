@@ -8,12 +8,8 @@ import {
   isApprovedExecutionFollowupShortcut,
   resolveApprovedTeamFollowupContext,
 } from "../followup-planner.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 describe("team/followup-planner", () => {
-  useDefaultStateRoot();
   describe("isShortTeamFollowupRequest", () => {
     it.each([
       "team",
@@ -130,14 +126,29 @@ describe("team/followup-planner", () => {
   describe("resolveApprovedTeamFollowupContext", () => {
     let testDir: string;
     let plansDir: string;
+    let previousHome: string | undefined;
+    let previousUserProfile: string | undefined;
+    let previousStateDir: string | undefined;
 
     beforeEach(() => {
       testDir = mkdtempSync(join(tmpdir(), "followup-planner-test-"));
+      previousHome = process.env.HOME;
+      previousUserProfile = process.env.USERPROFILE;
+      previousStateDir = process.env.OMQ_STATE_DIR;
+      process.env.HOME = testDir;
+      process.env.USERPROFILE = testDir;
+      delete process.env.OMQ_STATE_DIR;
       plansDir = join(testDir, ".omq", "plans");
       mkdirSync(plansDir, { recursive: true });
     });
 
     afterEach(() => {
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousUserProfile;
+      if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+      else process.env.OMQ_STATE_DIR = previousStateDir;
       rmSync(testDir, { recursive: true, force: true });
     });
 
@@ -158,7 +169,7 @@ describe("team/followup-planner", () => {
           "## Requirement coverage map",
           "- req -> impl",
           "",
-          'omx team 3:qwen "implement auth"',
+          'omc team 3:claude "implement auth"',
           "",
         ].join("\n"),
       );
@@ -211,7 +222,7 @@ describe("team/followup-planner", () => {
           "## Requirement coverage map",
           "- req -> impl",
           "",
-          'omx team 3:qwen "implement auth"',
+          'omc team 3:claude "implement auth"',
           "",
         ].join("\n"),
       );
@@ -262,7 +273,7 @@ describe("team/followup-planner", () => {
           "## Requirement coverage map",
           "- req -> impl",
           "",
-          'omx team 3:qwen "implement auth"',
+          'omc team 3:claude "implement auth"',
           "",
         ].join("\n"),
       );
@@ -284,7 +295,7 @@ describe("team/followup-planner", () => {
       expect(result!.hint.mode).toBe("team");
       expect(result!.hint.task).toBe("implement auth");
       expect(result!.hint.workerCount).toBe(3);
-      expect(result!.launchCommand).toContain("omx team");
+      expect(result!.launchCommand).toContain("omc team");
     });
 
     it("resolves follow-up context from OMX planning artifacts written after a deep-interview/ralplan cycle", () => {

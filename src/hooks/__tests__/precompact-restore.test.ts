@@ -29,9 +29,10 @@ import {
 } from 'fs';
 import * as nodeFs from 'fs';
 import { basename, dirname, join, sep } from 'path';
-import { tmpdir } from 'os';
+import { homedir } from 'os';
 import { pathToFileURL } from 'url';
 import { createHash } from 'crypto';
+import { execFileSync } from 'child_process';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -53,9 +54,6 @@ import {
   CHECKPOINT_MAX_AGE_MS,
   CHECKPOINT_MAX_BYTES,
 } from '../pre-compact/restore.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 // Marker publication is portable across every supported Node platform.
 const SECURE_MARKER_SUPPORTED = true;
@@ -86,7 +84,8 @@ function withPublisherPreload<T>(
 // ============================================================================
 
 function createTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'precompact-restore-test-'));
+  const dir = mkdtempSync(join(homedir(), 'precompact-restore-test-'));
+  execFileSync('git', ['init', '--quiet'], { cwd: dir, stdio: 'ignore' });
   mkdirSync(join(dir, '.omq', 'state'), { recursive: true });
   return dir;
 }
@@ -144,7 +143,6 @@ function getOmcRootForTest(dir: string): string {
 // ============================================================================
 
 describe('PreCompact writer - plan anchors (issue #3730)', () => {
-  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {
@@ -163,6 +161,7 @@ describe('PreCompact writer - plan anchors (issue #3730)', () => {
     // Arrange: session-scoped PRD (ralph PRD mode)
     // PRD lives at .omq/state/sessions/{sessionId}/prd.json
     const prdDir = join(getOmcRootForTest(tempDir), 'state', 'sessions', 'test-session');
+    const completionCriteriaRevision = `sha256:${createHash('sha256').update(JSON.stringify({ acceptanceCriteria: ['bug reproduces'], criterionAmendments: [] })).digest('hex')}`;
     mkdirSync(prdDir, { recursive: true });
     writeFileSync(
       join(prdDir, 'prd.json'),
@@ -178,6 +177,7 @@ describe('PreCompact writer - plan anchors (issue #3730)', () => {
             acceptanceCriteria: ['bug reproduces'],
             priority: 1,
             passes: true,
+            completionCriteriaRevision,
           },
           {
             id: 'US-2',
@@ -279,7 +279,6 @@ describe('PreCompact writer - plan anchors (issue #3730)', () => {
 // ============================================================================
 
 describe('PreCompact restore (issue #3730)', () => {
-  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {
@@ -1290,7 +1289,6 @@ syncBuiltinESMExports();
 // ============================================================================
 
 describe('writer → restore lifecycle (issue #3730)', () => {
-  useDefaultStateRoot();
   let tempDir: string;
 
   beforeEach(() => {

@@ -46,9 +46,6 @@ import { getOpenClawConfig, resolveGateway } from "../config.js";
 import { wakeGateway, wakeCommandGateway } from "../dispatcher.js";
 import type { OpenClawConfig } from "../types.js";
 import { parseTmuxTail } from "../../notifications/formatter.js";
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../__tests__/helpers/default-state-root.js';
 
 const mockConfig: OpenClawConfig = {
   enabled: true,
@@ -74,8 +71,16 @@ const mockResolvedGateway = {
 };
 
 describe("wakeOpenClaw", () => {
-  useDefaultStateRoot();
+  let fixtureHome: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
+
   beforeEach(() => {
+    fixtureHome = mkdtempSync(join(tmpdir(), "omq-openclaw-home-"));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = fixtureHome;
+    process.env.USERPROFILE = fixtureHome;
     vi.mocked(getOpenClawConfig).mockReturnValue(mockConfig);
     vi.mocked(resolveGateway).mockReturnValue(mockResolvedGateway);
     vi.mocked(wakeGateway).mockResolvedValue({
@@ -90,6 +95,11 @@ describe("wakeOpenClaw", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    rmSync(fixtureHome, { recursive: true, force: true });
   });
 
   it("returns null when OMQ_OPENCLAW is not set", async () => {
@@ -144,7 +154,7 @@ describe("wakeOpenClaw", () => {
 
     expect(mockGetNewPaneTail).toHaveBeenCalledWith(
       "%7",
-      join("/home/user/myproject", ".omq", "state"),
+      join(fixtureHome, ".omq", "state"),
       15,
     );
     const payload = vi.mocked(wakeGateway).mock.calls[0]?.[2];
@@ -402,7 +412,6 @@ describe("wakeOpenClaw", () => {
 });
 
 describe("reply channel context", () => {
-  useDefaultStateRoot();
   beforeEach(() => {
     vi.mocked(getOpenClawConfig).mockReturnValue(mockConfig);
     vi.mocked(resolveGateway).mockReturnValue(mockResolvedGateway);
@@ -507,7 +516,6 @@ describe("reply channel context", () => {
 
 
 describe("burst dedupe for attached multi-pane sessions", () => {
-  useDefaultStateRoot();
   let projectDir: string;
 
   beforeEach(() => {

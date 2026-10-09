@@ -19,7 +19,6 @@ export interface AgentConfig {
 export type AutopilotExecutionBackend = "team" | "solo";
 export type AutopilotPlanningMode = "ralplan" | "direct" | false;
 export type AutopilotTeamAgentType =
-  | "qwen"
   | "claude"
   | "codex"
   | "gemini"
@@ -130,7 +129,6 @@ export interface PluginConfig {
 
   // Magic keyword customization
   magicKeywords?: {
-    ultrawork?: string[];
     search?: string[];
     analyze?: string[];
     ultrathink?: string[];
@@ -179,13 +177,9 @@ export interface PluginConfig {
      *   (useful on non-Anthropic backends without the nuclear forceInherit)
      * - `{ haiku: 'sonnet' }` — promote all haiku agents to sonnet tier
      *
-     * Env: OMQ_MODEL_ALIAS_LOW / _MEDIUM / _HIGH and OMQ_MODEL_ALIAS_HAIKU /
-     * _SONNET / _OPUS / _FABLE. The enforcer looks a key up by the agent
-     * definition's own tier name, so on this fork -- where agent defs are
-     * tier-keyed and the defaults resolve to the Qwen family -- only the
-     * LOW/MEDIUM/HIGH forms can match an agent default today.
+     * Env: OMQ_MODEL_ALIAS_HAIKU, OMQ_MODEL_ALIAS_SONNET, OMQ_MODEL_ALIAS_OPUS, OMQ_MODEL_ALIAS_FABLE
      */
-    modelAliases?: Partial<Record<"low" | "medium" | "high" | "haiku" | "sonnet" | "opus" | "fable", ModelType>>;
+    modelAliases?: Partial<Record<"haiku" | "sonnet" | "opus" | "fable", ModelType>>;
     /** Keywords that force escalation to higher tier */
     escalationKeywords?: string[];
     /** Keywords that suggest lower tier */
@@ -356,17 +350,19 @@ export interface ExternalModelPreference {
  */
 export interface ExternalModelsDefaults {
   provider?: ExternalModelProvider;
+  qwenModel?: string;
   codexModel?: string;
   geminiModel?: string;
   grokModel?: string;
   antigravityModel?: string;
+  cursorModel?: string;
 }
 
 /**
  * External models fallback policy
  */
 export interface ExternalModelsFallbackPolicy {
-  onModelFailure: "provider_chain" | "cross_provider" | "claude_only" | "qwen_only";
+  onModelFailure: "provider_chain" | "cross_provider" | "claude_only";
   allowCrossProvider?: boolean;
   crossProviderOrder?: ExternalModelProvider[];
 }
@@ -481,9 +477,6 @@ export const CANONICAL_TEAM_ROLES = [
 
 export type CanonicalTeamRole = typeof CANONICAL_TEAM_ROLES[number];
 
-/** Cursor team workers are currently supported only for executor-style tasks. */
-export const CURSOR_EXECUTOR_TEAM_ROLES = ["executor"] as const;
-
 /** Provider for /team role routing. */
 export type TeamRoleProvider = 'qwen' | 'claude' | 'codex' | 'gemini' | 'grok' | 'cursor' | 'antigravity';
 
@@ -524,7 +517,7 @@ export interface TeamRoleAssignmentSpec {
   agent?: KnownAgentName;
 }
 
-/** Orchestrator is pinned to claude; only `model` is user-configurable. */
+/** Orchestrator is pinned to qwen; only `model` is user-configurable. */
 export type OrchestratorSpec = Pick<TeamRoleAssignmentSpec, 'model'>;
 
 /** Cost mode reserved for future downgrade behavior (no implementation yet). */

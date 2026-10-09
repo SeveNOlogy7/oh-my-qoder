@@ -148,7 +148,7 @@ const AUTORESEARCH_RESULTS_HEADER = 'iteration\tcommit\tpass\tscore\tstatus\tdes
 const AUTORESEARCH_WORKTREE_EXCLUDES = ['results.tsv', 'run.log', 'node_modules', '.omq/'];
 
 // Exclusive modes that cannot run concurrently with autoresearch
-const EXCLUSIVE_MODES: ExecutionMode[] = ['ralph', 'ultrawork', 'autopilot', 'autoresearch'];
+const EXCLUSIVE_MODES: ExecutionMode[] = ['ralph', 'autopilot', 'autoresearch'];
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -364,51 +364,10 @@ function isAllowedRuntimeDirtyLine(
   return isAllowedRuntimeDirtyPath(path) || allowedBootstrapPaths.has(path);
 }
 
-/**
- * Porcelain " M" (index clean, worktree modified) is the only shape autocrlf
- * stat-only churn takes (#57, ledger :439). Staged entries ("M ", "MM"),
- * renames, conflicts and untracked lines never match and are always treated
- * as real dirt.
- */
-const STAT_ONLY_CHURN_LINE = /^ M(?: |$)/;
-
-/**
- * Content-level recheck for a " M" candidate: the file counts as changed only
- * if a real diff (staged or unstaged) lists it. Git failing to answer is NOT
- * proof of cleanliness — fail closed and keep the candidate blocking (#57).
- */
-function hasContentLevelChange(worktreePath: string, relativePath: string): boolean {
-  for (const args of [
-    ['diff', '--name-only', '--', relativePath],
-    ['diff', '--cached', '--name-only', '--', relativePath],
-  ]) {
-    const result = spawnSync('git', args, {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-      windowsHide: true,
-    });
-    if (result.status !== 0) return true;
-    const listed = (result.stdout || '')
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (listed.includes(relativePath)) return true;
-  }
-  return false;
-}
-
 export function assertResetSafeWorktree(worktreePath: string, allowedDirtyPaths: readonly string[] = []): void {
   const lines = gitStatusLines(worktreePath);
   const allowedBootstrapPaths = allowedBootstrapDirtyPaths(worktreePath, allowedDirtyPaths);
-  const blocking = lines
-    .filter((line) => !isAllowedRuntimeDirtyLine(line, allowedBootstrapPaths))
-    .filter((line) => {
-      // Only the stat-only churn shape is eligible for the content-level
-      // recheck; every other non-allowed line blocks outright.
-      if (!STAT_ONLY_CHURN_LINE.test(line)) return true;
-      const path = normalizeGitStatusPath(line.slice(3).trim());
-      return hasContentLevelChange(worktreePath, path);
-    });
+  const blocking = lines.filter((line) => !isAllowedRuntimeDirtyLine(line, allowedBootstrapPaths));
   if (blocking.length === 0) return;
   throw new Error(`autoresearch_reset_requires_clean_worktree:${worktreePath}:${blocking.join(' | ')}`);
 }
@@ -444,7 +403,7 @@ async function assertAutoresearchLockAvailable(projectRoot: string): Promise<voi
 }
 
 /**
- * Assert no exclusive mode is already active (ralph, ultrawork, autopilot).
+ * Assert no exclusive mode is already active (ralph, autopilot).
  * Mirrors OMX assertModeStartAllowed semantics using OMC mode-state-io.
  */
 export async function assertModeStartAllowed(mode: ExecutionMode, projectRoot: string): Promise<void> {

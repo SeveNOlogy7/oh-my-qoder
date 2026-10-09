@@ -3,23 +3,29 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync, utimesSync }
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { pruneOldStateFiles } from '../index.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
 
 describe('pruneOldStateFiles', () => {
-  useDefaultStateRoot();
   let testDir: string;
   let stateDir: string;
+  let previousHome: string | undefined;
+  let previousUserProfile: string | undefined;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), 'prune-test-'));
+    previousHome = process.env.HOME;
+    previousUserProfile = process.env.USERPROFILE;
+    process.env.HOME = testDir;
+    process.env.USERPROFILE = testDir;
     stateDir = join(testDir, '.omq', 'state');
     mkdirSync(stateDir, { recursive: true });
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
   });
 
   function writeStateFile(name: string, content: object, ageDays: number = 0) {
