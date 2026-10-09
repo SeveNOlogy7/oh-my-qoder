@@ -13,8 +13,18 @@ const FLAKY_B = 'src/__tests__/flake_subject.test.ts > flake subject > flips in 
 const STABLE = 'src/__tests__/flake_subject.test.ts > flake subject > never flaps';
 
 const log = (failLines: string[]) => {
-  const files = new Set(failLines.map((l) => l.trim().split(' > ')[0])).size;
-  return [' RUN  v3.2.4', ...failLines, ` Test Files  ${files} failed | 1 passed (2)`, `      Tests  ${failLines.length} failed | 1 passed (2)`, ''].join('\n');
+  // Each failing file's own tally row (`❯ file (N tests | M failed)`) is part of the
+  // shape the completeness accounting anchors to: it sums the rows' failed counts
+  // against vitest's `Tests N failed`, so a log that prints FAIL lines with no row
+  // reads as one whose whole-file output was lost (exit 1, never a delta report).
+  // Real vitest output always carries the row -- this fixture must too.
+  const failedByFile = new Map<string, number>();
+  for (const l of failLines) {
+    const file = l.trim().replace(/^FAIL\s+/, '').split(' > ')[0];
+    failedByFile.set(file, (failedByFile.get(file) ?? 0) + 1);
+  }
+  const rows = [...failedByFile].map(([file, failed]) => ` ❯ ${file} (${failed} tests | ${failed} failed) 10ms`);
+  return [' RUN  v3.2.4', ...rows, ...failLines, ` Test Files  ${failedByFile.size} failed | 1 passed (2)`, `      Tests  ${failLines.length} failed | 1 passed (2)`, ''].join('\n');
 };
 
 const check = (args: string[], input: string) =>

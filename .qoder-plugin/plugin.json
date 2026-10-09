@@ -1,6 +1,6 @@
 {
   "name": "oh-my-qoder",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "description": "Multi-agent orchestration plugin for Qoder CLI",
   "author": {
     "name": "oh-my-qoder contributors"

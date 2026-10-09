@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 // @ts-expect-error - .mjs file has no type declarations
-import { stripAnsi, parseVitestOutput, compareFailures, stripRunnerPrefix, uncountedFailEntries } from '../../scripts/known-failures.mjs';
+import { stripAnsi, parseVitestOutput, compareFailures, stripRunnerPrefix, uncountedFailEntries, failLineAccounting } from '../../scripts/known-failures.mjs';
 
 describe('stripRunnerPrefix', () => {
   it('removes a job/step/timestamp prefix whose step name contains spaces', () => {
@@ -151,6 +156,86 @@ Error: cannot resolve import
       Tests  no tests
 `;
       expect(uncountedFailEntries(output)).toEqual([]);
+    });
+  });
+
+  describe('failLineAccounting', () => {
+    it('separates the FAIL lines that belong to no counted failed test', () => {
+      // Measured 2026-10-10 on .omq/align-v5.2.0/w8-vitest.txt: hud-marketplace-resolution
+      // printed two FAIL lines under one title -- the test body's ENOENT and the afterEach
+      // cleanup's EPERM -- while its own row reports (5 tests | 1 failed). vitest counts the
+      // test once, so the surplus line must be accounted separately or the completeness
+      // equation refuses the whole log (975 + 2 against 966 + 9 + 1).
+      const output = [
+        ' ❯ src/a.test.ts (5 tests | 1 failed) 10ms',
+        ' FAIL  src/a.test.ts > suite > flaky case',
+        'Error: ENOENT: the sentinel file was never written',
+        ' FAIL  src/a.test.ts > suite > flaky case',
+        'Error: EPERM: the afterEach cleanup could not remove its temp dir',
+        ' Test Files  1 failed | 1 total',
+        '      Tests  1 failed | 4 passed (5)',
+      ].join('\n');
+      const accounting = failLineAccounting(output);
+      expect(accounting.countedFailures).toBe(1);
+      expect(accounting.excessLines).toBe(1);
+      expect(accounting.missing).toEqual([]);
+    });
+
+    it('names a file whose log is missing a FAIL line its own tally promised', () => {
+      const output = [
+        ' ❯ src/a.test.ts (3 tests | 2 failed) 10ms',
+        ' FAIL  src/a.test.ts > suite > first case',
+        'Error: boom',
+        ' Test Files  1 failed | 1 total',
+        '      Tests  2 failed | 1 passed (3)',
+      ].join('\n');
+      const accounting = failLineAccounting(output);
+      expect(accounting.missing).toEqual([{ file: 'src/a.test.ts', lines: 1, failed: 2 }]);
+      expect(accounting.excessLines).toBe(0);
+    });
+  });
+
+  describe('completeness guard end to end', () => {
+    const runGuard = (log: string) => {
+      const dir = mkdtempSync(join(tmpdir(), 'omq-known-failures-'));
+      try {
+        const baseline = join(dir, 'baseline.json');
+        writeFileSync(baseline, JSON.stringify({
+          metadata: { platform: 'win32', source: 'test fixture', fileCount: 1, testCount: 1 },
+          failures: ['src/a.test.ts > suite > flaky case'],
+        }));
+        return spawnSync(process.execPath, [
+          fileURLToPath(new URL('../../scripts/known-failures.mjs', import.meta.url)),
+          '--check', '--require-summary', `--baseline=${baseline}`,
+        ], { input: log, encoding: 'utf8' });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    };
+
+    it('passes a log whose only surplus line is a hook failure under an already-failing test', () => {
+      const result = runGuard([
+        ' ❯ src/a.test.ts (5 tests | 1 failed) 10ms',
+        ' FAIL  src/a.test.ts > suite > flaky case',
+        'Error: ENOENT: the sentinel file was never written',
+        ' FAIL  src/a.test.ts > suite > flaky case',
+        'Error: EPERM: the afterEach cleanup could not remove its temp dir',
+        ' Test Files  1 failed | 1 total',
+        '      Tests  1 failed | 4 passed (5)',
+      ].join('\n'));
+      expect(result.status, result.stderr).toBe(0);
+    });
+
+    it('still refuses a log that lost a FAIL line its own tally promised', () => {
+      const result = runGuard([
+        ' ❯ src/a.test.ts (3 tests | 2 failed) 10ms',
+        ' FAIL  src/a.test.ts > suite > first case',
+        'Error: boom',
+        ' Test Files  1 failed | 1 total',
+        '      Tests  2 failed | 1 passed (3)',
+      ].join('\n'));
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('Incomplete parse');
     });
   });
 

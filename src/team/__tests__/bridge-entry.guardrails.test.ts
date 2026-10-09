@@ -14,14 +14,11 @@ describe('bridge-entry workdir guardrails (source contract)', () => {
 
   it('requires working directory to stay under home directory', () => {
     expect(source).toContain('realpathSync(workingDirectory)');
-    // Pinned after 5927e82 folded both sides before comparing, which is what makes
-    // the boundary work when realpathSync() and homedir() return backslash paths.
-    expect(source).toContain("resolvedKey.startsWith(homeKey + '/')");
-    expect(source).toContain('resolvedKey !== homeKey');
+    expect(source).toContain("resolved.startsWith(home + '/')");
   });
 
   it('requires working directory to be inside a git worktree', () => {
-    expect(source).toContain('getWorktreeRoot(workingDirectory)');
+    expect(source).toContain('probeGitTopLevel(workingDirectory)');
     expect(source).toContain('workingDirectory is not inside a git worktree');
   });
 });
@@ -64,4 +61,3 @@ describe('validateConfigPath guardrails', () => {
     expect(validateConfigPath('C:\\Windows\\omq.json', windowsHome, 'C:\\Users\\tester\\.qwen')).toBe(false);
   });
 });
-

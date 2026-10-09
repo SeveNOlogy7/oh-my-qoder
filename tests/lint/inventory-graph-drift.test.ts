@@ -336,16 +336,19 @@ describe('inventory-graph drift enforcement (#3702)', () => {
   });
 
   it('intentionally accepts an older ancestor as a lineage provenance anchor', () => {
+    // This fork's history carries no commit from the ancestor repository, so
+    // the lineage anchor is the fork's own parent commit.
+    const olderAncestor = spawnSync('git', ['rev-parse', 'HEAD~1'], { cwd: REPO_ROOT, encoding: 'utf8' }).stdout.trim();
     const result = spawnSync('node', [GENERATOR], {
       cwd: REPO_ROOT,
       encoding: 'utf8',
       maxBuffer: 20 * 1024 * 1024,
-      env: { ...process.env, ISSUE_3702_HEAD: EXPECTED_BASE },
+      env: { ...process.env, ISSUE_3702_HEAD: olderAncestor },
     });
     expect(result.status, result.stderr).toBe(0);
     const generated = JSON.parse(result.stdout) as Manifest;
-    expect(generated.head).toBe(EXPECTED_BASE);
-    expect(generated.provenance.head).toBe(EXPECTED_BASE);
+    expect(generated.head).toBe(olderAncestor);
+    expect(generated.provenance.head).toBe(olderAncestor);
   });
 
   it('verify mode passes when baseline is current (drift closed)', () => {

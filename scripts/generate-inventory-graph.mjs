@@ -438,7 +438,10 @@ export async function generateInventoryGraph(opts = {}) {
       } else {
         // Try to resolve relative to an existing stable file
         const hit = await existsAny(root, resolved.candidates);
-        if (hit) {
+        // Only a census node is a legal edge target: an on-disk build
+        // artifact under dist/ or bridge/ is not part of the tracked
+        // surface, so a hit there is recorded as unresolved, not dangling.
+        if (hit && nodeSet.has(hit)) {
           // Prefer canonical posix relative
           pushEdge(from, hit, kind);
         } else {

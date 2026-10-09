@@ -145,6 +145,76 @@ export function vitestTally(output) {
 }
 
 /**
+ * Per-file view of one log: each test file's own tally row beside the raw FAIL lines printed
+ * under it. Two legitimate shapes make the raw line count differ from vitest's failed-test
+ * count, and neither may be mistaken for a truncated log:
+ * - a hook that throws after its test already failed prints a second FAIL block under the
+ *   same title, while the file's row still counts the test once. Measured 2026-10-10 on the
+ *   v5.2.0 transition log: hud-marketplace-resolution reported (5 tests | 1 failed) and
+ *   printed the test body's ENOENT plus the afterEach cleanup's EPERM;
+ * - a hook that throws in a file whose tests all end up skipped prints one FAIL line for a
+ *   file whose own tally reports zero failed tests (submodule-state-anchor).
+ * `excess` counts those surplus lines; `missing` is the fail-closed side -- a file that
+ * printed fewer FAIL lines than its own row's failed count is a truncated log, never an
+ * accounting artifact. `countedFailures` sums every row's failed count and must equal
+ * vitest's `Tests N failed`: a mismatch means a whole file fell out of the log.
+ *
+ * The row pattern is deliberately broader than the one in `uncountedFailEntries` (which
+ * predates this function): `.bench.ts` and `.test.mjs` files carry rows and failed counts
+ * too, and leaving them out of the sum would make a complete log look like a lost one.
+ */
+export function failLineAccounting(output) {
+  const lines = stripAnsi(output).split('\n').map((l) => stripRunnerPrefix(l).trim());
+  const rows = new Map();
+  const linesByFile = new Map();
+  let collectionLines = 0;
+  for (const line of lines) {
+    const row = /^[❯✓×]\s+(\S+\.(?:test|spec|bench)\.[a-z]+)\s+\(\d+\s+tests?(?:\s*\|\s*([^)]*))?\)/.exec(line);
+    if (row) {
+      const file = row[1].replace(/\\/g, '/');
+      if (!rows.has(file)) {
+        const failed = /(\d+)\s+failed/.exec(row[2] ?? '');
+        rows.set(file, failed ? Number(failed[1]) : 0);
+      }
+      continue;
+    }
+    const fail = /^\s*FAIL\s+(.+)$/.exec(line);
+    if (!fail) continue;
+    // A FAIL line carrying a bracketed file suffix is a module-level collection error:
+    // the file counts as failed but contributes no test to the `Tests N failed` tally.
+    if (/^\S+ \[\s*\S+\s*\]$/.test(fail[1].trim())) {
+      collectionLines++;
+      continue;
+    }
+    const entry = fail[1].trim().replace(/\\/g, '/');
+    const file = entry.split(' > ')[0];
+    const record = linesByFile.get(file) ?? { lines: 0, titles: new Set() };
+    record.lines++;
+    record.titles.add(entry);
+    linesByFile.set(file, record);
+  }
+  let countedFailures = 0;
+  for (const failed of rows.values()) countedFailures += failed;
+  let excessLines = 0;
+  const excess = [];
+  const missing = [];
+  // Every file either side knows about: a file whose row survives but whose FAIL lines were
+  // lost (0 lines against M failed) is the shape a dropped log chunk leaves behind, and it
+  // must be named rather than left to the total equation to notice.
+  for (const file of new Set([...rows.keys(), ...linesByFile.keys()])) {
+    const failed = rows.get(file) ?? 0;
+    const record = linesByFile.get(file);
+    const lines = record ? record.lines : 0;
+    if (lines < failed) missing.push({ file, lines, failed });
+    if (lines > failed) {
+      excessLines += lines - failed;
+      excess.push({ file, lines, failed });
+    }
+  }
+  return { rows, linesByFile, collectionLines, countedFailures, excessLines, excess, missing };
+}
+
+/**
  * Load baseline from JSON file.
  * Expected format:
  * {
@@ -241,12 +311,38 @@ function main() {
       // collection errors + 1 uncounted line. Comparing the deduped count alone
       // refused every log carrying a retried attempt.
       const collapsed = collapsedFailLines(vitestOutput);
-      if (tally.tests !== null && actualFailures.length + collapsed !== tally.tests + tally.collection + uncounted.length) {
-        console.error(`\n❌ Incomplete parse: ${actualFailures.length} FAIL entries (+${collapsed} collapsed duplicate line(s)) read, but vitest reported`
-          + ` ${tally.tests} failed tests + ${tally.collection} module-level collection errors`
-          + ` + ${uncounted.length} uncounted FAIL line(s) = ${tally.tests + tally.collection + uncounted.length}.`
-          + ` The log is truncated or the parser stopped matching.`);
-        process.exit(1);
+      const accounting = failLineAccounting(vitestOutput);
+      if (tally.tests !== null) {
+        // The files' own tallies must sum to the run summary. A whole file that fell out of
+        // the log (row and FAIL lines together) is invisible to every line-based count, and
+        // this is the one anchor that sees it.
+        if (accounting.countedFailures !== tally.tests) {
+          console.error(`\n❌ Incomplete parse: the per-file tallies sum to ${accounting.countedFailures} failed test(s),`
+            + ` but the run summary reports ${tally.tests}. A whole file's output is missing from this log.`);
+          process.exit(1);
+        }
+        // Fail-closed: a file that printed fewer FAIL lines than its own row's failed count
+        // cannot be an accounting artifact -- lines are missing from the log.
+        if (accounting.missing.length > 0) {
+          console.error(`\n❌ Incomplete parse: ${accounting.missing.length} file(s) printed fewer FAIL lines than their own tally reports:`);
+          accounting.missing.forEach((m) => console.error(`  - ${m.file}: ${m.lines} FAIL line(s) against ${m.failed} failed test(s)`));
+          process.exit(1);
+        }
+        // The equation counts the FAIL lines vitest prints but does not tally as failed tests
+        // while the file DOES report failures -- a hook failing after its test already failed,
+        // or an attempt that failed and was retried. Without that term the equation refuses
+        // legitimate logs instead of truncated ones: measured 2026-10-10 on the v5.2.0
+        // transition log, 975 + 2 = 966 failed tests + 9 collection errors + 2 such lines,
+        // where the old form demanded 975 + 2 === 966 + 9 + 1 and refused the whole run.
+        const rawFailLines = actualFailures.length + collapsed;
+        const expected = tally.tests + tally.collection + accounting.excessLines;
+        if (rawFailLines !== expected) {
+          console.error(`\n❌ Incomplete parse: ${actualFailures.length} FAIL entries (+${collapsed} collapsed duplicate line(s)) read, but vitest reported`
+            + ` ${tally.tests} failed tests + ${tally.collection} module-level collection errors`
+            + ` + ${accounting.excessLines} FAIL line(s) beyond a file's own failed count = ${expected}.`
+            + ` The log is truncated or the parser stopped matching.`);
+          process.exit(1);
+        }
       }
       const parsedFiles = new Set(actualFailures.map(f => f.split(' > ')[0])).size;
       if (tally.files !== null && parsedFiles !== tally.files) {
@@ -264,6 +360,11 @@ function main() {
         console.log(`Note:    ${uncounted.length} FAIL line(s) belong to a file whose own tally reports 0 failed tests`
           + ` (a hook that skipped the file, or a test that passed on retry):`);
         uncounted.forEach((f) => console.log(`  - ${f}`));
+      }
+      if (accounting.excessLines) {
+        console.log(`Note:    ${accounting.excessLines} FAIL line(s) sit beyond a file's own failed count`
+          + ` (a hook failing after its test, a retried attempt, or a file whose tests all skipped):`);
+        accounting.excess.forEach((e) => console.log(`  - ${e.file} (${e.lines} FAIL line(s), ${e.failed} counted failure(s))`));
       }
       // Blind spot, stated rather than hidden: vitest's `Errors` line reports
       // unhandled rejections that print no FAIL line, so they exist in neither

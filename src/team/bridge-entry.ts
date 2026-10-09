@@ -16,8 +16,8 @@ import type { BridgeConfig } from './types.js';
 import { runBridge } from './mcp-team-bridge.js';
 import { deleteHeartbeat } from './heartbeat.js';
 import { unregisterMcpWorker } from './team-registration.js';
-import { getWorktreeRoot } from '../lib/worktree-paths.js';
-import { getQoderConfigDir } from '../utils/config-dir.js';
+import { probeGitTopLevel } from '../lib/worktree-paths.js';
+import { getClaudeConfigDir } from '../utils/config-dir.js';
 import { sanitizeName } from './tmux-session.js';
 
 /**
@@ -52,8 +52,8 @@ export function validateConfigPath(configPath: string, homeDir: string, claudeCo
   // to defeat symlink attacks where the parent is a symlink outside home
   try {
     const parentDir = resolve(resolved, '..');
-    const realParent = toPosix(realpathSync(parentDir));
-    if (!realParent.startsWith(homeKey + '/') && realParent !== homeKey) {
+    const realParent = realpathSync(parentDir);
+    if (!realParent.startsWith(homeDir + '/') && realParent !== homeDir) {
       return false;
     }
   } catch {
@@ -69,7 +69,7 @@ export function validateConfigPath(configPath: string, homeDir: string, claudeCo
  * - Must resolve (via realpathSync) to a path under the user's home directory
  * - Must be inside a git worktree
  */
-export function validateBridgeWorkingDirectory(workingDirectory: string): void {
+function validateBridgeWorkingDirectory(workingDirectory: string): void {
   // Check exists and is directory
   let stat;
   try {
@@ -84,19 +84,13 @@ export function validateBridgeWorkingDirectory(workingDirectory: string): void {
   // Resolve symlinks and verify under homedir
   const resolved = realpathSync(workingDirectory);
   const home = homedir();
-  // Compare in forward-slash form: realpathSync() and homedir() both return backslashes on
-  // Windows, so `home + '/'` matched nothing there and every legitimate working directory --
-  // including one directly inside the user's home -- was rejected as outside home.
-  const toPosix = (p: string) => p.replace(/\\/g, '/');
-  const resolvedKey = toPosix(resolved);
-  const homeKey = toPosix(home);
-  if (!resolvedKey.startsWith(homeKey + '/') && resolvedKey !== homeKey) {
+  if (!resolved.startsWith(home + '/') && resolved !== home) {
     throw new Error(`workingDirectory is outside home directory: ${resolved}`);
   }
 
   // Must be inside a git worktree
-  const root = getWorktreeRoot(workingDirectory);
-  if (!root) {
+  const probe = probeGitTopLevel(workingDirectory);
+  if (probe.status !== 'ok') {
     throw new Error(`workingDirectory is not inside a git worktree: ${workingDirectory}`);
   }
 }
@@ -113,7 +107,7 @@ function main(): void {
 
   // Validate config path is from a trusted location
   const home = homedir();
-  const claudeConfigDir = getQoderConfigDir();
+  const claudeConfigDir = getClaudeConfigDir();
   if (!validateConfigPath(configPath, home, claudeConfigDir)) {
     console.error(`Config path must be under ~/ with ${claudeConfigDir} or ~/.omq/ subpath: ${configPath}`);
     process.exit(1);

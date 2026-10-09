@@ -12,25 +12,27 @@ const debugLog = (...args) => {
   if (process.env.OMQ_DEBUG) console.error('[omq:debug:project-memory]', ...args);
 };
 
-// Dynamic imports with graceful fallback (separate try-catch for partial availability)
 let learnFromToolOutput = null;
 let findProjectRoot = null;
-try {
-  learnFromToolOutput = (await import('../dist/hooks/project-memory/learner.js')).learnFromToolOutput;
-} catch (err) {
-  if (err?.code === 'ERR_MODULE_NOT_FOUND' && /dist\//.test(err?.message)) {
-    debugLog('dist/ learner module not found, skipping');
-  } else {
-    debugLog('Unexpected learner import error:', err?.code, err?.message);
+
+async function loadRuntimeModules() {
+  try {
+    learnFromToolOutput = (await import('../dist/hooks/project-memory/learner.js')).learnFromToolOutput;
+  } catch (err) {
+    if (err?.code === 'ERR_MODULE_NOT_FOUND' && /dist\//.test(err?.message)) {
+      debugLog('dist/ learner module not found, skipping');
+    } else {
+      debugLog('Unexpected learner import error:', err?.code, err?.message);
+    }
   }
-}
-try {
-  findProjectRoot = (await import('../dist/hooks/rules-injector/finder.js')).findProjectRoot;
-} catch (err) {
-  if (err?.code === 'ERR_MODULE_NOT_FOUND' && /dist\//.test(err?.message)) {
-    debugLog('dist/ finder module not found, skipping');
-  } else {
-    debugLog('Unexpected finder import error:', err?.code, err?.message);
+  try {
+    findProjectRoot = (await import('../dist/hooks/rules-injector/finder.js')).findProjectRoot;
+  } catch (err) {
+    if (err?.code === 'ERR_MODULE_NOT_FOUND' && /dist\//.test(err?.message)) {
+      debugLog('dist/ finder module not found, skipping');
+    } else {
+      debugLog('Unexpected finder import error:', err?.code, err?.message);
+    }
   }
 }
 
@@ -38,7 +40,19 @@ try {
  * Main hook execution
  */
 async function main() {
+  const skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map((hook) => hook.trim());
+  if (
+    process.env.DISABLE_OMQ === '1' ||
+    process.env.DISABLE_OMQ === 'true' ||
+    skipHooks.includes('project-memory-posttool') ||
+    skipHooks.includes('post-tool-use')
+  ) {
+    console.log(JSON.stringify({ continue: true }));
+    return;
+  }
+
   try {
+    await loadRuntimeModules();
     const input = await readStdin();
     const data = JSON.parse(input);
 

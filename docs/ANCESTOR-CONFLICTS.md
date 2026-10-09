@@ -1,37 +1,37 @@
 {
   "schemaVersion": 1,
   "lineageTag": "v4.15.1",
-  "targetTag": "v5.1.0",
-  "generatedAt": "2026-10-09T05:39:28.346Z",
+  "targetTag": "v5.2.0",
+  "generatedAt": "2026-10-10T05:14:30.601Z",
   "filter": null,
   "summary": {
-    "three-way": 392,
-    "omq-only": 559,
+    "three-way": 410,
+    "omq-only": 551,
     "upstream-only": 0,
     "upstream-deleted": 32,
     "upstream-new": 0,
-    "aligned": 692,
-    "omq-original": 127,
-    "generated": 5364,
-    "new-conflict": 150,
+    "aligned": 681,
+    "omq-original": 129,
+    "generated": 5412,
+    "new-conflict": 166,
     "unclassified": 0,
-    "total": 7316,
-    "actionable": 1133,
-    "nonActionable": 6183
+    "total": 7381,
+    "actionable": 1159,
+    "nonActionable": 6222
   },
   "entries": [
     {
       "path": ".claude-plugin/marketplace.json",
       "category": "aligned",
       "action": "none",
-      "targetSha": "440809bc9229f7c658b8e6cec4f35868d53965f8",
+      "targetSha": "a4514923800cdba6f0bed4c0f38058fffe5724dc",
       "lineageSha": "360cba3d53d88dacc6f28339e2859031a824b595"
     },
     {
       "path": ".claude-plugin/plugin.json",
       "category": "aligned",
       "action": "none",
-      "targetSha": "35b1f72cf27f7a7249cdbdd847f9902bd5378c40",
+      "targetSha": "30126448a8e8b653ae66b4f183f767e33dedc83d",
       "lineageSha": "238f3e5655eca190b9a26d6e9812c83d31d49dc8"
     },
     {
@@ -68,8 +68,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "9820603291f51084614794a9251d1b86a9228890",
-      "targetSha": "a4dd3375b6548bf9a9a33674c8fe05ed8d2241bc",
-      "localSha": "8258ed1bf5c36da8fca3c7651e651b7529428b40"
+      "targetSha": "f67d2a41c5fc27b48ef62390e0ca681595800748",
+      "localSha": "7bb3b562e10d85a5bfa529c9be6cc282242b1a82"
     },
     {
       "path": ".github/workflows/build.yml",
@@ -133,13 +133,25 @@
       "path": ".omz/results/w10-omcname-sweep.md",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "668abf8bbe3340169bab409f6c341e298a43c67a"
+      "localSha": "4c278bf2b0a8bd51408f8eb133e218ecdcb2751c"
     },
     {
       "path": ".omz/results/w11-naming-residuals.md",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "fd380436fba4da363e33f964add2577e58ac5847"
+      "localSha": "020117fdfcde7faffbd0a596733ecb14005d7a8d"
+    },
+    {
+      "path": ".omz/results/w12-final-verification.md",
+      "category": "omq-original",
+      "action": "keep-as-omq-specific",
+      "localSha": "462046bdd8ac4942710d4696eb7be791b9d915fc"
+    },
+    {
+      "path": ".omz/results/w13-final-fix.md",
+      "category": "omq-original",
+      "action": "keep-as-omq-specific",
+      "localSha": "babce5996d9d0c21761fc7e094f5c10e3c08c687"
     },
     {
       "path": ".qoder-credits/report.json",
@@ -169,7 +181,7 @@
       "path": ".qoder-plugin/plugin.json",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "ea993dc01e97eb5901605681b54e380f1e5accb4"
+      "localSha": "d54805b1ddc316f73f46dce34f9b1b1f01cb6f8a"
     },
     {
       "path": "agents/analyst.md",
@@ -334,7 +346,7 @@
       "path": "ANCESTOR_BASELINE.json",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "bea52fae672f191d78e9d746fdd9a6fd9bc0df6d"
+      "localSha": "895198396438060311b7c1228f88ae970dc7a338"
     },
     {
       "path": "assets/omc-character.jpg",
@@ -979,7 +991,7 @@
       "path": "CHANGELOG.md",
       "category": "aligned",
       "action": "none",
-      "targetSha": "c9e9d5881269579ae6827b054b57665b40dadd5a",
+      "targetSha": "dab3fbf89e2eba047c080782f390288d6fbe9a97",
       "lineageSha": "6dfd6ba90d96829645a20dd072c616d81e04888e"
     },
     {
@@ -987,8 +999,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "9e6a98a847c1fd9ced6ec80930eb552faf2c2a55",
-      "targetSha": "a4dd3375b6548bf9a9a33674c8fe05ed8d2241bc",
-      "localSha": "8258ed1bf5c36da8fca3c7651e651b7529428b40"
+      "targetSha": "f67d2a41c5fc27b48ef62390e0ca681595800748",
+      "localSha": "7bb3b562e10d85a5bfa529c9be6cc282242b1a82"
     },
     {
       "path": "commands/ask.md",
@@ -4474,6 +4486,26 @@
     },
     {
       "path": "dist/features/notepad-wisdom/types.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/features/notepad-wisdom/__tests__/extractor.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/features/notepad-wisdom/__tests__/extractor.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/features/notepad-wisdom/__tests__/extractor.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/features/notepad-wisdom/__tests__/extractor.test.js.map",
       "category": "generated",
       "action": "skip"
     },
@@ -12463,6 +12495,26 @@
       "action": "skip"
     },
     {
+      "path": "dist/hud/elements/update-hint.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/hud/elements/update-hint.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/hud/elements/update-hint.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/hud/elements/update-hint.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
       "path": "dist/hud/index.d.ts",
       "category": "generated",
       "action": "skip"
@@ -14308,6 +14360,26 @@
       "action": "skip"
     },
     {
+      "path": "dist/lib/__tests__/worktree-paths-git-timeout.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-git-timeout.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-git-timeout.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-git-timeout.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
       "path": "dist/lib/__tests__/worktree-paths-nongit-anchor.test.d.ts",
       "category": "generated",
       "action": "skip"
@@ -14328,6 +14400,26 @@
       "action": "skip"
     },
     {
+      "path": "dist/lib/__tests__/worktree-paths-split-warning.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-split-warning.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-split-warning.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-split-warning.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
       "path": "dist/lib/__tests__/worktree-paths-superproject-cache.test.d.ts",
       "category": "generated",
       "action": "skip"
@@ -14344,6 +14436,26 @@
     },
     {
       "path": "dist/lib/__tests__/worktree-paths-superproject-cache.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-toplevel-cache.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-toplevel-cache.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-toplevel-cache.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/lib/__tests__/worktree-paths-toplevel-cache.test.js.map",
       "category": "generated",
       "action": "skip"
     },
@@ -20328,6 +20440,26 @@
       "action": "skip"
     },
     {
+      "path": "dist/team/__tests__/worker-launch-wrapper-posix.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/team/__tests__/worker-launch-wrapper-posix.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/team/__tests__/worker-launch-wrapper-posix.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/team/__tests__/worker-launch-wrapper-posix.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
       "path": "dist/team/__tests__/worker-restart.test.d.ts",
       "category": "generated",
       "action": "skip"
@@ -20644,6 +20776,26 @@
     },
     {
       "path": "dist/tools/lsp/__tests__/client-devcontainer.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/tools/lsp/__tests__/client-document-lifecycle.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/tools/lsp/__tests__/client-document-lifecycle.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/tools/lsp/__tests__/client-document-lifecycle.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/tools/lsp/__tests__/client-document-lifecycle.test.js.map",
       "category": "generated",
       "action": "skip"
     },
@@ -24208,6 +24360,26 @@
       "action": "skip"
     },
     {
+      "path": "dist/__tests__/hud/update-hint.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/hud/update-hint.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/hud/update-hint.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/hud/update-hint.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
       "path": "dist/__tests__/hud/usage-api-lock.test.d.ts",
       "category": "generated",
       "action": "skip"
@@ -25948,6 +26120,26 @@
       "action": "skip"
     },
     {
+      "path": "dist/__tests__/project-memory-posttool.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/project-memory-posttool.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/project-memory-posttool.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/project-memory-posttool.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
       "path": "dist/__tests__/project-session-manager-review-worktree.test.d.ts",
       "category": "generated",
       "action": "skip"
@@ -26688,6 +26880,26 @@
       "action": "skip"
     },
     {
+      "path": "dist/__tests__/run-cjs-windows-stdio-contract.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/run-cjs-windows-stdio-contract.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/run-cjs-windows-stdio-contract.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/run-cjs-windows-stdio-contract.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
       "path": "dist/__tests__/runtime-guidance-plan-ralph.test.d.ts",
       "category": "generated",
       "action": "skip"
@@ -26924,6 +27136,46 @@
     },
     {
       "path": "dist/__tests__/session-start-timeout-cleanup.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-check.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-check.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-check.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-check.test.js.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-refresh.test.d.ts",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-refresh.test.d.ts.map",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-refresh.test.js",
+      "category": "generated",
+      "action": "skip"
+    },
+    {
+      "path": "dist/__tests__/session-start-update-refresh.test.js.map",
       "category": "generated",
       "action": "skip"
     },
@@ -28047,19 +28299,19 @@
       "path": "docs/ANCESTOR-CONFLICTS.md",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "aa4e2fff3f39b13be6b37b814041c76830799e45"
+      "localSha": "706f94ab31083e5e29dbcb37102341d7ad9ee13b"
     },
     {
       "path": "docs/ANCESTOR-PARITY.md",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "765eda484ab4cdf4c8d2d65acab93266f7d0243f"
+      "localSha": "b1e6c274034389176519e482f5b34e2e8177f8e8"
     },
     {
       "path": "docs/ANCESTOR-PATCH-LAYER.md",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "ba3c5f376382af6c6c3133b6b9e1f7ea6766e76e"
+      "localSha": "019bb704b40641b8500e1a5ad3af93f671496615"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -28095,8 +28347,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "c741c13fa6d3bb7fe59bb68f4900f081e833482b",
-      "targetSha": "a4dd3375b6548bf9a9a33674c8fe05ed8d2241bc",
-      "localSha": "8258ed1bf5c36da8fca3c7651e651b7529428b40"
+      "targetSha": "f67d2a41c5fc27b48ef62390e0ca681595800748",
+      "localSha": "7bb3b562e10d85a5bfa529c9be6cc282242b1a82"
     },
     {
       "path": "docs/company-context-interface.md",
@@ -28240,8 +28492,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "745d5e1a1dcda912cf4dc2e1b01bd31d4dc12e07",
-      "targetSha": "e9471fae8f714640fc183c9f25c31a1c31654752",
-      "localSha": "4d6f072d0a2cce16562fa5c3d7cca728398e9489"
+      "targetSha": "9602aeee4d5b4c16a14702d5c574abef473e89c8",
+      "localSha": "ff4397af69bac21d3130cf9449fa320291660c57"
     },
     {
       "path": "docs/issues/issue-3668-ralph-namespace.md",
@@ -28273,10 +28525,11 @@
     },
     {
       "path": "docs/MIGRATION.md",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "b9ee53a12cf672d2944594f43573038dcbfe4767",
       "targetSha": "294cce9c0164a8ffd61dabe9444725086645062b",
-      "lineageSha": "b9ee53a12cf672d2944594f43573038dcbfe4767"
+      "localSha": "6daced478d731be25087fa8546232629210a3249"
     },
     {
       "path": "docs/negative-control/provenance-path-coverage.txt",
@@ -28436,8 +28689,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "1dfe5c417a6ac5aefadf7163e1d5f484c6aa3950",
-      "targetSha": "e2a4286622bea9b7733a9a84beb910019b909156",
-      "localSha": "277463bb08047059c9b98e1fcf4b300af90d217e"
+      "targetSha": "b155c0ba8d433d4d7f3e1ec62a4cc112bc411d85",
+      "localSha": "545ee38919aed41839899085098e9ef56fcddaf5"
     },
     {
       "path": "docs/settings-schema.md",
@@ -28490,7 +28743,7 @@
       "path": "docs/shipyard.md",
       "category": "aligned",
       "action": "none",
-      "targetSha": "dea0606965f08bd557e749280c8913c190e9b0b2"
+      "targetSha": "d03a26b9faa47f552d6f7dca3fbef7218ab09b59"
     },
     {
       "path": "docs/SYNC-SYSTEM.md",
@@ -28622,14 +28875,15 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "a08037e0ca29484986b91af84987fa6f80236bea",
-      "targetSha": "fbbbf62b13ac69e9baf7389f9f545703a3e15dcf",
+      "targetSha": "0c2a5e3dd854893dc69afe451d4bfb57f0e3c2d6",
       "localSha": "50f7b5363afb887abc11b6993d3f484556286b56"
     },
     {
       "path": "inventory/inventory-graph.json",
-      "category": "aligned",
-      "action": "none",
-      "targetSha": "43237c8d5e23e3f9b3589a13a4c5dcdf8b9d6029"
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "f51800d70ec8ce54915e26c3ba627eafe88e8eab",
+      "localSha": "ee1fcf121227707de7bd5083252e59b25600382b"
     },
     {
       "path": "LICENSE",
@@ -28706,16 +28960,16 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "b2df176b8d3c63119c289084dad6b1e9f6259254",
-      "targetSha": "e2390a8ecc510710825016320d8c4169937c0105",
-      "localSha": "26caa8c920ab62f0e95b72525e11920cd4f1ea3e"
+      "targetSha": "69b6bff290f1e99e0dd41004cfbe6d03bffd3957",
+      "localSha": "42c5812b6bb1d5d3a535c78f52eaed5cf92ef940"
     },
     {
       "path": "package.json",
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "d05400e4bcde1e5272cfa7ee95dee390b73418a9",
-      "targetSha": "8b9db9ec3677c09f6af3c978ce7e01ae2f0737f1",
-      "localSha": "6d230f0598148f4c5e73286b6ce11e54ca663147"
+      "targetSha": "75a0f9ceac392dc868bb97c0fb8c476d48c0705b",
+      "localSha": "ce8691b4075b581412f2c4713d9826dab0355a04"
     },
     {
       "path": "progress.md",
@@ -28763,17 +29017,19 @@
     },
     {
       "path": "README.ja.md",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "5e995329d994454913b0beb6cac1e50ad2a1663e",
       "targetSha": "124bd18320f9e11e051064df589e44d9c4a25936",
-      "lineageSha": "5e995329d994454913b0beb6cac1e50ad2a1663e"
+      "localSha": "f1b5c8c3a9a00a8b8961815b62a576db6a4bbfb8"
     },
     {
       "path": "README.ko.md",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "2414b16d62d5452a4c03efcb244fd8f6a00dfe9c",
       "targetSha": "201e4b8f0cb83e29ee3d538125fe462b2f704c11",
-      "lineageSha": "2414b16d62d5452a4c03efcb244fd8f6a00dfe9c"
+      "localSha": "50a334cfba308368666f022dade3165383a275e9"
     },
     {
       "path": "README.md",
@@ -28781,7 +29037,7 @@
       "action": "manual-merge-required",
       "lineageSha": "3886d4b7e902fd9da7cb27374cc1592188817ead",
       "targetSha": "50753fe9bf22b266f83ed14b7607650c89248c11",
-      "localSha": "cfa767d0ebcc81451795644505a8a9b06e0b0b43"
+      "localSha": "87d78c38c15926ba02d4d4df9a94dcfb151c0044"
     },
     {
       "path": "README.pt.md",
@@ -28817,10 +29073,11 @@
     },
     {
       "path": "README.zh.md",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "fcf8de671876d603125be9578c9fd90a7c56e00e",
       "targetSha": "a148fa1c9236606fea406b1eceac12a643cf8b72",
-      "lineageSha": "fcf8de671876d603125be9578c9fd90a7c56e00e"
+      "localSha": "7dd409bfafe250709be863b25760857d07186edf"
     },
     {
       "path": "receipts/epic-3698/child-3702-terminal.receipt.json",
@@ -29160,7 +29417,7 @@
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "e8726a30c284f2bb8be0be5634d3f443b2991943",
-      "localSha": "d0caa36e7a33968551876c7e6a806d575d343263"
+      "localSha": "990ff2f9ccd097b9f2c5d1ffd9fa3b399d12835c"
     },
     {
       "path": "scripts/generate-prompt-projections.mjs",
@@ -29171,9 +29428,10 @@
     },
     {
       "path": "scripts/generate-skill-entitlements.mjs",
-      "category": "aligned",
-      "action": "none",
-      "targetSha": "aa05d0fae977f96e7695908da93fc25b87e4f9dc"
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "aa05d0fae977f96e7695908da93fc25b87e4f9dc",
+      "localSha": "51b563d0624762abf906da99c7ac2e78c6dd58f4"
     },
     {
       "path": "scripts/graph-agent-demo.mjs",
@@ -29200,13 +29458,13 @@
       "action": "manual-merge-required",
       "lineageSha": "1475a85ef1483e0e432d3d8fb37df7cac8cffea6",
       "targetSha": "44f528136c3801e8edd4dfdae14dd706b6b8cfaa",
-      "localSha": "c7da6ac52cbac21b87139efb5fc275d18b82e533"
+      "localSha": "ab82a5f790667b104b3159b0edae22ffefd5ba75"
     },
     {
       "path": "scripts/known-failures.mjs",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "ae9b613c13edebc2d9a4ad71dbd8e82fe647926e"
+      "localSha": "393188c8afa69ee46b3571297a0f0b734e89d18b"
     },
     {
       "path": "scripts/lib/agent-model-config.mjs",
@@ -29228,7 +29486,7 @@
       "path": "scripts/lib/bounded-git-timeout.mjs",
       "category": "aligned",
       "action": "none",
-      "targetSha": "3b373ad66a60a6599a1c4a1338ef033621f6c224"
+      "targetSha": "98c5f944ba5d28300bee23ade90632fa34003707"
     },
     {
       "path": "scripts/lib/cache-occupancy.mjs",
@@ -29292,11 +29550,11 @@
     },
     {
       "path": "scripts/lib/hud-cache-wrapper.sh",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "931c23e15699b0e35e57a37cd2091445af8a6261",
-      "targetSha": "931c23e15699b0e35e57a37cd2091445af8a6261",
-      "localSha": "334c90eca99f25f892b2ac4bdd9491962d734a34"
+      "targetSha": "b08f3d327f8671cbc733127e5e4d28b394701253",
+      "localSha": "db18ee2ace805ce23c8095a7003f97fbb5d593b9"
     },
     {
       "path": "scripts/lib/hud-wrapper-template.mjs",
@@ -29326,7 +29584,7 @@
       "path": "scripts/lib/plugin-cache-dir.mjs",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "2777cee103a790b252452c78ac5f1ffd69d09c5b"
+      "localSha": "b3bacb6ff87508efc132bdd7cca9906fe33d5826"
     },
     {
       "path": "scripts/lib/pre-tool-enforcer-preflight.mjs",
@@ -29351,10 +29609,9 @@
     },
     {
       "path": "scripts/lib/skill-entitlements.mjs",
-      "category": "new-conflict",
-      "action": "review-both-versions",
-      "targetSha": "0a9faf0f1d1869ba69ff9bb07e4d158731806c98",
-      "localSha": "dc4e18a69ba818d14b7be0ec6cb81999fcd01dee"
+      "category": "aligned",
+      "action": "none",
+      "targetSha": "0a9faf0f1d1869ba69ff9bb07e4d158731806c98"
     },
     {
       "path": "scripts/lib/state-root.cjs",
@@ -29384,14 +29641,14 @@
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "6d49c7dee09f8c55cad9cf350b7fab52cda9ec28",
-      "localSha": "12501d6c4b5e49ece5e004ad2928c49103fc4551"
+      "localSha": "f9789b1ca59e4106d40695f0ab8f3467441dc766"
     },
     {
       "path": "scripts/lib/workflow-stage-prompts.mjs",
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "43f9fabf95baeb43113c1bb82b2ca0e515ec4c9a",
-      "localSha": "5eee244e2702b96849d94d5d62ba24e6a17ce059"
+      "localSha": "8e036df7e135c88b70d54483479642b27cfe5912"
     },
     {
       "path": "scripts/measure-prompt-ssot.ts",
@@ -29426,7 +29683,7 @@
       "action": "manual-merge-required",
       "lineageSha": "871d8ee719a085071a2d8c013d2af4bcd863b178",
       "targetSha": "10349d5f68c43ab604623ddcf6caf5cd6590c34e",
-      "localSha": "db835c63104a7af2f70b5d8c77f1cfa67a923323"
+      "localSha": "31c20d923ed016ebd68c1dc6ed6838e0668ee53c"
     },
     {
       "path": "scripts/persistent-mode.mjs",
@@ -29434,7 +29691,7 @@
       "action": "manual-merge-required",
       "lineageSha": "f3f887432c4f41fafe78be65ff4c89168082afdd",
       "targetSha": "637abdf8b873cb768ccec41cc91ff21ce653c2e1",
-      "localSha": "33945d457ea27cba8ac8b0b0ae420ca7417cc0ba"
+      "localSha": "50cd5a684b55b4e5047f0e6672120ae6908a7f86"
     },
     {
       "path": "scripts/plugin-setup.mjs",
@@ -29471,8 +29728,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "4a4a6d2e00bd17f3a7a9f63a236ce3d4cad65319",
-      "targetSha": "7dfaf9c2e27e49171e6626a3c7be717dbd3ac99e",
-      "localSha": "dc84d15692bccb672d7fd595719fc8c50a48789f"
+      "targetSha": "209c5e450343861ee8013b45f3fb0d9602b8d75a",
+      "localSha": "e708976db2aad8146c59228a72646a6adaca78b5"
     },
     {
       "path": "scripts/pre-compact.mjs",
@@ -29487,15 +29744,15 @@
       "action": "manual-merge-required",
       "lineageSha": "81d1550750de7297eded1eb50bef5cf2b7b7096f",
       "targetSha": "e97da10df85af24aedf7b4bea6e53cdb95abc57d",
-      "localSha": "0888d72cd1dc1c4cae9fd6296e706a6dcda9af0b"
+      "localSha": "8b27eecd03121eead51d5686de143a383c12aab9"
     },
     {
       "path": "scripts/project-memory-posttool.mjs",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "41c8d99eedcae9791558d4217f70ecec874dc8f6",
-      "targetSha": "41c8d99eedcae9791558d4217f70ecec874dc8f6",
-      "localSha": "f57f080ab06541df7eb8c658e37044bd5ef6b264"
+      "targetSha": "4deb7d51c9fe9ed02b158c8afcc5e91c0d8d57c5",
+      "localSha": "21a5712652ba6a19d9cf332ccb68a73f71ff3bac"
     },
     {
       "path": "scripts/project-memory-precompact.mjs",
@@ -29571,8 +29828,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "5829db30554369a94f7b1eed36012c0284c729a3",
-      "targetSha": "ff660fb195a7f537e150eee4068eb9672bf940b7",
-      "localSha": "5171263c5efdcda9e63a2270ba37049276fc6c68"
+      "targetSha": "79040a345d558e8312df2dd968b0b94ec8d0800e",
+      "localSha": "9f32fb41bed265f08d2371b9e8d21a75a6f6277e"
     },
     {
       "path": "scripts/session-end.mjs",
@@ -29586,8 +29843,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "d637adf2f0cd141e8b0246d9c52cd5ee2934fd78",
-      "targetSha": "e4d29169931b4d4bf190df81c7ba473928bb07ec",
-      "localSha": "b0569ac9cb78007a87e9acf7d9677dff64c95e0a"
+      "targetSha": "33c46cc23557a13055cb6da905e4c5cb354eb11a",
+      "localSha": "617a3eaefb831d43b2e73ce4f1efe2220f0f3fad"
     },
     {
       "path": "scripts/session-summary.mjs",
@@ -30029,8 +30286,8 @@
       "path": "skills/drydock/SKILL.md",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "3586db11a9867ee1de74cefa37e152a62588595b",
-      "localSha": "9fc6447ebf740440a122b0820a7357c94137437f"
+      "targetSha": "bf8a9d5d23f5e7c5520b9b27002369ac29728f01",
+      "localSha": "a19935d01e6aaa34ed84a053cb08c854b435c646"
     },
     {
       "path": "skills/execute/SKILL.md",
@@ -30065,8 +30322,8 @@
       "path": "skills/launch/SKILL.md",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "d8545ade39af09386bb75467a5fb2b9eccd85867",
-      "localSha": "699ec072342ab4251827ecad8bfda1ce83f962ee"
+      "targetSha": "09a4f5c4ac5b8fad59d704fe334f6101772ba6b3",
+      "localSha": "b104409c23464862a73fe072ff267db87f000bd5"
     },
     {
       "path": "skills/learner/SKILL.md",
@@ -30407,7 +30664,7 @@
       "action": "manual-merge-required",
       "lineageSha": "0691601a45b48bfd995300986f5acdb659867a58",
       "targetSha": "8e48f3d1018545529db06b97e07440fd0076710a",
-      "localSha": "c8af02034e4b1474fd87651185166d9c208ff6db"
+      "localSha": "f8d0d0a7c2a9574c067eb3ae36e70b6622797dcb"
     },
     {
       "path": "skills/self-improve/templates/agent-settings.json",
@@ -30474,7 +30731,7 @@
       "action": "manual-merge-required",
       "lineageSha": "01904f6c4a95d5b125f7a51b79593fc438d3b5be",
       "targetSha": "cedec0e72f1da217f1bb34c8212c229e7caafa92",
-      "localSha": "3367cc32dcee71730345eeaddc4e8674acf8727a"
+      "localSha": "d2f9836c39e94cd9c6c6c9032c4a5f12b7432769"
     },
     {
       "path": "skills/trace/SKILL.md",
@@ -31039,7 +31296,7 @@
       "action": "manual-merge-required",
       "lineageSha": "675ca26cced89a2b8c7145f7220941704056779a",
       "targetSha": "c7b992e08c6cd582f4f860cb996811d2ce78f14f",
-      "localSha": "a6312ce8251a63f9d01ebb971dd62207d5731d57"
+      "localSha": "2b65ec78541cd52f07c5b22652dc2c1b2d43e3d8"
     },
     {
       "path": "src/cli/commands/teleport.ts",
@@ -31414,7 +31671,7 @@
       "action": "manual-merge-required",
       "lineageSha": "216611442bfba5a1557ae9067f713d07844f9d6d",
       "targetSha": "9238b26bca8d1748e743a586503fd6697c9e8d22",
-      "localSha": "758a713232eb68889f296e12cd709887ea9dc45c"
+      "localSha": "6d7e6f1fca6ad2734d6227fa308af03877ac75b9"
     },
     {
       "path": "src/config/models.ts",
@@ -31438,7 +31695,7 @@
       "action": "manual-merge-required",
       "lineageSha": "0ceb6fadd78ef24134545b3ce53639d4d744a437",
       "targetSha": "7421f5aee503297be2a752e8a4bb4bd8b4069e07",
-      "localSha": "32f33162d3dd73d95b13d13b1e339e8d1a56e19d"
+      "localSha": "9d9443bf86794bc8a7004974a5166df350521353"
     },
     {
       "path": "src/config/__tests__/models.test.ts",
@@ -31823,7 +32080,7 @@
       "path": "src/features/notepad-wisdom/extractor.ts",
       "category": "aligned",
       "action": "none",
-      "targetSha": "a675d650b28dc27dd4bf011fcec9d7ba2cce462f",
+      "targetSha": "25dc23764c80a5e9104559aa023c06fd6bf00d60",
       "lineageSha": "a675d650b28dc27dd4bf011fcec9d7ba2cce462f"
     },
     {
@@ -31840,6 +32097,12 @@
       "action": "none",
       "targetSha": "78b2dff48ae3a73c867fcefcbb59175d4d37c958",
       "lineageSha": "78b2dff48ae3a73c867fcefcbb59175d4d37c958"
+    },
+    {
+      "path": "src/features/notepad-wisdom/__tests__/extractor.test.ts",
+      "category": "aligned",
+      "action": "none",
+      "targetSha": "3f9d82030cdcc48a3f6d9239f89be08194a63657"
     },
     {
       "path": "src/features/rate-limit-wait/daemon.ts",
@@ -31908,8 +32171,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "530ca4926da94ec8d263c61f91ba5a1f0314e22e",
-      "targetSha": "0050dbf4ca8de86d6d67f8a30e089144be9795df",
-      "localSha": "5a5c848d9a8c139f2120c85a1b37a541401dbd29"
+      "targetSha": "9639c8de2597a9d37d40b02d9df1eceda7413e76",
+      "localSha": "ce56d19fd88d52b5dc48c82c70d7cb744f045d40"
     },
     {
       "path": "src/features/session-history-search/types.ts",
@@ -32336,10 +32599,11 @@
     },
     {
       "path": "src/hooks/autopilot/adapters/execution-adapter.ts",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "7035c78e1f8fe011b0f6c4b5e5b935946eb5b4b3",
       "targetSha": "754fd1ec8c9c472bcec6dcc5c43576921ffe14e6",
-      "lineageSha": "7035c78e1f8fe011b0f6c4b5e5b935946eb5b4b3"
+      "localSha": "c3a2223dc43bbe505cec5957bb0c20b21bcc5693"
     },
     {
       "path": "src/hooks/autopilot/adapters/index.ts",
@@ -32422,7 +32686,7 @@
       "action": "manual-merge-required",
       "lineageSha": "cea3182631df5a10994d2630d2b62848a0fee661",
       "targetSha": "012041cfd98417a728f6e628f800893fc99e6147",
-      "localSha": "e9709622a13079e1d3e6e2d64dd37a29d8bcb92e"
+      "localSha": "56510eae28ce72bf7d9fb60b32b7b5bac9932d1c"
     },
     {
       "path": "src/hooks/autopilot/runtime-insight.ts",
@@ -32433,10 +32697,11 @@
     },
     {
       "path": "src/hooks/autopilot/state.ts",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "32f13ae9d223ae88127dbac0b40e167293487c3c",
       "targetSha": "32bcea9d4819ec3677451772bdfcbb98d80357c5",
-      "lineageSha": "32f13ae9d223ae88127dbac0b40e167293487c3c"
+      "localSha": "694272aa507cd377e26f69277244af312d3b0b8c"
     },
     {
       "path": "src/hooks/autopilot/transition-helper.ts",
@@ -32478,10 +32743,11 @@
     },
     {
       "path": "src/hooks/autopilot/__tests__/prompts.test.ts",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "a9acd8e22e912757f3b3555abd7bf2ecc17e3ce1",
       "targetSha": "738f85e9faccd76dfa074794e5e9ad66b73d0424",
-      "lineageSha": "a9acd8e22e912757f3b3555abd7bf2ecc17e3ce1"
+      "localSha": "5f50f7c51814a07979ac608d5ac543c4198c0550"
     },
     {
       "path": "src/hooks/autopilot/__tests__/runtime-insight.test.ts",
@@ -32602,7 +32868,7 @@
       "action": "manual-merge-required",
       "lineageSha": "653a8fd8f9578a310151deb43914f4126c8ffb32",
       "targetSha": "fa7a7ae13179e757d9abd2d261df83d56ad7af8a",
-      "localSha": "8c34ce4d8a0fd99f0068777682a486e3f210bfbf"
+      "localSha": "a541dde2d2d1eba2c03af1b5d535128f0a2ef2fd"
     },
     {
       "path": "src/hooks/code-simplifier/index.ts",
@@ -32784,7 +33050,7 @@
       "action": "manual-merge-required",
       "lineageSha": "a12e5ddcf83f951aa7ec030cdb504fcd17ec9afe",
       "targetSha": "45560e6f368fea0cf165dc1862ead4164d5507d8",
-      "localSha": "8bf258ddb28486170747e4f96a931e62c58ae350"
+      "localSha": "0edbb9bc9fdf712601727d619621db901aa682f8"
     },
     {
       "path": "src/hooks/keyword-detector/ultrawork/antigravity.ts",
@@ -33007,7 +33273,7 @@
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "e196b23606f96eddebc2847c1c03967b792bac76",
-      "localSha": "22b071d3fc88ae3d1118ef644c32231dd2b78c40"
+      "localSha": "143bdd0a11cbcec5c72fbfa02ba1bb3c4ed4913f"
     },
     {
       "path": "src/hooks/merge-readiness/types.ts",
@@ -33054,7 +33320,7 @@
       "action": "manual-merge-required",
       "lineageSha": "85fc088a24561a972fce2835ec11efa1f9d824f8",
       "targetSha": "51be14790306da3ac6ddfbfbe2c433fac3dcb11f",
-      "localSha": "c4812303333634aef034d238035fb89f06cb9546"
+      "localSha": "9d042cb963a73418c2e2e9850af9b9cc5aa456b1"
     },
     {
       "path": "src/hooks/mode-registry/types.ts",
@@ -33162,8 +33428,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "cd7dcb38c11425080c577f19859c1b3d557deaa1",
-      "targetSha": "b7fd32dcc422dd8328fbe6451cbc2985ec85378c",
-      "localSha": "2f5f8586647860e8f4b09dff5238c741d94fc4d6"
+      "targetSha": "635f99c048fe14da408451fe0a84de3f788e202e",
+      "localSha": "e7ce2cebfd6b27a1032aff33d9e91ba1854a19da"
     },
     {
       "path": "src/hooks/permission-handler/__tests__/index.test.ts",
@@ -33194,7 +33460,7 @@
       "action": "manual-merge-required",
       "lineageSha": "c67524c8c6c16b9517d6051a2745464ee8f060b5",
       "targetSha": "c86ad91698aa776a64ecbde9c908a75292909ff9",
-      "localSha": "27844fb492abf165ba14642290fce7f464b562ce"
+      "localSha": "37c3cdb26721b07a65473fc1ca393f7a3b4835db"
     },
     {
       "path": "src/hooks/persistent-mode/session-isolation.test.ts",
@@ -33338,11 +33604,11 @@
     },
     {
       "path": "src/hooks/persistent-mode/__tests__/tool-error.test.ts",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "5d351aa454def2fb21e50faac0939ed4941c751a",
-      "targetSha": "5d351aa454def2fb21e50faac0939ed4941c751a",
-      "localSha": "cd1204446ee65726f42bc2295043f3c12002bd3d"
+      "targetSha": "2f2d002b8cca5d16faff3fff6970977bdbb5144b",
+      "localSha": "ab3ac7bcc1e674e311dddff85b274f50d30d526f"
     },
     {
       "path": "src/hooks/persistent-mode/__tests__/ultragoal-persistence.test.ts",
@@ -33578,7 +33844,7 @@
       "action": "manual-merge-required",
       "lineageSha": "6f6d72808fb78bc0eaf88b6be3845b62de6a6799",
       "targetSha": "c1a91deb86f6c80a85d1be18d0b653ca7af19b0b",
-      "localSha": "bdc9849f8a1d1c162ac6a2ebd3e78b81c385aeef"
+      "localSha": "cebd6e82df3740ba982c9244ed8fc45c67ae5aa3"
     },
     {
       "path": "src/hooks/ralph/progress.ts",
@@ -33601,7 +33867,7 @@
       "action": "manual-merge-required",
       "lineageSha": "1cef8c97e77a8892d0b47c3d053eb14a2f96e13f",
       "targetSha": "db673548a0c73262243a52a999c8799326a021e3",
-      "localSha": "2af5b3c8c8a2a0ccbbd617e90ed651867387397f"
+      "localSha": "59c550a5bdf01deec90ebe1477cbf848487d1014"
     },
     {
       "path": "src/hooks/recovery/constants.ts",
@@ -33998,7 +34264,7 @@
       "action": "manual-merge-required",
       "lineageSha": "ae5045949752f091e1a536e7c47a0986064bb03d",
       "targetSha": "a7d88101d3d20ac5ae7e5801cd19832ea5d84512",
-      "localSha": "319c7dc3d3f2f85f254a5b7ea39467076e0f640a"
+      "localSha": "d1d58a604880ae886f8875d525108125bc08c177"
     },
     {
       "path": "src/hooks/skill-state/__tests__/skill-state.test.ts",
@@ -34844,12 +35110,19 @@
       "localSha": "8f79ee11159e649eb4ba25edab6af88adf64bfc2"
     },
     {
+      "path": "src/hud/elements/update-hint.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "07e89a00b0e4b5a788c8f7496fce257a2d5a31ab",
+      "localSha": "a1c4ba2cf11063cacb4cf0db6aa68958a2d99c9c"
+    },
+    {
       "path": "src/hud/index.ts",
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "85f881ab10780f30675875a3e4c107c2ad842c33",
-      "targetSha": "01a35bb14ea1d2059eae2f333843bc4158b34d55",
-      "localSha": "226a6f9e631ad62b0ebbfd00bf5886b8264db068"
+      "targetSha": "12cb5fcbfea5df5da364721cb450647eedcb8bfa",
+      "localSha": "af5aa4726de40499d3cc52418f31aebeab19cc24"
     },
     {
       "path": "src/hud/mission-board.ts",
@@ -34874,11 +35147,11 @@
     },
     {
       "path": "src/hud/render.ts",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "093a7ed055f53f181cf93b45ac2135234758b836",
-      "targetSha": "093a7ed055f53f181cf93b45ac2135234758b836",
-      "localSha": "24b85734e8a2f09a392bc084d907c8c064aeb797"
+      "targetSha": "055cfd4cee98398c01c5e3b993afbe80ce2b6e98",
+      "localSha": "c281477e7a4cab77e7c0a54231b8b688a3d3315d"
     },
     {
       "path": "src/hud/sanitize.ts",
@@ -34917,8 +35190,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "de7ef06c1e5a65072e0e5ac52380ee810439ac46",
-      "targetSha": "6fbb04275a2e7ee9350ba62635c2e22c57cc95d1",
-      "localSha": "241a573868ee479d6835b3ef6ec4c15e745ebb05"
+      "targetSha": "b719bf765fd40da082e60b8f7e82cbabec761c52",
+      "localSha": "9a7c7658035bef3cfe35bb39c52688bc658cee18"
     },
     {
       "path": "src/hud/usage-api.ts",
@@ -34999,10 +35272,11 @@
     },
     {
       "path": "src/installer/hooks.ts",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "fb39cec4894fe8676abca306fb5686cc792c7295",
       "targetSha": "e05a10b3f52e7ca9eee223cd92d93cbc329c6e09",
-      "lineageSha": "fb39cec4894fe8676abca306fb5686cc792c7295"
+      "localSha": "2a24e703a94b28c83a0b78516a834cd0f4eeec68"
     },
     {
       "path": "src/installer/index.ts",
@@ -35371,7 +35645,7 @@
       "action": "cherry-pick-to-v5",
       "lineageSha": "3f077964804faac5a8652afdebb59323a74677f6",
       "targetSha": "3f077964804faac5a8652afdebb59323a74677f6",
-      "localSha": "fa8737908c2e1a8ec54e1918fa9ec2a420dee003"
+      "localSha": "59ccfd5fe83a19a3c4f66fe14fb28e88b23a02a3"
     },
     {
       "path": "src/lib/payload-limits.ts",
@@ -35475,8 +35749,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "cf67d175a048cdae69669c438d629b934c8b36f7",
-      "targetSha": "28f5ba86f9128b4b27ee93c79279692eef48a218",
-      "localSha": "e8bfa9fad6f45873a5632b6486217111e5ccecce"
+      "targetSha": "c3f87216660a5086684f618d19a5bf44e4ecc6f7",
+      "localSha": "9cb24a6acbf53a86fe3d75bac7b3f9086c31a80f"
     },
     {
       "path": "src/lib/__tests__/atomic-write.test.ts",
@@ -35574,6 +35848,12 @@
       "localSha": "cfbb44852d4b102874681777f3a7ed9427bf43c9"
     },
     {
+      "path": "src/lib/__tests__/worktree-paths-git-timeout.test.ts",
+      "category": "aligned",
+      "action": "none",
+      "targetSha": "ace7b77361a488cef41241c5bdb1e51acf73c66c"
+    },
+    {
       "path": "src/lib/__tests__/worktree-paths-nongit-anchor.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
@@ -35581,11 +35861,25 @@
       "localSha": "fc9a64e1e61c3e242a5f6be2979f15f1095f7d10"
     },
     {
+      "path": "src/lib/__tests__/worktree-paths-split-warning.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "5c99a898765c1a656cbbf555dc816c760e26655f",
+      "localSha": "67a13b794d688fcc0e33d6b4b88e90c892add5a5"
+    },
+    {
       "path": "src/lib/__tests__/worktree-paths-superproject-cache.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "867432eccaa7b0985eb659e83c7f4fcdbea5b594",
       "localSha": "3399392137dc1b2730c2ca27ef80606b29040790"
+    },
+    {
+      "path": "src/lib/__tests__/worktree-paths-toplevel-cache.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "b003a453d517a6ef7eaa663ddbfd2bb8784ccf90",
+      "localSha": "e7d05eec5ff15cb3a7777ad46485a2da1b5d098e"
     },
     {
       "path": "src/lib/__tests__/worktree-paths.test.ts",
@@ -36301,7 +36595,7 @@
       "action": "manual-merge-required",
       "lineageSha": "fcec7f8432de1db50b11b631fbf0dad45d3b7476",
       "targetSha": "d312863554690c4c30f709b2db96fa89507a5b40",
-      "localSha": "cdb88e271116336242beede889ab55c5afa59e7d"
+      "localSha": "584024ce4e80a12bdfd60cd3edac3ca3bebe4399"
     },
     {
       "path": "src/skills/__tests__/mingw-escape.test.ts",
@@ -36357,11 +36651,11 @@
     },
     {
       "path": "src/team/bridge-entry.ts",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "2dea4082e9374b8154095df330cdd7661e4b7cb2",
-      "targetSha": "2dea4082e9374b8154095df330cdd7661e4b7cb2",
-      "localSha": "d2a82330ca17a2a78eef9f574860ae2418ea5ea9"
+      "targetSha": "e509a2cb08164a9e8848ca36db1553ab591d1bf7",
+      "localSha": "43865c2556995ee40f6a2f01c5b19ff32a2f2afa"
     },
     {
       "path": "src/team/capabilities.ts",
@@ -36576,7 +36870,7 @@
       "action": "manual-merge-required",
       "lineageSha": "6826ed0418eb14fcab3da6575934c69da0dda7e0",
       "targetSha": "73d87b2f8cfb4f69077702006a780d30f3b5d30e",
-      "localSha": "9a50e224ebdbb1245b3dfb89687a58b71c3895fe"
+      "localSha": "d77ceb735e1a2ae86cd93dbf10145812787fe8d1"
     },
     {
       "path": "src/team/outbox-reader.ts",
@@ -36670,7 +36964,7 @@
       "action": "manual-merge-required",
       "lineageSha": "a85be35fcb276ea7ed4abaf993c1e8d8fa118366",
       "targetSha": "5b6adae59868ddf997a3055bc67c11073ada5952",
-      "localSha": "658801320dfb3ead30d95ca4de0cb5ee5cc6925b"
+      "localSha": "b549054cb5e83dd5c80e38dd39d97aced5a50118"
     },
     {
       "path": "src/team/scaling.ts",
@@ -36678,7 +36972,7 @@
       "action": "manual-merge-required",
       "lineageSha": "500249e2976195735d94906bac77d5dad51f253f",
       "targetSha": "5b947073e8da9319ad76fd9189e515eee962b7ef",
-      "localSha": "cb0009535f3bbb811510aa40901d1e4faee1ea30"
+      "localSha": "2293ead3198c7742642758b7017b08775326977b"
     },
     {
       "path": "src/team/sentinel-gate.ts",
@@ -36693,7 +36987,7 @@
       "action": "manual-merge-required",
       "lineageSha": "341b62b51e98ab998b3975f2a2702baf87325dcd",
       "targetSha": "b27eb05c526daf0df29398de591c51685eba363e",
-      "localSha": "a87829bcc72051336b65418e08d0a5beeb13bebd"
+      "localSha": "de31dd8dba2de97690a66af8d2074d9476b405c8"
     },
     {
       "path": "src/team/state/tasks.ts",
@@ -36869,8 +37163,8 @@
       "path": "src/team/worker-launch-ack.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "1f350a23b6df179ec60201e233f491916a7dbbf9",
-      "localSha": "bbb4900549e1454b7b0c1afd4613789263700b8a"
+      "targetSha": "cd9598f8de432933a25e59ccd8555cc504a5e7a7",
+      "localSha": "53a493cdb20f66afa9b289d82ee2af11c9d85c53"
     },
     {
       "path": "src/team/worker-loop-prompt.ts",
@@ -36986,23 +37280,23 @@
       "action": "cherry-pick-to-v5",
       "lineageSha": "d02260baaa46271fbfed1d6e89683158273a4c04",
       "targetSha": "d02260baaa46271fbfed1d6e89683158273a4c04",
-      "localSha": "564e146147433d88c5c269602b29f855542db346"
+      "localSha": "2918f55845cf1b736ae3ae7a0beb68f40d259379"
     },
     {
       "path": "src/team/__tests__/bridge-entry.guardrails.test.ts",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "c363d71c0de44bb27416a7624e24c850fe1b53af",
-      "targetSha": "c363d71c0de44bb27416a7624e24c850fe1b53af",
-      "localSha": "0f746491feadd43220dc12ba61f18ac7579254ca"
+      "targetSha": "2715f239a30797ca901d32a9a59635d3ce08f89d",
+      "localSha": "3b5ca295d41868d6847d89a64ff15e99b13380ba"
     },
     {
       "path": "src/team/__tests__/bridge-entry.test.ts",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "60e71dafcccc5b0478d3a0845f0d45a75cedb4ca",
-      "targetSha": "60e71dafcccc5b0478d3a0845f0d45a75cedb4ca",
-      "localSha": "e453aecdd9e593a796a81db97c9d2b8d73b29e08"
+      "targetSha": "4bffdf469184c3f35233e5a4b47ea5841a8d6391",
+      "localSha": "fd5f6d169c57a42bbdeec691bfa06384a54130bd"
     },
     {
       "path": "src/team/__tests__/bridge-integration.test.ts",
@@ -37377,7 +37671,7 @@
       "action": "cherry-pick-to-v5",
       "lineageSha": "9f87eccbd7f37aecb75988b4707a152ac721308d",
       "targetSha": "9f87eccbd7f37aecb75988b4707a152ac721308d",
-      "localSha": "0cdb5c54918c84e6a1dfe7afb4b143d641276b67"
+      "localSha": "7c186f7238feed29c1bb08d1687252fa5bd53fac"
     },
     {
       "path": "src/team/__tests__/role-router.test.ts",
@@ -37457,10 +37751,11 @@
     },
     {
       "path": "src/team/__tests__/runtime-v2.explicit-provider-routing.test.ts",
-      "category": "aligned",
-      "action": "none",
+      "category": "omq-only",
+      "action": "cherry-pick-to-v5",
+      "lineageSha": "cd99b2dd33cbbc821fcc0655d7b4de7fb9b3ddd1",
       "targetSha": "cd99b2dd33cbbc821fcc0655d7b4de7fb9b3ddd1",
-      "lineageSha": "cd99b2dd33cbbc821fcc0655d7b4de7fb9b3ddd1"
+      "localSha": "bef5849feebd3824460cdc1b306109702c426863"
     },
     {
       "path": "src/team/__tests__/runtime-v2.feature-flag.test.ts",
@@ -37561,7 +37856,7 @@
       "action": "manual-merge-required",
       "lineageSha": "16eef0ab17d6e1d9fc4ed559f3e3ae3083258b40",
       "targetSha": "002b3077ab157544d5cd1a994f8e9b5bc3a780fc",
-      "localSha": "01c4910c0509083de319227c92361e7ec13351c7"
+      "localSha": "3a87de68996ae1e330a9c4eed406b4726d5ef1f0"
     },
     {
       "path": "src/team/__tests__/state-paths.test.ts",
@@ -37833,6 +38128,13 @@
       "localSha": "f2feb8a3651e6d5ae94c688e8837f3e5b137b983"
     },
     {
+      "path": "src/team/__tests__/worker-launch-wrapper-posix.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "9a203ea465441458c9ae0514c54363a883b0cfb7",
+      "localSha": "76961bbd4d77ab73fe8809bb56068f15e0a19cec"
+    },
+    {
       "path": "src/team/__tests__/worker-restart.test.ts",
       "category": "three-way",
       "action": "manual-merge-required",
@@ -37868,8 +38170,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "67a44fd9b6c3c20c73770ad7f63c41fc23523509",
-      "targetSha": "b6d713b305cd0afc3fc225f3ff4a6617b80395a9",
-      "localSha": "f7f97817ec492b91f29b6f1baa2dc495e2c81cbc"
+      "targetSha": "c46a5ddadb0fa54eaa51d532ea7c3b5dfe26d023",
+      "localSha": "7b1d848e29b0a5f571f28f1f07a82a4258f41b55"
     },
     {
       "path": "src/tools/deepinit-manifest.ts",
@@ -37897,7 +38199,7 @@
       "path": "src/tools/diagnostics/lsp-aggregator.ts",
       "category": "aligned",
       "action": "none",
-      "targetSha": "e1205bb6a2dca22d6fe906ec3371cd4ac197e903",
+      "targetSha": "1707df4487982f2d615bf0fc13183d48e05b14d8",
       "lineageSha": "e1205bb6a2dca22d6fe906ec3371cd4ac197e903"
     },
     {
@@ -37911,7 +38213,7 @@
       "path": "src/tools/diagnostics/__tests__/lsp-aggregator.test.ts",
       "category": "aligned",
       "action": "none",
-      "targetSha": "123f22eede6dd130fb841a0430a177e721feaaa9",
+      "targetSha": "766d6e92036c5581acfb530a7f727edc4e1486cb",
       "lineageSha": "a6cf16162e0dd5c7955bfaa281f3e082915a2d3c"
     },
     {
@@ -37934,8 +38236,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "f6727d69ec8420a64a7d53010b4a25391d3c220f",
-      "targetSha": "b564115d747141ec6e865795ca2bcda4320c9277",
-      "localSha": "fb0d36e6176c49cd941cb3455a64bcaa7b0ea046"
+      "targetSha": "51efc2951e024e60ddf52d0f28687d91e4219180",
+      "localSha": "09c9c6ee8373e5b83c83ef466846389987d681e9"
     },
     {
       "path": "src/tools/lsp/devcontainer.ts",
@@ -37976,6 +38278,13 @@
       "localSha": "9826777436d39c0428ce58b1143c7d80dad34696"
     },
     {
+      "path": "src/tools/lsp/__tests__/client-document-lifecycle.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "f1ae5207f95ce2e47717f24333ea6040c690d848",
+      "localSha": "4cc2af60cdf9bd67974cd6d8d7e18d5dacba1480"
+    },
+    {
       "path": "src/tools/lsp/__tests__/client-eviction.test.ts",
       "category": "aligned",
       "action": "none",
@@ -37986,7 +38295,7 @@
       "path": "src/tools/lsp/__tests__/client-handle-data.test.ts",
       "category": "aligned",
       "action": "none",
-      "targetSha": "3b9cf10fcd949725bc8b98d881aa8d75071e7080",
+      "targetSha": "591b18b47508017dc129a18fdc28f85751635bd8",
       "lineageSha": "297875c462a73198f117e860209ef51c69c1e59a"
     },
     {
@@ -38198,8 +38507,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "4c152e7c1c1c7ccc7505c250959ce9307e79d104",
-      "targetSha": "9291ff987293035a6865a8bbd494515e7f8d920e",
-      "localSha": "93b20299a2f2ddb8d47288dcc348367ae142c90a"
+      "targetSha": "77fc78d7f8ec14bc8e7bce8481c87828230af98b",
+      "localSha": "b8bfd19dfba086f51016c272283cd726d726f045"
     },
     {
       "path": "src/tools/team-tools.ts",
@@ -38280,8 +38589,8 @@
       "path": "src/tools/__tests__/wiki-tools-direct-dist-failclosed.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "d96815e5b9fa9678ea536fac21d27cf49ce1c506",
-      "localSha": "f38b4778cb66520d3d7e2477dcd4d7009f54905f"
+      "targetSha": "98fef549d3304ae9ea055342873ae32a61e2dd75",
+      "localSha": "9f3ea4b8de4869fece1b750de372cc1597a718d8"
     },
     {
       "path": "src/tools/__tests__/wiki-tools-foreign-root.test.ts",
@@ -38294,8 +38603,8 @@
       "path": "src/tools/__tests__/wiki-tools-git-probe-failclosed.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "fd45a6e30b5c9aa82fb6bb4af98011e3f3e9f2f1",
-      "localSha": "963af52ae675b782d2e2d256c20328c40a9cf77d"
+      "targetSha": "a2e6721c0f838df4e0ba0315f41bcf6473ef57ed",
+      "localSha": "586c69f8aa1e0a60586428b7b4d9f92e97992117"
     },
     {
       "path": "src/tools/__tests__/wiki-tools-working-directory.test.ts",
@@ -38495,7 +38804,7 @@
       "path": "src/utils/__tests__/plugin-cache-base.test.ts",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "42b70353dbdea81950763b3f5cd76756662dd41d"
+      "localSha": "896106bc3f2ecc73fe022577bf7d65e1499d8082"
     },
     {
       "path": "src/utils/__tests__/string-width.test.ts",
@@ -38690,7 +38999,7 @@
       "path": "src/__tests__/bounded-git-timeout-parity.test.ts",
       "category": "aligned",
       "action": "none",
-      "targetSha": "c5d27d1b21249758fce100cfb54f21243c381518"
+      "targetSha": "c79bae1c093067658a186991b7ceff9928684f0a"
     },
     {
       "path": "src/__tests__/bridge-help-question-regex.test.ts",
@@ -38727,7 +39036,7 @@
       "action": "cherry-pick-to-v5",
       "lineageSha": "160f849176ef14543f6854e01eb4d4fc1633721f",
       "targetSha": "160f849176ef14543f6854e01eb4d4fc1633721f",
-      "localSha": "ed694feb2794597361d939d4319abe72aad46e7b"
+      "localSha": "60ee9d37c9196c3590d076e8c46da435e87da327"
     },
     {
       "path": "src/__tests__/cli-config-stop-callback.test.ts",
@@ -38942,6 +39251,20 @@
       "lineageSha": "feacae6a7e260d2467d67e95ae8a20872cc7f8fc"
     },
     {
+      "path": "src/__tests__/fixtures/hung-hooks/detached-stdout-orphan.cjs",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "7b53b0637731d8454e1fd5f9a0ddd57bd666e628",
+      "localSha": "301e1d870cd0414b9a51c816dcff1f43a5eba0ec"
+    },
+    {
+      "path": "src/__tests__/fixtures/hung-hooks/epipe-exit-parent.cjs",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "895191438be1219d6c018d33fce99d390c531a25",
+      "localSha": "092555fdc36616e25466578459301e91f47788b8"
+    },
+    {
       "path": "src/__tests__/fixtures/hung-hooks/hung-grandchild.cjs",
       "category": "new-conflict",
       "action": "review-both-versions",
@@ -38954,6 +39277,13 @@
       "action": "review-both-versions",
       "targetSha": "cc258860783ecb4a9725b2abfa906be0ac2aaeaa",
       "localSha": "6e3ed065f2972094b72de4d8b9a071f74130fe15"
+    },
+    {
+      "path": "src/__tests__/fixtures/hung-hooks/success-parent-stdout-orphan.cjs",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "5548abd2d1e5ed19d9efc5bc2e5c533141d147d4",
+      "localSha": "c19e6733fca004ecbb9ffa8734eb2001074cac00"
     },
     {
       "path": "src/__tests__/fixtures/sample-transcript.jsonl",
@@ -39165,7 +39495,7 @@
       "action": "manual-merge-required",
       "lineageSha": "af235060edf4a56296dc41f65c4e4152540af841",
       "targetSha": "ac43926079176ae699764400ca1cdfe434a1dbf0",
-      "localSha": "2041874e280ba105afb28b469304cc919756d345"
+      "localSha": "0c77fb9470e3901b259b39d719611e56ecce442c"
     },
     {
       "path": "src/__tests__/hud/mission-board.test.ts",
@@ -39319,6 +39649,13 @@
       "localSha": "69d325ee44ba5d5da64f2ae80ae02be49faea07a"
     },
     {
+      "path": "src/__tests__/hud/update-hint.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "74459b567bf4f58d90a1847b8854547ff120ee59",
+      "localSha": "b0b3b15ae266ccbe818ac8b26cfeb00f532e69f5"
+    },
+    {
       "path": "src/__tests__/hud/usage-api-lock.test.ts",
       "category": "omq-only",
       "action": "cherry-pick-to-v5",
@@ -39398,11 +39735,11 @@
     },
     {
       "path": "src/__tests__/hud-cache-wrapper.test.ts",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
+      "category": "three-way",
+      "action": "manual-merge-required",
       "lineageSha": "51e5fff6487fd343efa6aa311f95ad26681844af",
-      "targetSha": "51e5fff6487fd343efa6aa311f95ad26681844af",
-      "localSha": "5b1ec220002ef9f83b9832ea5f605dc29f2068c6"
+      "targetSha": "655b598dae403a3a73277fa1384d652a40055ef7",
+      "localSha": "610c848ea54f8260a34c426f5f52c3172d10045e"
     },
     {
       "path": "src/__tests__/hud-marketplace-resolution.test.ts",
@@ -39558,13 +39895,13 @@
       "path": "src/__tests__/known-failures-flake.test.ts",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "b75f3001c05419191cb6f36611b138ed9b68b0a7"
+      "localSha": "2673c5f66fb0ca11f0a2098b3275440f36206090"
     },
     {
       "path": "src/__tests__/known-failures.test.ts",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "61ee6eceff990710c6a25d67587b8a351e8f6b9c"
+      "localSha": "d571ca72202608f8a1feda1dae2aa0fdd9b307f4"
     },
     {
       "path": "src/__tests__/learner/auto-learner.test.ts",
@@ -39582,10 +39919,11 @@
     },
     {
       "path": "src/__tests__/live-data.test.ts",
-      "category": "aligned",
-      "action": "none",
-      "targetSha": "e93755c65780db5d0f5f6b8e543e53ad74389fc3",
-      "lineageSha": "6eb6cb2d8eee0fe40a99fa7937d9aedaddcfd1e9"
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "6eb6cb2d8eee0fe40a99fa7937d9aedaddcfd1e9",
+      "targetSha": "f91b94fb945b994247cf19bec0a0215008692e0e",
+      "localSha": "3bab6e9fe59e438adfc2ecd3e57eb61b3917a8e5"
     },
     {
       "path": "src/__tests__/load-agent-prompt.test.ts",
@@ -39758,8 +40096,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "94527e17468ea419c97869153dba3d1d13c764d5",
-      "targetSha": "96f61e5d56818df3e6ef1017e44f823e2d02d6a3",
-      "localSha": "d0e43b8fca97831b7a93c406f8dba39ec3438eea"
+      "targetSha": "7acb3ecfd4ba2f9b8ad35c1c3c362ed590a07996",
+      "localSha": "cebf4833d9411ffe88f549bf425e7dae575280a2"
     },
     {
       "path": "src/__tests__/npm-package-hook-surface.test.ts",
@@ -39937,8 +40275,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "08f802aadd4e417a89423e993defa68e7ad093b5",
-      "targetSha": "930e53806489565650e6b28f8205e712280351bd",
-      "localSha": "22ff72ff82ab690c2f89e6c01d54546112e7a534"
+      "targetSha": "ce062ab2e58f555a3a870cb5b36cd4c1b3d084b6",
+      "localSha": "73a86a708c102321ef3ab2ba529a0154af703195"
     },
     {
       "path": "src/__tests__/pre-compact-cwd.test.ts",
@@ -39970,6 +40308,13 @@
       "action": "none",
       "targetSha": "ecfa61ae9e5726ab7a775fd40c9d859cde20a467",
       "lineageSha": "ecfa61ae9e5726ab7a775fd40c9d859cde20a467"
+    },
+    {
+      "path": "src/__tests__/project-memory-posttool.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "d4c4f7be412e9af479026d49b2c9129572035b1f",
+      "localSha": "9a4296826e549c0d4a9a14f3f7ab7231c5450e05"
     },
     {
       "path": "src/__tests__/project-session-manager-review-worktree.test.ts",
@@ -40243,16 +40588,23 @@
       "path": "src/__tests__/run-cjs-generic-timeout.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "5665ff926777612711d1cbf6f60bc53e542dfedc",
-      "localSha": "ae0161f91655dd4431e8aa0a7d49ec09e5867aea"
+      "targetSha": "77007ba2e66dfb87a3433ef5f06ace9fd077f49e",
+      "localSha": "e71b247545c80576c37d9fd8e59493cc6c1e0ef1"
     },
     {
       "path": "src/__tests__/run-cjs-graceful-fallback.test.ts",
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "f5f51e7980ad1d49bcb54aa131b6b80dc48722dc",
-      "targetSha": "87ee9fa91268d4bf9ec5247faabfb4d092b6fc12",
-      "localSha": "45cd0d6291cf7a416b8f934bc351f8121ef7698f"
+      "targetSha": "c56c408191bd87e8425f61dda63e48ca80e3ed3e",
+      "localSha": "c6fe2b3979e2b62ab7d959a27b1c6ea326d48dca"
+    },
+    {
+      "path": "src/__tests__/run-cjs-windows-stdio-contract.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "324db2ad3c069d6a9e3fea0c1813c176a49ee7f1",
+      "localSha": "6ee21f7744326d024c429d2f477ef1226faa9dba"
     },
     {
       "path": "src/__tests__/runtime-guidance-plan-ralph.test.ts",
@@ -40290,8 +40642,8 @@
       "path": "src/__tests__/session-end-process-exit.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "77db757850e4e568f1bc7da01fa6d21eeabf43f6",
-      "localSha": "5f3b44009ff036e0a9d8301c4555ffe37749c9c3"
+      "targetSha": "4ab5c0f0dee908e10b872694671f39c86ef0b028",
+      "localSha": "d867398faac803cfae1e654bb03927a111b1be5b"
     },
     {
       "path": "src/__tests__/session-friction-report.test.ts",
@@ -40306,8 +40658,8 @@
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "0c39ba5d3822f145fc92a660358d9506086b9245",
-      "targetSha": "203bfb92e87f8212395b0b9724f9de13797d94e3",
-      "localSha": "4a5efca15db325eda0c36ddb30e7f0ef3dad0d46"
+      "targetSha": "342b3fc83ce2e7826882c05eb7c684f1a36f5928",
+      "localSha": "aeb8dec04cff478d9e7a17d5965b6ddd0a6a1a22"
     },
     {
       "path": "src/__tests__/session-start-background-output.test.ts",
@@ -40342,11 +40694,24 @@
     },
     {
       "path": "src/__tests__/session-start-timeout-cleanup.test.ts",
-      "category": "omq-only",
-      "action": "cherry-pick-to-v5",
-      "lineageSha": "1cb235738c52c07e3600b7c2b30c2efaaf7190ba",
-      "targetSha": "1cb235738c52c07e3600b7c2b30c2efaaf7190ba",
-      "localSha": "a3fc35aaba4119ceeccdd94162f8301753fee383"
+      "category": "aligned",
+      "action": "none",
+      "targetSha": "9bea31c7cbd8cc6febfad6c2216969f5c750e796",
+      "lineageSha": "1cb235738c52c07e3600b7c2b30c2efaaf7190ba"
+    },
+    {
+      "path": "src/__tests__/session-start-update-check.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "808c5a5bfeea3cb6db40a853435f1f0ad13104d6",
+      "localSha": "9e840b0b86a793c9931d3cca34b7d03039d5414e"
+    },
+    {
+      "path": "src/__tests__/session-start-update-refresh.test.ts",
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "60a203978748465485b113ac5c30a37b6c342bea",
+      "localSha": "a923ca3941b495150aa004d0a483069cad4e0315"
     },
     {
       "path": "src/__tests__/session-summary-pid-tracking.test.ts",
@@ -40437,8 +40802,8 @@
       "path": "src/__tests__/shipyard-skills.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "918e822d176f41b4a39ee78a59380fdc3106fd29",
-      "localSha": "3707a9f22f684efd3ff8ef0a43de9811b407445d"
+      "targetSha": "e306541347b4d3fc5ac2a50de98dd614583209bc",
+      "localSha": "ff5611c5b570f4595942c88fb389d60eed9ec573"
     },
     {
       "path": "src/__tests__/skill-entitlements-cross-surface.test.ts",
@@ -40449,9 +40814,10 @@
     },
     {
       "path": "src/__tests__/skill-entitlements.test.ts",
-      "category": "aligned",
-      "action": "none",
-      "targetSha": "faf8cd14ec70b782bee0115cd14de971edb7367e"
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "faf8cd14ec70b782bee0115cd14de971edb7367e",
+      "localSha": "0415a4743b5338a8243ee53c8ec3c10c22db0af5"
     },
     {
       "path": "src/__tests__/skill-injector-script.test.ts",
@@ -40717,14 +41083,14 @@
       "path": "src/__tests__/windows-prompt-hook-runner.test.ts",
       "category": "new-conflict",
       "action": "review-both-versions",
-      "targetSha": "b38a60fb1b9689bfa6582a8f16f8192a761b4e12",
-      "localSha": "2e7d3575a923d77cf7b4548a6535377354a5603f"
+      "targetSha": "8f089c2e6d84e58b5f4044fb79d8cee8eebfa989",
+      "localSha": "a609996e692df88db66aeb06a9adb9e3eab7e1e6"
     },
     {
       "path": "src/__tests__/workflow-config-file-identity.test.ts",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "862a15caecbfffe369a4705add07ce5a87edb5fc"
+      "localSha": "a9682ecf78c5561c7922445d750a0d38a29f555b"
     },
     {
       "path": "src/__tests__/workflow-profile-activation-script.test.ts",
@@ -40774,7 +41140,7 @@
       "action": "manual-merge-required",
       "lineageSha": "9975b1226064e704bffd19bc2c8093df04a4ebee",
       "targetSha": "305bf8a04b7a718e4c36c664603353ba611b9322",
-      "localSha": "98c771600edd89419dc7c20bdd1d25fa8d461592"
+      "localSha": "55a94d9004e4bd236e14995dee05c03967de7e4e"
     },
     {
       "path": "templates/hooks/lib/atomic-write.mjs",
@@ -40788,7 +41154,7 @@
       "path": "templates/hooks/lib/bounded-git-timeout.mjs",
       "category": "aligned",
       "action": "none",
-      "targetSha": "3b373ad66a60a6599a1c4a1338ef033621f6c224"
+      "targetSha": "98c5f944ba5d28300bee23ade90632fa34003707"
     },
     {
       "path": "templates/hooks/lib/cache-occupancy.mjs",
@@ -40828,10 +41194,9 @@
     },
     {
       "path": "templates/hooks/lib/skill-entitlements.mjs",
-      "category": "new-conflict",
-      "action": "review-both-versions",
-      "targetSha": "0a9faf0f1d1869ba69ff9bb07e4d158731806c98",
-      "localSha": "dc4e18a69ba818d14b7be0ec6cb81999fcd01dee"
+      "category": "aligned",
+      "action": "none",
+      "targetSha": "0a9faf0f1d1869ba69ff9bb07e4d158731806c98"
     },
     {
       "path": "templates/hooks/lib/state-root.mjs",
@@ -40839,7 +41204,7 @@
       "action": "manual-merge-required",
       "lineageSha": "f9b039c61e3d3f2df102a61ccd0420431892bb0e",
       "targetSha": "80a5c38e68396f878323fb053f8267521f5e0be2",
-      "localSha": "36a8b8d84aafa4717402ec451f604b46562b8b63"
+      "localSha": "ee2d745783cd6e066d3aebca4eaa07f48ef81427"
     },
     {
       "path": "templates/hooks/lib/stdin.mjs",
@@ -40853,14 +41218,14 @@
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "6d49c7dee09f8c55cad9cf350b7fab52cda9ec28",
-      "localSha": "12501d6c4b5e49ece5e004ad2928c49103fc4551"
+      "localSha": "f9789b1ca59e4106d40695f0ab8f3467441dc766"
     },
     {
       "path": "templates/hooks/lib/workflow-stage-prompts.mjs",
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "43f9fabf95baeb43113c1bb82b2ca0e515ec4c9a",
-      "localSha": "5eee244e2702b96849d94d5d62ba24e6a17ce059"
+      "localSha": "8e036df7e135c88b70d54483479642b27cfe5912"
     },
     {
       "path": "templates/hooks/persistent-mode.mjs",
@@ -40868,7 +41233,7 @@
       "action": "manual-merge-required",
       "lineageSha": "f14b48ba3918343603d023f27ef9dca1e8511210",
       "targetSha": "66f5451a4573cb185dfad986f7486a25b07031cd",
-      "localSha": "c05aa8e53ed9d56b05ed7033d7aa84fb48bbe540"
+      "localSha": "8cc490876f419bbdca022b37978f901900a56e85"
     },
     {
       "path": "templates/hooks/post-tool-use-failure.mjs",
@@ -40884,7 +41249,7 @@
       "action": "manual-merge-required",
       "lineageSha": "915cf275d7903628811b6095be7dff8df4f5d515",
       "targetSha": "e06afef90488e7dd6f9baae886c4ff6f90ce8ee2",
-      "localSha": "4321793a124f1e3eec32573410e7345c4cfa7eac"
+      "localSha": "f419787b1adaabd86a00a2521fa51c177df1ba86"
     },
     {
       "path": "templates/hooks/pre-tool-use.mjs",
@@ -40892,15 +41257,15 @@
       "action": "manual-merge-required",
       "lineageSha": "b7fc243a04da545f6c51758f346c7fdce6e34766",
       "targetSha": "ac860562609cc638bccf9e4462c00558196744af",
-      "localSha": "dfbbb94db06d9cdf6546d953106a4764017ff43b"
+      "localSha": "314b26888d35b67e1edb0c7c9988d62e33e365d8"
     },
     {
       "path": "templates/hooks/session-start.mjs",
       "category": "three-way",
       "action": "manual-merge-required",
       "lineageSha": "21b47ad09d2ad802bf70c652cbaf0b26e78dedb4",
-      "targetSha": "0099325baf46b430920e439b950b37deef1a1b34",
-      "localSha": "af0211c779b514980815b19f05d4517af1c9539b"
+      "targetSha": "37c0a1ab3420ecbff9844654a8b2ce91be4503c8",
+      "localSha": "ae97ada70af9496f427a8578e0b0e5ebdd7c1b23"
     },
     {
       "path": "templates/hooks/stop-continuation.mjs",
@@ -40986,13 +41351,14 @@
       "category": "new-conflict",
       "action": "review-both-versions",
       "targetSha": "36aef1be300c24cd3d34604a4fa381f72b21d4d5",
-      "localSha": "1ed0740d92821b00bd2d42222ae13de537346883"
+      "localSha": "6e27402559fcd693899ce4ae91c5be7f9f6300c0"
     },
     {
       "path": "tests/fixtures/prompt-projection/claude-managed-block.golden",
-      "category": "aligned",
-      "action": "none",
-      "targetSha": "a4dd3375b6548bf9a9a33674c8fe05ed8d2241bc"
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "f67d2a41c5fc27b48ef62390e0ca681595800748",
+      "localSha": "7bb3b562e10d85a5bfa529c9be6cc282242b1a82"
     },
     {
       "path": "tests/fixtures/prompt-projection/README.md",
@@ -41034,7 +41400,7 @@
       "action": "manual-merge-required",
       "lineageSha": "543cce6349cdea08e2af86dfa002bc22280dba0f",
       "targetSha": "91b2ba5bc306b08e8099a0ba4b57f6e71e74e16f",
-      "localSha": "3641bbff17d6262a45fbf4f781d3625c5ee7f82c"
+      "localSha": "8d92fb66052f5b25c27e11f9cdc3edc4c9f57b6e"
     },
     {
       "path": "tests/integration/concurrent-ralph-sessions.test.ts",
@@ -41057,7 +41423,7 @@
       "action": "manual-merge-required",
       "lineageSha": "c07ae8bf6a3baa9f74c6c5d7cf9d2b718a8abaa1",
       "targetSha": "c8996348c66ac4c0c59eb4e095b0e40cd6ecbc9d",
-      "localSha": "df0b36fbfb19c9723efdd2f7d7bfa1450080b4f8"
+      "localSha": "1b9082f57661c7da9d6d733d92130c56aae8a2e0"
     },
     {
       "path": "tests/integration/task-list-identity-stop.test.ts",
@@ -41103,7 +41469,7 @@
       "path": "tests/known-failures-win32.json",
       "category": "omq-original",
       "action": "keep-as-omq-specific",
-      "localSha": "56f17a646f8b9d1756b0405160ca995b4a5649f4"
+      "localSha": "fb5edda4d009977b4a923a793b9cce9b11d51d5a"
     },
     {
       "path": "tests/lint/better-sqlite3-lockfloor.test.ts",
@@ -41133,9 +41499,10 @@
     },
     {
       "path": "tests/lint/inventory-graph-drift.test.ts",
-      "category": "aligned",
-      "action": "none",
-      "targetSha": "f838ea0061a5fb02bc7eab20dd3dc410c19be61a"
+      "category": "new-conflict",
+      "action": "review-both-versions",
+      "targetSha": "f838ea0061a5fb02bc7eab20dd3dc410c19be61a",
+      "localSha": "a98f11cff889b7bcd60486da5b89627aa4eba31c"
     },
     {
       "path": "tests/lint/setup-phases-drift.test.ts",
@@ -41161,14 +41528,15 @@
       "path": "tests/lint/windows-hide-hooks.test.ts",
       "category": "aligned",
       "action": "none",
-      "targetSha": "89cdda9503726c0eadc8019734d8c82aca4fedc9"
+      "targetSha": "82c77523e314ee8276343cd82c20a6a454d11ccf"
     },
     {
       "path": "tests/perf/subagent-lock.bench.ts",
-      "category": "aligned",
-      "action": "none",
+      "category": "three-way",
+      "action": "manual-merge-required",
+      "lineageSha": "312c6c249cdd50631a9a69a65b3c475ea5b18ef6",
       "targetSha": "609f808b8846f46e4126343def2b0edb7996171e",
-      "lineageSha": "312c6c249cdd50631a9a69a65b3c475ea5b18ef6"
+      "localSha": "b05f01e5e47a61060787510c0f615182f98f0785"
     },
     {
       "path": "tests/setup/pin-state-root.ts",
