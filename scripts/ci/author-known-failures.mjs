@@ -14,10 +14,10 @@
  */
 import { execFileSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
-// The gate's own parse and tally, imported rather than copied: authoring and
-// --check must agree on what a complete log looks like, and --check now enforces
-// the same equation in CI that this script enforces before it writes a file.
-import { vitestTally } from '../known-failures.mjs';
+// The gate's own parse, tally and fail-line accounting, imported rather than copied:
+// authoring and --check must agree on what a complete log looks like, and --check
+// enforces the same equation in CI that this script enforces before it writes a file.
+import { vitestTally, collapsedFailLines, failLineAccounting } from '../known-failures.mjs';
 
 const args = process.argv.slice(2);
 const argValue = (name) => {
@@ -52,6 +52,24 @@ for (const t of targets) {
     );
     process.exit(1);
   }
+  // Fail-closed anchors, the same two --check runs: a whole file whose output fell out
+  // of the log is invisible to every line-based count, and a file that printed fewer
+  // FAIL lines than its own row reports cannot be an accounting artifact.
+  const accounting = failLineAccounting(text);
+  if (accounting.countedFailures !== tally.tests) {
+    console.error(
+      `REFUSE: the per-file tallies of ${t.log} sum to ${accounting.countedFailures} failed test(s), ` +
+        `but the run summary reports ${tally.tests} -- a whole file's output is missing.`
+    );
+    process.exit(1);
+  }
+  if (accounting.missing.length > 0) {
+    console.error(`REFUSE: ${accounting.missing.length} file(s) in ${t.log} printed fewer FAIL lines than their own tally reports:`);
+    for (const m of accounting.missing) {
+      console.error(`  - ${m.file}: ${m.lines} FAIL line(s) against ${m.failed} failed test(s)`);
+    }
+    process.exit(1);
+  }
   const json = run(
     ['scripts/known-failures.mjs', `--platform=${t.platform}`, `--source=run:${runRef}`],
     text,
@@ -61,11 +79,19 @@ for (const t of targets) {
     console.error(`REFUSE: generated an empty ${t.platform} baseline from ${t.log} (${text.length} chars). Check the log shape.`);
     process.exit(1);
   }
-  if (parsed.failures.length !== tally.tests + tally.collection) {
+  // The extended equation, excess lines included, exactly as --check enforces it: a
+  // hook that throws after its test already failed, or an attempt that failed and was
+  // retried, prints a FAIL line vitest does not count as a failed test. Without the
+  // excess term this tool refused a log the gate accepts (measured on a platform run:
+  // 357 parsed entries against 356 failed tests + 2 collection errors, 1 excess line).
+  const collapsed = collapsedFailLines(text);
+  const rawFailLines = parsed.failures.length + collapsed;
+  const expected = tally.tests + tally.collection + accounting.excessLines;
+  if (rawFailLines !== expected) {
     console.error(
-      `REFUSE: parsed ${parsed.failures.length} ${t.platform} failures but vitest reported ` +
+      `REFUSE: parsed ${parsed.failures.length} ${t.platform} failures (+${collapsed} duplicate line(s)) but vitest reported ` +
         `${tally.tests} failed tests + ${tally.collection} module-level collection errors ` +
-        `= ${tally.tests + tally.collection}.`
+        `+ ${accounting.excessLines} excess FAIL line(s) = ${expected}.`
     );
     process.exit(1);
   }
@@ -74,7 +100,9 @@ for (const t of targets) {
     process.exit(1);
   }
   console.log(
-    `  vitest tally agrees: ${tally.tests} failed tests + ${tally.collection} collection errors in ${tally.files} files`
+    `  vitest tally agrees: ${tally.tests} failed tests + ${tally.collection} collection errors in ${tally.files} files` +
+      (accounting.excessLines ? ` (+${accounting.excessLines} excess FAIL line(s) accounted)` : '') +
+      (collapsed ? ` (+${collapsed} duplicate line(s) collapsed)` : '')
   );
   writeFileSync(t.out, json);
   console.log(`${t.out}: ${parsed.metadata.testCount} failures / ${parsed.metadata.fileCount} files (source=${parsed.metadata.source})`);
