@@ -91,9 +91,10 @@ describe('HUD CLI diagnostic (no stdin, no watch mode)', () => {
       resolveToWorktreeRoot: vi.fn((cwd?: string) => cwd ?? '/tmp'),
       resolveTranscriptPath: vi.fn((tp?: string) => tp),
       getOmqRoot: vi.fn(() => '/tmp/.omq'),
+      withWorktreePathRenderScope: vi.fn((callback: () => unknown) => callback()),
     }));
     vi.doMock('../../utils/config-dir.js', () => ({
-      getQoderConfigDir: vi.fn(() => overrides.configDir ?? tempConfigDir),
+      getClaudeConfigDir: vi.fn(() => overrides.configDir ?? tempConfigDir),
     }));
 
     return import('../../hud/index.js');
@@ -169,7 +170,7 @@ describe('HUD CLI diagnostic (no stdin, no watch mode)', () => {
     writeFileSync(join(tempConfigDir, 'hud', 'omq-hud.mjs'), '// stub');
     writeFileSync(
       join(tempConfigDir, 'settings.json'),
-      JSON.stringify({ statusLine: { type: 'command', command: 'node $HOME/.qoder/hud/omq-hud.mjs' } }),
+      JSON.stringify({ statusLine: { type: 'command', command: 'node $HOME/.claude/hud/omq-hud.mjs' } }),
     );
     const hud = await importHudModule();
     await hud.main(false, false);
@@ -177,7 +178,7 @@ describe('HUD CLI diagnostic (no stdin, no watch mode)', () => {
     const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
     expect(output).toContain('statusLine:');
     expect(output).toContain('configured');
-    expect(output).toContain('HUD renders automatically inside Qoder CLI sessions.');
+    expect(output).toContain('HUD renders automatically inside Claude Code sessions.');
   });
 
   it('shows statusLine as NOT configured when settings.json has no statusLine', async () => {
@@ -194,7 +195,7 @@ describe('HUD CLI diagnostic (no stdin, no watch mode)', () => {
     writeFileSync(join(tempConfigDir, 'hud', 'omq-hud.mjs'), '// stub');
     writeFileSync(
       join(tempConfigDir, 'settings.json'),
-      JSON.stringify({ statusLine: '~/.qoder/hud/omq-hud.mjs' }),
+      JSON.stringify({ statusLine: '~/.claude/hud/omq-hud.mjs' }),
     );
     const hud = await importHudModule();
     await hud.main(false, false);

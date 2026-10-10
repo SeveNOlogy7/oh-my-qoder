@@ -1,5 +1,5 @@
 <!-- OMQ:START -->
-<!-- OMQ:VERSION:5.2.0 -->
+<!-- OMQ:VERSION:5.3.0 -->
 
 # oh-my-qoder - Intelligent Multi-Agent Orchestration
 

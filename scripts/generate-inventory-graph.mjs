@@ -60,6 +60,43 @@ function isEphemeralIgnored(name) {
   return EPHEMERAL_IGNORES.has(name) || name.startsWith('.tmp');
 }
 
+// A path is part of the stable inventory only when no segment of it is ignored.
+// The tracked list and the filesystem walk share this predicate so both modes
+// see the same set on the same tree (they previously disagreed on
+// ephemeral-named tracked files, which made the source digest depend on which
+// mode ran).
+function isStableRelativePath(relPosix) {
+  if (SELF_EXCLUDED.has(relPosix)) return false;
+  if (relPosix.startsWith('dist/') || relPosix.startsWith('bridge/')) return false;
+  return !relPosix.split('/').some((segment) => isSeedIgnored(segment) || isEphemeralIgnored(segment));
+}
+
+// CRLF is a checkout spelling, not content. The digest folds CRLF to LF at the
+// byte level (latin1 round-trip is lossless) so a CRLF worktree and the LF
+// checkout CI uses report the same provenance hash.
+function canonicalDigestBytes(buf) {
+  if (!buf.includes(0x0d)) return buf;
+  return Buffer.from(buf.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
+}
+
+// git ls-files answers relative to the DISCOVERED repository root, so a tree that
+// merely sits INSIDE a repository (an LF-simulation checkout extracted under the
+// repo, a copied worktree) would silently yield that repository's file list — or,
+// for an untracked tree under it, an empty list — and the digest would be taken
+// over the wrong file set. Only the tree that git reports as its own toplevel may
+// use the tracked path; anything else falls back to the filesystem walk.
+function gitRootMatches(root) {
+  try {
+    const toplevel = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8' }).trim();
+    const norm = (p) => toPosix(realpathSync(resolve(p)));
+    const a = norm(toplevel);
+    const b = norm(root);
+    return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+  } catch {
+    return false;
+  }
+}
+
 async function walkStable(root) {
   const tracked = listTrackedFiles(root);
   if (tracked !== null) return tracked.map((p) => join(root, p));
@@ -75,7 +112,7 @@ async function walkStable(root) {
       if (isSeedIgnored(e.name) || isEphemeralIgnored(e.name)) continue;
       // Skip .log, .DS_Store ephemeral files are still walked but no dir skip needed
       const relCheck = toPosix(relative(root, join(dir, e.name)));
-      if (SELF_EXCLUDED.has(relCheck)) continue;
+      if (!isStableRelativePath(relCheck)) continue;
       const p = join(dir, e.name);
       if (e.isDirectory()) await rec(p);
       else out.push(p);
@@ -301,6 +338,7 @@ async function existsAny(root, cands) {
 }
 
 function listTrackedGenerated(root, prefix) {
+  if (!gitRootMatches(root)) return null;
   try {
     return execFileSync('git', ['ls-files', '-z', '--', prefix], { cwd: root, encoding: 'utf8' })
       .split('\0')
@@ -313,16 +351,32 @@ function listTrackedGenerated(root, prefix) {
 }
 
 function listTrackedFiles(root) {
+  if (!gitRootMatches(root)) return null;
   try {
     return execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
       .split('\0')
       .filter(Boolean)
       .map(toPosix)
-      .filter((p) => !SELF_EXCLUDED.has(p) && !p.startsWith('dist/') && !p.startsWith('bridge/'))
+      .filter((p) => isStableRelativePath(p))
       .sort();
   } catch {
     return null;
   }
+}
+
+// Regression surface: the stable file list and its canonical-LF digest for an
+// arbitrary tree. Exercised by tests/lint/inventory-graph-drift.test.ts to pin
+// CRLF/LF equivalence and the nested-inside-a-repository fallback.
+export async function computeStableSourceDigest(root) {
+  const stableFiles = await walkStable(root);
+  const relStable = stableFiles.map((p) => toPosix(relative(root, p))).sort();
+  const hasher = createHash('sha256');
+  for (const path of relStable) {
+    hasher.update(`${path}\0`);
+    hasher.update(canonicalDigestBytes(await readFile(join(root, path))));
+    hasher.update('\0');
+  }
+  return { files: relStable, sha256: hasher.digest('hex') };
 }
 
 export async function generateInventoryGraph(opts = {}) {
@@ -335,7 +389,7 @@ export async function generateInventoryGraph(opts = {}) {
   const sourceHasher = createHash('sha256');
   for (const path of relStable) {
     sourceHasher.update(`${path}\0`);
-    sourceHasher.update(await readFile(join(root, path)));
+    sourceHasher.update(canonicalDigestBytes(await readFile(join(root, path))));
     sourceHasher.update('\0');
   }
   const sourceSha256 = sourceHasher.digest('hex');

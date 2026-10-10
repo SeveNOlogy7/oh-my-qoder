@@ -281,7 +281,7 @@ const DEFAULT_TEMPLATES: Record<NotificationEvent, string> = {
 
   "session-idle":
     "# Session Idle\n\n" +
-    "Qoder CLI has finished and is waiting for input.\n" +
+    "Claude has finished and is waiting for input.\n" +
     "{{#if reason}}\n**Reason:** {{reason}}{{/if}}" +
     "{{#if modesDisplay}}\n**Modes:** {{modesDisplay}}{{/if}}" +
     "{{tmuxTailBlock}}" +
@@ -290,13 +290,18 @@ const DEFAULT_TEMPLATES: Record<NotificationEvent, string> = {
   "ask-user-question":
     "# Input Needed\n" +
     "{{#if question}}\n**Question:** {{question}}\n{{/if}}" +
-    "\nQoder CLI is waiting for your response.\n\n{{footer}}",
+    "\nClaude is waiting for your response.\n\n{{footer}}",
 
   "agent-call":
     "# Agent Spawned\n" +
     "{{#if agentName}}\n**Agent:** `{{agentName}}`{{/if}}" +
     "{{#if agentType}}\n**Type:** `{{agentType}}`{{/if}}" +
     "\n\n{{footer}}",
+
+  "approval-request":
+    "# 🔔 Approval Required\n" +
+    "{{#if question}}\n{{question}}\n{{/if}}" +
+    "\nReply or run `omc graph approvals decide` to approve/deny.\n\n{{footer}}",
 };
 
 /**

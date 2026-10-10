@@ -66,7 +66,7 @@ async function main() {
   try {
     const input = await readStdin();
     if (!input.trim()) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      console.log(JSON.stringify({ continue: true }));
       return;
     }
 
@@ -74,7 +74,7 @@ async function main() {
     try { data = JSON.parse(input); } catch { /* ignore parse errors */ }
 
     if (!createRulesInjectorHook) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      console.log(JSON.stringify({ continue: true }));
       return;
     }
 
@@ -85,7 +85,7 @@ async function main() {
 
     const rawPath = extractFilePath(toolInput);
     if (!rawPath) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      console.log(JSON.stringify({ continue: true }));
       return;
     }
 
@@ -108,11 +108,11 @@ async function main() {
         },
       }));
     } else {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      console.log(JSON.stringify({ continue: true }));
     }
   } catch {
     // Always continue on error — rules injection is additive only
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    console.log(JSON.stringify({ continue: true }));
   }
 }
 

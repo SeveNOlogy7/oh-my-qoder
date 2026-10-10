@@ -1,17 +1,17 @@
 # Patch-Layer Collisions
 
-Paths that **OMQ's own commits** change *and* the ancestor hop `v4.15.1` -> `v5.2.0` also changes.
+Paths that **OMQ's own commits** change *and* the ancestor hop `v4.15.1` -> `v5.3.0` also changes.
 Losing one of these during adoption is a silent regression, which is why this table is generated
 from `git log 9ba1359c8f8cab5d72d7ffc543d3e35f676a4709..HEAD` intersected with the two cached ancestor trees -- not written by hand.
 
 | | |
 |---|---|
-| Colliding paths | 853 |
-| Assertable / test-surface / structural | 361 / 410 / 82 |
-| Hop modified / added / deleted | 522 / 328 / 3 |
-| Assertable rows with a named observation | 257 of 361 |
-| Carriers: VALID / INVALID / INCONCLUSIVE / missing | 12 / 0 / 1 / 348 |
-| Class-2 rows without a named structural guard | 0 of 492 |
+| Colliding paths | 871 |
+| Assertable / test-surface / structural | 371 / 416 / 84 |
+| Hop modified / added / deleted | 532 / 336 / 3 |
+| Assertable rows with a named observation | 263 of 371 |
+| Carriers: VALID / INVALID / INCONCLUSIVE / missing | 12 / 0 / 1 / 358 |
+| Class-2 rows without a named structural guard | 0 of 500 |
 
 The `un-patch` column is the commit whose parent still has OMQ's patch absent; reverting the file to
 that parent is what a negative-control lane does. `obs. rule` records *how* the observation was found
@@ -27,12 +27,12 @@ measured. `verified via` names the test that actually bit, which is not always t
 the metadata contracts suite, the SKILL.md config-root guard, or the identity gate CI runs over the
 payload. A row reading **none - gap** is work M1 has not finished.
 
-## Assertable (M1 class ①: needs a negative-control carrier) - 361
+## Assertable (M1 class ①: needs a negative-control carrier) - 371
 
 | path | hop | commits | un-patch | observation | obs. rule | cands | carrier | verified via |
 |---|---|---|---|---|---|---|---|---|
-| `.claude-plugin/marketplace.json` | modified | 2 | `1542fbc^` | `src/__tests__/release-boundary.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `.claude-plugin/plugin.json` | modified | 2 | `1542fbc^` | `src/__tests__/release-boundary.test.ts` | reference-and-co-changed | 3 | missing | - |
+| `.claude-plugin/marketplace.json` | modified | 3 | `1542fbc^` | `src/__tests__/release-boundary.test.ts` | reference-and-co-changed | 1 | missing | - |
+| `.claude-plugin/plugin.json` | modified | 3 | `1542fbc^` | `src/__tests__/release-boundary.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `benchmark/quick_test.sh` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `benchmark/run_benchmark.py` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `benchmark/run_full_comparison.sh` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
@@ -45,12 +45,12 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `benchmarks/shared/runner.ts` | modified | 1 | `3f25131^` | `tests/benchmark-diagnostics.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `benchmarks/shared/scorer.ts` | modified | 1 | `3f25131^` | `tests/benchmark-diagnostics.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `benchmarks/shared/types.ts` | modified | 1 | `3f25131^` | `src/__tests__/types.test.ts` | reference-and-co-changed | 7 | missing | - |
-| `bridge/claude-md-coordinator.cjs` | added | 5 | `b363dad^` | `src/__tests__/auto-update.test.ts` | reference-and-co-changed | 9 | missing | - |
+| `bridge/claude-md-coordinator.cjs` | added | 6 | `b363dad^` | `src/__tests__/auto-update.test.ts` | reference-and-co-changed | 9 | missing | - |
 | `docs/design/issue-3704-prompt-ssot/measurements.json` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `eslint.config.js` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `examples/advanced-usage.ts` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
-| `hooks/hooks.json` | modified | 6 | `3f25131^` | `tests/lint/windows-hide-hooks.test.ts` | reference-and-co-changed | 10 | missing | - |
-| `inventory/inventory-graph.json` | added | 8 | `3f25131^` | `tests/lint/inventory-graph-drift.test.ts` | reference-and-co-changed | 1 | missing | - |
+| `hooks/hooks.json` | modified | 3 | `3f25131^` | `tests/lint/windows-hide-hooks.test.ts` | reference-and-co-changed | 10 | missing | - |
+| `inventory/inventory-graph.json` | added | 15 | `3f25131^` | `tests/lint/inventory-graph-drift.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `receipts/epic-3698/child-3702-terminal.receipt.json` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `receipts/epic-3698/child-3703-terminal.receipt.json` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `receipts/epic-3698/child-3704-terminal.receipt.json` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
@@ -80,7 +80,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `scripts/collect-epic-3698-ci-evidence.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `scripts/compose-docs.mjs` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `scripts/context-guard-stop.mjs` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
-| `scripts/generate-inventory-graph.mjs` | added | 4 | `3f25131^` | `tests/lint/inventory-graph-drift.test.ts` | reference-and-co-changed | 1 | missing | - |
+| `scripts/generate-inventory-graph.mjs` | added | 5 | `3f25131^` | `tests/lint/inventory-graph-drift.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `scripts/generate-prompt-projections.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `scripts/generate-skill-entitlements.mjs` | added | 2 | `3f25131^` | `src/__tests__/skill-entitlements.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `scripts/graph-agent-demo.mjs` | added | 1 | `1542fbc^` | **none - gap** | none | 0 | missing | - |
@@ -88,10 +88,10 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `scripts/keyword-detector.mjs` | modified | 3 | `3f25131^` | `src/__tests__/keyword-detector-script.test.ts` | reference-and-co-changed | 4 | missing | - |
 | `scripts/lib/atomic-write.mjs` | modified | 1 | `3f25131^` | `src/lib/__tests__/atomic-write.test.ts` | reference-and-co-changed | 8 | missing | - |
 | `scripts/lib/bounded-git-timeout.mjs` | added | 2 | `3f25131^` | `src/__tests__/bounded-git-timeout-parity.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `scripts/lib/cache-occupancy.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
+| `scripts/lib/cache-occupancy.mjs` | added | 3 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `scripts/lib/config-dir.sh` | modified | 1 | `fc7250d^` | `src/__tests__/config-dir.test.ts` | reference-and-co-changed | 5 | missing | - |
 | `scripts/lib/context-usage.mjs` | added | 1 | `3f25131^` | `src/__tests__/context-usage.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `scripts/lib/hud-cache-wrapper.sh` | modified | 3 | `9ed5686^` | **none - gap** | none | 0 | missing | - |
+| `scripts/lib/hud-cache-wrapper.sh` | modified | 1 | `461bf95^` | **none - gap** | none | 0 | missing | - |
 | `scripts/lib/precompact-publisher.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `scripts/lib/precompact-restore.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `scripts/lib/skill-entitlements.mjs` | added | 2 | `3f25131^` | **none - gap** | none | 0 | missing | - |
@@ -104,14 +104,15 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `scripts/persistent-mode.cjs` | modified | 3 | `3f25131^` | `src/__tests__/doctor-conflicts.test.ts` | reference-and-co-changed | 6 | missing | - |
 | `scripts/persistent-mode.mjs` | modified | 3 | `3f25131^` | `src/__tests__/doctor-conflicts.test.ts` | reference-and-co-changed | 6 | missing | - |
 | `scripts/plugin-shipping-surface.mjs` | added | 3 | `3f25131^` | `src/__tests__/npm-package-bin-surface.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `scripts/post-tool-verifier.mjs` | modified | 6 | `3f25131^` | `src/__tests__/doctor-conflicts.test.ts` | reference-and-co-changed | 3 | missing | - |
+| `scripts/post-tool-rules-injector.mjs` | modified | 5 | `b363dad^` | **none - gap** | none | 0 | missing | - |
+| `scripts/post-tool-verifier.mjs` | modified | 7 | `3f25131^` | `src/__tests__/doctor-conflicts.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `scripts/pre-tool-enforcer.mjs` | modified | 3 | `3f25131^` | `src/__tests__/pre-tool-enforcer.test.ts` | reference-and-co-changed | 4 | missing | - |
-| `scripts/project-memory-posttool.mjs` | modified | 4 | `9ed5686^` | **none - gap** | none | 0 | missing | - |
+| `scripts/project-memory-posttool.mjs` | modified | 5 | `461bf95^` | **none - gap** | none | 0 | missing | - |
 | `scripts/release-boundary.mjs` | added | 2 | `3f25131^` | `src/__tests__/release-boundary.test.ts` | reference-and-co-changed | 2 | missing | - |
 | `scripts/release.ts` | modified | 2 | `3f25131^` | `src/__tests__/release-boundary.test.ts` | reference-and-co-changed | 4 | missing | - |
-| `scripts/run.cjs` | modified | 4 | `3f25131^` | `src/__tests__/run-cjs-generic-timeout.test.ts` | reference-and-co-changed | 18 | missing | - |
+| `scripts/run.cjs` | modified | 5 | `3f25131^` | `src/__tests__/run-cjs-generic-timeout.test.ts` | reference-and-co-changed | 18 | missing | - |
 | `scripts/session-end.mjs` | modified | 1 | `3f25131^` | `src/__tests__/doctor-conflicts.test.ts` | reference-and-co-changed | 4 | missing | - |
-| `scripts/session-start.mjs` | modified | 9 | `fc7250d^` | `src/__tests__/session-start-precompact-restore.test.ts` | reference-and-co-changed | 8 | **VALID** | `src/__tests__/patch-layer-guards.test.ts` |
+| `scripts/session-start.mjs` | modified | 6 | `fc7250d^` | `src/__tests__/session-start-precompact-restore.test.ts` | reference-and-co-changed | 8 | **VALID** | `src/__tests__/patch-layer-guards.test.ts` |
 | `scripts/setup-claude-md.sh` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `scripts/setup-progress.sh` | modified | 1 | `1542fbc^` | **none - gap** | none | 0 | missing | - |
 | `scripts/skill-injector.mjs` | modified | 1 | `3f25131^` | `src/__tests__/skill-injector-script.test.ts` | reference-and-co-changed | 1 | missing | - |
@@ -142,6 +143,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/autoresearch/contracts.ts` | modified | 1 | `3f25131^` | `src/autoresearch/__tests__/contracts.test.ts` | conventional | 1 | missing | - |
 | `src/autoresearch/runtime.ts` | modified | 3 | `3f25131^` | `src/autoresearch/__tests__/runtime.test.ts` | conventional | 1 | missing | - |
 | `src/cli/autoresearch-guided.ts` | modified | 3 | `fc7250d^` | `src/cli/__tests__/autoresearch-guided.test.ts` | conventional | 1 | INCONCLUSIVE | - |
+| `src/cli/checkpoint.ts` | added | 2 | `35f99d2^` | **none - gap** | none | 0 | missing | - |
 | `src/cli/claude-md-coordinator.ts` | added | 1 | `3f25131^` | `src/installer/__tests__/claude-md-transaction.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/cli/commands/alias-retirement.ts` | added | 2 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/cli/commands/capabilities.ts` | added | 1 | `3f25131^` | `src/cli/commands/__tests__/capabilities.test.ts` | conventional | 1 | missing | - |
@@ -150,9 +152,9 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/cli/commands/team.ts` | modified | 3 | `3f25131^` | `src/cli/commands/__tests__/team.test.ts` | conventional | 1 | missing | - |
 | `src/cli/commands/teleport.ts` | modified | 2 | `3f25131^` | `src/cli/commands/__tests__/teleport.test.ts` | conventional | 1 | missing | - |
 | `src/cli/commands/ultragoal.ts` | modified | 2 | `3f25131^` | `src/cli/commands/__tests__/ultragoal.test.ts` | conventional | 1 | missing | - |
-| `src/cli/graph.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/cli.test.ts` | reference-and-co-changed | 2 | missing | - |
+| `src/cli/graph.ts` | added | 4 | `1542fbc^` | `src/graph/__tests__/runtime/cli.test.ts` | reference-and-co-changed | 2 | missing | - |
 | `src/cli/hud-watch.ts` | modified | 1 | `3f25131^` | `src/cli/__tests__/hud-watch.test.ts` | conventional | 1 | missing | - |
-| `src/cli/index.ts` | modified | 4 | `fc7250d^` | `src/cli/__tests__/cli-boot.test.ts` | reference-and-co-changed | 5 | **VALID** | `src/cli/__tests__/cli-boot.test.ts` |
+| `src/cli/index.ts` | modified | 10 | `fc7250d^` | `src/cli/__tests__/cli-boot.test.ts` | reference-and-co-changed | 5 | **VALID** | `src/cli/__tests__/cli-boot.test.ts` |
 | `src/cli/launch.ts` | modified | 3 | `fc7250d^` | `src/cli/__tests__/launch.test.ts` | conventional | 1 | **VALID** | `src/cli/__tests__/launch.test.ts` |
 | `src/cli/team.ts` | modified | 2 | `3f25131^` | `src/cli/__tests__/team.test.ts` | conventional | 1 | missing | - |
 | `src/cli/tmux-utils.ts` | modified | 3 | `fc7250d^` | `src/cli/__tests__/tmux-utils.test.ts` | conventional | 1 | **VALID** | `src/cli/__tests__/tmux-utils.test.ts` |
@@ -164,17 +166,18 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/features/agent-addressability/index.ts` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/features/auto-update.ts` | modified | 3 | `fc7250d^` | `src/__tests__/auto-update.test.ts` | reference-and-co-changed | 15 | **VALID** | `src/__tests__/auto-update.test.ts` |
 | `src/features/builtin-skills/skills.ts` | modified | 3 | `3f25131^` | `src/__tests__/skills-frontmatter-regression.test.ts` | reference-and-co-changed | 14 | missing | - |
+| `src/features/checkpoint/index.ts` | added | 1 | `35f99d2^` | `src/features/__tests__/checkpoint.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/features/delegation-enforcer.ts` | modified | 2 | `3f25131^` | `src/__tests__/delegation-enforcer.test.ts` | reference-and-co-changed | 4 | missing | - |
 | `src/features/index.ts` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/features/magic-keywords.ts` | modified | 1 | `1542fbc^` | `src/features/__tests__/magic-keywords.test.ts` | conventional | 1 | missing | - |
 | `src/features/model-routing/router.ts` | modified | 1 | `3f25131^` | `src/__tests__/model-routing.test.ts` | reference-and-co-changed | 2 | missing | - |
 | `src/features/model-routing/signals.ts` | modified | 1 | `3f25131^` | `src/__tests__/model-routing.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `src/features/notepad-wisdom/extractor.ts` | modified | 1 | `9ed5686^` | `src/features/notepad-wisdom/__tests__/extractor.test.ts` | conventional | 1 | missing | - |
+| `src/features/notepad-wisdom/extractor.ts` | modified | 1 | `461bf95^` | `src/features/notepad-wisdom/__tests__/extractor.test.ts` | conventional | 1 | missing | - |
 | `src/features/rate-limit-wait/daemon.ts` | modified | 1 | `1542fbc^` | `src/__tests__/rate-limit-wait/daemon-bootstrap.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `src/features/rate-limit-wait/rate-limit-monitor.ts` | modified | 1 | `1542fbc^` | `src/__tests__/rate-limit-wait/rate-limit-monitor.test.ts` | reference-and-co-changed | 2 | missing | - |
 | `src/features/rate-limit-wait/tmux-detector.ts` | modified | 1 | `3f25131^` | `src/__tests__/rate-limit-wait/tmux-detector.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `src/features/session-friction-report/index.ts` | modified | 1 | `3f25131^` | `src/__tests__/session-friction-report.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `src/features/session-history-search/index.ts` | modified | 3 | `3f25131^` | `src/__tests__/session-history-search.test.ts` | reference-and-co-changed | 1 | missing | - |
+| `src/features/session-history-search/index.ts` | modified | 2 | `3f25131^` | `src/__tests__/session-history-search.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/graph/descriptor.ts` | added | 1 | `3f25131^` | `src/graph/__tests__/descriptor.test.ts` | conventional | 1 | missing | - |
 | `src/graph/index.ts` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/graph/runtime/approval.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/approval.test.ts` | reference-and-co-changed | 2 | missing | - |
@@ -184,11 +187,12 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/graph/runtime/fence.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/fence.test.ts` | reference-and-co-changed | 5 | missing | - |
 | `src/graph/runtime/journal.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/journal-epoch.test.ts` | reference-and-co-changed | 6 | missing | - |
 | `src/graph/runtime/progress.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/progress.test.ts` | reference-and-co-changed | 2 | missing | - |
+| `src/graph/runtime/remote-approval.ts` | added | 1 | `35f99d2^` | `src/graph/__tests__/runtime/remote-approval.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/graph/runtime/run-dir.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/run-dir.test.ts` | reference-and-co-changed | 2 | missing | - |
 | `src/graph/runtime/runner.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/runner.test.ts` | reference-and-co-changed | 5 | missing | - |
 | `src/graph/runtime/safe-fs.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/safe-fs.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/graph/runtime/store.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/store.test.ts` | reference-and-co-changed | 5 | missing | - |
-| `src/graph/runtime/types.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/approval.test.ts` | reference-and-co-changed | 13 | missing | - |
+| `src/graph/runtime/types.ts` | added | 1 | `1542fbc^` | `src/graph/__tests__/runtime/approval.test.ts` | reference-and-co-changed | 14 | missing | - |
 | `src/graph/scheduler.ts` | added | 1 | `3f25131^` | `src/graph/__tests__/scheduler.test.ts` | conventional | 1 | missing | - |
 | `src/graph/schema.ts` | added | 1 | `3f25131^` | `src/graph/__tests__/runtime/e2e-crash-recovery.test.ts` | reference | 1 | missing | - |
 | `src/graph/types.ts` | added | 1 | `3f25131^` | `src/graph/__tests__/runtime/e2e-crash-recovery.test.ts` | reference | 1 | missing | - |
@@ -225,7 +229,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/hooks/mode-registry/index.ts` | modified | 3 | `3f25131^` | `src/__tests__/pipeline-orchestrator.test.ts` | reference-and-co-changed | 4 | missing | - |
 | `src/hooks/mode-registry/types.ts` | modified | 2 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/hooks/omc-orchestrator/index.ts` | modified | 2 | `3f25131^` | `src/__tests__/delegation-enforcement-levels.test.ts` | reference-and-co-changed | 2 | missing | - |
-| `src/hooks/permission-handler/index.ts` | modified | 4 | `1542fbc^` | `src/hooks/permission-handler/__tests__/index.test.ts` | conventional | 1 | missing | - |
+| `src/hooks/permission-handler/index.ts` | modified | 2 | `1542fbc^` | `src/hooks/permission-handler/__tests__/index.test.ts` | conventional | 1 | missing | - |
 | `src/hooks/persistent-mode/idle-repo-state.ts` | modified | 1 | `3f25131^` | `src/hooks/persistent-mode/__tests__/idle-repo-state.test.ts` | conventional | 1 | missing | - |
 | `src/hooks/persistent-mode/index.ts` | modified | 3 | `3f25131^` | `src/hooks/persistent-mode/__tests__/ralph-session-mismatch.test.ts` | reference-and-co-changed | 5 | missing | - |
 | `src/hooks/pre-compact/index.ts` | modified | 2 | `3f25131^` | `src/hooks/__tests__/precompact-restore.test.ts` | reference-and-co-changed | 3 | missing | - |
@@ -273,14 +277,14 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/hud/elements/limits.ts` | modified | 1 | `3f25131^` | `src/__tests__/hud/scoped-weekly-buckets-render.test.ts` | reference-and-co-changed | 6 | missing | - |
 | `src/hud/elements/model.ts` | modified | 2 | `3f25131^` | `src/__tests__/hud/model.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/hud/elements/multi-repo.ts` | modified | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
-| `src/hud/elements/update-hint.ts` | added | 2 | `9ed5686^` | `src/__tests__/hud/update-hint.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `src/hud/index.ts` | modified | 6 | `1542fbc^` | `src/__tests__/hud/watch-mode-init.test.ts` | reference-and-co-changed | 9 | missing | - |
+| `src/hud/elements/update-hint.ts` | added | 1 | `461bf95^` | `src/__tests__/hud/update-hint.test.ts` | reference-and-co-changed | 1 | missing | - |
+| `src/hud/index.ts` | modified | 6 | `1542fbc^` | `src/__tests__/hud/cli-diagnostic.test.ts` | reference-and-co-changed | 9 | missing | - |
 | `src/hud/payload-estimate.ts` | modified | 1 | `3f25131^` | `src/__tests__/hud/payload-estimate.test.ts` | reference-and-co-changed | 2 | missing | - |
-| `src/hud/render.ts` | modified | 4 | `9ed5686^` | `src/__tests__/hud/update-hint.test.ts` | reference-and-co-changed | 13 | missing | - |
+| `src/hud/render.ts` | modified | 1 | `461bf95^` | `src/__tests__/hud/update-hint.test.ts` | reference-and-co-changed | 13 | missing | - |
 | `src/hud/state.ts` | modified | 1 | `3f25131^` | `src/__tests__/hud/state.test.ts` | reference-and-co-changed | 9 | missing | - |
 | `src/hud/stdin.ts` | modified | 2 | `3f25131^` | `src/__tests__/hud/stdin.test.ts` | reference-and-co-changed | 6 | missing | - |
 | `src/hud/transcript.ts` | modified | 1 | `3f25131^` | `src/__tests__/hud/agent-kind.test.ts` | reference-and-co-changed | 5 | missing | - |
-| `src/hud/types.ts` | modified | 6 | `3f25131^` | `src/__tests__/context-usage.test.ts` | reference-and-co-changed | 25 | missing | - |
+| `src/hud/types.ts` | modified | 3 | `3f25131^` | `src/__tests__/context-usage.test.ts` | reference-and-co-changed | 25 | missing | - |
 | `src/hud/usage-api.ts` | modified | 3 | `3f25131^` | `src/__tests__/hud/usage-api-lock.test.ts` | reference-and-co-changed | 10 | missing | - |
 | `src/index.ts` | modified | 2 | `3f25131^` | `src/__tests__/delegation-enforcement-levels.test.ts` | reference-and-co-changed | 18 | missing | - |
 | `src/installer/claude-md-analysis.ts` | added | 1 | `3f25131^` | `src/installer/__tests__/claude-md-analysis.test.ts` | conventional | 1 | missing | - |
@@ -294,17 +298,23 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/lib/mode-names.ts` | modified | 2 | `3f25131^` | `src/__tests__/mode-names-ralplan.test.ts` | reference | 1 | missing | - |
 | `src/lib/mode-state-io.ts` | modified | 2 | `3f25131^` | `src/lib/__tests__/mode-state-io.test.ts` | conventional | 1 | missing | - |
 | `src/lib/release-generation.ts` | modified | 3 | `fc7250d^` | `src/__tests__/release-generation.test.ts` | reference-and-co-changed | 2 | **VALID** | `src/__tests__/release-generation.test.ts` |
-| `src/lib/worktree-paths.ts` | modified | 6 | `3f25131^` | `src/lib/__tests__/worktree-paths.test.ts` | conventional | 1 | missing | - |
+| `src/lib/worktree-paths.ts` | modified | 7 | `3f25131^` | `src/lib/__tests__/worktree-paths.test.ts` | conventional | 1 | missing | - |
 | `src/mcp/tool-registry.ts` | modified | 2 | `3f25131^` | `src/tools/python-repl/__tests__/description-parity.test.ts` | reference-and-co-changed | 2 | missing | - |
-| `src/notifications/reply-listener.ts` | modified | 2 | `3f25131^` | `src/notifications/__tests__/reply-listener.test.ts` | conventional | 1 | missing | - |
-| `src/notifications/session-registry.ts` | modified | 1 | `3f25131^` | `src/notifications/__tests__/session-registry.test.ts` | conventional | 1 | missing | - |
+| `src/notifications/config.ts` | modified | 3 | `35f99d2^` | `src/notifications/__tests__/config.test.ts` | conventional | 1 | missing | - |
+| `src/notifications/formatter.ts` | modified | 2 | `35f99d2^` | `src/notifications/__tests__/formatter.test.ts` | conventional | 1 | missing | - |
+| `src/notifications/hook-config-types.ts` | modified | 2 | `35f99d2^` | **none - gap** | none | 0 | missing | - |
+| `src/notifications/index.ts` | modified | 3 | `35f99d2^` | `src/hooks/session-end/__tests__/duplicate-notifications.test.ts` | reference | 6 | missing | - |
+| `src/notifications/reply-listener.ts` | modified | 3 | `3f25131^` | `src/notifications/__tests__/reply-listener.test.ts` | conventional | 1 | missing | - |
+| `src/notifications/session-registry.ts` | modified | 3 | `3f25131^` | `src/notifications/__tests__/session-registry.test.ts` | conventional | 1 | missing | - |
+| `src/notifications/template-engine.ts` | modified | 1 | `35f99d2^` | `src/notifications/__tests__/template-engine.test.ts` | conventional | 1 | missing | - |
+| `src/notifications/types.ts` | modified | 3 | `35f99d2^` | **none - gap** | none | 0 | missing | - |
 | `src/platform/process-utils.ts` | modified | 1 | `3f25131^` | `src/hooks/session-end/__tests__/action-runner.test.ts` | reference-and-co-changed | 7 | missing | - |
 | `src/projection/composer.ts` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/projection/manifest.ts` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/providers/index.ts` | modified | 1 | `3f25131^` | `src/cli/commands/__tests__/teleport.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `src/shared/types.ts` | modified | 3 | `3f25131^` | `src/__tests__/types.test.ts` | reference-and-co-changed | 7 | missing | - |
 | `src/team/api-interop.ts` | modified | 2 | `3f25131^` | `src/__tests__/shipyard-skills.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `src/team/bridge-entry.ts` | modified | 4 | `b363dad^` | `src/team/__tests__/bridge-entry.test.ts` | conventional | 1 | missing | - |
+| `src/team/bridge-entry.ts` | modified | 2 | `b363dad^` | `src/team/__tests__/bridge-entry.test.ts` | conventional | 1 | missing | - |
 | `src/team/cli-detection.ts` | modified | 2 | `fc7250d^` | `src/team/__tests__/cli-detection.test.ts` | conventional | 1 | **VALID** | `src/team/__tests__/cli-detection.test.ts` |
 | `src/team/cli-worker-contract.ts` | modified | 1 | `1542fbc^` | `src/team/__tests__/cli-worker-contract.test.ts` | conventional | 1 | missing | - |
 | `src/team/dispatch-queue.ts` | modified | 1 | `3f25131^` | `src/hooks/__tests__/team-dispatch-prompt-readiness.test.ts` | reference-and-co-changed | 3 | missing | - |
@@ -346,22 +356,22 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/team/worker-bootstrap.ts` | modified | 2 | `3f25131^` | `src/team/__tests__/worker-bootstrap.test.ts` | conventional | 1 | missing | - |
 | `src/team/worker-canonicalization.ts` | modified | 1 | `3f25131^` | `src/team/__tests__/worker-canonicalization.test.ts` | conventional | 1 | missing | - |
 | `src/team/worker-commit-cadence.ts` | modified | 2 | `3f25131^` | `src/team/__tests__/worker-commit-cadence.test.ts` | conventional | 1 | missing | - |
-| `src/team/worker-launch-ack.ts` | added | 6 | `3f25131^` | `src/team/__tests__/worker-launch-ack.test.ts` | conventional | 1 | missing | - |
-| `src/tools/ast-tools.ts` | modified | 6 | `3f25131^` | `src/__tests__/ast-tools-path-restriction.test.ts` | reference-and-co-changed | 6 | missing | - |
-| `src/tools/diagnostics/lsp-aggregator.ts` | modified | 1 | `9ed5686^` | `src/tools/diagnostics/__tests__/lsp-aggregator.test.ts` | conventional | 1 | missing | - |
+| `src/team/worker-launch-ack.ts` | added | 3 | `3f25131^` | `src/team/__tests__/worker-launch-ack.test.ts` | conventional | 1 | missing | - |
+| `src/tools/ast-tools.ts` | modified | 3 | `3f25131^` | `src/__tests__/ast-tools-path-restriction.test.ts` | reference-and-co-changed | 6 | missing | - |
+| `src/tools/diagnostics/lsp-aggregator.ts` | modified | 1 | `461bf95^` | `src/tools/diagnostics/__tests__/lsp-aggregator.test.ts` | conventional | 1 | missing | - |
 | `src/tools/index.ts` | modified | 1 | `3f25131^` | `src/tools/__tests__/schema-conversion.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `src/tools/lsp/client.ts` | modified | 3 | `3f25131^` | **none - gap** | none | 0 | missing | - |
+| `src/tools/lsp/client.ts` | modified | 2 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/tools/lsp/index.ts` | modified | 1 | `3f25131^` | `src/tools/diagnostics/__tests__/lsp-aggregator.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/tools/lsp/servers.ts` | modified | 1 | `3f25131^` | `src/__tests__/lsp-servers.test.ts` | reference-and-co-changed | 2 | missing | - |
 | `src/tools/python-repl/bridge-manager.ts` | modified | 1 | `3f25131^` | `src/hooks/session-end/__tests__/duplicate-notifications.test.ts` | reference-and-co-changed | 6 | missing | - |
 | `src/tools/python-repl/index.ts` | modified | 1 | `3f25131^` | `src/__tests__/omc-tools-contract.test.ts` | reference-and-co-changed | 2 | missing | - |
 | `src/tools/python-repl/sandbox.ts` | added | 1 | `3f25131^` | `src/tools/python-repl/__tests__/shipped-artifact-parity.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `src/tools/python-repl/tool.ts` | modified | 1 | `3f25131^` | `src/tools/python-repl/__tests__/shipped-artifact-parity.test.ts` | reference-and-co-changed | 2 | missing | - |
-| `src/tools/state-tools.ts` | modified | 5 | `3f25131^` | `src/tools/__tests__/state-tools.test.ts` | conventional | 1 | missing | - |
+| `src/tools/state-tools.ts` | modified | 3 | `3f25131^` | `src/tools/__tests__/state-tools.test.ts` | conventional | 1 | missing | - |
 | `src/tools/trace-tools.ts` | modified | 1 | `3f25131^` | `src/__tests__/tools/trace-tools.test.ts` | reference-and-co-changed | 4 | missing | - |
 | `src/tools/wiki-tools.ts` | modified | 1 | `1542fbc^` | `src/tools/__tests__/wiki-tools-direct-dist-failclosed.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `src/ultragoal/artifacts.ts` | modified | 1 | `3f25131^` | `src/ultragoal/__tests__/artifacts.test.ts` | conventional | 1 | missing | - |
-| `src/utils/cache-occupancy.ts` | added | 1 | `3f25131^` | `src/utils/__tests__/cache-occupancy.test.ts` | conventional | 1 | missing | - |
+| `src/utils/cache-occupancy.ts` | added | 3 | `3f25131^` | `src/utils/__tests__/cache-occupancy.test.ts` | conventional | 1 | missing | - |
 | `src/utils/frontmatter.ts` | modified | 1 | `3f25131^` | `src/utils/__tests__/frontmatter.test.ts` | conventional | 1 | missing | - |
 | `src/utils/paths.ts` | modified | 3 | `fc7250d^` | `src/utils/__tests__/paths.test.ts` | conventional | 1 | **VALID** | `src/__tests__/hud-windows.test.ts` |
 | `src/utils/resolve-node.ts` | modified | 1 | `3f25131^` | `src/__tests__/resolve-node.test.ts` | reference-and-co-changed | 1 | missing | - |
@@ -369,12 +379,12 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/workflow/alias-resolver.ts` | added | 2 | `3f25131^` | `src/workflow/__tests__/alias-resolver.test.ts` | conventional | 1 | missing | - |
 | `src/workflow/index.ts` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `src/workflow/projections.ts` | added | 1 | `3f25131^` | `src/workflow/__tests__/projections.test.ts` | conventional | 1 | missing | - |
-| `src/workflow/registry.ts` | added | 3 | `3f25131^` | `src/workflow/__tests__/registry.test.ts` | conventional | 1 | missing | - |
+| `src/workflow/registry.ts` | added | 5 | `3f25131^` | `src/workflow/__tests__/registry.test.ts` | conventional | 1 | missing | - |
 | `templates/hooks/code-simplifier.mjs` | modified | 2 | `3f25131^` | `src/__tests__/installer-hooks-merge.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `templates/hooks/keyword-detector.mjs` | modified | 3 | `3f25131^` | `src/__tests__/keyword-detector-script.test.ts` | reference-and-co-changed | 13 | missing | - |
 | `templates/hooks/lib/atomic-write.mjs` | modified | 1 | `3f25131^` | `src/lib/__tests__/atomic-write.test.ts` | reference-and-co-changed | 8 | missing | - |
 | `templates/hooks/lib/bounded-git-timeout.mjs` | added | 2 | `3f25131^` | `src/__tests__/bounded-git-timeout-parity.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `templates/hooks/lib/cache-occupancy.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
+| `templates/hooks/lib/cache-occupancy.mjs` | added | 3 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `templates/hooks/lib/precompact-publisher.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `templates/hooks/lib/precompact-restore.mjs` | added | 1 | `3f25131^` | **none - gap** | none | 0 | missing | - |
 | `templates/hooks/lib/skill-entitlements.mjs` | added | 2 | `3f25131^` | **none - gap** | none | 0 | missing | - |
@@ -385,15 +395,15 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `templates/hooks/persistent-mode.mjs` | modified | 3 | `3f25131^` | `src/__tests__/delegation-enforcement-levels.test.ts` | reference-and-co-changed | 11 | missing | - |
 | `templates/hooks/post-tool-use.mjs` | modified | 3 | `3f25131^` | `src/__tests__/doctor-conflicts.test.ts` | reference-and-co-changed | 3 | missing | - |
 | `templates/hooks/pre-tool-use.mjs` | modified | 3 | `3f25131^` | `src/hooks/__tests__/pre-tool-use-template-source-ext.test.ts` | reference-and-co-changed | 4 | missing | - |
-| `templates/hooks/session-start.mjs` | modified | 9 | `fc7250d^` | `src/__tests__/session-start-timeout-cleanup.test.ts` | reference-and-co-changed | 10 | **VALID** | `src/__tests__/patch-layer-guards.test.ts` |
+| `templates/hooks/session-start.mjs` | modified | 5 | `fc7250d^` | `src/__tests__/session-start-timeout-cleanup.test.ts` | reference-and-co-changed | 10 | **VALID** | `src/__tests__/patch-layer-guards.test.ts` |
 | `templates/hooks/workflow-drift-guard.mjs` | modified | 1 | `3f25131^` | `tests/lint/windows-hide-hooks.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `tests/fixtures/prompt-projection/claude-body.normalized` | added | 4 | `3f25131^` | `src/projection/__tests__/fixtures.test.ts` | reference-and-co-changed | 1 | missing | - |
-| `tests/fixtures/prompt-projection/claude-managed-block.golden` | added | 6 | `3f25131^` | `src/projection/__tests__/fixtures.test.ts` | reference-and-co-changed | 1 | missing | - |
+| `tests/fixtures/prompt-projection/claude-managed-block.golden` | added | 7 | `3f25131^` | `src/projection/__tests__/fixtures.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `tests/fixtures/prompt-projection/transaction-backup-rollback.json` | added | 1 | `3f25131^` | `src/projection/__tests__/fixtures.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `tests/perf/subagent-lock.bench.ts` | modified | 2 | `3f25131^` | `tests/lint/subagent-lock-test-contract.test.ts` | reference-and-co-changed | 1 | missing | - |
 | `vitest.config.ts` | modified | 3 | `b363dad^` | `src/notifications/__tests__/notify-registry-integration.test.ts` | reference-and-co-changed | 2 | missing | - |
 
-## Test surface (M1 class ②: merge the assertions) - 410
+## Test surface (M1 class ②: merge the assertions) - 416
 
 | path | hop | commits | un-patch | structural guard |
 |---|---|---|---|---|
@@ -411,18 +421,19 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/__tests__/delegation-enforcement-levels.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/delegation-enforcer.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/doctor-conflicts.test.ts` | modified | 4 | `fc7250d^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/fixtures/hung-hooks/detached-stdout-orphan.cjs` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/fixtures/hung-hooks/epipe-exit-parent.cjs` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/fixtures/hung-hooks/detached-stdout-orphan.cjs` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/fixtures/hung-hooks/epipe-exit-parent.cjs` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/fixtures/hung-hooks/hung-grandchild.cjs` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/fixtures/hung-hooks/hung-parent.cjs` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/fixtures/hung-hooks/success-parent-stdout-orphan.cjs` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/fixtures/hung-hooks/success-parent-stdout-orphan.cjs` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/generated-artifact-authorization.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hooks.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hooks/learner/bridge.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hooks/session-end-cleanup.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud-agents.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/hud-cache-wrapper.test.ts` | modified | 5 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/hud-cache-wrapper.test.ts` | modified | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/agent-kind.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/hud/cli-diagnostic.test.ts` | modified | 4 | `35f99d2^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/cwd.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/mission-board-state.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/model.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -431,10 +442,10 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/__tests__/hud/scoped-weekly-buckets-render.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/state.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/stdin.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/hud/update-hint.test.ts` | added | 3 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/hud/update-hint.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/usage-api-user-agent.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/usage-api.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/hud/watch-mode-init.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/hud/watch-mode-init.test.ts` | modified | 4 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/hud/windows-platform.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/installer-hooks-merge.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/installer-mcp-config.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -445,13 +456,13 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/__tests__/issue-3867-legacy-l-update.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/keyword-detector-echo-guard.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/keyword-detector-script.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/live-data.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/live-data.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/lsp-servers-python-catalog.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/lsp-servers.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/model-routing.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/no-committed-build-artifacts.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/notepad.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/npm-package-bin-surface.test.ts` | modified | 8 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/npm-package-bin-surface.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/npm-package-hook-surface.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/npm-package-surface-helpers.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/omc-tools-contract.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -459,10 +470,11 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/__tests__/pipeline-orchestrator.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/plugin-shipping-surface.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/plugin-skill-budget.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/post-tool-verifier.test.mjs` | modified | 7 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/post-tool-rules-injector.test.ts` | modified | 4 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/post-tool-verifier.test.mjs` | modified | 8 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/pre-tool-enforcer.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/preemptive-compaction-hook.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/project-memory-posttool.test.ts` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/preemptive-compaction-hook.test.ts` | modified | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/project-memory-posttool.test.ts` | added | 4 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/project-session-manager-worktree-protocol.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/psm-tmux-naming.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/purge-stale-cache.integration.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -474,6 +486,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/__tests__/ralph-progress.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/rate-limit-wait/daemon-bootstrap.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/rate-limit-wait/daemon-cache-context.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/rate-limit-wait/integration.test.ts` | modified | 2 | `35f99d2^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/rate-limit-wait/rate-limit-monitor.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/rate-limit-wait/tmux-detector.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/release-boundary.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -481,28 +494,28 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/__tests__/release-guidance.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/repair-plugin-cache-script.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/resolve-node.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/run-cjs-generic-timeout.test.ts` | added | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/run-cjs-graceful-fallback.test.ts` | modified | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/run-cjs-windows-stdio-contract.test.ts` | added | 3 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/run-cjs-generic-timeout.test.ts` | added | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/run-cjs-graceful-fallback.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/run-cjs-windows-stdio-contract.test.ts` | added | 4 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/session-end-empty-stdin.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/session-end-process-exit.test.ts` | added | 6 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/session-history-search.test.ts` | modified | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/session-end-process-exit.test.ts` | added | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/session-history-search.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/session-start-cache-cleanup.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/session-start-precompact-restore.test.ts` | added | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/session-start-script-context.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/session-start-timeout-cleanup.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/session-start-update-check.test.ts` | added | 3 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/session-start-update-refresh.test.ts` | added | 3 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/session-start-update-check.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/session-start-update-refresh.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/setup-claude-md-script.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/setup-contracts-regression.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/shared-memory-concurrency.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/shipyard-seed-locale.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/shipyard-skills.test.ts` | added | 4 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/shipyard-skills.test.ts` | added | 6 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/skill-entitlements-cross-surface.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/skill-entitlements.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/skill-injector-script.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/skills-frontmatter-regression.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/skills.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/skills.test.ts` | modified | 7 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/smoke-pipeline-edge.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/smoke-slack-and-state.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/state-root-resolution.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -516,12 +529,12 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/__tests__/trusted-publishing-contract.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/types.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/wiki-hook-output-format.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/__tests__/windows-prompt-hook-runner.test.ts` | added | 4 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/__tests__/windows-prompt-hook-runner.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/__tests__/workflow-profile-activation-script.test.ts` | added | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/agents/prompt-ssot/__tests__/prompt-ssot.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/alias-retirement/__tests__/closure.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/alias-retirement/__tests__/policy.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/alias-retirement/__tests__/registry.test.ts` | added | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/alias-retirement/__tests__/registry.test.ts` | added | 4 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/alias-retirement/__tests__/verifier.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/cli/__tests__/autoresearch-guided.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/cli/__tests__/doctor-team-routing.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -536,9 +549,10 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/cli/commands/__tests__/ultragoal.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/config/__tests__/loader.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/config/__tests__/models.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/features/__tests__/checkpoint.test.ts` | added | 1 | `35f99d2^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/features/__tests__/magic-keywords.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/features/agent-addressability/__tests__/addressability.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/features/notepad-wisdom/__tests__/extractor.test.ts` | added | 1 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/features/notepad-wisdom/__tests__/extractor.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/descriptor.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/fixtures.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/runtime/approval.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -554,6 +568,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/graph/__tests__/runtime/journal.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/runtime/progress.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/runtime/regression-matrix.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/graph/__tests__/runtime/remote-approval.test.ts` | added | 1 | `35f99d2^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/runtime/run-dir.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/runtime/runner.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/graph/__tests__/runtime/safe-fs.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -588,7 +603,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/hooks/persistent-mode/__tests__/ralph-session-mismatch.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/hooks/persistent-mode/__tests__/ralph-verification-flow.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/hooks/persistent-mode/__tests__/team-ralplan-stop.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/hooks/persistent-mode/__tests__/tool-error.test.ts` | modified | 3 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/hooks/persistent-mode/__tests__/tool-error.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/hooks/persistent-mode/__tests__/ultragoal-persistence.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/hooks/persistent-mode/session-isolation.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/hooks/persistent-mode/stop-hook-blocking.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -646,7 +661,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/installer/__tests__/fixtures/historical-agents/v4.4.0/analyst.md` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/installer/__tests__/fixtures/historical-agents/v4.5.0/architect.md` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/installer/__tests__/fixtures/legacy-guides.json` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/installer/__tests__/hook-templates.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/installer/__tests__/hook-templates.test.ts` | modified | 6 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/installer/__tests__/mcp-registry.test.ts` | modified | 3 | `6b43f17^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/installer/__tests__/plugin-cache-sync.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/installer/__tests__/session-start-template.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -659,14 +674,15 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/lib/__tests__/sync-publication-short-write.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/lib/__tests__/worktree-paths-foreign-root.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/lib/__tests__/worktree-paths-git-probe-failclosed.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/lib/__tests__/worktree-paths-git-timeout.test.ts` | added | 1 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/lib/__tests__/worktree-paths-git-timeout.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/lib/__tests__/worktree-paths-nongit-anchor.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/lib/__tests__/worktree-paths-split-warning.test.ts` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/lib/__tests__/worktree-paths-split-warning.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/lib/__tests__/worktree-paths-superproject-cache.test.ts` | added | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/lib/__tests__/worktree-paths-toplevel-cache.test.ts` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/lib/__tests__/worktree-paths-toplevel-cache.test.ts` | added | 3 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/lib/__tests__/worktree-paths.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/mcp/__tests__/team-cleanup.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/mcp/__tests__/team-server-artifact-convergence.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/notifications/__tests__/approval-reply.test.ts` | added | 1 | `35f99d2^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/notifications/__tests__/notify-registry-integration.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/notifications/__tests__/reply-listener.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/openclaw/__tests__/dead-pane-guard.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -682,8 +698,8 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/team/__tests__/api-interop.cwd-resolution.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/api-interop.dispatch.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/audit-log.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/team/__tests__/bridge-entry.guardrails.test.ts` | modified | 4 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/team/__tests__/bridge-entry.test.ts` | modified | 4 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/team/__tests__/bridge-entry.guardrails.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/team/__tests__/bridge-entry.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/bridge-integration.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/cli-detection.test.ts` | modified | 2 | `6b43f17^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/cli-detection.windows.integration.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -762,7 +778,7 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/team/__tests__/worker-health.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/worker-launch-ack.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/worker-launch-posix-transport.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/team/__tests__/worker-launch-wrapper-posix.test.ts` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/team/__tests__/worker-launch-wrapper-posix.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/worker-restart.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/team/__tests__/worktree-contract-fields.test.ts` | modified | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/__tests__/cancel-integration.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -771,11 +787,11 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/tools/__tests__/schema-conversion.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/__tests__/state-tools-nongit-ownership.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/__tests__/state-tools.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/tools/__tests__/wiki-tools-direct-dist-failclosed.test.ts` | added | 3 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/tools/__tests__/wiki-tools-direct-dist-failclosed.test.ts` | added | 2 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/__tests__/wiki-tools-foreign-root.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/tools/__tests__/wiki-tools-git-probe-failclosed.test.ts` | added | 3 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/tools/__tests__/wiki-tools-git-probe-failclosed.test.ts` | added | 2 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/diagnostics/__tests__/lsp-aggregator.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/tools/lsp/__tests__/client-document-lifecycle.test.ts` | added | 2 | `9ed5686^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/tools/lsp/__tests__/client-document-lifecycle.test.ts` | added | 1 | `461bf95^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/lsp/__tests__/client-handle-data.test.ts` | modified | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/lsp/__tests__/client-python-boundary.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/tools/lsp/__tests__/client-python-switch.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -786,11 +802,11 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `src/tools/python-repl/__tests__/shipped-artifact-parity.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/ultragoal/__tests__/artifacts.multirepo.test.ts` | modified | 2 | `b363dad^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/ultragoal/__tests__/artifacts.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/utils/__tests__/cache-occupancy.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/utils/__tests__/cache-occupancy.test.ts` | added | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/utils/__tests__/frontmatter.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `src/workflow/__tests__/alias-resolver.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/workflow/__tests__/projections.test.ts` | added | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `src/workflow/__tests__/registry.test.ts` | added | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/workflow/__tests__/projections.test.ts` | added | 4 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `src/workflow/__tests__/registry.test.ts` | added | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/benchmark-diagnostics.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/integration/concurrent-project-memory.test.ts` | modified | 3 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/integration/epic-3698-closure-verifier.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
@@ -802,31 +818,31 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `tests/lint/better-sqlite3-lockfloor.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/lint/cancel-signal-fixture-ttl.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/lint/fable-routing-docs.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
-| `tests/lint/inventory-graph-drift.test.ts` | added | 4 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
+| `tests/lint/inventory-graph-drift.test.ts` | added | 5 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/lint/setup-phases-drift.test.ts` | added | 1 | `1542fbc^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/lint/skill-parallel-caveats.test.ts` | modified | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/lint/subagent-lock-test-contract.test.ts` | added | 1 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 | `tests/lint/windows-hide-hooks.test.ts` | added | 2 | `3f25131^` | `scripts/known-failures.mjs --check (CI test job)` |
 
-## Structural (M1 class ②: structural assertion, no fake test) - 82
+## Structural (M1 class ②: structural assertion, no fake test) - 84
 
 | path | hop | commits | un-patch | structural guard |
 |---|---|---|---|---|
-| `.github/CLAUDE.md` | modified | 5 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `AGENTS.md` | modified | 2 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `.github/CLAUDE.md` | modified | 6 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `AGENTS.md` | modified | 4 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `agents/scientist.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `benchmark/README.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `benchmark/results/README.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `benchmarks/debugger/prompts/build-fixer.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `CHANGELOG.md` | modified | 3 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `CLAUDE.md` | modified | 6 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `CHANGELOG.md` | modified | 4 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `CLAUDE.md` | modified | 7 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `CONTRIBUTING.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/adr/03487-named-autopilot-stage-profiles.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/adr/03570-graph-core-contract.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/adr/03664-ralph-prd-criterion-amendment.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/ARCHITECTURE.md` | modified | 2 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/cancel-skill-active-state-gap.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `docs/CLAUDE.md` | modified | 6 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `docs/CLAUDE.md` | modified | 7 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/design/CLAUDE_CODE_GOAL_ADAPTER.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/design/ISSUE-3698-LIGHTWEIGHT-WORKFLOW-PLAN.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/design/ISSUE-3703-WORKFLOW-REGISTRY.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
@@ -835,32 +851,32 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `docs/design/ISSUE-3712-RELEASE-VERIFICATION.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/FEATURES.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/GETTING-STARTED.md` | modified | 2 | `fc7250d^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `docs/HOOKS.md` | modified | 6 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `docs/HOOKS.md` | modified | 3 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/issues/issue-3668-ralph-namespace.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/MIGRATION.md` | modified | 3 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/PERFORMANCE-MONITORING.md` | modified | 3 | `fc7250d^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `docs/REFERENCE.md` | modified | 5 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `docs/REFERENCE.md` | modified | 6 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/settings-schema.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/shared/agent-tiers.md` | modified | 2 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/shared/features.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/shared/mode-hierarchy.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/shared/mode-selection-guide.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `docs/shipyard.md` | added | 2 | `1542fbc^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `docs/shipyard.md` | added | 3 | `1542fbc^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `docs/TOOLS.md` | modified | 2 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `generated/prompt-ssot/coordinator.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `generated/prompt-ssot/role-executor.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `generated/prompt-ssot/role-planner.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `generated/prompt-ssot/role-reviewer.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `generated/prompt-ssot/role-verifier.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `package-lock.json` | modified | 5 | `fc7250d^` | `src/__tests__/metadata-contracts.test.ts` |
-| `package.json` | modified | 8 | `fc7250d^` | `src/__tests__/metadata-contracts.test.ts` |
+| `package-lock.json` | modified | 6 | `fc7250d^` | `src/__tests__/metadata-contracts.test.ts` |
+| `package.json` | modified | 9 | `fc7250d^` | `src/__tests__/metadata-contracts.test.ts` |
 | `README.de.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.es.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.fr.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.it.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.ja.md` | modified | 2 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.ko.md` | modified | 2 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `README.md` | modified | 4 | `fc7250d^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
+| `README.md` | modified | 6 | `fc7250d^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.pt.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.ru.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `README.tr.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
@@ -868,15 +884,17 @@ payload. A row reading **none - gap** is work M1 has not finished.
 | `README.zh.md` | modified | 2 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `receipts/epic-3698/README.md` | added | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
 | `seminar/demos/demo-0-live-audience.md` | modified | 1 | `3f25131^` | `scripts/check-canonical-identity.mjs (CI provenance job)` |
-| `skills/AGENTS.md` | modified | 3 | `3f25131^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/AGENTS.md` | modified | 6 | `3f25131^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/ask-navigator/SKILL.md` | added | 2 | `35f99d2^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/autopilot/SKILL.md` | modified | 3 | `3f25131^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/cancel/SKILL.md` | modified | 4 | `fc7250d^` | `src/skills/__tests__/skill-config-dir.test.ts` |
-| `skills/drydock/SKILL.md` | added | 5 | `1542fbc^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/drydock/SKILL.md` | added | 6 | `1542fbc^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/execute/SKILL.md` | added | 2 | `3f25131^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/graph/SKILL.md` | added | 1 | `1542fbc^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/hud/SKILL.md` | modified | 2 | `fc7250d^` | `src/skills/__tests__/skill-config-dir.test.ts` |
-| `skills/launch/SKILL.md` | added | 4 | `1542fbc^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/launch/SKILL.md` | added | 6 | `1542fbc^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/learner/SKILL.md` | deleted | 1 | `fc7250d^` | `src/skills/__tests__/skill-config-dir.test.ts` |
+| `skills/loft/SKILL.md` | added | 2 | `35f99d2^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/minimal-code-discipline/SKILL.md` | added | 1 | `1542fbc^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/plan/SKILL.md` | modified | 3 | `3f25131^` | `src/skills/__tests__/skill-config-dir.test.ts` |
 | `skills/project-session-manager/SKILL.md` | modified | 3 | `fc7250d^` | `src/skills/__tests__/skill-config-dir.test.ts` |

@@ -144,12 +144,12 @@ export function formatSessionEnd(payload: NotificationPayload): string {
 
 /**
  * Format session-idle notification message.
- * Sent when Qoder CLI stops and no persistent mode is blocking (truly idle).
+ * Sent when Claude stops and no persistent mode is blocking (truly idle).
  */
 export function formatSessionIdle(payload: NotificationPayload): string {
   const lines = [`# Session Idle`, ""];
 
-  lines.push(`Qoder CLI has finished and is waiting for input.`);
+  lines.push(`Claude has finished and is waiting for input.`);
   lines.push("");
 
   if (payload.reason) {
@@ -174,7 +174,7 @@ const ANSI_ESCAPE_RE = /\x1b(?:[@-Z\\-_]|\[[0-9;]*[a-zA-Z])/g;
 /** Lines starting with these characters are OMQ UI chrome, not output. */
 const UI_CHROME_RE = /^[●⎿✻·◼]/;
 
-/** Matches the "ctrl+o to expand" hint injected by OMQ. */
+/** Matches the "ctrl+o to expand" hint injected by OMC. */
 const CTRL_O_RE = /ctrl\+o to expand/i;
 
 /** Lines composed entirely of box-drawing characters and whitespace. */
@@ -422,8 +422,32 @@ export function formatAgentCall(payload: NotificationPayload): string {
 }
 
 /**
+ * Format approval-request notification message.
+ * Notifies the user that a graph run is paused on a human approval gate.
+ */
+export function formatApprovalRequest(payload: NotificationPayload): string {
+  const lines = [`🔔 Approval Required`, ""];
+
+  if (payload.question) {
+    lines.push(payload.question);
+    lines.push("");
+  }
+
+  if (payload.approval) {
+    lines.push(`Run: \`${payload.approval.runId}\` | Activation: \`${payload.approval.activationId}\``);
+    lines.push("");
+  }
+
+  lines.push(`Reply or run \`omc graph approvals decide\` to approve/deny.`);
+  lines.push("");
+  lines.push(buildFooter(payload, true));
+
+  return lines.join("\n");
+}
+
+/**
  * Format ask-user-question notification message.
- * Notifies the user that Qoder CLI is waiting for input.
+ * Notifies the user that Claude is waiting for input.
  */
 export function formatAskUserQuestion(payload: NotificationPayload): string {
   const lines = [`# Input Needed`, ""];
@@ -452,7 +476,7 @@ export function formatAskUserQuestion(payload: NotificationPayload): string {
     }
   }
 
-  lines.push(`Qoder CLI is waiting for your response.`);
+  lines.push(`Claude is waiting for your response.`);
   lines.push("");
   lines.push(buildFooter(payload, true));
 
@@ -475,6 +499,8 @@ export function formatNotification(payload: NotificationPayload): string {
       return formatSessionIdle(payload);
     case "ask-user-question":
       return formatAskUserQuestion(payload);
+    case "approval-request":
+      return formatApprovalRequest(payload);
     case "agent-call":
       return formatAgentCall(payload);
     default:

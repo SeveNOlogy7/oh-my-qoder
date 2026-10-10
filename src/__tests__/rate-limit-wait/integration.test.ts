@@ -20,14 +20,14 @@ vi.mock('child_process', async () => {
   const actual = await vi.importActual<typeof import('child_process')>('child_process');
   return {
     ...actual,
-    execSync: vi.fn(),
+    execFileSync: vi.fn(),
     spawnSync: vi.fn(),
     spawn: vi.fn(),
   };
 });
 
 import { getUsage } from '../../hud/usage-api.js';
-import { execSync, spawnSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import {
   checkRateLimitStatus,
   analyzePaneContent,
@@ -174,10 +174,10 @@ describe('Rate Limit Wait Integration Tests', () => {
   });
 
   describe('Scenario: tmux pane analysis accuracy', () => {
-    it('should correctly identify Qoder CLI rate limit message', () => {
+    it('should correctly identify Claude Code rate limit message', () => {
       const realWorldContent = `
 ╭─────────────────────────────────────────────────────────────────╮
-│  Qoder CLI                                                     │
+│  Claude Code                                                     │
 ╰─────────────────────────────────────────────────────────────────╯
 
 You've reached your usage limit for the 5-hour period.
@@ -202,7 +202,7 @@ What would you like to do?
 
     it('should correctly identify weekly rate limit message', () => {
       const weeklyLimitContent = `
-Qoder CLI assistant v1.0.0
+Claude Code v1.0.0
 
 ⚠️  Weekly usage limit reached
 
@@ -223,9 +223,9 @@ Enter choice: `;
       expect(result.rateLimitType).toBe('weekly');
     });
 
-    it('should NOT flag normal Qoder CLI output as blocked', () => {
+    it('should NOT flag normal Claude Code output as blocked', () => {
       const normalContent = `
-Qoder CLI assistant
+Claude Code
 
 > What would you like to build today?
 
@@ -308,7 +308,7 @@ Assistant: I can help with more tasks.
             id: '%0',
             session: 'dev',
             windowIndex: 0,
-            windowName: 'qwen',
+            windowName: 'claude',
             paneIndex: 0,
             isActive: true,
             analysis: {
@@ -413,7 +413,7 @@ Assistant: I can help with more tasks.
         output: [],
       });
 
-      vi.mocked(execSync).mockReturnValue('malformed output without proper format');
+      vi.mocked(execFileSync).mockReturnValue('malformed output without proper format');
 
       // Should not throw, just return empty
       const blocked = scanForBlockedPanes();
@@ -424,7 +424,7 @@ Assistant: I can help with more tasks.
   describe('Scenario: Confidence scoring', () => {
     it('should give higher confidence for multiple indicators', () => {
       const highConfidenceContent = `
-Qoder CLI assistant
+Claude Code
 Rate limit reached
 5-hour usage limit
 [1] Continue

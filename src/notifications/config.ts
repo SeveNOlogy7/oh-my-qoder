@@ -7,7 +7,7 @@
 
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { getQoderConfigDir } from "../utils/config-dir.js";
+import { getClaudeConfigDir } from "../utils/config-dir.js";
 import type {
   NotificationConfig,
   NotificationEvent,
@@ -24,7 +24,7 @@ import {
   mergeHookConfigIntoNotificationConfig,
 } from "./hook-config.js";
 
-const CONFIG_FILE = join(getQoderConfigDir(), ".omq-config.json");
+const CONFIG_FILE = join(getClaudeConfigDir(), ".omq-config.json");
 const DEFAULT_TMUX_TAIL_LINES = 15;
 
 
@@ -417,6 +417,9 @@ const SESSION_EVENTS: ReadonlySet<NotificationEvent> = new Set([
   "session-stop",
   "session-end",
   "session-idle",
+  // Approval requests gate a blocked pipeline; like ask-user-question they
+  // must never be silently dropped by a coarse verbosity setting.
+  "approval-request",
 ]);
 
 /**
@@ -913,7 +916,7 @@ import type {
 } from "./types.js";
 import { validateCustomIntegration, checkDuplicateIds } from "./validation.js";
 
-const LEGACY_OPENCLAW_CONFIG = join(getQoderConfigDir(), "omq_config.openclaw.json");
+const LEGACY_OPENCLAW_CONFIG = join(getClaudeConfigDir(), "omq_config.openclaw.json");
 
 /**
  * Detect if legacy OpenClaw configuration exists.

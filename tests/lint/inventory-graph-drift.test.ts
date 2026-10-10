@@ -23,8 +23,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { readFileSync, existsSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, normalize, relative, resolve } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
@@ -107,11 +109,30 @@ function stableStringify(v: unknown): string {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify((v as Record<string, unknown>)[k])}`).join(',')}}`;
 }
 
+function isStableCensusPath(rel: string): boolean {
+  if (STABLE_EXCLUDED.has(rel)) return false;
+  if (rel.startsWith('dist/') || rel.startsWith('bridge/')) return false;
+  return !rel.split('/').some((segment) => SEED_IGNORES.has(segment) || EPHEMERAL_IGNORES.has(segment) || segment.startsWith('.tmp'));
+}
+
+// git ls-files answers for the DISCOVERED repository, so a tree that merely sits
+// inside one (the LF simulation checkout) would otherwise census the outer
+// repository — an empty list for paths it does not track. Only this tree's own
+// toplevel may use the tracked path.
+function isOwnRepositoryRoot(): boolean {
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: REPO_ROOT, encoding: 'utf8' });
+  if (top.status !== 0) return false;
+  const norm = (p: string): string => resolve(p).replaceAll('\\', '/');
+  const a = norm(top.stdout.trim());
+  const b = norm(REPO_ROOT);
+  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
 function collectStableRel(): string[] {
-  const tracked = spawnSync('git', ['ls-files', '-z'], { cwd: REPO_ROOT, encoding: 'utf8' });
-  if (tracked.status === 0) {
+  const tracked = isOwnRepositoryRoot() ? spawnSync('git', ['ls-files', '-z'], { cwd: REPO_ROOT, encoding: 'utf8' }) : null;
+  if (tracked !== null && tracked.status === 0) {
     return tracked.stdout.split('\0').filter(Boolean).map((p) => p.replaceAll('\\', '/'))
-      .filter((p) => !STABLE_EXCLUDED.has(p) && !p.startsWith('dist/') && !p.startsWith('bridge/')).sort();
+      .filter((p) => isStableCensusPath(p)).sort();
   }
   const out: string[] = [];
   function rec(dir: string) {
@@ -122,10 +143,9 @@ function collectStableRel(): string[] {
       return;
     }
     for (const e of entries) {
-      if (SEED_IGNORES.has(e.name) || EPHEMERAL_IGNORES.has(e.name) || e.name.startsWith('.tmp')) continue;
       const p = join(dir, e.name);
       const rel = relative(REPO_ROOT, p).replaceAll('\\', '/');
-      if (STABLE_EXCLUDED.has(rel)) continue;
+      if (!isStableCensusPath(rel)) continue;
       if (e.isDirectory()) rec(p);
       else out.push(rel);
     }
@@ -135,8 +155,8 @@ function collectStableRel(): string[] {
 }
 
 function collectGeneratedRel(prefix: string): string[] {
-  const tracked = spawnSync('git', ['ls-files', '-z', '--', prefix], { cwd: REPO_ROOT, encoding: 'utf8' });
-  if (tracked.status === 0) {
+  const tracked = isOwnRepositoryRoot() ? spawnSync('git', ['ls-files', '-z', '--', prefix], { cwd: REPO_ROOT, encoding: 'utf8' }) : null;
+  if (tracked !== null && tracked.status === 0) {
     return tracked.stdout.split('\0').filter(Boolean).map((p) => p.replaceAll('\\', '/')).sort();
   }
   const root = join(REPO_ROOT, prefix);
@@ -355,6 +375,47 @@ describe('inventory-graph drift enforcement (#3702)', () => {
     const r = spawnSync('node', [GENERATOR, '--verify'], { cwd: REPO_ROOT, encoding: 'utf8' as const, maxBuffer: 20 * 1024 * 1024 });
     expect(r.status, `verify failed — stdout:\n${r.stdout}\nstderr:\n${r.stderr}`).toBe(0);
     expect((r.stdout as unknown as string)).toContain('verify ok');
+  });
+
+  // Two-way regression for the CRLF/LF hazard (+ the nested-in-a-repository
+  // checkout shape an LF simulation tree has): the source digest must be
+  // identical for the same content spelled LF or CRLF, and for a tree that only
+  // happens to sit inside a git repository (git ls-files would otherwise answer
+  // with the outer repository's file list).
+  it('source digest is checkout-shape invariant (LF vs CRLF, tree nested inside the repository)', { timeout: 60_000 }, async () => {
+    const { computeStableSourceDigest } = await import(pathToFileURL(GENERATOR).href) as {
+      computeStableSourceDigest: (root: string) => Promise<{ files: string[]; sha256: string }>;
+    };
+    const content = {
+      'src/sample.ts': 'export const sample = 1;\n',
+      'skills/demo/SKILL.md': '# Demo\n\nBody text.\n',
+    };
+    const writeTree = (root: string, eol: string): void => {
+      for (const [rel, text] of Object.entries(content)) {
+        mkdirSync(dirname(join(root, rel)), { recursive: true });
+        writeFileSync(join(root, rel), text.replaceAll('\n', eol));
+      }
+    };
+    const lfRoot = mkdtempSync(join(tmpdir(), 'inventory-digest-lf-'));
+    const crlfRoot = mkdtempSync(join(tmpdir(), 'inventory-digest-crlf-'));
+    const nestedRoot = mkdtempSync(join(REPO_ROOT, '.tmp-inventory-digest-'));
+    writeTree(lfRoot, '\n');
+    writeTree(crlfRoot, '\r\n');
+    writeTree(nestedRoot, '\n');
+    try {
+      const lf = await computeStableSourceDigest(lfRoot);
+      const crlf = await computeStableSourceDigest(crlfRoot);
+      const nested = await computeStableSourceDigest(nestedRoot);
+      expect(lf.files).toEqual(['skills/demo/SKILL.md', 'src/sample.ts']);
+      expect(crlf.files).toEqual(lf.files);
+      expect(crlf.sha256).toBe(lf.sha256);
+      expect(nested.files).toEqual(lf.files);
+      expect(nested.sha256).toBe(lf.sha256);
+    } finally {
+      rmSync(lfRoot, { recursive: true, force: true });
+      rmSync(crlfRoot, { recursive: true, force: true });
+      rmSync(nestedRoot, { recursive: true, force: true });
+    }
   });
 
   it('verify mode rejects tampered hashes and head provenance', { timeout: 60_000 }, () => {

@@ -13,9 +13,16 @@ const SESSION_END_SCRIPTS = [
 ] as const;
 const IS_CI = process.env.CI === 'true' || process.env.CI === '1';
 // Keep the strict local regression ceiling while allowing bounded GitHub-hosted
-// process startup contention during the full parallel suite.
-const COMMAND_CEILING_MS = IS_CI ? 1_500 : 500;
-const SEQUENTIAL_CEILING_MS = IS_CI ? 3_000 : 1_000;
+// process startup contention during the full parallel suite. A win32 dev host pays
+// a 150-250ms cold start per spawned runner (node boot + Defender) on top of the
+// runner's own 300ms shipped foreground budget - measured 430-690ms per spawn on
+// the reference host, so the POSIX-shaped 500ms local ceiling cannot absorb it.
+// The same hazard is recorded by the runner itself as WINDOWS_GENERIC_STARTUP_MS
+// (361-559ms on hosted CI). 900ms stays far below the hang this suite guards
+// (#3477: the process must exit terminally, not wait for SessionStart).
+const WIN32_LOCAL_CEILING_MS = 900;
+const COMMAND_CEILING_MS = IS_CI ? 1_500 : process.platform === 'win32' ? WIN32_LOCAL_CEILING_MS : 500;
+const SEQUENTIAL_CEILING_MS = IS_CI ? 3_000 : process.platform === 'win32' ? 2 * WIN32_LOCAL_CEILING_MS : 1_000;
 const HAS_GENERATED_DIST = existsSync(join(REPO_ROOT, 'dist', 'hooks', 'session-end', 'worker.js'));
 const TEST_PRODUCER_GRACE_MS = '25';
 // The worker's required actions have a 9s budget; allow that bounded contract
@@ -213,7 +220,10 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
       COMMAND_CEILING_MS,
       {
         NODE_ENV: 'test',
-        OMQ_SESSION_END_TEST_FOREGROUND_TIMEOUT_MS: String(Math.max(450, COMMAND_CEILING_MS - 50)),
+        // The runner exits at (foreground budget + process startup). On a local
+        // host the budget stays the fixed 450ms test bound (startup adds ~170ms,
+        // well inside the ceiling); under CI it tracks just under the ceiling.
+        OMQ_SESSION_END_TEST_FOREGROUND_TIMEOUT_MS: String(IS_CI ? COMMAND_CEILING_MS - 50 : 450),
         OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS: TEST_PRODUCER_GRACE_MS,
       },
     ));

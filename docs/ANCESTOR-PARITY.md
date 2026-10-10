@@ -1,8 +1,8 @@
 # Ancestor Parity
 
 > Ancestor: [`Yeachan-Heo/oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
-> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.2.0** | Current ancestor latest: **v5.6.2**
-> Status: v5.0.0, v5.1.0 and v5.2.0 adopted; M2 subsystem migration in progress (one minor per round)
+> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.3.0** | Current ancestor latest: **v5.6.2**
+> Status: v5.0.0 through v5.3.0 adopted; M2 subsystem migration in progress (one minor per round)
 
 ## Identity
 
@@ -21,7 +21,7 @@
 | v5.0.0 | 2026-08-24 | **adopted** | adoption `344176f` (blob-verified 6790/6790), digest `3c6cbf9` |
 | v5.1.0 | 2026-08-31 | **adopted** | this round: pin `ebf06c7`, adoption `3acd654` (6812/6812 blob-verified), see below |
 | v5.2.0 | 2026-09-03 | **adopted** | this round: pin `acf7948`, adoption `9ed5686` (6829/6829 blob-verified), see below |
-| v5.3.0 | 2026-09-06 | not measured | next round's candidate |
+| v5.3.0 | 2026-09-06 | **adopted** | this round: pin `5174b8a`, adoption `35f99d2` (6840/6840 blob-verified), see below |
 | v5.4.0 | 2026-09-11 | not measured | — |
 | v5.5.0 | 2026-09-22 | not measured | — |
 | v5.6.0 | 2026-10-01 | not measured | — |
@@ -81,6 +81,29 @@ suites, the LSP document-lifecycle suite, hung-hook fixtures and a win32 stdio-c
 suite -- all 15 additions land under `src/` (the hop's other additions are `dist/**` build
 output, excluded).
 
+## Blob-tree diff v5.2.0 to v5.3.0 (this round)
+
+Method: full git tree blob SHA comparison of the cached ancestor trees (`truncated: false`,
+6829 to 6840 blobs). Authoritative numbers come from the tree diff, not the GitHub compare
+API.
+
+| Metric | All files |
+|--------|----------:|
+| Added | 11 |
+| Modified | 83 |
+| Removed | 0 |
+| Unchanged | 6746 |
+
+Adoption surface after excluding `.github/**`, `dist/**`, `bridge/**` (the coordinator keeper
+stays) and the 154 OMQ-only paths: 61 paths adopted (8 additions + 53 modifications; the
+keeper `bridge/claude-md-coordinator.cjs` is re-landed and the build reproduces it
+byte-identically). v5.3.0's new surfaces: two new skills (`loft`, `ask-navigator`), the
+workspace checkpoint/rollback feature (`src/features/checkpoint` + `src/cli/checkpoint.ts`),
+the remote-approval gate runtime (`src/graph/runtime/remote-approval.ts`) with its
+approval-reply notification suite, and the batched Windows cache-occupancy identity checks
+(#3973) landing in the `cache-occupancy` trio -- the hop's other 3 additions are `dist/**`
+build output, excluded.
+
 ## v5.0.0 breaking changes
 
 | Change | Detail | OMQ impact |
@@ -107,13 +130,23 @@ output, excluded).
 | 5 docs/skill collisions (`docs/HOOKS.md`, `docs/REFERENCE.md`, `docs/shipyard.md`, `skills/drydock`+`skills/launch` SKILL.md) | upstream rewrote the same text | fork spellings restored over the ancestor text (docs token pass) |
 | plugin manifests + `CHANGELOG.md` | version 5.1.0 -> 5.2.0 and release notes | adopted verbatim (the fork's pre-adoption blobs equalled the v5.1.0 versions) |
 
+## v5.3.0 changes that touched OMQ surfaces
+
+| Change | Detail | OMQ disposition |
+|--------|--------|-----------------|
+| 8 new non-`dist` files: `loft` + `ask-navigator` skills, workspace checkpoint (`src/features/checkpoint`, `src/cli/checkpoint.ts`), remote-approval gate (`src/graph/runtime/remote-approval.ts`), approval-reply suite | the hop's only non-`dist` additions | adopted; the naming/identity repair restored the fork spellings inside them (checkpoint/remote-approval runtime strings re-branded in the compile lane) |
+| `cache-occupancy` trio (`src/utils`, `scripts/lib`, `templates/hooks/lib`) | upstream batched the Windows identity checks (#3973) and preserved occupancy tick precision (#3974) | adopted and dual-merged (structure then token); twin-hash audit: the 10 equal pairs stay equal, the `cache-occupancy` twins keep their by-design divergence (recorded, not silently unified) |
+| notifications layer (8 `src/notifications/**` files) | remote-approval reply plumbing, formatter/template changes | adopted; installer/cli repair lane re-asserted the fork's config-dir getters, and the two notification suites mock them (terminal win32 baseline green) |
+| 5 docs/skill collisions (`docs/REFERENCE.md`, `docs/shipyard.md`, `skills/AGENTS.md`, `skills/drydock`+`skills/launch` SKILL.md) | upstream rewrote the same text | fork spellings restored over the ancestor text (W4 docs token pass) |
+| plugin manifests + `CHANGELOG.md` | version 5.2.0 -> 5.3.0 and release notes | adopted verbatim (the fork's pre-adoption blobs equalled the v5.2.0 versions; byte-verified against the cached v5.3.0 tree) |
+
 ## Migration milestones
 
 | Milestone | Scope | State | Evidence |
 |-----------|-------|-------|----------|
-| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.2.0) | auditTarget `acf7948` |
-| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 853 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
-| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33` |
+| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.3.0) | auditTarget `5174b8a` |
+| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 871 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
+| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132` |
 | M3 Upstream contributions | 2-4 named PRs to shrink rename surface | not started | not measured |
 | M4 Pipeline gate | Triggered only if backport demand > 10/quarter | not started | not measured |
 

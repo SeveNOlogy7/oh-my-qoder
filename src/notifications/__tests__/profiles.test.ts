@@ -17,8 +17,11 @@ vi.mock("fs", async (importOriginal) => {
   };
 });
 
-// Mock getQoderConfigDir to return a predictable path
+// Mock the config-dir getters to return a predictable path. The module under
+// test reaches config.ts (getClaudeConfigDir) and hook-config.ts
+// (getQoderConfigDir); in production both resolve to the same root.
 vi.mock("../../utils/config-dir.js", () => ({
+  getClaudeConfigDir: () => "/mock-claude-config",
   getQoderConfigDir: () => "/mock-claude-config",
 }));
 
