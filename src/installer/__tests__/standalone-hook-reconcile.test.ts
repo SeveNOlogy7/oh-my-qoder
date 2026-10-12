@@ -30,7 +30,7 @@ function writeCompletePluginPayload(root: string): void {
   }));
   writePluginFile(join(root, 'skills', 'plan', 'SKILL.md'), '# plan\n');
   writePluginFile(join(root, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n');
-  writePluginFile(join(root, '.claude-plugin', 'plugin.json'), JSON.stringify({
+  writePluginFile(join(root, '.qoder-plugin', 'plugin.json'), JSON.stringify({
     name: 'oh-my-claudecode',
     commands: './commands/',
     skills: ['./skills/plan/'],
