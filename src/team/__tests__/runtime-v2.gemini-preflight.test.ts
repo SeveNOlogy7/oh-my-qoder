@@ -97,7 +97,7 @@ describe('runtime-v2 Gemini preflight routing', () => {
     home = await mkdtemp(join(tmpdir(), 'provider-preflight-home-'));
     vi.stubEnv('HOME', home);
     vi.stubEnv('USERPROFILE', home);
-    vi.stubEnv('OMC_STATE_DIR', undefined);
+    vi.stubEnv('OMQ_STATE_DIR', undefined);
     vi.resetModules();
     mocks.createTeamSession.mockClear();
     mocks.spawnWorkerInPane.mockClear();

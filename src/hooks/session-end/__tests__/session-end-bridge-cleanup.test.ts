@@ -31,7 +31,7 @@ describe('processSessionEndCleanupWorker python bridge cleanup', () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-session-end-bridge-'));
-    vi.stubEnv('OMC_STATE_DIR', path.join(tmpDir, 'state-root'));
+    vi.stubEnv('OMQ_STATE_DIR', path.join(tmpDir, 'state-root'));
     transcriptPath = path.join(tmpDir, 'transcript.jsonl');
   });
 

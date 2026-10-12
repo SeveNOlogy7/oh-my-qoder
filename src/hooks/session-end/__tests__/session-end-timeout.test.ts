@@ -38,7 +38,7 @@ describe('SessionEnd foreground manifest handoff (issue #1700)', () => {
     fs.mkdirSync(repoRoot, { recursive: true });
     execFileSync('git', ['init', '--quiet'], { cwd: repoRoot, stdio: 'ignore' });
     stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-session-end-state-'));
-    vi.stubEnv('OMC_STATE_DIR', stateRoot);
+    vi.stubEnv('OMQ_STATE_DIR', stateRoot);
     transcriptPath = path.join(tmpDir, 'transcript.jsonl');
     fs.writeFileSync(
       transcriptPath,

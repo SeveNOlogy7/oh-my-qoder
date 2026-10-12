@@ -222,7 +222,7 @@ describe('spawnWorkerForTask – prompt mode and interactive worker launch', () 
     resetTmuxFailureState();
     delete process.env.OMQ_SHELL_READY_TIMEOUT_MS;
     cwd = mkdtempSync(join(tmpdir(), 'runtime-gemini-prompt-'));
-    process.env.OMC_STATE_DIR = join(cwd, 'omc-state');
+    process.env.OMQ_STATE_DIR = join(cwd, 'omc-state');
     setupTaskDir(cwd);
   });
 
@@ -633,7 +633,7 @@ describe('spawnWorkerForTask – model passthrough from environment variables', 
     previousStateDir = process.env.OMQ_STATE_DIR;
     process.env.HOME = cwd;
     process.env.USERPROFILE = cwd;
-    process.env.OMC_STATE_DIR = join(cwd, 'omc-state');
+    process.env.OMQ_STATE_DIR = join(cwd, 'omc-state');
     setupTaskDir(cwd);
   });
 

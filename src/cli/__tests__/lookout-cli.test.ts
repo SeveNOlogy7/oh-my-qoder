@@ -111,8 +111,8 @@ describe("lookout CLI adapter", () => {
   });
 
   it.skipIf(Boolean(process.versions.bun))("registers and runs lookout through the root CLI program", async () => {
-    const previousSkipParse = process.env.OMC_CLI_SKIP_PARSE;
-    process.env.OMC_CLI_SKIP_PARSE = "1";
+    const previousSkipParse = process.env.OMQ_CLI_SKIP_PARSE;
+    process.env.OMQ_CLI_SKIP_PARSE = "1";
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     try {
       vi.resetModules();
@@ -127,8 +127,8 @@ describe("lookout CLI adapter", () => {
       expect(logSpy).toHaveBeenCalledTimes(1);
       expect(JSON.parse(logSpy.mock.calls[0]![0] as string).summary.verdict).toBe("clear");
     } finally {
-      if (previousSkipParse === undefined) delete process.env.OMC_CLI_SKIP_PARSE;
-      else process.env.OMC_CLI_SKIP_PARSE = previousSkipParse;
+      if (previousSkipParse === undefined) delete process.env.OMQ_CLI_SKIP_PARSE;
+      else process.env.OMQ_CLI_SKIP_PARSE = previousSkipParse;
       process.exitCode = undefined;
     }
   });

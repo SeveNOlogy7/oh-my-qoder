@@ -25,7 +25,7 @@ const directories: string[] = [];
 beforeEach(() => {
   const stateRoot = mkdtempSync(join(tmpdir(), 'omc-cleanup-state-'));
   directories.push(stateRoot);
-  vi.stubEnv('OMC_STATE_DIR', stateRoot);
+  vi.stubEnv('OMQ_STATE_DIR', stateRoot);
 });
 
 function project(): string {

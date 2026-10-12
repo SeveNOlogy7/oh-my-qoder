@@ -289,10 +289,10 @@ const OMQ_STARTUP_GUIDANCE_MAX_CHARS = 8000;
 const DEFAULT_SESSION_START_CONTEXT_BUDGET = 6000;
 
 // Aggregate character budget shared by everything SessionStart injects.
-// Override with OMC_SESSION_START_CONTEXT_BUDGET (positive integer). Any other
+// Override with OMQ_SESSION_START_CONTEXT_BUDGET (positive integer). Any other
 // value falls back to the default so a bad setting can never blank the context.
 function resolveSessionStartContextBudget() {
-  const raw = (process.env.OMC_SESSION_START_CONTEXT_BUDGET || '').trim();
+  const raw = (process.env.OMQ_SESSION_START_CONTEXT_BUDGET || '').trim();
   if (!raw) return DEFAULT_SESSION_START_CONTEXT_BUDGET;
   const parsed = Number(raw);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_SESSION_START_CONTEXT_BUDGET;

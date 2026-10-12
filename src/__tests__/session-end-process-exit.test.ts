@@ -173,7 +173,7 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
     tempDirs.push(cwd);
     vi.stubEnv('HOME', cwd);
     vi.stubEnv('USERPROFILE', cwd);
-    vi.stubEnv('OMC_STATE_DIR', '');
+    vi.stubEnv('OMQ_STATE_DIR', '');
     writeFileSync(join(cwd, 'transcript.jsonl'), '');
     mkdirSync(getOmcRoot(cwd), { recursive: true });
     return cwd;

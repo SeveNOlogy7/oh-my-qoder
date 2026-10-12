@@ -502,7 +502,7 @@ describe('runtime v2 startup inbox dispatch', () => {
           OMQ_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
         },
       });
-      const recoveryGateSpec = config.envVars?.OMC_RECOVERY_GATE_SPEC;
+      const recoveryGateSpec = config.envVars?.OMQ_RECOVERY_GATE_SPEC;
       if (recoveryGateSpec) {
         const gate = JSON.parse(recoveryGateSpec) as {
           recoveryId: string;
@@ -1987,7 +1987,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     'rejects stale %s evidence during busy grace and fails closed within the bounded override',
     async provider => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
-      process.env.OMC_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
+      process.env.OMQ_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
       cwd = await mkdtempFixture(`omc-runtime-v2-${provider}-stale-engaged-`);
       mocks.autoStartupEvidence = false;
       const deliveryGate = deferred<void>();
@@ -2129,7 +2129,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     'keeps a committed %s recovery replacement on postcommit %s startup failure',
     async (provider, mode) => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
-      process.env.OMC_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
+      process.env.OMQ_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
       cwd = await mkdtempFixture(`omc-runtime-v2-owner-${provider}-${mode}-`);
       mocks.autoStartupEvidence = false;
       const fixture = await seedOwnerRecoveryFixture(provider, mode);
@@ -2246,7 +2246,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     'characterizes the restart %s %s checkpoint with %s evidence without assuming universal deduplication',
     async (provider, checkpoint, mode) => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
-      process.env.OMC_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
+      process.env.OMQ_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
       cwd = await mkdtempFixture(`omc-runtime-v2-owner-${provider}-terminal-${checkpoint}-`);
       mocks.autoStartupEvidence = false;
       const fixture = await seedOwnerRecoveryFixture(provider, `terminal-${checkpoint}`);

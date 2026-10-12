@@ -58,7 +58,7 @@ function scopedHookEnvironment(cwd, env) {
     CLAUDE_PLUGIN_ROOT: '',
     HOME: effectiveHome,
     USERPROFILE: env.USERPROFILE || effectiveHome,
-    CLAUDE_CONFIG_DIR: env.CLAUDE_CONFIG_DIR || join(effectiveHome, '.claude'),
+    QODER_CONFIG_DIR: env.QODER_CONFIG_DIR || join(effectiveHome, '.claude'),
     ...env,
   };
 
@@ -178,7 +178,7 @@ describe('session statistics retention', () => {
         {
           HOME: tempDir,
           USERPROFILE: tempDir,
-          CLAUDE_CONFIG_DIR: configDir,
+          QODER_CONFIG_DIR: configDir,
         },
       );
 
@@ -216,7 +216,7 @@ describe('session statistics retention', () => {
         {
           HOME: tempDir,
           USERPROFILE: tempDir,
-          CLAUDE_CONFIG_DIR: configDir,
+          QODER_CONFIG_DIR: configDir,
           ...env,
         },
       )).toEqual({ continue: true });
@@ -230,7 +230,7 @@ describe('session statistics retention', () => {
 
       expect(runPostToolVerifier(
         { session_id: 'disabled-session', cwd: tempDir, tool_name: 'Read' },
-        { CLAUDE_CONFIG_DIR: configDir, DISABLE_OMQ: 'true' },
+        { QODER_CONFIG_DIR: configDir, DISABLE_OMQ: 'true' },
       )).toEqual({ continue: true });
       expect(existsSync(configDir)).toBe(false);
     });

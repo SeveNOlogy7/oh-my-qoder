@@ -33,7 +33,7 @@ function writeAllSync(fd, content, label) {
 }
 
 export function processStartIdentity(pid) {
-  if (process.env.NODE_ENV === 'test' && process.env.OMC_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID === String(pid)) return null;
+  if (process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_EMERGENCY_PROCESS_START_UNKNOWN_PID === String(pid)) return null;
   if (!Number.isSafeInteger(pid) || pid <= 0) return null;
   if (process.platform === 'linux') {
     try { const stat = readFileSync(`/proc/${pid}/stat`, 'utf8'); const end = stat.lastIndexOf(')'); const fields = end < 0 ? [] : stat.slice(end + 2).trim().split(/\s+/); return fields[19] && /^\d+$/.test(fields[19]) ? fields[19] : null; }
@@ -56,13 +56,13 @@ function ownerLive(owner) { const current = processStartIdentity(owner.pid); ret
 function sameOwner(left, right) { return left && left.pid === right.pid && left.processStart === right.processStart && left.nonce === right.nonce; }
 function publishOwner(path, owner) { const tempPath = `${path}.${owner.pid}.${owner.nonce}.tmp`; let fd; try { mkdirSync(dirname(path), { recursive: true }); fd = openSync(tempPath, 'wx', 0o600); writeAllSync(fd, JSON.stringify(owner), 'lock owner publication'); fsyncSync(fd); closeSync(fd); fd = undefined; linkSync(tempPath, path); unlinkSync(tempPath); return true; } catch { try { if (fd !== undefined) closeSync(fd); } catch {} try { unlinkSync(tempPath); } catch {} return false; } }
 
-// OMC_TEST_FLOCK_AVAILABLE='0' is a test-only simulation switch predating the
+// OMQ_TEST_FLOCK_AVAILABLE='0' is a test-only simulation switch predating the
 // SQLite-based rewrite (originally: is the external flock binary available).
 // Locking is no longer flock-based, but tests still rely on this switch to
 // simulate a "locking unsupported" fallback path; honor it here so that
 // contract is preserved across the storage-backend change.
 function stateFileLockingTestOverride() {
-  return process.env.NODE_ENV === 'test' && process.env.OMC_TEST_FLOCK_AVAILABLE === '0' ? false : null;
+  return process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_FLOCK_AVAILABLE === '0' ? false : null;
 }
 export function isStateFileLockingSupported() {
   const override = stateFileLockingTestOverride();
@@ -70,7 +70,7 @@ export function isStateFileLockingSupported() {
 }
 export function acquireStateFileLockSync(filePath, attempts = 50, requireExclusive = false, bypassTestOverride = false) {
   const lockPath = `${filePath}.mutation.lock`;
-  // OMC_TEST_FLOCK_AVAILABLE='0' simulates the external flock binary being
+  // OMQ_TEST_FLOCK_AVAILABLE='0' simulates the external flock binary being
   // absent. Historically flock-gated callers (an exclusive-required
   // `acquireLockAt` caller such as the cancel-signal-validation lock) failed
   // closed in that state; non-exclusive callers proceeded best-effort.

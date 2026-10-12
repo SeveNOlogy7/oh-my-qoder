@@ -15,7 +15,7 @@ import {
 
 describe('flow-tracer', () => {
   let testDir: string;
-  const previousStateDir = process.env.OMC_STATE_DIR;
+  const previousStateDir = process.env.OMQ_STATE_DIR;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `flow-tracer-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -27,8 +27,8 @@ describe('flow-tracer', () => {
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
-    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousStateDir;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
   });
 
 

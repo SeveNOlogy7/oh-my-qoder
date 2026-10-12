@@ -14,7 +14,7 @@ import { inspectUnifiedMcpRegistrySync } from '../../installer/mcp-registry.js';
 import { findWorkspaceRoot, WORKSPACE_MARKER } from '../../lib/worktree-paths.js';
 
 function hasActiveOmcPluginForDiagnostics(): boolean {
-  if (process.env.CLAUDE_PLUGIN_ROOT?.trim()) return true;
+  if ((process.env.QODER_PLUGIN_ROOT ?? process.env.CLAUDE_PLUGIN_ROOT)?.trim()) return true;
   const settingsPath = join(getClaudeConfigDir(), 'settings.json');
   if (!existsSync(settingsPath)) return false;
   try {
@@ -156,7 +156,7 @@ export function checkWindowsUnsafePluginHooks(): ConflictReport['windowsUnsafePl
     return [];
   }
 
-  const roots = [process.env.CLAUDE_PLUGIN_ROOT, ...readInstalledPluginRoots()]
+  const roots = [process.env.QODER_PLUGIN_ROOT ?? process.env.CLAUDE_PLUGIN_ROOT, ...readInstalledPluginRoots()]
     .filter((root): root is string => typeof root === 'string' && root.length > 0);
   const seenRoots = new Set<string>();
   const unsafe: ConflictReport['windowsUnsafePluginHooks'] = [];

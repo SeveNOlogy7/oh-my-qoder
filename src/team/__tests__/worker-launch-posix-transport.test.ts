@@ -72,8 +72,8 @@ function isolateFixtureEnv(root: string): () => void {
   const home = process.env.HOME;
   const userProfile = process.env.USERPROFILE;
   const stateDir = process.env.OMQ_STATE_DIR;
-  const teamWorker = process.env.OMC_TEAM_WORKER;
-  const attemptId = process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID;
+  const teamWorker = process.env.OMQ_TEAM_WORKER;
+  const attemptId = process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID;
   process.env.HOME = root;
   process.env.USERPROFILE = root;
   delete process.env.OMQ_STATE_DIR;
@@ -84,10 +84,10 @@ function isolateFixtureEnv(root: string): () => void {
     else process.env.USERPROFILE = userProfile;
     if (stateDir === undefined) delete process.env.OMQ_STATE_DIR;
     else process.env.OMQ_STATE_DIR = stateDir;
-    if (teamWorker === undefined) delete process.env.OMC_TEAM_WORKER;
-    else process.env.OMC_TEAM_WORKER = teamWorker;
-    if (attemptId === undefined) delete process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID;
-    else process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID = attemptId;
+    if (teamWorker === undefined) delete process.env.OMQ_TEAM_WORKER;
+    else process.env.OMQ_TEAM_WORKER = teamWorker;
+    if (attemptId === undefined) delete process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID;
+    else process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID = attemptId;
   };
 }
 
@@ -122,7 +122,7 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
       "const fs=require('node:fs')",
       "const cp=require('node:child_process')",
       "const child=cp.spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'})",
-      `fs.writeFileSync(${JSON.stringify(providerMarker)},JSON.stringify({attempt:process.env.OMC_WORKER_LAUNCH_ATTEMPT_ID,transport:process.env.OMC_WORKER_LAUNCH_SPEC_FILE??null,provider_pid:process.pid,child_pid:child.pid}))`,
+      `fs.writeFileSync(${JSON.stringify(providerMarker)},JSON.stringify({attempt:process.env.OMQ_WORKER_LAUNCH_ATTEMPT_ID,transport:process.env.OMQ_WORKER_LAUNCH_SPEC_FILE??null,provider_pid:process.pid,child_pid:child.pid}))`,
       'setInterval(()=>{},1000)',
     ].join(';');
     const config = {
@@ -299,9 +299,9 @@ describe('POSIX supervised worker-launch transport (issue #3655)', () => {
         windowsDelivery: false,
       });
       const childEnv = { ...process.env };
-      delete childEnv.OMC_WORKER_LAUNCH_SPEC;
-      delete childEnv.OMC_WORKER_LAUNCH_SPEC_B64;
-      childEnv.OMC_WORKER_LAUNCH_SPEC_FILE = materialized.bootstrapDescriptorPath;
+      delete childEnv.OMQ_WORKER_LAUNCH_SPEC;
+      delete childEnv.OMQ_WORKER_LAUNCH_SPEC_B64;
+      childEnv.OMQ_WORKER_LAUNCH_SPEC_FILE = materialized.bootstrapDescriptorPath;
       cli = spawn(process.execPath, ['--import', tsxLoader, '--import', terminationFailurePreload, runtimeCliEntry], {
         cwd: process.cwd(),
         env: childEnv,

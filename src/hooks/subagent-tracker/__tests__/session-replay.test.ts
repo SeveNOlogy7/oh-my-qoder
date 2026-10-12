@@ -18,20 +18,20 @@ import {
 
 describe('session-replay', () => {
   let testDir: string;
-  const previousStateDir = process.env.OMC_STATE_DIR;
+  const previousStateDir = process.env.OMQ_STATE_DIR;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `replay-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(join(testDir, '.omq', 'state'), { recursive: true });
     execFileSync('git', ['init', '--quiet'], { cwd: testDir, stdio: 'ignore' });
-    delete process.env.OMC_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     resetSessionStartTimes();
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
-    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousStateDir;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
   });
 
   describe('getReplayFilePath', () => {

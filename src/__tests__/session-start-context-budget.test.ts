@@ -35,7 +35,7 @@ function runHook(
       ...process.env,
       HOME: home,
       USERPROFILE: home,
-      OMC_NOTIFY: "0",
+      OMQ_NOTIFY: "0",
       ...extraEnv,
     },
     timeout: 15000,
@@ -47,7 +47,7 @@ function runHook(
 }
 
 describe.each(HOOK_SCRIPTS)(
-  "%s session-start.mjs honors OMC_SESSION_START_CONTEXT_BUDGET",
+  "%s session-start.mjs honors OMQ_SESSION_START_CONTEXT_BUDGET",
   (_label, script) => {
     let root: string;
     let project: string;
@@ -77,7 +77,7 @@ describe.each(HOOK_SCRIPTS)(
 
     it("truncates to the 6000-char default when the variable is unset", () => {
       const context = runHook(script, project, home, {
-        OMC_SESSION_START_CONTEXT_BUDGET: "",
+        OMQ_SESSION_START_CONTEXT_BUDGET: "",
       });
       expect(context.length).toBeLessThanOrEqual(6000);
       expect(context).toContain(TRUNCATION_NOTICE);
@@ -86,7 +86,7 @@ describe.each(HOOK_SCRIPTS)(
 
     it("delivers the whole context when the variable raises the budget", () => {
       const context = runHook(script, project, home, {
-        OMC_SESSION_START_CONTEXT_BUDGET: "20000",
+        OMQ_SESSION_START_CONTEXT_BUDGET: "20000",
       });
       expect(context).toContain(SENTINEL);
       expect(context).not.toContain(TRUNCATION_NOTICE);
@@ -95,7 +95,7 @@ describe.each(HOOK_SCRIPTS)(
     it("ignores values that are not positive integers", () => {
       for (const invalid of ["abc", "0", "-500", "12.5"]) {
         const context = runHook(script, project, home, {
-          OMC_SESSION_START_CONTEXT_BUDGET: invalid,
+          OMQ_SESSION_START_CONTEXT_BUDGET: invalid,
         });
         expect(context.length).toBeLessThanOrEqual(6000);
         expect(context).toContain(TRUNCATION_NOTICE);

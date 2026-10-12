@@ -74,7 +74,7 @@ describe('processSessionEnd notification deduplication (issue #1440)', () => {
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omq-session-end-dedupe-'));
     stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-session-end-state-'));
-    vi.stubEnv('OMC_STATE_DIR', stateRoot);
+    vi.stubEnv('OMQ_STATE_DIR', stateRoot);
     transcriptPath = path.join(tmpDir, 'transcript.jsonl');
     fs.writeFileSync(
       transcriptPath,

@@ -230,10 +230,10 @@ describe('alias-resolver — automation opt-out', () => {
     const worktreeRoot = mkdtempSync(join(tmpdir(), 'alias-optout-'));
     const sessionId = '00000000-0000-4000-a000-000000000000';
     const sidSafe = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const previousStateDir = process.env.OMC_STATE_DIR;
+    const previousStateDir = process.env.OMQ_STATE_DIR;
     try {
       execFileSync('git', ['init', '--quiet'], { cwd: worktreeRoot, stdio: 'ignore' });
-      delete process.env.OMC_STATE_DIR;
+      delete process.env.OMQ_STATE_DIR;
       delete process.env.OMQ_QUIET;
       const res = resolveWorkflowAlias('psm');
       const w1 = maybeGetAliasWarning(res, sidSafe, worktreeRoot);
@@ -248,8 +248,8 @@ describe('alias-resolver — automation opt-out', () => {
       const w4 = maybeGetAliasWarning(res3, sidSafe, worktreeRoot);
       expect(w4).toBe(null);
     } finally {
-      if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-      else process.env.OMC_STATE_DIR = previousStateDir;
+      if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+      else process.env.OMQ_STATE_DIR = previousStateDir;
       rmSync(worktreeRoot, { recursive: true, force: true });
       delete process.env.OMQ_QUIET;
     }
