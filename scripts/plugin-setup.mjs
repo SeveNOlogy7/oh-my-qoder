@@ -6,19 +6,19 @@
  */
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, chmodSync, copyFileSync } from 'node:fs';
-import { execFileSync, execSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { getQoderConfigDir } from './lib/config-dir.mjs';
+import { getClaudeConfigDir } from './lib/config-dir.mjs';
 import { buildHudWrapper } from './lib/hud-wrapper-template.mjs';
 import { hookPrefixForPlatform, normalizeHooksDataForPlatform } from './lib/hook-command-normalizer.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const CLAUDE_DIR = getQoderConfigDir();
+const CLAUDE_DIR = getClaudeConfigDir();
 const HUD_DIR = join(CLAUDE_DIR, 'hud');
 const HUD_LIB_DIR = join(HUD_DIR, 'lib');
 const SETTINGS_FILE = join(CLAUDE_DIR, 'settings.json');
@@ -31,19 +31,6 @@ const isPublishedPluginCache = !existsSync(join(__dirname, '..', '.git'));
 
 console.log('[OMQ] Running post-install setup...');
 
-function checkRalphRubyDependency() {
-  try {
-    execFileSync('ruby', ['--version'], { stdio: 'ignore', timeout: 5000 });
-    console.log('[OMQ] Ruby detected for Ralph workflows');
-  } catch {
-    console.log('[OMQ] Warning: Ruby was not found on PATH. Ralph workflows require Ruby and may fail until it is installed.');
-    console.log('[OMQ] Ubuntu/Debian: sudo apt update && sudo apt install ruby-full');
-    console.log('[OMQ] macOS: brew install ruby');
-    console.log('[OMQ] After installing Ruby, restart Qoder CLI and rerun /oh-my-qoder:omq-setup if needed.');
-  }
-}
-
-checkRalphRubyDependency();
 
 // 1. Create HUD directory
 if (!existsSync(HUD_DIR)) {
@@ -108,7 +95,7 @@ try {
 }
 
 // Patch packaged plugin-cache hooks.json to keep plugin-provided hook commands
-// safe for the platform that is installing the plugin cache. Qoder CLI's
+// safe for the platform that is installing the plugin cache. Claude Code's
 // plugin loader reads hooks/hooks.json directly, so the source manifest remains
 // native Windows-spawnable (direct node -> run.cjs, no sh/find-node). During
 // setup from a published plugin cache on Unix/macOS, repair the cached manifest
@@ -119,8 +106,8 @@ try {
 // accidentally baked absolute node path, or the Windows-safe direct node form.
 //
 // Patterns handled:
-//  1. Current find-node.sh format – sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh ...
-//  2. Legacy find-node.sh format – sh "${QODER_PLUGIN_ROOT}/scripts/find-node.sh" ...
+//  1. Current find-node.sh format – sh "$CLAUDE_PLUGIN_ROOT"/scripts/find-node.sh ...
+//  2. Legacy find-node.sh format – sh "${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh" ...
 //  3. Direct run.cjs format from the Windows-safe shipped manifest
 //  4. Absolute run.cjs format from older setup patches/publish mistakes
 //
@@ -179,4 +166,4 @@ if (missingExternals().length > 0) {
   console.log('[OMQ] Runtime dependencies already present');
 }
 
-console.log('[OMQ] Setup complete! Restart Qoder CLI to activate HUD.');
+console.log('[OMC] Setup complete! Restart Claude Code to activate HUD.');

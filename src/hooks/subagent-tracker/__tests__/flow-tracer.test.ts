@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execFileSync } from 'child_process';
 import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -14,20 +15,22 @@ import {
 
 describe('flow-tracer', () => {
   let testDir: string;
+  const previousStateDir = process.env.OMC_STATE_DIR;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `flow-tracer-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(join(testDir, '.omq', 'state'), { recursive: true });
-    // Pin the state root: a git-less tmpdir otherwise falls through getOmqRoot to the
-    // process cwd, so writes land in the repository's own .omq/state and accumulate.
-    process.env.OMQ_STATE_DIR = join(testDir, '.omq-state');
+    execFileSync('git', ['init', '--quiet'], { cwd: testDir, stdio: 'ignore' });
+    delete process.env.OMQ_STATE_DIR;
     resetSessionStartTimes();
   });
 
   afterEach(() => {
-    delete process.env.OMQ_STATE_DIR;
     rmSync(testDir, { recursive: true, force: true });
+    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
+    else process.env.OMC_STATE_DIR = previousStateDir;
   });
+
 
   describe('recordHookFire', () => {
     it('should record hook_fire event with hook name and event', () => {

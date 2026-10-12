@@ -22,16 +22,18 @@ describe('omq-doctor skill (issue #2254)', () => {
 });
 
 
-describe('omq-doctor skill Ralph Ruby dependency check (issue #2969)', () => {
-  it('documents a narrow Ruby check with actionable Ralph guidance', () => {
+describe('omq-doctor skill Ralph runtime prerequisites (issue #3996)', () => {
+  it('documents a truthful Node/config-dir check instead of the retired Ruby check', () => {
     const skillPath = join(process.cwd(), 'skills', 'omq-doctor', 'SKILL.md');
     const content = readFileSync(skillPath, 'utf8');
 
-    expect(content).toContain('Check Ralph Ruby Dependency');
-    expect(content).toContain('Ruby for Ralph: MISSING');
-    expect(content).toContain('Ralph workflows require Ruby');
-    expect(content).toContain('sudo apt update && sudo apt install ruby-full');
-    expect(content).toContain('Ralph Ruby Dependency');
+    expect(content).toContain('Check Ralph Runtime Prerequisites');
+    expect(content).toContain('node --version');
+    expect(content).toContain('Ralph Runtime Prerequisites');
+    // The Ruby check was a false positive (issue #3996): OMQ has never used Ruby.
+    expect(content).not.toMatch(/\bruby\b/i);
+    expect(content).not.toContain('ruby-full');
+    expect(content).not.toContain('brew install ruby');
   });
 });
 

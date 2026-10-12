@@ -3,8 +3,8 @@
  *
  * Guards against recurring setup violations found in issues #2155, #2084, #2348, #2347.
  * Two core contracts:
- *   1. Never hardcode paths — use getClaudeConfigDir() or QODER_CONFIG_DIR env var
- *   2. Never install to root ~/.claude when QODER_CONFIG_DIR is set to a custom path
+ *   1. Never hardcode paths — use getClaudeConfigDir() or CLAUDE_CONFIG_DIR env var
+ *   2. Never install to root ~/.claude when CLAUDE_CONFIG_DIR is set to a custom path
  *
  * Scanning approach: narrow construction-pattern matching (not broad string literals)
  * to avoid false positives and allowlist bloat.
@@ -144,7 +144,7 @@ describe('Contract 1: no join(homedir()...".claude") outside canonical helpers',
 });
 
 // ── Contract 2: No unguarded $HOME/.claude in runtime shell scripts ──────────
-// Issue #2155 §11-13 — scripts with inline $HOME/.claude without QODER_CONFIG_DIR guard
+// Issue #2155 §11-13 — scripts with inline $HOME/.claude without CLAUDE_CONFIG_DIR guard
 
 describe('Contract 2: no unguarded $HOME/.claude in shell/script files', () => {
   const SCRIPT_DIRS = [
@@ -158,8 +158,8 @@ describe('Contract 2: no unguarded $HOME/.claude in shell/script files', () => {
     'scripts/lib/config-dir.sh',
   ]);
 
-  // The safe pattern: ${QODER_CONFIG_DIR:-$HOME/.claude}
-  const SAFE_PATTERN = /\$\{QODER_CONFIG_DIR:-\$HOME\/\.claude\}/;
+  // The safe pattern: ${CLAUDE_CONFIG_DIR:-$HOME/.claude}
+  const SAFE_PATTERN = /\$\{CLAUDE_CONFIG_DIR:-\$HOME\/\.claude\}/;
   const DANGEROUS_PATTERN = /\$HOME\/\.claude/;
 
   const violations: { file: string; line: number; text: string }[] = [];
@@ -185,14 +185,14 @@ describe('Contract 2: no unguarded $HOME/.claude in shell/script files', () => {
     }
   }
 
-  it('has no $HOME/.claude without ${QODER_CONFIG_DIR:-...} guard in scripts', () => {
+  it('has no $HOME/.claude without ${CLAUDE_CONFIG_DIR:-...} guard in scripts', () => {
     if (violations.length > 0) {
       const details = violations
         .map(v => `  ${v.file}:${v.line}: ${v.text}`)
         .join('\n');
       expect.fail(
-        `Found $HOME/.claude without QODER_CONFIG_DIR guard:\n${details}\n\n` +
-        `Replace with: \${QODER_CONFIG_DIR:-$HOME/.claude}`
+        `Found $HOME/.claude without CLAUDE_CONFIG_DIR guard:\n${details}\n\n` +
+        `Replace with: \${CLAUDE_CONFIG_DIR:-$HOME/.claude}`
       );
     }
   });
@@ -231,10 +231,7 @@ describe('Contract 2b: setup jq writes are guarded against truncation', () => {
     missingPreflightViolations: string[];
   } {
     const directJqRedirectViolations: { file: string; command: string }[] = [];
-    const missingPreflightViolations: string[] = [];
-
-    const directRedirectPattern =
-      /(?:echo|printf|cat|jq)\b[^;\n]*\bjq\b[^;\n]*>\s*(?:"\$(?:\{)?(?:CONFIG_FILE|SETTINGS_FILE)(?:\})?"|\$\{(?:CONFIG_FILE|SETTINGS_FILE)\})/g;
+  const missingPreflightViolations: string[] = [];
 
     for (const file of setupMutationFiles()) {
       const content = readFileSync(file, 'utf-8');
@@ -245,6 +242,8 @@ describe('Contract 2b: setup jq writes are guarded against truncation', () => {
       }
 
       const logicalCommands = content.replace(/\\\r?\n/g, ' ');
+      const directRedirectPattern =
+        /(?:echo|printf|cat|jq)\b[^;\n]*\bjq\b[^;\n]*>\s*(?:"\$(?:\{)?(?:CONFIG_FILE|SETTINGS_FILE)(?:\})?"|\$\{(?:CONFIG_FILE|SETTINGS_FILE)\})/g;
 
       for (const match of logicalCommands.matchAll(directRedirectPattern)) {
         directJqRedirectViolations.push({
@@ -334,18 +333,18 @@ describe('Contract 3: no raw __dirname path resolution in installer outside getP
 // Issue #2348 — CI baked /opt/hostedtoolcache/node/... into hooks
 
 describe('Contract 4: no absolute node binary paths in hook commands', () => {
-  const originalConfigDir = process.env.QODER_CONFIG_DIR;
+  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
 
   afterEach(() => {
     if (originalConfigDir === undefined) {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     } else {
-      process.env.QODER_CONFIG_DIR = originalConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
     }
   });
 
   it('getHooksSettingsConfig() produces no absolute node paths (default config)', async () => {
-    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.CLAUDE_CONFIG_DIR;
 
     // Dynamic import to get fresh module evaluation
     const { getHooksSettingsConfig } = await import('../installer/hooks.js');
@@ -383,11 +382,11 @@ describe('Contract 5: no hardcoded ~/.claude in LLM-consumed artifacts', () => {
   const AGENTS_DIR = join(REPO_ROOT, 'agents');
   const DOCS_DIR = join(REPO_ROOT, 'docs');
 
-  // Match ~/.claude NOT inside portable notation [$QODER_CONFIG_DIR|~/.claude]
-  // or ${QODER_CONFIG_DIR:-...} pattern
+  // Match ~/.claude NOT inside portable notation [$CLAUDE_CONFIG_DIR|~/.claude]
+  // or ${CLAUDE_CONFIG_DIR:-...} pattern
   const TILDE_CLAUDE_PATTERN = /~\/\.claude/;
-  const SAFE_PORTABLE = /\[\$QODER_CONFIG_DIR\|~\/\.claude\]/;
-  const SAFE_ENV_FALLBACK = /\$\{QODER_CONFIG_DIR:-/;
+  const SAFE_PORTABLE = /\[\$CLAUDE_CONFIG_DIR\|~\/\.claude\]/;
+  const SAFE_ENV_FALLBACK = /\$\{CLAUDE_CONFIG_DIR:-/;
 
   function scanForViolations(dir: string): { file: string; line: number; text: string }[] {
     const violations: { file: string; line: number; text: string }[] = [];
@@ -403,10 +402,10 @@ describe('Contract 5: no hardcoded ~/.claude in LLM-consumed artifacts', () => {
           // Skip markdown comments
           const trimmed = line.trim();
           if (trimmed.startsWith('<!--') && trimmed.endsWith('-->')) continue;
-          // Skip lines that are just describing what QODER_CONFIG_DIR defaults to
+          // Skip lines that are just describing what CLAUDE_CONFIG_DIR defaults to
           if (/default.*~\/\.claude/i.test(line) || /fallback.*~\/\.claude/i.test(line)) continue;
           // Skip lines documenting the config-dir behavior
-          if (/QODER_CONFIG_DIR/i.test(line)) continue;
+          if (/CLAUDE_CONFIG_DIR/i.test(line)) continue;
           violations.push({ file: relPath(file), line: i + 1, text: trimmed });
         }
       }
@@ -421,7 +420,7 @@ describe('Contract 5: no hardcoded ~/.claude in LLM-consumed artifacts', () => {
       const details = violations.map(v => `  ${v.file}:${v.line}: ${v.text}`).join('\n');
       expect.fail(
         `Found unguarded ~/.claude in agent definitions:\n${details}\n\n` +
-        `Use [$QODER_CONFIG_DIR|~/.claude] notation in LLM-consumed artifacts.`
+        `Use [$CLAUDE_CONFIG_DIR|~/.claude] notation in LLM-consumed artifacts.`
       );
     }
   });
@@ -442,7 +441,7 @@ describe('Contract 5: no hardcoded ~/.claude in LLM-consumed artifacts', () => {
         const trimmed = line.trim();
         if (trimmed.startsWith('<!--') && trimmed.endsWith('-->')) continue;
         if (/default.*~\/\.claude/i.test(line) || /fallback.*~\/\.claude/i.test(line)) continue;
-        if (/QODER_CONFIG_DIR/i.test(line)) continue;
+        if (/CLAUDE_CONFIG_DIR/i.test(line)) continue;
         // Skip glob/permission patterns like ~/.claude/** (describes allowed paths, not path resolution)
         if (/~\/\.claude\/\*/.test(line)) continue;
         violations.push({ file: 'docs/CLAUDE.md', line: i + 1, text: trimmed });
@@ -453,7 +452,7 @@ describe('Contract 5: no hardcoded ~/.claude in LLM-consumed artifacts', () => {
       const details = violations.map(v => `  ${v.file}:${v.line}: ${v.text}`).join('\n');
       expect.fail(
         `Found unguarded ~/.claude in docs/CLAUDE.md:\n${details}\n\n` +
-        `Use [$QODER_CONFIG_DIR|~/.claude] notation in LLM-consumed artifacts.`
+        `Use [$CLAUDE_CONFIG_DIR|~/.claude] notation in LLM-consumed artifacts.`
       );
     }
   });
@@ -638,16 +637,17 @@ describe('Contract 10: installer manages stale OMC-created agents and skills', (
 });
 
 
-describe('OMC setup Ralph Ruby dependency guidance (issue #2969)', () => {
-  it('checks Ruby during setup with product-facing Ralph remediation', () => {
+describe('OMC setup Ralph runtime prerequisites guidance (issue #3996)', () => {
+  it('checks Node and a writable config dir instead of the retired Ruby probe', () => {
     const phasePath = join(REPO_ROOT, 'skills', 'omq-setup', 'phases', '02-configure.md');
     const content = readFileSync(phasePath, 'utf-8');
 
-    expect(content).toContain('Step 2.0: Check Ralph Ruby Dependency');
-    expect(content).toContain('command -v ruby');
-    expect(content).toContain('Ralph workflows require Ruby');
-    expect(content).toContain('sudo apt update && sudo apt install ruby-full');
-    expect(content).toContain('restart Qoder CLI');
+    expect(content).toContain('Step 2.0: Check Ralph Runtime Prerequisites');
+    expect(content).toContain('node --version');
+    // The Ruby check was a false positive (issue #3996): OMC has never used Ruby.
+    expect(content).not.toMatch(/\bruby\b/i);
+    expect(content).not.toContain('ruby-full');
+    expect(content).not.toContain('brew install ruby');
   });
 });
 

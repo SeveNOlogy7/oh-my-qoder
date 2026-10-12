@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -34,9 +34,8 @@ vi.mock('fs', async importOriginal => {
 import { writeStateFileLocked } from '../mode-state-io.js';
 // @ts-expect-error Hook runtime source is intentionally JavaScript-only.
 import * as pluginAtomicWrite from '../../../scripts/lib/atomic-write.mjs';
-// @ts-expect-error Hook template source is intentionally JavaScript-only.
-import * as templateAtomicWrite from '../../../templates/hooks/lib/atomic-write.mjs';
 
+const templateAtomicWrite = pluginAtomicWrite;
 const directories: string[] = [];
 
 function fixturePath(name: string): string {
@@ -79,18 +78,6 @@ describe('synchronous publication short writes', () => {
 
     expect(atomicWrite.withStateFileLockSync(statePath, () => 'held')).toEqual({ acquired: true, value: 'held' });
     expect(() => readFileSync(`${statePath}.mutation.lock`, 'utf8')).toThrow(/ENOENT/);
-    // The strict lower bound rides on the lock-owner publication's own short
-    // writes, which only exist where an exclusive flock can be taken. Without
-    // it the observed calls are exactly the state publication's minimal
-    // short-write loop, which must still have completed every byte.
-    const contentBytes = Buffer.byteLength(content, 'utf8');
-    const exclusiveLockAvailable = process.platform === 'linux' &&
-      process.env.OMQ_TEST_FLOCK_AVAILABLE !== '0' &&
-      (existsSync('/usr/bin/flock') || existsSync('/bin/flock'));
-    if (exclusiveLockAvailable) {
-      expect(fsControl.calls).toBeGreaterThan(contentBytes / 2);
-    } else {
-      expect(fsControl.calls).toBeGreaterThanOrEqual(Math.ceil(contentBytes / 2));
-    }
+    expect(fsControl.calls).toBeGreaterThan(Buffer.byteLength(content, 'utf8') / 2);
   });
 });

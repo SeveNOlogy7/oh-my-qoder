@@ -1,8 +1,8 @@
 # Ancestor Parity
 
 > Ancestor: [`Yeachan-Heo/oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
-> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.3.0** | Current ancestor latest: **v5.6.2**
-> Status: v5.0.0 through v5.3.0 adopted; M2 subsystem migration in progress (one minor per round)
+> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.4.0** | Current ancestor latest: **v5.6.2**
+> Status: v5.0.0 through v5.4.0 adopted; M2 subsystem migration in progress (one minor per round)
 
 ## Identity
 
@@ -22,7 +22,7 @@
 | v5.1.0 | 2026-08-31 | **adopted** | this round: pin `ebf06c7`, adoption `3acd654` (6812/6812 blob-verified), see below |
 | v5.2.0 | 2026-09-03 | **adopted** | this round: pin `acf7948`, adoption `9ed5686` (6829/6829 blob-verified), see below |
 | v5.3.0 | 2026-09-06 | **adopted** | this round: pin `5174b8a`, adoption `35f99d2` (6840/6840 blob-verified), see below |
-| v5.4.0 | 2026-09-11 | not measured | — |
+| v5.4.0 | 2026-09-11 | **adopted** | this round: pin `83c3fab`, adoption `b9aaa2d` (6909/6909 blob-verified), see below |
 | v5.5.0 | 2026-09-22 | not measured | — |
 | v5.6.0 | 2026-10-01 | not measured | — |
 | v5.6.2 | 2026-10-06 | not measured | latest ancestor tag at this round's time of writing |
@@ -104,6 +104,33 @@ approval-reply notification suite, and the batched Windows cache-occupancy ident
 (#3973) landing in the `cache-occupancy` trio -- the hop's other 3 additions are `dist/**`
 build output, excluded.
 
+## Blob-tree diff v5.3.0 to v5.4.0 (this round)
+
+Method: full git tree blob SHA comparison of the cached ancestor trees (`truncated: false`,
+6840 to 6909 blobs). Authoritative numbers come from the tree diff, not the GitHub compare
+API.
+
+| Metric | All files |
+|--------|----------:|
+| Added | 69 |
+| Modified | 412 |
+| Removed | 0 |
+| Unchanged | 6428 |
+
+Adoption surface after excluding `.github/**`, `dist/**`, `bridge/**` (the coordinator keeper
+stays) and the 154 OMQ-only paths: 180 paths adopted (23 additions + 157 modifications; the
+other 46 additions are `dist/**` build output, excluded). v5.4.0's new surfaces: the lookout
+workspace feature (`src/features/lookout/**` + `src/cli/lookout.ts` with its suites), the
+`harbor` skill with its scenario fixtures and suite, the `agent-doc-discipline` skill, the
+`state-lock` twins (`scripts/lib` + `templates/hooks/lib`) that absorb the flock/emergency
+mechanism the ancestor moved out of `atomic-write`, the session-end foreground bootstrap, the
+contained-fd graph runtime helper, the session-start context-budget suite, and the
+Ruby-false-positive lint suite. Three modified-classified paths the fork had deleted in its
+own history were recreated by the adoption (`skills/omc-doctor/SKILL.md`,
+`skills/omc-setup/phases/02-configure.md`, `src/skills/__tests__/omc-doctor-skill.test.ts`)
+and removed again in the naming lane -- the fork keeps only its `omq-*` twins, onto which the
+ancestor's runtime-prerequisites increment was ported (identity-substituted, suite-pinned).
+
 ## v5.0.0 breaking changes
 
 | Change | Detail | OMQ impact |
@@ -140,13 +167,24 @@ build output, excluded.
 | 5 docs/skill collisions (`docs/REFERENCE.md`, `docs/shipyard.md`, `skills/AGENTS.md`, `skills/drydock`+`skills/launch` SKILL.md) | upstream rewrote the same text | fork spellings restored over the ancestor text (W4 docs token pass) |
 | plugin manifests + `CHANGELOG.md` | version 5.2.0 -> 5.3.0 and release notes | adopted verbatim (the fork's pre-adoption blobs equalled the v5.2.0 versions; byte-verified against the cached v5.3.0 tree) |
 
+## v5.4.0 changes that touched OMQ surfaces
+
+| Change | Detail | OMQ disposition |
+|--------|--------|-----------------|
+| 23 new non-`dist` files: lookout feature + CLI, `harbor` and `agent-doc-discipline` skills, `state-lock` twins, session-end foreground bootstrap, contained-fd helper | the hop's only non-`dist` additions | adopted; the naming/identity repair restored the fork spellings inside them (the lookout doc token re-branded in the compile lane) |
+| `atomic-write` twins lose the flock/emergency mechanism to the new `state-lock` twins | upstream restructured its script/hook library | dual-merged (structure then token); the fork's twin byte-equality contract restored -- the ancestor ships a one-blank-line twin divergence the fork does not -- and the new `state-lock` twins stay byte-equal to the ancestor on both sides |
+| `plugin-setup.mjs` drops the Ruby check (#3996); `release.ts` grows the golden + inventory git-add release face | upstream removed a platform probe and expanded the release pipeline | the deletion adopted (its lint suite pins the no-Ruby state); the fork's runtime-externals sentinel and 300s install timeout ported onto the new face; `release.ts` keeps the fork's `.qoder-plugin` manifest paths and `OMQ:VERSION` marker |
+| `session-start` twins restructure occupancy handling (#3995) | shared script and hook template rewritten upstream | dual-merged: the ancestor's hoist structure plus the fork's plugin-cache-dir helper calls, `OMQ_SESSION_OWNER_PID`, and `oh-my-qoder` cache regex |
+| standalone state-lock provisioning and provisioned-template guards | ancestor-new code crashed on win32 (`'/'`-joined PACKAGE_JSON vs strict `realpathSync`; separator-bound template guards spawned the fail-closed stub) | real defects fixed in the measurement lane (path normalization + separator-agnostic matching; 105 baseline rows flipped green, zero semantic regressions) |
+| plugin manifests + `CHANGELOG.md` | version 5.3.0 -> v5.4.0 and release notes | adopted verbatim (the fork's pre-adoption blobs equalled the v5.3.0 versions; byte-verified against the cached v5.4.0 tree) |
+
 ## Migration milestones
 
 | Milestone | Scope | State | Evidence |
 |-----------|-------|-------|----------|
-| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.3.0) | auditTarget `5174b8a` |
-| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 871 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
-| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132` |
+| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.4.0) | pin `83c3fab` |
+| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 905 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
+| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132`; v5.4.0 round: `83c3fab` (pin), `b9aaa2d` (adoption), `32be4ea` (identity), repair lanes through `37607c7` |
 | M3 Upstream contributions | 2-4 named PRs to shrink rename surface | not started | not measured |
 | M4 Pipeline gate | Triggered only if backport demand > 10/quarter | not started | not measured |
 

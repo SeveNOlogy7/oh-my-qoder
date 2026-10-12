@@ -67,6 +67,8 @@ When arguments include `--autoresearch`, Deep Interview becomes the zero-learnin
 
 ## Native Plugin Invocation Guard (Issue #3030)
 
+- Use `Agent(subagent_type="oh-my-qoder:explore", model="low")` for brownfield codebase exploration (run BEFORE asking user about codebase)
+
 If this raw bundled skill is loaded by Qoder CLI's native plugin skill loader through `/oh-my-qoder:deep-interview` or `Skill("oh-my-qoder:deep-interview")`, do not treat that path as permission to skip rendered OMQ setup. The user-facing preferred invocation is `/deep-interview`; do not recommend or advertise `/oh-my-qoder:deep-interview` as the deep-interview entrypoint. Regardless of invocation path, Phase 0 below remains blocking and must resolve `omq.deepInterview.ambiguityThreshold` from settings before any announcement, state write, question, or ambiguity score.
 
 ## Phase 0: Resolve Ambiguity Threshold (blocking prerequisite)
@@ -74,12 +76,12 @@ If this raw bundled skill is loaded by Qoder CLI's native plugin skill loader th
 Complete this phase before Phase 1, before brownfield exploration, before `state_write`, before Round 0, and before any ambiguity scoring. Do not continue if the resolved threshold and source are unknown.
 
 1. **Read threshold settings in precedence order**:
-   - User settings: `[$QODER_CONFIG_DIR|~/.qoder]/settings.json`
-   - Project settings: `./.qoder/settings.json` (overrides user settings)
+   - User settings: `[$CLAUDE_CONFIG_DIR|~/.claude]/settings.json`
+   - Project settings: `./.claude/settings.json` (overrides user settings)
 2. **Resolve threshold and source**:
    - Read `omq.deepInterview.ambiguityThreshold` from both files when present.
    - Use the project value when valid; otherwise use the user value when valid; otherwise use the default `0.2`.
-   - Set these run variables exactly: `<resolvedThreshold>`, `<resolvedThresholdPercent>`, and `<resolvedThresholdSource>` (for example `./.qoder/settings.json`, `[$QODER_CONFIG_DIR|~/.qoder]/settings.json`, or `default`).
+   - Set these run variables exactly: `<resolvedThreshold>`, `<resolvedThresholdPercent>`, and `<resolvedThresholdSource>` (for example `./.claude/settings.json`, `[$CLAUDE_CONFIG_DIR|~/.claude]/settings.json`, or `default`).
 3. **Emit the required first line to the user before any other interview announcement**:
 
 ```
@@ -549,8 +551,8 @@ Skipping any stage is possible but reduces quality assurance:
 
 <Tool_Usage>
 - Use `AskUserQuestion` for each interview question — provides clickable UI with contextual options
-- Preserve the AskUserQuestion path for OMQ-native interaction; do not introduce OMX-only structured-question transport into this skill
-- Use `Agent(subagent_type="oh-my-qoder:explore", model="low")` for brownfield codebase exploration (run BEFORE asking user about codebase)
+- Preserve the AskUserQuestion path for OMC-native interaction; do not introduce OMX-only structured-question transport into this skill
+- Use `Task(subagent_type="oh-my-qoder:explore", model="haiku")` for brownfield codebase exploration (run BEFORE asking user about codebase)
 - Use opus model (temperature 0.1) for ambiguity scoring — consistency is critical
 - Round 0 topology confirmation happens before ambiguity scoring; Phase 2 scoring must honor locked topology and rotate targeting across active components when more than one is present
 - Use `state_write` / `state_read` for interview state persistence; the initial and subsequent deep-interview state payloads must include `threshold_source` alongside `threshold`
@@ -696,7 +698,7 @@ Why bad: 45% ambiguity means nearly half the requirements are unclear. The mathe
 <Advanced>
 ## Configuration
 
-Optional settings in `.qoder/settings.json`:
+Optional settings in `.claude/settings.json`:
 
 ```json
 {
@@ -740,7 +742,7 @@ The recommended refinement path chains clarity and feasibility gates, then stops
   → Socratic Q&A until ambiguity ≤ <resolvedThresholdPercent>
   → Spec written to .omq/specs/deep-interview-{slug}.md
   → User explicitly selects "Refine with omq-plan consensus"
-  → /omq-plan --consensus --direct (spec as input, skip interview)
+  → Skill("oh-my-qoder:plan") with --consensus --direct (spec as input, skip interview)
     → Planner creates implementation plan from spec
     → Architect reviews for architectural soundness
     → Critic validates quality and testability

@@ -11,7 +11,7 @@
  * - setup: Sync all OMQ components (hooks, agents, skills)
  */
 
-import { Command } from 'commander';
+import { Command, CommanderError } from 'commander';
 import chalk from 'chalk';
 import { join } from 'path';
 import { writeFileSync, existsSync } from 'fs';
@@ -65,6 +65,7 @@ import { interopCommand } from './interop.js';
 import { askCommand, ASK_USAGE } from './ask.js';
 import { graphCommand } from './graph.js';
 import { checkpointCommand } from './checkpoint.js';
+import { lookoutCommand } from './lookout.js';
 import { warnIfWin32 } from './win32-warning.js';
 import { autoresearchCommand } from './autoresearch.js';
 import { runHudWatchLoop } from './hud-watch.js';
@@ -919,7 +920,7 @@ Examples:
     const result = installOmc({
       force: options.force,
       verbose: !options.quiet,
-      skipQoderCheck: options.skipClaudeCheck
+      skipQoderCheck: options.skipQoderCheck
     });
 
     if (result.success) {
@@ -1313,6 +1314,7 @@ program
   .option('-q, --quiet', 'Suppress output except for errors')
   .option('--no-plugin', 'Install bundled skills from the current package instead of relying on plugin-provided skills')
   .option('--plugin-dir-mode', 'Treat OMQ as launched via --plugin-dir at runtime (skip agent/skill copy; HUD + hooks + CLAUDE.md still installed)')
+  .option('--skip-hooks', 'Skip hook installation')
   .option('--force-hooks', 'Force reinstall hooks even if unchanged')
   .addHelpText('after', `
 Examples:
@@ -1321,6 +1323,7 @@ Examples:
   $ omq setup --no-plugin         Force local bundled skill installation
   $ omq setup --plugin-dir-mode   Skip agent/skill copy (used with claude --plugin-dir)
   $ omq setup --quiet             Silent setup for scripts
+  $ omc setup --skip-hooks        Install without hooks
   $ omq setup --force-hooks       Force reinstall hooks`)
   .action(async (options) => {
     if (!options.quiet) {
@@ -1569,6 +1572,7 @@ program
  */
 program.addCommand(graphCommand());
 program.addCommand(checkpointCommand());
+program.addCommand(lookoutCommand());
 
 /**
  * Returns the fully-configured commander program.
@@ -1589,5 +1593,18 @@ export function buildProgram(): Command {
 // and child processes inherit VITEST from the parent vitest worker, which
 // would cause the CLI to silently exit with no output.
 if (!process.env.OMQ_CLI_SKIP_PARSE) {
-  program.parse();
+  try {
+    program.parse();
+  } catch (error) {
+    // Commands with an exitOverride (e.g. lookout remaps usage errors to 2)
+    // surface parse failures as CommanderError. Commander has already
+    // printed the message; honor the remapped exit code without a stack.
+    // Other commands keep commander's default process.exit behavior, and
+    // non-Commander errors stay fatal.
+    if (error instanceof CommanderError) {
+      process.exitCode = error.exitCode;
+    } else {
+      throw error;
+    }
+  }
 }

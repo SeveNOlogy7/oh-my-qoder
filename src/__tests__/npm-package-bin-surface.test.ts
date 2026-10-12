@@ -225,6 +225,7 @@ describe("npm package bin surface regression", () => {
       expect(packedFiles.has(relativePath), relativePath).toBe(true);
     }
     expect(packedFiles.has("bridge/gyoshu_bridge.py")).toBe(true);
+    expect(packedFiles.has("bridge/run-mcp-server.sh")).toBe(true);
   });
 
   it("keeps the committed plugin runtime closure as a byte-identical npm package subset", () => {
@@ -371,9 +372,9 @@ describe("npm package bin surface regression", () => {
     expect(
       packedPackageFixture.files.has("dist/lib/worktree-paths.js"),
     ).toBe(true);
-    expect(source.match(/windowsHide/g)).toHaveLength(7);
+    expect(source.match(/windowsHide/g)).toHaveLength(8);
     expect(packedDist).not.toContain("execSync(");
-    expect(packedDist.match(/windowsHide: true/g)).toHaveLength(7);
+    expect(packedDist.match(/windowsHide: true/g)).toHaveLength(8);
     expect(packedDist).toContain("gitTopLevelCacheMap");
   });
 
@@ -434,10 +435,10 @@ describe("npm package bin surface regression", () => {
         binNames.map((name) => [name, expectedNpmShimNames(name)]),
       ),
     ).toEqual({
-      "oh-my-qoder": [
-        "oh-my-qoder",
-        "oh-my-qoder.cmd",
-        "oh-my-qoder.ps1",
+      "oh-my-claudecode": [
+        "oh-my-claudecode",
+        "oh-my-claudecode.cmd",
+        "oh-my-claudecode.ps1",
       ],
       omq: ["omq", "omq.cmd", "omq.ps1"],
     });
@@ -461,10 +462,10 @@ describe("npm package bin surface regression", () => {
         packedBinNames.map((name) => [name, expectedNpmShimNames(name)]),
       ),
     ).toEqual({
-      "oh-my-qoder": [
-        "oh-my-qoder",
-        "oh-my-qoder.cmd",
-        "oh-my-qoder.ps1",
+      "oh-my-claudecode": [
+        "oh-my-claudecode",
+        "oh-my-claudecode.cmd",
+        "oh-my-claudecode.ps1",
       ],
       omq: ["omq", "omq.cmd", "omq.ps1"],
     });

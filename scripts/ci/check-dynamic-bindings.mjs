@@ -46,6 +46,15 @@ function exportsOf(file) {
   // `export * from` makes the real set unknowable; reporting against a partial
   // set would invent missing bindings, so such modules are left unchecked.
   if (/export\s+\*/.test(text)) return null;
+  // A standalone template stub publishes nothing by design: the whole file is
+  // replaced by an installer-generated package-root bridge at provision time
+  // (the "Standalone hook template contract" header names the mechanism), so
+  // import sites against it resolve only in the provisioned tree. Checking
+  // against the stub's empty export set invents missing bindings -- the same
+  // vacuous-check semantics as `export *` above. Both anchors are required so
+  // an ordinary module that merely throws does not qualify.
+  if (/^\/\/ Standalone hook template contract:/m.test(text)
+    && /^throw new Error\('Unprovisioned standalone /m.test(text)) return null;
   const names = new Set();
   for (const m of text.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)) names.add(m[1]);
   for (const m of text.matchAll(/export\s+(?:const|let|var|class)\s+(\w+)/g)) names.add(m[1]);

@@ -6,13 +6,16 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync, execSync } from 'child_process';
 import { join } from 'path';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, cpSync } from 'fs';
 import { tmpdir } from 'os';
 import process from 'process';
 import { detectAnnouncedBackgroundLaunch, detectBashFailure, detectWriteFailure, isBackgroundToolInvocation, isClaudeCodeWriteSuccess, isNonZeroExitWithOutput, summarizeAgentResult } from '../../scripts/post-tool-verifier.mjs';
-
+const TEMPLATE_ROOT = mkdtempSync(join(tmpdir(), 'post-tool-template-'));
+const TEMPLATE_HOOK_PATH = join(TEMPLATE_ROOT, 'hooks', 'post-tool-use.mjs');
+cpSync(join(process.cwd(), 'templates', 'hooks'), join(TEMPLATE_ROOT, 'hooks'), { recursive: true });
+execFileSync('npx', ['tsx', '-e', `import { provisionStandaloneStateLockBridge } from './src/installer/index.ts'; provisionStandaloneStateLockBridge(${JSON.stringify(process.cwd())}, ${JSON.stringify(join(TEMPLATE_ROOT, 'hooks', 'lib', 'state-lock.mjs'))});`], { cwd: process.cwd(), stdio: 'inherit' });
+process.on('exit', () => rmSync(TEMPLATE_ROOT, { recursive: true, force: true }));
 const SCRIPT_PATH = join(process.cwd(), 'scripts', 'post-tool-verifier.mjs');
-const TEMPLATE_HOOK_PATH = join(process.cwd(), 'templates', 'hooks', 'post-tool-use.mjs');
 const PYTEST_RED_RUN_OUTPUT = [
   'Error: Exit code 1',
   '============================= test session starts ==============================',
@@ -55,7 +58,7 @@ function scopedHookEnvironment(cwd, env) {
     CLAUDE_PLUGIN_ROOT: '',
     HOME: effectiveHome,
     USERPROFILE: env.USERPROFILE || effectiveHome,
-    QODER_CONFIG_DIR: env.QODER_CONFIG_DIR || join(effectiveHome, '.claude'),
+    CLAUDE_CONFIG_DIR: env.CLAUDE_CONFIG_DIR || join(effectiveHome, '.claude'),
     ...env,
   };
 
@@ -175,7 +178,7 @@ describe('session statistics retention', () => {
         {
           HOME: tempDir,
           USERPROFILE: tempDir,
-          QODER_CONFIG_DIR: configDir,
+          CLAUDE_CONFIG_DIR: configDir,
         },
       );
 
@@ -213,7 +216,7 @@ describe('session statistics retention', () => {
         {
           HOME: tempDir,
           USERPROFILE: tempDir,
-          QODER_CONFIG_DIR: configDir,
+          CLAUDE_CONFIG_DIR: configDir,
           ...env,
         },
       )).toEqual({ continue: true });
@@ -227,7 +230,7 @@ describe('session statistics retention', () => {
 
       expect(runPostToolVerifier(
         { session_id: 'disabled-session', cwd: tempDir, tool_name: 'Read' },
-        { QODER_CONFIG_DIR: configDir, DISABLE_OMQ: 'true' },
+        { CLAUDE_CONFIG_DIR: configDir, DISABLE_OMQ: 'true' },
       )).toEqual({ continue: true });
       expect(existsSync(configDir)).toBe(false);
     });

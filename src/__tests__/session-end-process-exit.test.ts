@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { getOmcRoot } from '../lib/worktree-paths.js';
 import { pathToFileURL } from 'node:url';
 
 const REPO_ROOT = process.cwd();
@@ -15,11 +16,13 @@ const IS_CI = process.env.CI === 'true' || process.env.CI === '1';
 // Keep the strict local regression ceiling while allowing bounded GitHub-hosted
 // process startup contention during the full parallel suite. A win32 dev host pays
 // a 150-250ms cold start per spawned runner (node boot + Defender) on top of the
-// runner's own 300ms shipped foreground budget - measured 430-690ms per spawn on
-// the reference host, so the POSIX-shaped 500ms local ceiling cannot absorb it.
-// The same hazard is recorded by the runner itself as WINDOWS_GENERIC_STARTUP_MS
-// (361-559ms on hosted CI). 900ms stays far below the hang this suite guards
-// (#3477: the process must exit terminally, not wait for SessionStart).
+// runner's own 300ms shipped foreground budget - measured 265-600ms per spawn on
+// this host family (w7-spawn-measure.txt: bare spawn 161-191ms; configured
+// adapters 265ms; under the vitest worker pool 350-600ms), so the POSIX-shaped
+// 500ms local ceiling cannot absorb it. The same hazard is recorded by the
+// runner itself as WINDOWS_GENERIC_STARTUP_MS. 900ms stays far below the hang
+// this suite guards (#3477: the process must exit terminally, not wait for
+// SessionStart).
 const WIN32_LOCAL_CEILING_MS = 900;
 const COMMAND_CEILING_MS = IS_CI ? 1_500 : process.platform === 'win32' ? WIN32_LOCAL_CEILING_MS : 500;
 const SEQUENTIAL_CEILING_MS = IS_CI ? 3_000 : process.platform === 'win32' ? 2 * WIN32_LOCAL_CEILING_MS : 1_000;
@@ -102,7 +105,7 @@ function configureDeferredAdapters(cwd: string): void {
 
 async function waitForTerminalCallback(cwd: string, sessionId: string): Promise<void> {
   const callbackPath = join(cwd, 'callback.md');
-  const manifestPath = join(cwd, '.omq', 'state', 'session-end-jobs', `${sessionId}.json`);
+  const manifestPath = join(getOmcRoot(cwd), 'state', 'session-end-jobs', `${sessionId}.json`);
   let deadline = Date.now() + DETACHED_WORKER_CEILING_MS;
   const hardCeiling = Date.now() + DETACHED_WORKER_CEILING_MS * 2;
   let lastRevision = -1;
@@ -162,12 +165,17 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
     for (const directory of tempDirs.splice(0)) {
       rmSync(directory, { recursive: true, force: true, maxRetries: 40, retryDelay: 25 });
     }
+    vi.unstubAllEnvs();
   });
 
   function createProject(): string {
     const cwd = mkdtempSync(join(homedir(), 'omq-session-end-process-exit-'));
     tempDirs.push(cwd);
+    vi.stubEnv('HOME', cwd);
+    vi.stubEnv('USERPROFILE', cwd);
+    vi.stubEnv('OMC_STATE_DIR', '');
     writeFileSync(join(cwd, 'transcript.jsonl'), '');
+    mkdirSync(getOmcRoot(cwd), { recursive: true });
     return cwd;
   }
 
@@ -196,7 +204,7 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
     expectPromptExit(result);
 
     if (_name === 'session-end') {
-      const manifestPath = join(cwd, '.omq', 'state', 'session-end-jobs', `${sessionId}.json`);
+      const manifestPath = join(getOmcRoot(cwd), 'state', 'session-end-jobs', `${sessionId}.json`);
       const deadline = Date.now() + (IS_CI ? 1_000 : 250);
       while (!existsSync(manifestPath) && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -220,9 +228,10 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
       COMMAND_CEILING_MS,
       {
         NODE_ENV: 'test',
-        // The runner exits at (foreground budget + process startup). On a local
-        // host the budget stays the fixed 450ms test bound (startup adds ~170ms,
-        // well inside the ceiling); under CI it tracks just under the ceiling.
+        // The runner (scripts/run.cjs) reads the OMQ_ spelling; with the win32
+        // 900ms ceiling the ancestor's max(450, ceiling-50)=850 budget plus
+        // ~200ms startup would overrun the ceiling by arithmetic, so the local
+        // bound stays the fixed 450ms test budget (startup fits inside 900ms).
         OMQ_SESSION_END_TEST_FOREGROUND_TIMEOUT_MS: String(IS_CI ? COMMAND_CEILING_MS - 50 : 450),
         OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS: TEST_PRODUCER_GRACE_MS,
       },
@@ -275,7 +284,13 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
       },
     );
     expectPromptExit(result);
-    const manifest = JSON.parse(readFileSync(join(cwd, '.omq', 'state', 'session-end-jobs', 'configured-network-routing.json'), 'utf8')) as { actions: Record<string, { phase: string }> };
+    const manifestPath = join(getOmcRoot(cwd), 'state', 'session-end-jobs', 'configured-network-routing.json');
+    const publicationDeadline = Date.now() + 2_000;
+    while (!existsSync(manifestPath) && Date.now() < publicationDeadline) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    expect(existsSync(manifestPath)).toBe(true);
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { actions: Record<string, { phase: string }> };
     expect(manifest.actions.callback.phase).toBe('deferred-best-effort');
     expect(manifest.actions.notification.phase).toBe('deferred-best-effort');
   });
@@ -283,9 +298,9 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
   it.skipIf(!HAS_GENERATED_DIST)('wiki-session-end exits without waiting for a live wiki lock', async () => {
     const cwd = createProject();
     configureDeferredAdapters(cwd);
-    const wikiDir = join(cwd, '.omq', 'wiki');
+    const wikiDir = join(getOmcRoot(cwd), 'wiki');
     mkdirSync(wikiDir, { recursive: true });
-    writeFileSync(join(cwd, '.omq', '.omq-config.json'), JSON.stringify({ wiki: { autoCapture: true } }));
+    writeFileSync(join(getOmcRoot(cwd), '.omc-config.json'), JSON.stringify({ wiki: { autoCapture: true } }));
     writeFileSync(join(wikiDir, '.wiki-lock.lock'), JSON.stringify({ pid: process.pid, timestamp: Date.now() }));
 
     const result = await runUntilClose(

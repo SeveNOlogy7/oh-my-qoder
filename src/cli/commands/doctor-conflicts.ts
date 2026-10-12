@@ -13,6 +13,20 @@ import { getSkillsDir, listBuiltinSkillNames } from '../../features/builtin-skil
 import { inspectUnifiedMcpRegistrySync } from '../../installer/mcp-registry.js';
 import { findWorkspaceRoot, WORKSPACE_MARKER } from '../../lib/worktree-paths.js';
 
+function hasActiveOmcPluginForDiagnostics(): boolean {
+  if (process.env.CLAUDE_PLUGIN_ROOT?.trim()) return true;
+  const settingsPath = join(getClaudeConfigDir(), 'settings.json');
+  if (!existsSync(settingsPath)) return false;
+  try {
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
+    for (const candidate of [settings.enabledPlugins, settings.plugins]) {
+      if (Array.isArray(candidate) && candidate.some((id) => typeof id === 'string' && id.toLowerCase().includes('oh-my-claudecode'))) return true;
+      if (candidate && typeof candidate === 'object' && Object.entries(candidate as Record<string, unknown>).some(([id, value]) => id.toLowerCase().includes('oh-my-claudecode') && value !== false)) return true;
+    }
+  } catch { /* malformed settings are not proof of an active plugin */ }
+  return false;
+}
+
 export interface WorkspaceMarkerStatus {
   /** Absolute path to the directory containing .omq-workspace, or null if absent. */
   markerRoot: string | null;
@@ -142,7 +156,7 @@ export function checkWindowsUnsafePluginHooks(): ConflictReport['windowsUnsafePl
     return [];
   }
 
-  const roots = [process.env.QODER_PLUGIN_ROOT ?? process.env.CLAUDE_PLUGIN_ROOT, ...readInstalledPluginRoots()]
+  const roots = [process.env.CLAUDE_PLUGIN_ROOT, ...readInstalledPluginRoots()]
     .filter((root): root is string => typeof root === 'string' && root.length > 0);
   const seenRoots = new Set<string>();
   const unsafe: ConflictReport['windowsUnsafePluginHooks'] = [];
@@ -398,7 +412,7 @@ function readInstalledPluginRoots(): string[] {
       : parsed as Record<string, unknown>;
 
     return Object.entries(plugins)
-      .filter(([key]) => key.startsWith('oh-my-qoder'))
+      .filter(([key]) => key.startsWith('oh-my-claudecode'))
       .flatMap(([, value]) => Array.isArray(value) ? value : [])
       .map(entry => entry && typeof entry === 'object' && 'installPath' in entry
         ? (entry as { installPath?: unknown }).installPath
@@ -457,6 +471,9 @@ function getSetupFallbackCanonicalSkillPaths(baseName: string): string[] {
 }
 
 function isSupportedSetupFallbackSkill(legacySkillsDir: string, entry: string, baseName: string): boolean {
+  if (hasActiveOmcPluginForDiagnostics()) {
+    return false;
+  }
   if (!SETUP_FALLBACK_SKILL_NAMES.has(baseName)) {
     return false;
   }
@@ -486,6 +503,44 @@ function isSupportedSetupFallbackSkill(legacySkillsDir: string, entry: string, b
   }
 }
 
+const OMQ_MANAGED_SKILL_MARKER = '.omq-managed';
+
+function isVerifiedStandaloneManagedSkill(legacySkillsDir: string, entry: string, baseName: string): boolean {
+  if (hasActiveOmcPluginForDiagnostics()) {
+    return false;
+  }
+  if (entry.toLowerCase().endsWith('.md')) {
+    return false;
+  }
+
+  const skillDir = join(legacySkillsDir, entry);
+  const markerPath = join(skillDir, OMQ_MANAGED_SKILL_MARKER);
+  const installedSkillPath = join(skillDir, 'SKILL.md');
+  if (!existsSync(markerPath) || !existsSync(installedSkillPath)) {
+    return false;
+  }
+
+  const canonicalNames = new Set<string>([baseName]);
+  // The shipped skills carry the omq- prefix (omq-doctor, omq-setup, omq-teams);
+  // the omc- strip stays for skills installed by pre-fork 4.x/5.0 upgrades.
+  if (baseName.startsWith('omq-')) {
+    canonicalNames.add(baseName.slice('omq-'.length));
+  }
+  if (baseName.startsWith('omc-')) {
+    canonicalNames.add(baseName.slice('omc-'.length));
+  }
+  const canonicalPaths = Array.from(canonicalNames).flatMap((name: string) => getSetupFallbackCanonicalSkillPaths(name));
+  try {
+    const installedContent = readFileSync(installedSkillPath, 'utf-8');
+    return canonicalPaths.some((canonicalSkillPath: string) => (
+      existsSync(canonicalSkillPath)
+      && installedContent === readFileSync(canonicalSkillPath, 'utf-8')
+    ));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Check for legacy curl-installed skills that collide with plugin skill names.
  * Only flags skills whose names match actual installed plugin skills, avoiding
@@ -505,6 +560,9 @@ export function checkLegacySkills(): ConflictReport['legacySkills'] {
       // Match .md files or directories whose name collides with a plugin skill
       const baseName = entry.replace(/\.md$/i, '').toLowerCase();
       if (pluginSkillNames.has(baseName)) {
+        if (isVerifiedStandaloneManagedSkill(legacySkillsDir, entry, baseName)) {
+          continue;
+        }
         if (isSupportedSetupFallbackSkill(legacySkillsDir, entry, baseName)) {
           continue;
         }

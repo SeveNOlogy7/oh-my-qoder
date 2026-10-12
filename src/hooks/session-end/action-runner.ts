@@ -28,7 +28,7 @@ function openClawRoutingEnvironment(payload: Record<string, unknown>): NodeJS.Pr
 }
 
 function runnerEnvironment(context: ActionRunContext): NodeJS.ProcessEnv {
-  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'QODER_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
+  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'CLAUDE_CONFIG_DIR', 'OMC_STATE_DIR', 'OMC_HOOK_CONFIG', 'OMC_CONFIG_PATH', 'OMC_NOTIFY', 'OMC_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
   const notificationKeys = ['OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'OMQ_DISCORD_MENTION', 'OMQ_DISCORD_NOTIFIER_BOT_TOKEN', 'OMQ_DISCORD_NOTIFIER_CHANNEL', 'OMQ_DISCORD_WEBHOOK_URL', 'OMQ_TELEGRAM_BOT_TOKEN', 'OMQ_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMQ_TELEGRAM_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_UID', 'OMQ_SLACK_WEBHOOK_URL', 'OMQ_SLACK_MENTION', 'OMQ_SLACK_BOT_TOKEN', 'OMQ_SLACK_APP_TOKEN', 'OMQ_SLACK_BOT_CHANNEL'];
   const keys = context.actionName === 'callback' || context.actionName === 'notification' ? [...baseKeys, ...notificationKeys] : baseKeys;
   const exact = Object.fromEntries(keys.flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]]]));
@@ -135,7 +135,13 @@ async function runActionRunnerEntrypoint(): Promise<void> {
     const deadlineTimer = setTimeout(() => { process.exitCode = 124; process.exit(); }, Math.max(1, input.deadlineAt - Date.now()));
     deadlineTimer.unref();
     const { executeSessionEndAction } = await import('./worker.js');
-    await executeSessionEndAction(input.actionName, { directory: input.directory, sessionId: input.sessionId }, input.deadlineAt);
+    await executeSessionEndAction(input.actionName, { directory: input.directory, sessionId: input.sessionId }, input.deadlineAt, {
+      jobId: input.jobId,
+      actionName: input.actionName,
+      attempt: input.attempt,
+      ownerNonce: input.ownerNonce,
+      runnerNonce: input.runnerNonce,
+    });
     clearTimeout(deadlineTimer);
     process.exitCode = 0;
   } catch {

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildResolvedRoutingSnapshot } from '../stage-router.js';
 import { CANONICAL_TEAM_ROLES } from '../../shared/types.js';
 import type { PluginConfig } from '../../shared/types.js';
-import { QWEN_FAMILY_DEFAULTS, BUILTIN_EXTERNAL_MODEL_DEFAULTS } from '../../config/models.js';
+import { CLAUDE_FAMILY_DEFAULTS, BUILTIN_EXTERNAL_MODEL_DEFAULTS } from '../../config/models.js';
 
 type TeamRoleRoutingConfig = NonNullable<NonNullable<PluginConfig['team']>['roleRouting']>;
 
@@ -10,15 +10,15 @@ const ENV_KEYS = [
   'OMQ_MODEL_HIGH',
   'OMQ_MODEL_MEDIUM',
   'OMQ_MODEL_LOW',
-  'DASHSCOPE_DEFAULT_MAX_MODEL',
-  'DASHSCOPE_DEFAULT_PLUS_MODEL',
-  'DASHSCOPE_DEFAULT_TURBO_MODEL',
-  'DASHSCOPE_DEFAULT_MAX_MODEL',
-  'DASHSCOPE_DEFAULT_PLUS_MODEL',
-  'DASHSCOPE_DEFAULT_TURBO_MODEL',
+  'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
+  'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
+  'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
+  'ANTHROPIC_DEFAULT_OPUS_MODEL',
+  'ANTHROPIC_DEFAULT_SONNET_MODEL',
+  'ANTHROPIC_DEFAULT_HAIKU_MODEL',
 ];
 
-let savedEnv: Record<string, string | undefined> = {};
+const savedEnv: Record<string, string | undefined> = {};
 
 beforeAll(() => {
   for (const key of ENV_KEYS) {
@@ -54,17 +54,17 @@ describe('buildResolvedRoutingSnapshot', () => {
         roleRouting: {
           critic: { provider: 'codex', model: 'gpt-5.3-codex' },
           'code-reviewer': { provider: 'gemini' },
-          executor: { provider: 'qwen' },
+          executor: { provider: 'claude' },
         },
       },
     };
     const snap = buildResolvedRoutingSnapshot(cfg);
     expect(snap.critic.primary.provider).toBe('codex');
-    expect(snap.critic.fallback.provider).toBe('qwen');
+    expect(snap.critic.fallback.provider).toBe('claude');
     expect(snap['code-reviewer'].primary.provider).toBe('gemini');
-    expect(snap['code-reviewer'].fallback.provider).toBe('qwen');
-    expect(snap.executor.primary.provider).toBe('qwen');
-    expect(snap.executor.fallback.provider).toBe('qwen');
+    expect(snap['code-reviewer'].fallback.provider).toBe('claude');
+    expect(snap.executor.primary.provider).toBe('claude');
+    expect(snap.executor.fallback.provider).toBe('claude');
   });
 
   it('fallback shares the agent with primary', () => {
@@ -83,8 +83,8 @@ describe('buildResolvedRoutingSnapshot', () => {
     const snap = buildResolvedRoutingSnapshot(cfg);
     // primary is the explicit codex model
     expect(snap.critic.primary.model).toBe('gpt-5.3-codex');
-    // fallback is qwen — must NOT echo the codex id; resolves to qwen tier default for critic (HIGH = max)
-    expect(snap.critic.fallback.model).toBe(QWEN_FAMILY_DEFAULTS.MAX);
+    // fallback is claude — must NOT echo the codex id; resolves to claude tier default for critic (HIGH = opus)
+    expect(snap.critic.fallback.model).toBe(CLAUDE_FAMILY_DEFAULTS.OPUS);
   });
 
   it('fallback respects tier when primary spec uses a tier name', () => {
@@ -92,19 +92,19 @@ describe('buildResolvedRoutingSnapshot', () => {
       team: { roleRouting: { executor: { provider: 'codex', model: 'HIGH' } } },
     };
     const snap = buildResolvedRoutingSnapshot(cfg);
-    // primary on codex: tier maps to codex builtin (tiers are qwen-centric)
+    // primary on codex: tier maps to codex builtin (tiers are claude-centric)
     expect(snap.executor.primary.model).toBe(BUILTIN_EXTERNAL_MODEL_DEFAULTS.codexModel);
-    // fallback on qwen with same tier "HIGH" → qwen max
-    expect(snap.executor.fallback.model).toBe(QWEN_FAMILY_DEFAULTS.MAX);
+    // fallback on claude with same tier "HIGH" → claude opus
+    expect(snap.executor.fallback.model).toBe(CLAUDE_FAMILY_DEFAULTS.OPUS);
   });
 
-  it('orchestrator primary AND fallback are both qwen (provider pinned)', () => {
+  it('orchestrator primary AND fallback are both claude (provider pinned)', () => {
     const cfg: PluginConfig = {
       team: { roleRouting: { orchestrator: { model: 'HIGH' } } },
     };
     const snap = buildResolvedRoutingSnapshot(cfg);
-    expect(snap.orchestrator.primary.provider).toBe('qwen');
-    expect(snap.orchestrator.fallback.provider).toBe('qwen');
+    expect(snap.orchestrator.primary.provider).toBe('claude');
+    expect(snap.orchestrator.fallback.provider).toBe('claude');
     expect(snap.orchestrator.primary.agent).toBe('omq');
   });
 
@@ -113,7 +113,7 @@ describe('buildResolvedRoutingSnapshot', () => {
       team: {
         roleRouting: {
           critic: { provider: 'codex' },
-          executor: { provider: 'qwen', model: 'MEDIUM' },
+          executor: { provider: 'claude', model: 'MEDIUM' },
         },
       },
     };
@@ -137,6 +137,6 @@ describe('buildResolvedRoutingSnapshot', () => {
     };
     const snap = buildResolvedRoutingSnapshot(cfg);
     expect(snap['code-reviewer'].primary.provider).toBe('gemini');
-    expect(snap['code-reviewer'].fallback.provider).toBe('qwen');
+    expect(snap['code-reviewer'].fallback.provider).toBe('claude');
   });
 });

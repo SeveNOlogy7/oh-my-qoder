@@ -1,22 +1,31 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { getProcessStartIdentitySync } from '../../src/platform/process-utils.js';
+import { provisionStandaloneStateLockBridge } from '../../src/installer/index.js';
+
+
+
 
 const root = process.cwd();
 const created: string[] = [];
-// Repo-relative labels because describe.each interpolates them into every title: an
-// absolute path here makes the same test a NEW failure on any machine that did not
-// author the baseline, and a stale entry on the machine that did.
-const modules = ['scripts/lib/atomic-write.mjs', 'templates/hooks/lib/atomic-write.mjs'];
-const moduleUrl = (label: string) => pathToFileURL(join(root, ...label.split('/'))).href;
+const installedHooks = mkdtempSync(join(tmpdir(), 'omc-lock-installed-hooks-'));
+cpSync(join(root, 'templates', 'hooks'), installedHooks, { recursive: true });
+provisionStandaloneStateLockBridge(root, join(installedHooks, 'lib', 'state-lock.mjs'));
+const modules = [
+  join(root, 'scripts', 'lib', 'atomic-write.mjs'),
+  join(installedHooks, 'lib', 'atomic-write.mjs'),
+];
+afterAll(() => rmSync(installedHooks, { recursive: true, force: true }));
 
 function processStart(pid = process.pid): string {
-  const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
-  return stat.slice(stat.lastIndexOf(')') + 2).trim().split(/\s+/)[19];
+  const identity = getProcessStartIdentitySync(pid);
+  if (identity === null) throw new Error(`unable to determine process start identity for pid ${pid}`);
+  return identity;
 }
 
 function owner(overrides: Record<string, unknown> = {}) {
@@ -35,7 +44,7 @@ function fixture() {
   created.push(dir);
   const statePath = join(dir, 'state', 'autopilot-state.json');
   mkdirSync(join(dir, 'state'), { recursive: true });
-  return { statePath, lockPath: `${statePath}.mutation.lock` };
+  return { dir, statePath, lockPath: `${statePath}.mutation.lock` };
 }
 
 afterEach(() => {
@@ -46,7 +55,7 @@ afterEach(() => {
 
 describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) => {
   async function api() {
-    return import(`${moduleUrl(modulePath)}?test=${randomUUID()}`) as Promise<{
+    return import(`${pathToFileURL(modulePath).href}?test=${randomUUID()}`) as Promise<{
       acquireStateFileLockSync(path: string, attempts?: number): { fd: number; lockPath: string; owner: ReturnType<typeof owner> } | null;
       releaseStateFileLockSync(lock: unknown): void;
       recoverEmergencyStateFile(path: string): boolean;
@@ -113,7 +122,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
       api.releaseStateFileLockSync(lock);
     `;
     const run = (id: string) => new Promise<void>((resolve, reject) => {
-      const child = spawn(process.execPath, ['--input-type=module', '-e', childScript, moduleUrl(modulePath), statePath, logPath, id], { stdio: 'ignore' });
+      const child = spawn(process.execPath, ['--input-type=module', '-e', childScript, pathToFileURL(modulePath).href, statePath, logPath, id], { stdio: 'ignore' });
       child.once('error', reject);
       child.once('close', code => code === 0 ? resolve() : reject(new Error(`reclaimer ${id} exited ${code}`)));
     });
@@ -145,7 +154,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
 
 describe.each(modules)('guarded emergency recovery claim (%s)', (modulePath) => {
   async function api() {
-    return import(`${moduleUrl(modulePath)}?recovery=${randomUUID()}`) as Promise<{
+    return import(`${pathToFileURL(modulePath).href}?recovery=${randomUUID()}`) as Promise<{
       recoverEmergencyStateFile(path: string): boolean;
     }>;
   }
@@ -184,7 +193,7 @@ describe.each(modules)('guarded emergency recovery claim (%s)', (modulePath) => 
     expect(existsSync(claimPath)).toBe(false);
   });
 
-  it('does not reclaim an existing stale recovery claim without flock', async () => {
+  it('reclaims a proven stale recovery claim using SQLite without flock', async () => {
     const { statePath } = fixture();
     const recovery = await api();
     const raw = JSON.stringify({ active: true, run: 'original' });
@@ -196,8 +205,8 @@ describe.each(modules)('guarded emergency recovery claim (%s)', (modulePath) => 
     process.env.NODE_ENV = 'test';
     process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
-    expect(recovery.recoverEmergencyStateFile(statePath)).toBe(false);
-    expect(JSON.parse(readFileSync(claimPath, 'utf8'))).toEqual(stale);
-    expect(readFileSync(statePath, 'utf8')).toBe(raw);
+    expect(recovery.recoverEmergencyStateFile(statePath)).toBe(true);
+    expect(existsSync(claimPath)).toBe(false);
+    expect(JSON.parse(readFileSync(statePath, 'utf8'))).toEqual({ active: false, run: 'recovered' });
   });
 });

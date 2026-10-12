@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-const originalClaudeConfigDir = process.env.QODER_CONFIG_DIR;
+const originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
 const originalPluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
 const originalHome = process.env.HOME;
 
@@ -30,7 +30,7 @@ function writeCompletePluginPayload(root: string): void {
   }));
   writePluginFile(join(root, 'skills', 'plan', 'SKILL.md'), '# plan\n');
   writePluginFile(join(root, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n');
-  writePluginFile(join(root, '.qoder-plugin', 'plugin.json'), JSON.stringify({
+  writePluginFile(join(root, '.claude-plugin', 'plugin.json'), JSON.stringify({
     name: 'oh-my-claudecode',
     commands: './commands/',
     skills: ['./skills/plan/'],
@@ -69,7 +69,7 @@ describe('install() standalone hook reconciliation', () => {
     testHomeDir = mkdtempSync(join(tmpdir(), 'omc-home-'));
     mkdirSync(testHomeDir, { recursive: true });
     writeFileSync(join(testHomeDir, 'CLAUDE.md'), '# test home claude');
-    process.env.QODER_CONFIG_DIR = testClaudeDir;
+    process.env.CLAUDE_CONFIG_DIR = testClaudeDir;
     process.env.HOME = testHomeDir;
     delete process.env.CLAUDE_PLUGIN_ROOT;
   });
@@ -78,9 +78,9 @@ describe('install() standalone hook reconciliation', () => {
     rmSync(testClaudeDir, { recursive: true, force: true });
     rmSync(testHomeDir, { recursive: true, force: true });
     if (originalClaudeConfigDir !== undefined) {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     } else {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     }
     if (originalPluginRoot !== undefined) {
       process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
@@ -120,20 +120,16 @@ describe('install() standalone hook reconciliation', () => {
     expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain(
       `${join(testClaudeDir, 'hud', 'omc-hud.mjs').replace(/\\/g, '/')}`,
     );
-    // The sh cache wrapper is POSIX-only (isWindows() deliberately installs a
-    // plain `node <hud>` statusline); the wrapper pins hold where it ships.
-    if (process.platform !== 'win32') {
-      expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain('omc-hud-cache.sh');
-      expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud-cache.sh'), 'utf-8')).toContain('HUD cached statusLine launcher');
-    }
+    expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain('omc-hud-cache.sh');
+    expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud-cache.sh'), 'utf-8')).toContain('HUD cached statusLine launcher');
     expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud.mjs'), 'utf-8')).toContain(
       'const { getClaudeConfigDir } = await import(pathToFileURL(join(__dirname, "lib", "config-dir.mjs")).href);',
     );
     expect(readFileSync(join(testClaudeDir, 'hud', 'lib', 'config-dir.mjs'), 'utf-8')).toContain(
-      'export const getClaudeConfigDir = getQoderConfigDir',
+      'export function getClaudeConfigDir()',
     );
     expect(readFileSync(join(testClaudeDir, 'hooks', 'lib', 'config-dir.mjs'), 'utf-8')).toContain(
-      'export const getClaudeConfigDir = getQoderConfigDir',
+      'export function getClaudeConfigDir()',
     );
     expect(readFileSync(join(testClaudeDir, 'hooks', 'keyword-detector.mjs'), 'utf-8')).toContain('Ralph keywords');
     expect(readFileSync(join(testClaudeDir, 'hooks', 'pre-tool-use.mjs'), 'utf-8')).toContain('PreToolUse');
@@ -180,9 +176,7 @@ describe('install() standalone hook reconciliation', () => {
     for (const filename of ['stdin.mjs', 'atomic-write.mjs', 'config-dir.mjs', 'state-root.mjs', 'model-routing-override-message.mjs']) {
       expect(existsSync(join(hooksLibDir, filename)), filename).toBe(true);
     }
-    // The shipped helper renamed the function to getQoderConfigDir and keeps
-    // getClaudeConfigDir as an alias export; pin the shipped declaration.
-    expect(readFileSync(join(hooksLibDir, 'config-dir.mjs'), 'utf-8')).toContain('export const getClaudeConfigDir = getQoderConfigDir');
+    expect(readFileSync(join(hooksLibDir, 'config-dir.mjs'), 'utf-8')).toContain('export function getClaudeConfigDir()');
     expect(readFileSync(join(hooksLibDir, 'config-dir.mjs'), 'utf-8')).not.toContain('/stale');
   });
 
@@ -200,6 +194,10 @@ describe('install() standalone hook reconciliation', () => {
       expect(result.success).toBe(true);
       expect(existsSync(join(testClaudeDir, 'hooks', 'lib', 'state-root.mjs'))).toBe(true);
       expect(existsSync(join(testClaudeDir, 'hooks', 'lib', 'model-routing-override-message.mjs'))).toBe(true);
+      expect(existsSync(join(testClaudeDir, 'hooks', 'lib', 'state-lock.mjs'))).toBe(true);
+      const bridge = readFileSync(join(testClaudeDir, 'hooks', 'lib', 'state-lock.mjs'), 'utf-8');
+      expect(bridge).toContain('EXPECTED_PACKAGE_NAME');
+      expect(bridge).toContain('scripts/lib/state-lock.mjs');
 
       const hookInputs: Array<{ file: string; input: Record<string, unknown> }> = [
         {
@@ -238,7 +236,7 @@ describe('install() standalone hook reconciliation', () => {
           encoding: 'utf-8',
           env: {
             ...process.env,
-            QODER_CONFIG_DIR: testClaudeDir,
+            CLAUDE_CONFIG_DIR: testClaudeDir,
             HOME: testHomeDir,
             USERPROFILE: testHomeDir,
           },
@@ -356,12 +354,36 @@ describe('install() standalone hook reconciliation', () => {
     const { install } = await loadInstaller();
     const result = install({ force: true, skipQoderCheck: true });
     const shipped = shippedStandaloneHookPayload('workflow-profile-runtime.mjs', 'hooks/lib');
+    const firstBridge = readFileSync(join(hooksLibDir, 'state-lock.mjs'), 'utf-8');
+    writeFileSync(join(hooksLibDir, 'state-lock.mjs'), 'stale bridge\n');
+    expect(install({ force: true, skipQoderCheck: true }).success).toBe(true);
+    expect(readFileSync(join(hooksLibDir, 'state-lock.mjs'), 'utf-8')).toBe(firstBridge);
+
 
     expect(result.success).toBe(true);
     expect(readFileSync(join(hooksLibDir, 'workflow-profile-runtime.mjs'), 'utf-8')).toBe(shipped);
     expect(readFileSync(join(testClaudeDir, 'hooks', 'persistent-mode.mjs'), 'utf-8')).toContain('workflow-profile-runtime.mjs');
   });
 
+  it('rejects symlinked package manifests during bridge provisioning', async () => {
+    const { provisionStandaloneStateLockBridge } = await loadInstaller();
+    const external = mkdtempSync(join(tmpdir(), 'omc-external-package-'));
+    const packageDir = mkdtempSync(join(tmpdir(), 'omc-package-root-'));
+    const target = join(testClaudeDir, 'hooks', 'lib', 'state-lock.mjs');
+    try {
+      writeFileSync(join(external, 'package.json'), JSON.stringify({ name: 'oh-my-claude-sisyphus', version: '5.3.0' }));
+      mkdirSync(join(external, 'scripts', 'lib'), { recursive: true });
+      writeFileSync(join(external, 'scripts', 'lib', 'state-lock.mjs'), 'export const marker = true;\n');
+      mkdirSync(join(packageDir, 'scripts', 'lib'), { recursive: true });
+      writeFileSync(join(packageDir, 'scripts', 'lib', 'state-lock.mjs'), 'export const marker = true;\n');
+      const { symlinkSync } = await import('node:fs');
+      symlinkSync(join(external, 'package.json'), join(packageDir, 'package.json'));
+      expect(() => provisionStandaloneStateLockBridge(packageDir, target)).toThrow();
+    } finally {
+      rmSync(external, { recursive: true, force: true });
+      rmSync(packageDir, { recursive: true, force: true });
+    }
+  });
 });
 
 // ── Plugin-provided hooks: duplicate prevention (#2252) ─────────────────────
@@ -374,7 +396,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     testHomeDir = mkdtempSync(join(tmpdir(), 'omc-home-dedup-'));
     mkdirSync(testHomeDir, { recursive: true });
     writeFileSync(join(testHomeDir, 'CLAUDE.md'), '# test home claude');
-    process.env.QODER_CONFIG_DIR = testClaudeDir;
+    process.env.CLAUDE_CONFIG_DIR = testClaudeDir;
     process.env.HOME = testHomeDir;
     delete process.env.CLAUDE_PLUGIN_ROOT;
   });
@@ -386,9 +408,9 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     rmSync(testClaudeDir, { recursive: true, force: true });
     rmSync(testHomeDir, { recursive: true, force: true });
     if (originalClaudeConfigDir !== undefined) {
-      process.env.QODER_CONFIG_DIR = originalClaudeConfigDir;
+      process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
     } else {
-      delete process.env.QODER_CONFIG_DIR;
+      delete process.env.CLAUDE_CONFIG_DIR;
     }
     if (originalPluginRoot !== undefined) {
       process.env.CLAUDE_PLUGIN_ROOT = originalPluginRoot;
@@ -567,7 +589,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
             hooks: [
               {
                 type: 'command',
-                command: 'node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"',
+                command: 'node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"',
               },
               {
                 type: 'command',
@@ -588,7 +610,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     const commands = writtenSettings.hooks?.Stop?.[0]?.hooks.map(hook => hook.command) ?? [];
 
     expect(result.success).toBe(true);
-    expect(commands).toContain('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"');
+    expect(commands).toContain('node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"');
     expect(commands).toContain('node $HOME/.claude/hooks/user-stop-hook.mjs');
     expect(existsSync(join(hooksDir, 'persistent-mode.mjs'))).toBe(true);
     expect(existsSync(join(hooksDir, 'keyword-detector.mjs'))).toBe(false);
@@ -612,7 +634,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
           {
             hooks: [{
               type: 'command',
-              command: 'node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"',
+              command: 'node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"',
             }],
           },
         ],
@@ -620,7 +642,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
           {
             hooks: [{
               type: 'command',
-              command: 'node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/code-simplifier.mjs"',
+              command: 'node "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/code-simplifier.mjs"',
             }],
           },
         ],

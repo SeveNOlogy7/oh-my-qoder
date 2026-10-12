@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execFileSync } from 'child_process';
 import { existsSync, mkdirSync, rmSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -14,27 +15,23 @@ import {
   getReplaySummary,
   resetSessionStartTimes,
 } from '../session-replay.js';
-// Exercises the DEFAULT state-root branch over its own fixtures (#42):
-// lift the per-file OMQ_STATE_DIR pin for every test below.
-import { useDefaultStateRoot } from '../../../__tests__/helpers/default-state-root.js';
-// Anchors process.cwd()-resolving writers (hud state, session-end jobs,
-// alias telemetry) at a per-test temp dir instead of the real .omq/state.
-import { useCwdFixture } from '../../../__tests__/helpers/cwd-fixture.js';
-
-useCwdFixture();
 
 describe('session-replay', () => {
-  useDefaultStateRoot();
   let testDir: string;
+  const previousStateDir = process.env.OMC_STATE_DIR;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `replay-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(join(testDir, '.omq', 'state'), { recursive: true });
+    execFileSync('git', ['init', '--quiet'], { cwd: testDir, stdio: 'ignore' });
+    delete process.env.OMC_STATE_DIR;
     resetSessionStartTimes();
   });
 
   afterEach(() => {
     rmSync(testDir, { recursive: true, force: true });
+    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
+    else process.env.OMC_STATE_DIR = previousStateDir;
   });
 
   describe('getReplayFilePath', () => {
