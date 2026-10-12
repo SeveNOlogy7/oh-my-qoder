@@ -19,7 +19,8 @@
 
 ### Winning observation output after revert (last 2000 chars)
 ```
-defined
+ved:
+undefined
 
  ❯ src/__tests__/canonical-identity-provenance.test.ts:584:30
     582|     expect(result.code).toBe(0);
@@ -27,17 +28,17 @@ defined
     584|     expect(parsed.namespace).toEqual([]);
        |                              ^
     585|   });
-    586| 
+    586|
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/27]⎯
 
  FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT apply to migration docs, which name the ancestor product on purpose
 AssertionError: expected undefined to deeply equal []
 
-- Expected: 
+- Expected:
 []
 
-+ Received: 
++ Received:
 undefined
 
  ❯ src/__tests__/canonical-identity-provenance.test.ts:597:30
@@ -46,7 +47,7 @@ undefined
     597|     expect(parsed.namespace).toEqual([]);
        |                              ^
     598|   });
-    599| 
+    599|
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/27]⎯
 
@@ -60,7 +61,7 @@ AssertionError: expected +0 to be 1 // Object.is equality
 + 0
 
  ❯ src/__tests__/canonical-identity-provenance.test.ts:608:25
-    606| 
+    606|
     607|     const result = runCheck(fixtureDir);
     608|     expect(result.code).toBe(1);
        |                         ^
@@ -72,10 +73,10 @@ AssertionError: expected +0 to be 1 // Object.is equality
  FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT flag prose that merely contains a colon inside backticks
 AssertionError: expected undefined to deeply equal []
 
-- Expected: 
+- Expected:
 []
 
-+ Received: 
++ Received:
 undefined
 
  ❯ src/__tests__/canonical-identity-provenance.test.ts:630:30
@@ -93,7 +94,7 @@ undefined
 
 ### Winning observation stderr after revert (last 1000 chars)
 ```
- guidance
+ in guidance
 AssertionError: expected +0 to be 1 // Object.is equality
 
 - Expected
@@ -103,7 +104,7 @@ AssertionError: expected +0 to be 1 // Object.is equality
 + 0
 
  ❯ src/__tests__/canonical-identity-provenance.test.ts:608:25
-    606| 
+    606|
     607|     const result = runCheck(fixtureDir);
     608|     expect(result.code).toBe(1);
        |                         ^
@@ -115,10 +116,10 @@ AssertionError: expected +0 to be 1 // Object.is equality
  FAIL  src/__tests__/canonical-identity-provenance.test.ts > plugin namespace rule > does NOT flag prose that merely contains a colon inside backticks
 AssertionError: expected undefined to deeply equal []
 
-- Expected: 
+- Expected:
 []
 
-+ Received: 
++ Received:
 undefined
 
  ❯ src/__tests__/canonical-identity-provenance.test.ts:630:30
