@@ -14,18 +14,9 @@ const SESSION_END_SCRIPTS = [
 ] as const;
 const IS_CI = process.env.CI === 'true' || process.env.CI === '1';
 // Keep the strict local regression ceiling while allowing bounded GitHub-hosted
-// process startup contention during the full parallel suite. A win32 dev host pays
-// a 150-250ms cold start per spawned runner (node boot + Defender) on top of the
-// runner's own 300ms shipped foreground budget - measured 265-600ms per spawn on
-// this host family (w7-spawn-measure.txt: bare spawn 161-191ms; configured
-// adapters 265ms; under the vitest worker pool 350-600ms), so the POSIX-shaped
-// 500ms local ceiling cannot absorb it. The same hazard is recorded by the
-// runner itself as WINDOWS_GENERIC_STARTUP_MS. 900ms stays far below the hang
-// this suite guards (#3477: the process must exit terminally, not wait for
-// SessionStart).
-const WIN32_LOCAL_CEILING_MS = 900;
-const COMMAND_CEILING_MS = IS_CI ? 1_500 : process.platform === 'win32' ? WIN32_LOCAL_CEILING_MS : 500;
-const SEQUENTIAL_CEILING_MS = IS_CI ? 3_000 : process.platform === 'win32' ? 2 * WIN32_LOCAL_CEILING_MS : 1_000;
+// process startup contention during the full parallel suite.
+const COMMAND_CEILING_MS = IS_CI ? 1_500 : 500;
+const SEQUENTIAL_CEILING_MS = IS_CI ? 3_000 : 1_000;
 const HAS_GENERATED_DIST = existsSync(join(REPO_ROOT, 'dist', 'hooks', 'session-end', 'worker.js'));
 const TEST_PRODUCER_GRACE_MS = '25';
 // The worker's required actions have a 9s budget; allow that bounded contract
@@ -146,7 +137,7 @@ async function waitForTerminalCallback(cwd: string, sessionId: string): Promise<
     }
     await new Promise<void>((resolve) => setTimeout(resolve, 10));
   }
-  let manifest: { phase?: string; owner?: unknown; actions?: Record<string, { status?: string; error?: string }> } | null = null;
+  let manifest: { phase?: string; owner?: unknown; recoverableFailure?: { reason?: string }; actions?: Record<string, { status?: string; error?: string }> } | null = null;
   try {
     if (existsSync(manifestPath)) {
       manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
@@ -155,7 +146,9 @@ async function waitForTerminalCallback(cwd: string, sessionId: string): Promise<
     manifest = null;
   }
   const callback = manifest?.actions?.callback;
-  throw new Error(`detached SessionEnd worker did not complete its callback: phase=${manifest?.phase ?? 'missing'} owner=${manifest?.owner === null ? 'none' : typeof manifest?.owner} callback=${callback?.status ?? 'missing'} error=${callback?.error ?? 'none'} file=${existsSync(callbackPath)}`);
+  // recoverableFailure.reason is the only record of why a non-terminal release
+  // happened, so a CI-only failure must print it (issue #4076).
+  throw new Error(`detached SessionEnd worker did not complete its callback: phase=${manifest?.phase ?? 'missing'} owner=${manifest?.owner === null ? 'none' : typeof manifest?.owner} callback=${callback?.status ?? 'missing'} error=${callback?.error ?? 'none'} release=${manifest?.recoverableFailure?.reason ?? 'unrecorded'} file=${existsSync(callbackPath)}`);
 }
 
 describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
@@ -228,11 +221,7 @@ describe('SessionEnd run.cjs process exit regressions (#3477)', () => {
       COMMAND_CEILING_MS,
       {
         NODE_ENV: 'test',
-        // The runner (scripts/run.cjs) reads the OMQ_ spelling; with the win32
-        // 900ms ceiling the ancestor's max(450, ceiling-50)=850 budget plus
-        // ~200ms startup would overrun the ceiling by arithmetic, so the local
-        // bound stays the fixed 450ms test budget (startup fits inside 900ms).
-        OMQ_SESSION_END_TEST_FOREGROUND_TIMEOUT_MS: String(IS_CI ? COMMAND_CEILING_MS - 50 : 450),
+        OMC_SESSION_END_TEST_FOREGROUND_TIMEOUT_MS: String(Math.max(450, COMMAND_CEILING_MS - 50)),
         OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS: TEST_PRODUCER_GRACE_MS,
       },
     ));

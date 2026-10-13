@@ -2387,7 +2387,7 @@ $ ultrawork search the codebase`,
         const specific = out.hookSpecificOutput as Record<string, unknown>;
         expect(specific.hookEventName).toBe('Setup');
         const context = String(specific.additionalContext ?? '');
-        expect(context).toContain('OMC maintenance completed:');
+        expect(context).toContain('OMQ maintenance completed:');
         expect(context).not.toContain('OMC initialized:');
       } finally {
         rmSync(tempDir, { recursive: true, force: true });

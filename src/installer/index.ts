@@ -448,17 +448,6 @@ function isShippedStandaloneHookPayload(targetPath: string, filename: string, lo
 }
 
 /**
- * Detect whether a hook command belongs to oh-my-claudecode.
- *
- * Recognition strategy (any match is sufficient):
- * 1. Command path contains "omc" as a path/word segment (e.g. `omc-hook.mjs`, `/omc/`)
- * 2. Command path contains "oh-my-claudecode"
- * 3. Command references a known OMC hook filename inside .claude/hooks/
- *
- * @param command - The hook command string
- * @returns true if the command belongs to OMC
- */
-/**
  * Does this hook command belong to OMQ?
  *
  * Both brands are accepted on purpose: `omq`/`oh-my-qoder` is what a fresh
@@ -932,16 +921,16 @@ function readStandalonePackageIdentity(packageDir: string): { root: string; name
 function standaloneStateLockBridge(packageDir: string): string {
   const identity = readStandalonePackageIdentity(packageDir);
   return `import { lstatSync, readFileSync, realpathSync } from 'node:fs';
-import { normalize, relative, isAbsolute, sep } from 'node:path';
+import { relative, isAbsolute, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const PACKAGE_ROOT = ${JSON.stringify(identity.root)};
 const EXPECTED_PACKAGE_NAME = ${JSON.stringify(identity.name)};
 const EXPECTED_PACKAGE_VERSION = ${JSON.stringify(identity.version)};
-const PACKAGE_JSON = PACKAGE_ROOT + '/package.json';
-const HELPER_PATH = PACKAGE_ROOT + '/scripts/lib/state-lock.mjs';
+const PACKAGE_JSON = PACKAGE_ROOT + sep + 'package.json';
+const HELPER_PATH = PACKAGE_ROOT + sep + 'scripts' + sep + 'lib' + sep + 'state-lock.mjs';
 function validatePackageOwnedHelper() {
   if (!lstatSync(PACKAGE_ROOT).isDirectory() || realpathSync(PACKAGE_ROOT) !== PACKAGE_ROOT || !lstatSync(PACKAGE_JSON).isFile() || !lstatSync(HELPER_PATH).isFile()) throw new Error('OMQ state-lock bridge package root is unavailable');
-  if (realpathSync(PACKAGE_JSON) !== normalize(PACKAGE_JSON)) throw new Error('OMQ state-lock bridge manifest identity changed');
+  if (realpathSync(PACKAGE_JSON) !== PACKAGE_JSON) throw new Error('OMC state-lock bridge manifest identity changed');
   const helperReal = realpathSync(HELPER_PATH);
   const helperRelative = relative(PACKAGE_ROOT, helperReal);
   if (isAbsolute(helperRelative) || helperRelative === '..' || helperRelative.startsWith('..' + sep)) throw new Error('OMQ state-lock bridge helper escapes package root');
@@ -953,6 +942,9 @@ validatePackageOwnedHelper();
 const canonical = await import(pathToFileURL(HELPER_PATH).href);
 export const processStartIdentity = canonical.processStartIdentity;
 export const isStateFileLockingSupported = canonical.isStateFileLockingSupported;
+export const isExclusiveStateLockingAvailable = canonical.isExclusiveStateLockingAvailable;
+export const getStateFileLockDiagnostic = canonical.getStateFileLockDiagnostic;
+export const getStateFileLockFailureMessage = canonical.getStateFileLockFailureMessage;
 export const acquireStateFileLockSync = canonical.acquireStateFileLockSync;
 export const releaseStateFileLockSync = canonical.releaseStateFileLockSync;
 export const withStateFileLockSync = canonical.withStateFileLockSync;

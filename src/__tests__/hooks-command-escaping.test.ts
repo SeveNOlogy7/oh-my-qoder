@@ -57,7 +57,7 @@ describe('hooks.json command escaping', () => {
   });
 
   it('keeps Windows-style plugin roots with spaces intact when bash expands the command', () => {
-    const pluginRoot = '/c/Users/First Last/.qoder/plugins/cache/omq/oh-my-qoder/4.7.10';
+    const pluginRoot = '/c/Users/First Last/.claude/plugins/cache/omc/oh-my-claudecode/4.7.10';
 
     for (const { command } of getHookCommands()) {
       const argv = expandHookCommandArgv(command, pluginRoot);
@@ -68,13 +68,13 @@ describe('hooks.json command escaping', () => {
       expect(argv[1]).toContain('First Last');
       expect(argv[2]).toContain('First Last');
       expect(argv).not.toContain('/c/Users/First');
-      expect(argv).not.toContain('Last/.qoder/plugins/cache/omq/oh-my-qoder/4.7.10/scripts/run.cjs');
+      expect(argv).not.toContain('Last/.claude/plugins/cache/omc/oh-my-claudecode/4.7.10/scripts/run.cjs');
     }
   });
 
   it('find-node bootstrap can execute when node is absent from PATH', () => {
     const homeDir = mkdtempSync(join(tmpdir(), 'omq-hook-node-path-'));
-    const configDir = join(homeDir, '.qwen');
+    const configDir = join(homeDir, '.claude');
 
     try {
       execFileSync('/bin/mkdir', ['-p', configDir]);
@@ -92,7 +92,7 @@ describe('hooks.json command escaping', () => {
         encoding: 'utf-8',
         env: {
           HOME: homeDir,
-          QODER_CONFIG_DIR: configDir,
+          CLAUDE_CONFIG_DIR: configDir,
           PATH: '/usr/bin:/bin',
         },
       });

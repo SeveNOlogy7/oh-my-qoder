@@ -1,7 +1,7 @@
 /**
  * Setup-phase drift enforcement (issue #3871).
  *
- * The shipped `skills/omc-setup/phases/*` instructions previously told the
+ * The shipped `skills/omq-setup/phases/*` instructions previously told the
  * setup agent to invoke skills removed in 5.0.0 (`mcp-setup`) and to persist
  * `defaultExecutionMode: "ultrawork"`. That happened because the workflow
  * registry moved under #3698 consolidation while the setup phase files were
@@ -28,9 +28,9 @@ import { tmpdir } from "os";
 import { describe, it, expect } from "vitest";
 
 const REPO_ROOT = join(import.meta.dirname, "../..");
-const PHASES_DIR = join(REPO_ROOT, "skills", "omc-setup", "phases");
+const PHASES_DIR = join(REPO_ROOT, "skills", "omq-setup", "phases");
 const PHASE_FILES = [
-  "01-install-claude-md.md",
+  "01-install-agents-md.md",
   "02-configure.md",
   "03-integrations.md",
   "04-welcome.md",

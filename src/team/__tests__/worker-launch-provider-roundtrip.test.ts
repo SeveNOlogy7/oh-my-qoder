@@ -23,6 +23,10 @@ const PROVIDERS: Record<CliAgentType, true> = {
 };
 const ALL_PROVIDERS = Object.keys(PROVIDERS) as CliAgentType[];
 
+// The adopted launch-ack contract binds every attempt to the owning team
+// instance; the roundtrip pins one fixed valid instance id for all providers.
+const FIXED_INSTANCE_ID = '77777777-7777-4777-8777-777777777777';
+
 describe('worker launch attempt provider coverage', () => {
   let cwd = '';
 
@@ -38,6 +42,7 @@ describe('worker launch attempt provider coverage', () => {
       cwd,
       teamName: 'rt-team',
       workerName: 'worker-1',
+      instanceId: FIXED_INSTANCE_ID,
       paneId: '%7',
       provider,
       runtimeCliPath: '/runtime-cli.cjs',
@@ -47,6 +52,7 @@ describe('worker launch attempt provider coverage', () => {
       cwd,
       teamName: 'rt-team',
       workerName: 'worker-1',
+      instanceId: FIXED_INSTANCE_ID,
       paneId: '%7',
       provider,
       attemptId: prepared.attempt_id,

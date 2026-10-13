@@ -158,7 +158,8 @@ vi.mock('child_process', async (importOriginal) => {
   };
 });
 
-import { spawnWorkerForTask, type TeamRuntime } from '../runtime.js';
+import type { TeamRuntime } from '../runtime.js';
+import { spawnWorkerForTask } from '../runtime-v1-legacy.js';
 
 function makeRuntime(cwd: string, agentType: 'gemini' | 'codex' | 'claude' | 'grok' | 'antigravity'): TeamRuntime {
   return {

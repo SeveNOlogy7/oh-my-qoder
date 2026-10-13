@@ -1,8 +1,8 @@
 # Ancestor Parity
 
 > Ancestor: [`Yeachan-Heo/oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
-> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.4.0** | Current ancestor latest: **v5.6.2**
-> Status: v5.0.0 through v5.4.0 adopted; M2 subsystem migration in progress (one minor per round)
+> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.5.0** | Current ancestor latest: **v5.6.2**
+> Status: v5.0.0 through v5.5.0 adopted; M2 subsystem migration in progress (one minor per round)
 
 ## Identity
 
@@ -23,7 +23,7 @@
 | v5.2.0 | 2026-09-03 | **adopted** | this round: pin `acf7948`, adoption `9ed5686` (6829/6829 blob-verified), see below |
 | v5.3.0 | 2026-09-06 | **adopted** | this round: pin `5174b8a`, adoption `35f99d2` (6840/6840 blob-verified), see below |
 | v5.4.0 | 2026-09-11 | **adopted** | this round: pin `83c3fab`, adoption `b9aaa2d` (6909/6909 blob-verified), see below |
-| v5.5.0 | 2026-09-22 | not measured | — |
+| v5.5.0 | 2026-09-22 | **adopted** | this round: pin `11b237f`, adoption `5c933c8` (7005/7005 blob-verified), see below |
 | v5.6.0 | 2026-10-01 | not measured | — |
 | v5.6.2 | 2026-10-06 | not measured | latest ancestor tag at this round's time of writing |
 
@@ -131,6 +131,37 @@ own history were recreated by the adoption (`skills/omc-doctor/SKILL.md`,
 and removed again in the naming lane -- the fork keeps only its `omq-*` twins, onto which the
 ancestor's runtime-prerequisites increment was ported (identity-substituted, suite-pinned).
 
+## Blob-tree diff v5.4.0 to v5.5.0 (this round)
+
+Method: full git tree blob SHA comparison of the cached ancestor trees (`truncated: false`,
+6909 to 7005 blobs). Authoritative numbers come from the tree diff, not the GitHub compare
+API.
+
+| Metric | All files |
+|--------|----------:|
+| Added | 99 |
+| Modified | 590 |
+| Removed | 3 |
+| Unchanged | 6316 |
+
+Adoption surface after excluding `.github/**`, `dist/**`, `bridge/**` (the coordinator keeper
+stays) and the 154 OMQ-only paths: 275 paths adopted (65 additions + 210 modifications; the
+other 34 additions are `dist/**` build output, excluded; the keeper
+`bridge/claude-md-coordinator.cjs` is re-landed and the build reproduces it byte-identically).
+The hop's 3 removals are test files the fork had already deleted in its own history
+(`src/__tests__/runtime-task-orphan.test.ts`, `src/team/__tests__/runtime-assign.test.ts`,
+`src/team/__tests__/runtime-prompt-mode.test.ts`) -- adopted as removed-kept, the fork's
+deletions stand. v5.5.0's new surfaces: the JEV judgment system (`src/hooks/jev/**` runtime
+with `jev-shadow` plumbings across seven hook families, the `jev-model-routing` /
+`jev-slop-warning` features and `scripts/jev-eval.mjs`, all with suites), the native
+contained-fs runtime (`native/contained-fs.c` + `src/graph/runtime/native-contained-fs.ts`
+with its build/verify scripts and suite), four new skills (`architecture-survey`, `diagram`,
+`intent`, `minimal-prose-discipline`), the `src/team` storage-boundary suite, the post-tool
+directory-context injector, the `read-budget-preflight` twin (`scripts/lib`), the
+shipyard-audit pair, the launch secure-transport suite, and the docs standards trio
+(`architecture`/`data`/`process`) with two ADRs -- all 65 non-`dist` additions land inside the
+adopted surface above.
+
 ## v5.0.0 breaking changes
 
 | Change | Detail | OMQ impact |
@@ -178,13 +209,23 @@ ancestor's runtime-prerequisites increment was ported (identity-substituted, sui
 | standalone state-lock provisioning and provisioned-template guards | ancestor-new code crashed on win32 (`'/'`-joined PACKAGE_JSON vs strict `realpathSync`; separator-bound template guards spawned the fail-closed stub) | real defects fixed in the measurement lane (path normalization + separator-agnostic matching; 105 baseline rows flipped green, zero semantic regressions) |
 | plugin manifests + `CHANGELOG.md` | version 5.3.0 -> v5.4.0 and release notes | adopted verbatim (the fork's pre-adoption blobs equalled the v5.3.0 versions; byte-verified against the cached v5.4.0 tree) |
 
+## v5.5.0 changes that touched OMQ surfaces
+
+| Change | Detail | OMQ disposition |
+|--------|--------|-----------------|
+| 65 new non-`dist` files: the JEV judgment system (`src/hooks/jev/**`, `jev-shadow` plumbings across seven hook families, `jev-model-routing`/`jev-slop-warning`, `scripts/jev-eval.mjs`), the native contained-fs runtime (`native/contained-fs.c`, `src/graph/runtime/native-contained-fs.ts`, build/verify scripts), four new skills (`architecture-survey`, `diagram`, `intent`, `minimal-prose-discipline`), the `src/team` storage-boundary suite, the post-tool directory-context injector, the `read-budget-preflight` twin, the shipyard-audit pair, the launch secure-transport suite | the hop's only non-`dist` additions | adopted; the naming/identity repair restored the fork spellings inside them (the jev-shadow and cancel-keyword faces realigned on the omq spellings in the compile and measurement lanes) |
+| shared scripts and hook templates rewritten upstream (`scripts/lib` + `templates/hooks/lib` twins, `persistent-mode`, the `keyword-detector` family) | the usual hop rewrite of the twin pairs | adopted and dual-merged; the scripts lane wired the new build entries (`build:contained-fs` et al.) and the W7 build rebuilt every generated artifact byte-identically |
+| `runtime-task-orphan` / `runtime-assign` / `runtime-prompt-mode` test files removed upstream | upstream deleted three tests the fork had already deleted in its own history | adopted as removed-kept -- the fork's deletions stand, nothing restored |
+| docs token face rewrites (`docs/REFERENCE.md`, `docs/shared/features.md`, `README.md`, among the hop's doc rewrites) | upstream text carries the `omc` cancel-keyword spellings | fork spellings re-asserted in the docs lane: `REFERENCE.md` cancel rows restored to the `omq` spelling (authority v4.15.1 form and the shipped detector tokens); `features.md`/`README.md` keep the authority's own `omc` spelling at those paths |
+| plugin manifests + `CHANGELOG.md` | version 5.4.0 -> v5.5.0 and release notes | adopted verbatim (the fork's pre-adoption blobs equalled the v5.4.0 versions; byte-verified against the cached v5.5.0 tree) |
+
 ## Migration milestones
 
 | Milestone | Scope | State | Evidence |
 |-----------|-------|-------|----------|
-| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.4.0) | pin `83c3fab` |
-| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 905 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
-| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132`; v5.4.0 round: `83c3fab` (pin), `b9aaa2d` (adoption), `32be4ea` (identity), repair lanes through `37607c7` |
+| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.5.0) | pin `11b237f` |
+| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 993 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
+| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132`; v5.4.0 round: `83c3fab` (pin), `b9aaa2d` (adoption), `32be4ea` (identity), repair lanes through `37607c7`; v5.5.0 round: `11b237f` (pin), `5c933c8` (adoption), `e595087` (identity), repair lanes through `ddd7e88` |
 | M3 Upstream contributions | 2-4 named PRs to shrink rename surface | not started | not measured |
 | M4 Pipeline gate | Triggered only if backport demand > 10/quarter | not started | not measured |
 

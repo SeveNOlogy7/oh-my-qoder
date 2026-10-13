@@ -16,7 +16,7 @@ import { spawn, spawnSync } from "child_process";
 import {
   existsSync,
   mkdirSync,
-  mkdtempSync,
+  mkdtempSync, realpathSync,
   readFileSync,
   rmSync,
   statSync,
@@ -127,11 +127,11 @@ function spawnGraphRun(runsRoot: string, markerDir: string): RunningCli {
   };
   // The spawned CLI must parse its argv; the vitest opt-out must not leak.
   // CLAUDECODE trips the nested-session guard in cli/launch.ts (exit 1), and
-  // parent-session OMQ_* state must not leak into the child either.
+  // parent-session OMC_* state must not leak into the child either.
   delete env.OMQ_CLI_SKIP_PARSE;
   delete env.CLAUDECODE;
   for (const key of Object.keys(env)) {
-    if (key.startsWith("OMQ_")) delete env[key];
+    if (key.startsWith("OMC_")) delete env[key];
   }
   const child = spawn(
     process.execPath,
@@ -220,7 +220,7 @@ describe("e2e crash recovery via spawned CLI (AC-2/AC-3)", () => {
   });
 
   it("resumes a killed run without re-executing journaled nodes and converges to the direct-run projection", async () => {
-    baseDir = mkdtempSync(join(tmpdir(), "omq-graph-e2e-crash-"));
+    baseDir = mkdtempSync(join(realpathSync(tmpdir()), "omc-graph-e2e-crash-"));
     const runsRoot = join(baseDir, "runs-resume");
     const markers = join(baseDir, "markers-resume");
     const directRunsRoot = join(baseDir, "runs-direct");

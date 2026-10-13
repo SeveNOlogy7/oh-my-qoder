@@ -263,16 +263,16 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
       for (const directory of [project, nested, linked]) {
         const expected = getOmcRoot(directory);
         const roots = await Promise.all([
-          esm.resolveOmcStateRoot(directory),
-          cjs.resolveOmcStateRoot(directory),
-          template.resolveOmcStateRoot(directory),
+          esm.resolveOmqStateRoot(directory),
+          cjs.resolveOmqStateRoot(directory),
+          template.resolveOmqStateRoot(directory),
         ]);
         expect(new Set([expected, ...roots]).size).toBe(1);
       }
       const workspaceRoots = await Promise.all([
-        esm.resolveOmcStateRoot(workspaceRepo),
-        cjs.resolveOmcStateRoot(workspaceRepo),
-        template.resolveOmcStateRoot(workspaceRepo),
+        esm.resolveOmqStateRoot(workspaceRepo),
+        cjs.resolveOmqStateRoot(workspaceRepo),
+        template.resolveOmqStateRoot(workspaceRepo),
       ]);
       expect(new Set(workspaceRoots).size).toBe(1);
       expect(workspaceRoots[0]).toContain('fallback-parity-');
@@ -281,9 +281,9 @@ describe('workflow profile activation hook fixtures (#3487)', () => {
       clearWorktreeCache();
       const defaultRoots = await Promise.all([
         getOmcRoot(linked),
-        esm.resolveOmcStateRoot(linked),
-        cjs.resolveOmcStateRoot(linked),
-        template.resolveOmcStateRoot(linked),
+        esm.resolveOmqStateRoot(linked),
+        cjs.resolveOmqStateRoot(linked),
+        template.resolveOmqStateRoot(linked),
       ]);
       expect(new Set(defaultRoots).size).toBe(1);
       expect(defaultRoots[0]).toBe(join(linked, '.omq'));

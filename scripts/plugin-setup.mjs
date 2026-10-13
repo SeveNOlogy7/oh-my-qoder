@@ -17,6 +17,7 @@ import { hookPrefixForPlatform, normalizeHooksDataForPlatform } from './lib/hook
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const CLAUDE_DIR = getQoderConfigDir();
 const HUD_DIR = join(CLAUDE_DIR, 'hud');
@@ -105,13 +106,18 @@ try {
 // Keep stale cache self-healing for older manifests that used sh/find-node, an
 // accidentally baked absolute node path, or the Windows-safe direct node form.
 //
-// Patterns handled:
-//  1. Current find-node.sh format – sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh ...
-//  2. Legacy find-node.sh format – sh "${QODER_PLUGIN_ROOT}/scripts/find-node.sh" ...
+// Commands are emitted with the braced "$QODER_PLUGIN_ROOT" placeholder,
+// which Claude Code substitutes itself. The bare "$CLAUDE_PLUGIN_ROOT" spelling
+// only expands where a POSIX shell runs the command, so it cannot work behind
+// the direct-node Windows prefix (#4042).
+//
+// Patterns handled (both the bare and braced spellings are accepted on input):
+//  1. find-node.sh format – sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh ...
+//  2. Legacy find-node.sh format – sh "$QODER_PLUGIN_ROOT/scripts/find-node.sh" ...
 //  3. Direct run.cjs format from the Windows-safe shipped manifest
 //  4. Absolute run.cjs format from older setup patches/publish mistakes
 //
-// Fixes issues #909, #899, #892, #869, #3121.
+// Fixes issues #909, #899, #892, #869, #3121, #4042.
 try {
   const hooksJsonPath = isPublishedPluginCache ? join(__dirname, '..', 'hooks', 'hooks.json') : null;
   if (hooksJsonPath && existsSync(hooksJsonPath)) {
@@ -138,13 +144,30 @@ try {
 //    hid all four. --ignore-scripts avoids re-triggering this very setup script.
 //    Fixes #1113.
 const packageDir = join(__dirname, '..');
-const RUNTIME_EXTERNALS = ['ajv', 'ajv-formats', '@ast-grep/napi', 'better-sqlite3'];
-const missingExternals = () => RUNTIME_EXTERNALS.filter(
-  (name) => !existsSync(join(packageDir, 'node_modules', ...name.split('/'))),
+const commanderCheck = join(packageDir, 'node_modules', 'commander');
+const betterSqliteBindingCheck = join(
+  packageDir,
+  'node_modules',
+  'better-sqlite3',
+  'build',
+  'Release',
+  'better_sqlite3.node',
 );
 
-if (missingExternals().length > 0) {
-  console.log(`[OMQ] Installing runtime dependencies (missing: ${missingExternals().join(', ')})...`);
+function probeBetterSqliteBinding() {
+  try {
+    const loaded = require('better-sqlite3');
+    const Database = typeof loaded === 'function' ? loaded : loaded?.default;
+    if (typeof Database !== 'function') return false;
+    const db = new Database(':memory:');
+    db.close();
+    return true;
+  } catch {
+    return false;
+  }
+}
+if (!existsSync(commanderCheck)) {
+  console.log('[OMC] Installing runtime dependencies...');
   try {
     // A cold install fetches platform binaries for four packages; 60s truncated it.
     execSync('npm install --omit=dev --ignore-scripts', {
@@ -166,4 +189,37 @@ if (missingExternals().length > 0) {
   console.log('[OMQ] Runtime dependencies already present');
 }
 
-console.log('[OMC] Setup complete! Restart Claude Code to activate HUD.');
+// better-sqlite3 has a native install script.  The dependency bootstrap above
+// intentionally ignores package lifecycle scripts so it cannot recurse into
+// this setup entry point; rebuild this one native package explicitly instead.
+if (!existsSync(betterSqliteBindingCheck) && isPublishedPluginCache) {
+  console.log('[OMC] Building better-sqlite3 native binding...');
+  try {
+    execSync('npm rebuild better-sqlite3', {
+      cwd: packageDir,
+      stdio: 'pipe',
+      timeout: 60000,
+    });
+    if (existsSync(betterSqliteBindingCheck)) {
+      console.log('[OMC] better-sqlite3 native binding built successfully');
+    } else {
+      console.log('[OMC] Warning: npm rebuild completed without producing better_sqlite3.node; state mutation will use the file-lock fallback.');
+    }
+  } catch (e) {
+    console.log('[OMC] Warning: Could not build better-sqlite3 native binding:', e.message);
+    console.log('[OMC] State mutation will use the file-lock fallback until better-sqlite3 is rebuilt successfully.');
+  }
+} else if (!existsSync(betterSqliteBindingCheck)) {
+  console.log('[OMC] better-sqlite3 native binding is absent in the repository checkout; runtime state mutation will use the file-lock fallback.');
+}
+
+const betterSqliteBindingHealthy = probeBetterSqliteBinding();
+if (existsSync(betterSqliteBindingCheck) && !betterSqliteBindingHealthy) {
+  console.log('[OMC] Warning: better_sqlite3.node exists but could not be loaded; runtime state mutation will use the file-lock fallback until the native binding is rebuilt for this Node runtime.');
+}
+
+if (betterSqliteBindingHealthy) {
+  console.log('[OMC] Setup complete! Restart Claude Code to activate HUD.');
+} else {
+  console.log('[OMC] Setup complete with file-lock fallback (better-sqlite3 native binding unavailable). Restart Claude Code to activate HUD.');
+}

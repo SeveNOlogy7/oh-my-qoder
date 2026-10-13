@@ -12,7 +12,7 @@ export interface SessionEndWorkerPayload { directory: string; sessionId: string;
 
 /** Durable OpenClaw routing is supplied from the manifest to the action runner, never from worker ambient state. */
 export function workerEnvironment(): NodeJS.ProcessEnv {
-  const keys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'QODER_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'OMQ_DISCORD_MENTION', 'OMQ_DISCORD_NOTIFIER_BOT_TOKEN', 'OMQ_DISCORD_NOTIFIER_CHANNEL', 'OMQ_DISCORD_WEBHOOK_URL', 'OMQ_TELEGRAM_BOT_TOKEN', 'OMQ_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMQ_TELEGRAM_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_UID', 'OMQ_SLACK_WEBHOOK_URL', 'OMQ_SLACK_MENTION', 'OMQ_SLACK_BOT_TOKEN', 'OMQ_SLACK_APP_TOKEN', 'OMQ_SLACK_BOT_CHANNEL', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE', ...(process.env.NODE_ENV === 'test' ? ['OMQ_SESSION_END_TEST_PRODUCER_GRACE_MS'] : [])];
+  const keys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'CLAUDE_CONFIG_DIR', 'OMC_STATE_DIR', 'OMC_HOOK_CONFIG', 'OMC_CONFIG_PATH', 'OMC_NOTIFY', 'OMC_NOTIFY_PROFILE', 'OMC_TELEGRAM', 'OMC_DISCORD', 'OMC_SLACK', 'OMC_WEBHOOK', 'OMC_DISCORD_MENTION', 'OMC_DISCORD_NOTIFIER_BOT_TOKEN', 'OMC_TELEGRAM_BOT_TOKEN', 'OMC_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMC_TELEGRAM_CHAT_ID', 'OMC_TELEGRAM_NOTIFIER_UID', 'OMC_SLACK_WEBHOOK_URL', 'OMC_SLACK_MENTION', 'OMC_SLACK_BOT_TOKEN', 'OMC_SLACK_APP_TOKEN', 'OMC_SLACK_BOT_CHANNEL', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE', ...(process.env.NODE_ENV === 'test' ? ['OMC_SESSION_END_TEST_PRODUCER_GRACE_MS'] : [])];
   return Object.fromEntries(keys.flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]]]));
 }
 export function spawnSessionEndWorker(payload: SessionEndWorkerPayload): boolean {
@@ -86,20 +86,24 @@ export async function processSessionEndWorker(payload: SessionEndWorkerPayload):
   }
   let producerReady = Boolean(admitted && ['sealed', 'no-op'].includes(admitted.producers.core.state) && ['sealed', 'no-op'].includes(admitted.producers.wiki.state));
   let generation = claimed.owner.leaseGeneration;
+  // Every loop exit that is not "all actions settled" leaves the job in
+  // recoverable-failure; naming the exit is what makes that state diagnosable
+  // from the manifest alone (issue #4076).
+  let exitReason = 'actions-settled';
   try {
     for (const name of Object.keys(claimed.actions) as SessionEndActionName[]) {
-      if (Date.now() >= deadlineAt) break;
+      if (Date.now() >= deadlineAt) { exitReason = 'run-deadline-reached'; break; }
       const before = readSessionEndJob(payload.directory, payload.sessionId);
-      if (!before || before.owner?.nonce !== nonce) break;
+      if (!before || before.owner?.nonce !== nonce) { exitReason = before ? 'ownership-lost' : 'manifest-unreadable'; break; }
       if (!producerReady && (name !== 'foreground-cleanup' || !graceExpired || before.producers.core.state !== 'prepared')) continue;
       if (name === 'wiki-capture' && before.producers.wiki.state === 'absent') continue;
       const owned = claimSessionEndAction(payload.directory, payload.sessionId, nonce, name, deadlineAt);
       const action = owned?.actions[name];
       if (!owned || !action || action.status !== 'claimed' || !action.runner) continue;
       const renewed = renewSessionEndLease(payload.directory, payload.sessionId, nonce, generation, deadlineAt);
-      if (!renewed?.owner) break;
+      if (!renewed?.owner) { exitReason = 'lease-renew-failed-before-action'; break; }
       generation = renewed.owner.leaseGeneration;
-      if (!markSessionEndActionRunner(payload.directory, payload.sessionId, nonce, name, action.runner.runnerNonce, 'started')) break;
+      if (!markSessionEndActionRunner(payload.directory, payload.sessionId, nonce, name, action.runner.runnerNonce, 'started')) { exitReason = `runner-start-rejected-${name}`; break; }
       const stopWatchdog = armSessionEndActionWatchdog({ directory: payload.directory, jobId: owned.jobId, action: name, attempt: action.attempts, runnerNonce: action.runner.runnerNonce, deadlineAt: Math.min(deadlineAt, Date.now() + action.budgetMs) });
       const actionDeadline = Math.min(deadlineAt, Date.now() + action.budgetMs);
       let leaseLost = false;
@@ -109,7 +113,7 @@ export async function processSessionEndWorker(payload: SessionEndWorkerPayload):
       const result = await runSessionEndAction({ directory: payload.directory, sessionId: payload.sessionId, job: owned, actionName: name, action, ownerNonce: nonce, runnerNonce: action.runner.runnerNonce, deadlineAt: actionDeadline }, () => executeSessionEndAction(name, payload, actionDeadline, authority));
       clearInterval(heartbeatTimer);
       stopWatchdog();
-      if (leaseLost) break;
+      if (leaseLost) { exitReason = `lease-lost-during-${name}`; break; }
       finishSessionEndAction(payload.directory, payload.sessionId, nonce, name, action.runner.runnerNonce, result.completed, result.code);
       if (name === 'foreground-cleanup' && result.completed) {
         recoverPreparedCoreProducer(payload.directory, payload.sessionId);
@@ -117,11 +121,11 @@ export async function processSessionEndWorker(payload: SessionEndWorkerPayload):
         producerReady = Boolean(recovered && ['sealed', 'no-op'].includes(recovered.producers.core.state) && ['sealed', 'no-op'].includes(recovered.producers.wiki.state));
       }
       const heartbeat = renewSessionEndLease(payload.directory, payload.sessionId, nonce, generation, deadlineAt);
-      if (!heartbeat?.owner) break;
+      if (!heartbeat?.owner) { exitReason = `lease-renew-failed-after-${name}`; break; }
       generation = heartbeat.owner.leaseGeneration;
     }
   } finally {
-    const released = releaseSessionEndJob(payload.directory, payload.sessionId, nonce, generation);
+    const released = releaseSessionEndJob(payload.directory, payload.sessionId, nonce, generation, exitReason);
     const terminalized = failClosedExhaustedForegroundCleanup(payload.directory, payload.sessionId);
     reschedulePendingWorker(payload, terminalized ?? released ?? readSessionEndJob(payload.directory, payload.sessionId));
   }

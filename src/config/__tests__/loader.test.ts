@@ -7,6 +7,7 @@ import {
   generateConfigSchema,
   loadConfig,
   loadContextFromFiles,
+  loadEnvConfig,
 } from "../loader.js";
 import { saveAndClear, restore } from "./test-helpers.js";
 
@@ -34,6 +35,7 @@ const ALL_KEYS = [
   "OMQ_MODEL_ALIAS_FABLE",
   "OMQ_DELEGATION_ROUTING_ENABLED",
   "OMQ_DELEGATION_ROUTING_DEFAULT_PROVIDER",
+  "OMQ_MAX_BACKGROUND_TASKS",
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -177,6 +179,36 @@ describe("loadConfig() — auto-forceInherit for non-standard providers", () => 
     expect(config.agents?.executor?.model).toBe("claude-sonnet-4-6-custom");
     expect(config.agents?.explore?.model).toBe("claude-haiku-4-5-custom");
   });
+});
+
+// ---------------------------------------------------------------------------
+// Background task limit environment override
+// ---------------------------------------------------------------------------
+describe("loadEnvConfig() — background task limit", () => {
+  let saved: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    saved = saveAndClear(ALL_KEYS);
+  });
+  afterEach(() => {
+    restore(saved);
+  });
+
+  it.each(["1", "5", "50"])(
+    "accepts an in-range positive decimal integer (%s)",
+    (value) => {
+      process.env.OMQ_MAX_BACKGROUND_TASKS = value;
+      expect(loadEnvConfig().permissions?.maxBackgroundTasks).toBe(Number(value));
+    },
+  );
+
+  it.each(["0", "-1", "51", "1000", "3junk", "1.5", "1e2", "01", " 5 ", "abc"])(
+    "ignores malformed or out-of-range values (%s)",
+    (value) => {
+      process.env.OMQ_MAX_BACKGROUND_TASKS = value;
+      expect(loadEnvConfig().permissions?.maxBackgroundTasks).toBeUndefined();
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -635,7 +667,7 @@ describe("team.roleRouting (Option E)", () => {
     }
   });
 
-  it("rejects orchestrator.provider override (orchestrator is pinned to qwen)", () => {
+  it("rejects orchestrator.provider override (orchestrator is pinned to claude)", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "omc-team-orch-pin-"));
     try {
       const claudeDir = join(tempDir, ".claude");

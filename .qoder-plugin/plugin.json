@@ -1,6 +1,6 @@
 {
   "name": "oh-my-qoder",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "description": "Multi-agent orchestration plugin for Qoder CLI",
   "author": {
     "name": "oh-my-qoder contributors"
@@ -18,6 +18,7 @@
   "mcpServers": "./.mcp.json",
   "skills": [
     "./skills/ai-slop-cleaner/",
+    "./skills/architecture-survey/",
     "./skills/agent-doc-discipline/",
     "./skills/ask/",
     "./skills/ask-navigator/",
@@ -30,18 +31,21 @@
     "./skills/deep-dive/",
     "./skills/deep-interview/",
     "./skills/deepinit/",
+    "./skills/diagram/",
     "./skills/drydock/",
     "./skills/execute/",
     "./skills/external-context/",
     "./skills/graph/",
     "./skills/harbor/",
     "./skills/hud/",
+    "./skills/intent/",
     "./skills/launch/",
     "./skills/learner/",
     "./skills/local-build-reminder/",
     "./skills/loft/",
     "./skills/mcp-setup/",
     "./skills/minimal-code-discipline/",
+    "./skills/minimal-prose-discipline/",
     "./skills/omq-doctor/",
     "./skills/omq-reference/",
     "./skills/omq-setup/",

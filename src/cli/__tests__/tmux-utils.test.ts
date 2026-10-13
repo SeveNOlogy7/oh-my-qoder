@@ -8,8 +8,8 @@
  * - createHudWatchPane login shell wrapping
  */
 
-import { describe, expect, it, vi, afterEach } from 'vitest';
-import { execFileSync, spawnSync } from 'child_process';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
+import { exec, execFile, execFileSync, spawnSync } from 'child_process';
 
 // Pin the CLI flavor so assertions do not depend on which Qoder CLI is on PATH.
 // Returning the CN name is deliberate: a stub that echoed the old hardcoded
@@ -24,6 +24,8 @@ vi.mock('child_process', async (importOriginal) => {
   return {
     ...actual,
     execFileSync: vi.fn(),
+    exec: vi.fn(),
+    execFile: vi.fn(),
     spawnSync: vi.fn(),
   };
 });
@@ -33,20 +35,51 @@ import {
   buildTmuxShellCommandWithEnv,
   createHudWatchPane,
   isQoderCliAvailable,
+  isNativeWindowsShell,
   killTmuxPane,
   listHudWatchPaneIdsInCurrentWindow,
   resolveLaunchPolicy,
   tmuxExec,
   tmuxEnv,
   tmuxSpawn,
+  tmuxCmdAsync,
   wrapWithLoginShell,
   quoteShellArg,
   sanitizeTmuxToken,
 } from '../tmux-utils.js';
 
 const mockedExecFileSync = vi.mocked(execFileSync);
+const mockedExec = vi.mocked(exec);
+const mockedExecFile = vi.mocked(execFile);
+
+function mockExecFileAsync(stdout = '', stderr = ''): void {
+  type ExecFileCallback = (error: Error | null, stdout: string, stderr: string) => void;
+  mockedExecFile.mockImplementation(((_command: string, _args: readonly string[], _options: unknown, callback?: ExecFileCallback) => {
+    const cb = typeof _options === 'function' ? _options as ExecFileCallback : callback;
+    cb?.(null, stdout, stderr);
+    return {} as never;
+  }) as unknown as typeof execFile);
+}
+
+function mockExecAsync(stdout = '', stderr = ''): void {
+  type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+  mockedExec.mockImplementation(((_command: string, _options: unknown, callback?: ExecCallback) => {
+    const cb = typeof _options === 'function' ? _options as ExecCallback : callback;
+    cb?.(null, stdout, stderr);
+    return {} as never;
+  }) as unknown as typeof exec);
+}
 const mockedSpawnSync = vi.mocked(spawnSync);
 const baselinePlatform = process.platform;
+
+beforeEach(() => {
+  // reset queued mockReturnValueOnce values: a leftover queue re-orders the
+  // next test's where/comspec probes and mismatches its own expectations.
+  mockedExecFileSync.mockReset();
+  mockedExec.mockReset();
+  mockedExecFile.mockReset();
+  mockedSpawnSync.mockReset();
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -334,6 +367,73 @@ describe('tmux command execution parity on Windows', () => {
 
     Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
   });
+  it('uses argv execution for tmux format args on native Windows instead of POSIX shell quoting', async () => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    vi.stubEnv('MSYSTEM', '');
+    vi.stubEnv('MINGW_PREFIX', '');
+    vi.stubEnv('COMSPEC', 'C:\\Windows\\System32\\cmd.exe');
+    mockedSpawnSync.mockClear();
+    mockedExecFile.mockClear();
+    mockedExec.mockClear();
+    mockedSpawnSync.mockReturnValueOnce({
+      status: 0,
+      stdout: 'C:\\Program Files\\psmux\\tmux.cmd\r\n',
+      stderr: '',
+      pid: 0,
+      output: [],
+      signal: null,
+    } as ReturnType<typeof spawnSync>);
+    mockExecFileAsync('42\n');
+
+    await tmuxCmdAsync(['display-message', '-p', '#{window_width}']);
+
+    expect(mockedExec).not.toHaveBeenCalled();
+    expect(mockedExecFile).toHaveBeenLastCalledWith(
+      'C:\\Windows\\System32\\cmd.exe',
+      ['/d', '/s', '/c', '"C:\\Program Files\\psmux\\tmux.cmd" display-message -p #{window_width}'],
+      expect.objectContaining({ encoding: 'utf-8' }),
+      expect.any(Function),
+    );
+  });
+
+  it('keeps POSIX shell quoting for tmux format args outside native Windows', async () => {
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+    mockedExec.mockClear();
+    mockedExecFile.mockClear();
+    mockExecAsync('42\n');
+
+    await tmuxCmdAsync(['display-message', '-p', '#{window_width}']);
+
+    expect(mockedExecFile).not.toHaveBeenCalled();
+    expect(mockedExec).toHaveBeenLastCalledWith(
+      "tmux 'display-message' '-p' '#{window_width}'",
+      expect.objectContaining({ encoding: 'utf-8' }),
+      expect.any(Function),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isNativeWindowsShell
+// ---------------------------------------------------------------------------
+describe('isNativeWindowsShell', () => {
+  it('keeps plain MSYS tmux on the POSIX path', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    vi.stubEnv('MSYSTEM', 'MSYS');
+    vi.stubEnv('MINGW_PREFIX', '');
+    vi.stubEnv('SYSTEM', '');
+
+    expect(isNativeWindowsShell()).toBe(false);
+  });
+
+  it('does not mistake SYSTEM for an MSYS shell marker', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    vi.stubEnv('MSYSTEM', '');
+    vi.stubEnv('MINGW_PREFIX', '');
+    vi.stubEnv('SYSTEM', 'MSYS');
+
+    expect(isNativeWindowsShell()).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -373,6 +473,31 @@ describe('wrapWithLoginShell', () => {
 
     expect(buildTmuxShellCommandWithEnv('claude', ['--print'], { CODEX_HOME: 'C:\\Users\\me\\codex home' }))
       .toBe('set "CODEX_HOME=C:\\Users\\me\\codex home" && claude --print');
+
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
+
+  it('escapes literal percent signs in native env assignments', () => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    vi.stubEnv('MSYSTEM', '');
+    vi.stubEnv('MINGW_PREFIX', '');
+
+    expect(buildTmuxShellCommandWithEnv('claude', [], { TOKEN: 'literal%PATH%' }))
+      .toContain('set "TOKEN=literal%%PATH%%"');
+
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
+
+  it.each(['line\nbreak', 'line\rbreak', `nul\0value`])('rejects unsafe native env value %j', (value) => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    vi.stubEnv('MSYSTEM', '');
+    vi.stubEnv('MINGW_PREFIX', '');
+
+    expect(() => buildTmuxShellCommandWithEnv('claude', [], { TOKEN: value })).toThrow(
+      'Native Windows tmux command values cannot contain NUL, CR, or LF characters',
+    );
 
     Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
   });

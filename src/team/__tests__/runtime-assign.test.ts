@@ -34,7 +34,7 @@ describe('assignTask trigger delivery', () => {
   });
 
   it('rolls task assignment back when tmux trigger cannot be delivered', async () => {
-    const { assignTask } = await import('../runtime.js');
+    const { assignTask } = await import('../runtime-v1-legacy.js');
     const cwd = mkdtempSync(join(tmpdir(), 'team-runtime-assign-'));
     previousHome = process.env.HOME;
     previousUserProfile = process.env.USERPROFILE;
@@ -71,7 +71,7 @@ describe('assignTask trigger delivery', () => {
   });
 
   it('instructs the worker to use the canonical task file that was updated', async () => {
-    const { assignTask } = await import('../runtime.js');
+    const { assignTask } = await import('../runtime-v1-legacy.js');
     const cwd = mkdtempSync(join(tmpdir(), 'team-runtime-assign-success-'));
     previousHome = process.env.HOME;
     previousUserProfile = process.env.USERPROFILE;

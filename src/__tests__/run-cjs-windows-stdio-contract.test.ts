@@ -169,35 +169,21 @@ describe('run.cjs Windows/protocol stdio contract (#3920)', () => {
     expect(runCjs.resolveGenericTimeoutMs(null, 'linux')).toBe(59500);
   });
 
-  it('keeps every shipped per-tool hook visible to the short-budget contract', () => {
-    // This fork raises every per-tool hook budget (Windows hardening), so no
-    // shipped hook relies on the <=3000ms cushion branch; that branch stays
-    // covered by the resolveGenericTimeoutMs cases above. Pin the manifest
-    // per-tool budget floor instead of the ancestor manifest short set.
+  it('keeps every shipped 3s hook visible to the short-budget contract', () => {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), 'hooks', 'hooks.json'), 'utf8')) as {
       hooks: Record<string, Array<{ hooks?: Array<{ command?: string; timeout?: number }> }>>;
     };
-    const timeouts = Object.values(manifest.hooks)
-      .flatMap(groups => groups)
-      .flatMap(group => group.hooks ?? [])
-      .map(hook => hook.timeout)
-      .filter((timeout): timeout is number => typeof timeout === 'number');
-    const perToolFloor = Math.min(...timeouts);
-    expect(perToolFloor).toBe(10);
     const commands = Object.values(manifest.hooks)
       .flatMap(groups => groups)
       .flatMap(group => group.hooks ?? [])
-      .filter(hook => hook.timeout === perToolFloor)
+      .filter(hook => hook.timeout === 3)
       .map(hook => [...(hook.command ?? '').matchAll(/scripts[/\\]([^"\s]+)/g)].at(-1)?.[1])
       .filter((name): name is string => Boolean(name))
       .sort();
     expect(commands).toEqual([
-      'persistent-mode.mjs',
+      'post-tool-directory-context-injector.mjs',
       'post-tool-rules-injector.mjs',
       'post-tool-use-failure.mjs',
-      'post-tool-verifier.mjs',
-      'pre-compact.mjs',
-      'pre-tool-enforcer.mjs',
       'project-memory-posttool.mjs',
       'subagent-tracker.mjs',
       'wiki-pre-compact.mjs',

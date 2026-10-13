@@ -11,8 +11,8 @@ import { existsSync, mkdirSync, readdirSync, statSync, lstatSync, unlinkSync, re
 import { join } from 'path';
 
 import { registerBeadsContext } from '../beads-context/index.js';
-import { getQoderConfigDir } from '../../utils/config-dir.js';
-import { getOmqRoot } from '../../lib/worktree-paths.js';
+import { getClaudeConfigDir } from '../../utils/config-dir.js';
+import { getOmcRoot } from '../../lib/worktree-paths.js';
 
 // ============================================================================
 // Types
@@ -132,18 +132,22 @@ export function setEnvironmentVariables(): string[] {
  *
  * The sh->find-node.sh->node chain introduced in v4.3.4 (issue #892) is only
  * needed on Unix where nvm/fnm may not expose `node` on PATH in non-interactive
- * shells.  On Windows (MSYS2 / Git Bash) the same chain triggers Qoder CLI UI
+ * shells.  On Windows (MSYS2 / Git Bash) the same chain triggers Claude Code UI
  * bug #17088, which mislabels every successful hook as an error.
  *
  * This function reads the plugin's hooks.json and rewrites every command of the
  * current form:
- *   sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/X.mjs [args]
+ *   sh "${CLAUDE_PLUGIN_ROOT}"/scripts/find-node.sh "${CLAUDE_PLUGIN_ROOT}"/scripts/run.cjs "${CLAUDE_PLUGIN_ROOT}"/scripts/X.mjs [args]
  * or stale absolute-shell cache form:
- *   "/bin/sh" "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/X.mjs [args]
+ *   "/bin/sh" "${CLAUDE_PLUGIN_ROOT}"/scripts/find-node.sh ... [args]
  * or legacy form:
- *   sh "${QODER_PLUGIN_ROOT}/scripts/find-node.sh" "${QODER_PLUGIN_ROOT}/scripts/X.mjs" [args]
+ *   sh "${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh" "${CLAUDE_PLUGIN_ROOT}/scripts/X.mjs" [args]
  * to:
- *   node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/X.mjs [args]
+ *   node "${CLAUDE_PLUGIN_ROOT}"/scripts/run.cjs "${CLAUDE_PLUGIN_ROOT}"/scripts/X.mjs [args]
+ *
+ * The braced placeholder is required: Claude Code substitutes it itself, while
+ * the bare `$CLAUDE_PLUGIN_ROOT` spelling only expands when a POSIX shell runs
+ * the command — which the direct-node Windows form deliberately avoids (#4042).
  *
  * The file is only written when at least one command was actually changed, so
  * the function is safe to call on every init (idempotent after first patch).
@@ -158,16 +162,22 @@ export function patchHooksJsonForWindows(pluginRoot: string): void {
       hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>>;
     };
 
+    // Either spelling of the placeholder is accepted on input so that manifests
+    // written by any earlier version are repaired; output is always braced.
+    const ROOT = String.raw`(?:\$\{CLAUDE_PLUGIN_ROOT\}|\$CLAUDE_PLUGIN_ROOT)`;
+
     // Matches current hooks.json:
-    // sh "$QODER_PLUGIN_ROOT"/scripts/find-node.sh "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/X.mjs [optional args]
+    // sh "${CLAUDE_PLUGIN_ROOT}"/scripts/find-node.sh ... /scripts/X.mjs [optional args]
     // Also matches older hotfix cache entries that hardcoded "/bin/sh".
-    const currentPattern =
-      /^(?:"\/bin\/sh"|sh) "\$QODER_PLUGIN_ROOT"\/scripts\/find-node\.sh "\$QODER_PLUGIN_ROOT"\/scripts\/run\.cjs "\$QODER_PLUGIN_ROOT"\/scripts\/([^"\s]+)"?(.*)$/;
+    const currentPattern = new RegExp(
+      String.raw`^(?:"\/bin\/sh"|sh) "${ROOT}"\/scripts\/find-node\.sh "${ROOT}"\/scripts\/run\.cjs "${ROOT}"\/scripts\/([^"\s]+)"?(.*)$`,
+    );
 
     // Matches legacy hooks.json:
-    // sh "${QODER_PLUGIN_ROOT}/scripts/find-node.sh" "${QODER_PLUGIN_ROOT}/scripts/X.mjs" [optional args]
-    const legacyPattern =
-      /^sh "\$\{QODER_PLUGIN_ROOT\}\/scripts\/find-node\.sh" "\$\{QODER_PLUGIN_ROOT\}\/scripts\/([^"\s]+)"?(.*)$/;
+    // sh "${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh" "${CLAUDE_PLUGIN_ROOT}/scripts/X.mjs" [optional args]
+    const legacyPattern = new RegExp(
+      String.raw`^sh "${ROOT}\/scripts\/find-node\.sh" "${ROOT}\/scripts\/([^"\s]+)"?(.*)$`,
+    );
 
     let patched = false;
     for (const groups of Object.values(data.hooks ?? {})) {
@@ -176,7 +186,7 @@ export function patchHooksJsonForWindows(pluginRoot: string): void {
           if (typeof hook.command === 'string') {
             const m = hook.command.match(currentPattern) ?? hook.command.match(legacyPattern);
             if (m) {
-              hook.command = `node "$QODER_PLUGIN_ROOT"/scripts/run.cjs "$QODER_PLUGIN_ROOT"/scripts/${m[1]}${m[2]}`;
+              hook.command = `node "\${CLAUDE_PLUGIN_ROOT}"/scripts/run.cjs "\${CLAUDE_PLUGIN_ROOT}"/scripts/${m[1]}${m[2]}`;
               patched = true;
             }
           }
@@ -193,7 +203,7 @@ export function patchHooksJsonForWindows(pluginRoot: string): void {
 }
 
 /**
- * Ensure ~/.qoder/hooks/lib/stdin.mjs points to the current plugin version.
+ * Ensure ~/.claude/hooks/lib/stdin.mjs points to the current plugin version.
  *
  * This fixes a silent breakage that occurs when OMQ upgrades to a new version:
  * the symlink stays pointing at the old version's cache dir, so hooks that
@@ -205,7 +215,7 @@ export function patchHooksJsonForWindows(pluginRoot: string): void {
  * Falls back to copy if symlink is unavailable on the platform.
  */
 export function ensureStdinSymlink(pluginRoot: string): void {
-  const libDstDir = join(getQoderConfigDir(), 'hooks/lib');
+  const libDstDir = join(getClaudeConfigDir(), 'hooks/lib');
   const libSrc = join(pluginRoot, 'templates/hooks/lib');
   const stdinSrc = join(libSrc, 'stdin.mjs');
   const stdinDst = join(libDstDir, 'stdin.mjs');
@@ -290,10 +300,10 @@ export async function processSetupInit(input: SetupInput): Promise<HookOutput> {
   };
 
   // On Windows, patch hooks.json to use direct node invocation (no sh wrapper).
-  // The sh->find-node.sh->node chain triggers Qoder CLI UI bug #17088 on
+  // The sh->find-node.sh->node chain triggers Claude Code UI bug #17088 on
   // MSYS2/Git Bash, mislabeling every successful hook as an error (issue #899).
   // find-node.sh is only needed on Unix for nvm/fnm PATH discovery.
-  const pluginRoot = process.env.QODER_PLUGIN_ROOT;
+  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
   if (process.platform === 'win32') {
     if (pluginRoot) {
       patchHooksJsonForWindows(pluginRoot);
@@ -357,7 +367,7 @@ export async function processSetupInit(input: SetupInput): Promise<HookOutput> {
  * Prune old state files from .omq/state directory
  */
 export function pruneOldStateFiles(directory: string, maxAgeDays: number = DEFAULT_STATE_MAX_AGE_DAYS): number {
-  const stateDir = join(getOmqRoot(directory), 'state');
+  const stateDir = join(getOmcRoot(directory), 'state');
   if (!existsSync(stateDir)) {
     return 0;
   }
@@ -420,7 +430,7 @@ export function pruneOldStateFiles(directory: string, maxAgeDays: number = DEFAU
  * Clean up orphaned state files (state files without corresponding active sessions)
  */
 export function cleanupOrphanedState(directory: string): number {
-  const stateDir = join(getOmqRoot(directory), 'state');
+  const stateDir = join(getOmcRoot(directory), 'state');
   if (!existsSync(stateDir)) {
     return 0;
   }

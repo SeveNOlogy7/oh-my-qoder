@@ -68,7 +68,7 @@ describe('spawnWorkerForTask task orphan prevention', () => {
   });
 
   it('reverts task to pending when tmux pane creation returns empty paneId', async () => {
-    const { spawnWorkerForTask } = await import('../team/runtime.js');
+    const { spawnWorkerForTask } = await import('../team/runtime-v1-legacy.js');
 
     const teamName = 'testteam';
     const taskIndex = 0;

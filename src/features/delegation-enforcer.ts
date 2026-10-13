@@ -18,8 +18,9 @@ import { join } from 'path';
 import { getAgentDefinitions } from '../agents/definitions.js';
 import { normalizeDelegationRole } from './delegation-routing/types.js';
 import { loadConfig } from '../config/loader.js';
-import { isProviderSpecificModelId, resolveClaudeFamily, resolveQwenFamily } from '../config/models.js';
+import { isProviderSpecificModelId, resolveClaudeFamily } from '../config/models.js';
 import { createBuiltinSkills, getSkillsDir } from './builtin-skills/skills.js';
+import { recordModelRoutingShadow } from './jev-model-routing.js';
 import { isSkininthegamebrosUser } from '../utils/skininthegamebros-user.js';
 import entitlementManifest from '../config/builtin-skill-entitlements.json' with { type: 'json' };
 import type { PluginConfig } from '../shared/types.js';
@@ -36,13 +37,10 @@ import type { PluginConfig } from '../shared/types.js';
 
 /** All env var names that affect the output of loadConfig(). */
 const CONFIG_ENV_KEYS = [
-  // forceInherit auto-detection (isNonClaudeProvider / isNonDefaultProvider)
+  // forceInherit auto-detection (isNonClaudeProvider)
   'ANTHROPIC_BASE_URL',
-  'DASHSCOPE_BASE_URL',
   'CLAUDE_MODEL',
   'ANTHROPIC_MODEL',
-  'QODER_MODEL',
-  'DASHSCOPE_MODEL',
   'CLAUDE_CODE_USE_BEDROCK',
   'CLAUDE_CODE_USE_VERTEX',
   // explicit routing overrides
@@ -50,12 +48,7 @@ const CONFIG_ENV_KEYS = [
   'OMQ_ROUTING_ENABLED',
   'OMQ_ROUTING_DEFAULT_TIER',
   'OMQ_ESCALATION_ENABLED',
-  // model alias overrides (issue #1211, issue #3726). Both key spaces are live:
-  // loader.ts reads LOW/MEDIUM/HIGH (this fork's agent defs are tier-keyed, so
-  // only these can hit the lookup) and HAIKU/SONNET/OPUS/FABLE (ancestor).
-  'OMQ_MODEL_ALIAS_LOW',
-  'OMQ_MODEL_ALIAS_MEDIUM',
-  'OMQ_MODEL_ALIAS_HIGH',
+  // model alias overrides (issue #1211, issue #3726)
   'OMQ_MODEL_ALIAS_HAIKU',
   'OMQ_MODEL_ALIAS_SONNET',
   'OMQ_MODEL_ALIAS_OPUS',
@@ -64,9 +57,6 @@ const CONFIG_ENV_KEYS = [
   'OMQ_MODEL_HIGH',
   'OMQ_MODEL_MEDIUM',
   'OMQ_MODEL_LOW',
-  'DASHSCOPE_DEFAULT_TURBO_MODEL',
-  'DASHSCOPE_DEFAULT_PLUS_MODEL',
-  'DASHSCOPE_DEFAULT_MAX_MODEL',
   'CLAUDE_CODE_BEDROCK_HAIKU_MODEL',
   'CLAUDE_CODE_BEDROCK_SONNET_MODEL',
   'CLAUDE_CODE_BEDROCK_OPUS_MODEL',
@@ -115,31 +105,6 @@ export function normalizeToCcAlias(model: string): string {
 
   const family = resolveClaudeFamily(model);
   return family ? (FAMILY_TO_ALIAS[family] ?? model) : model;
-}
-
-/** Map Qwen model family to the tier aliases this fork routes on. */
-const FAMILY_TO_TIER_ALIAS: Record<string, string> = {
-  MAX: 'high',
-  PLUS: 'medium',
-  TURBO: 'low',
-};
-
-/**
- * Normalize a model ID to a tier alias (high/medium/low) for Qwen family models.
- * Claude IDs keep their own alias vocabulary; the two resolvers are disjoint.
- */
-export function normalizeToTierAlias(model: string): string {
-  if (isProviderSpecificModelId(model)) {
-    return model;
-  }
-
-  const family = resolveQwenFamily(model);
-  if (family) {
-    return FAMILY_TO_TIER_ALIAS[family] ?? model;
-  }
-
-  const claudeFamily = resolveClaudeFamily(model);
-  return claudeFamily ? (FAMILY_TO_ALIAS[claudeFamily] ?? model) : model;
 }
 
 /**
@@ -249,7 +214,7 @@ function resolveBundledSkillPrimary(
   // (e.g. Claude Code's built-in `Plan` vs the skills/plan dir registering
   // omq-plan) are never mistaken for skills (issue #3667 P1, JS/TS parity).
   const wasNamespaced = typeof originalSubagentType === 'string'
-    && /^(?:oh-my-qoder|omc):/i.test(originalSubagentType.trim());
+    && /^(?:oh-my-qoder|oh-my-claudecode|omc):/i.test(originalSubagentType.trim());
   if (!wasNamespaced) {
     return null;
   }
@@ -321,9 +286,11 @@ export function enforceModel(agentInput: AgentInput): EnforcementResult {
     };
   }
 
-  // Fold an explicitly specified model to an alias: full IDs break Bedrock/Vertex (issue #1415).
+  // If model is already specified, normalize it to CC-supported aliases
+  // before passing through. Full IDs like 'claude-sonnet-5' cause 400
+  // errors on Bedrock/Vertex. (issue #1415)
   if (agentInput.model) {
-    const normalizedModel = normalizeToTierAlias(agentInput.model);
+    const normalizedModel = normalizeToCcAlias(agentInput.model);
     return {
       originalInput: agentInput,
       modifiedInput: { ...agentInput, subagent_type: canonicalSubagentType, model: normalizedModel },
@@ -361,8 +328,9 @@ export function enforceModel(agentInput: AgentInput): EnforcementResult {
     };
   }
 
-  // Fold the injected model to the alias vocabulary this build routes on.
-  const normalizedModel = normalizeToTierAlias(resolvedModel);
+  // Normalize model to Claude Code's supported aliases (sonnet/opus/haiku).
+  // Full IDs cause 400 errors on Bedrock/Vertex. (issue #1201, #1415)
+  const normalizedModel = normalizeToCcAlias(resolvedModel);
 
   const modifiedInput: AgentInput = {
     ...agentInput,
@@ -423,6 +391,11 @@ export function processPreToolUse(
 
   const result = enforceModel(toolInput);
 
+  // Jev judgment point ④ (issue-3669): record the pinned tier vs Jev's Choice
+  // in shadow mode. Fire-and-forget and twin-decided — the enforcement result
+  // below is unchanged with or without a Jev key.
+  void recordModelRoutingShadow(toolName, result).catch(() => undefined);
+
   if (result.warning) {
     console.warn(result.warning);
   }
@@ -450,7 +423,7 @@ export function getModelForAgent(agentType: string): string {
     throw new Error(`No default model defined for agent: ${normalizedType}`);
   }
 
-  // Normalize standard Anthropic IDs to CC aliases (sonnet/opus/haiku) and Qwen
-  // IDs to tier aliases (low/medium/high), preserving provider-specific IDs.
-  return normalizeToTierAlias(agentDef.model);
+  // Normalize standard Anthropic IDs to CC-supported aliases (sonnet/opus/haiku),
+  // while preserving provider-specific IDs such as Bedrock/Vertex paths.
+  return normalizeToCcAlias(agentDef.model);
 }
