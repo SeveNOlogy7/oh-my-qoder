@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Autonomous evolutionary code improvement engine with tournament selection"
 ---
 
 # OMQ self-improve

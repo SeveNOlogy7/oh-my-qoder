@@ -682,13 +682,13 @@ export async function writeResultArtifact(
   output: CliOutput,
   finishedAt: string,
   jobId: string | undefined = process.env.OMQ_JOB_ID,
-  omcJobsDir: string | undefined = process.env.OMQ_JOBS_DIR,
+  omqJobsDir: string | undefined = process.env.OMQ_JOBS_DIR,
 ): Promise<void> {
-  if (!jobId || !omcJobsDir) return;
+  if (!jobId || !omqJobsDir) return;
   if (!output.instanceId || !isValidTeamInstanceId(output.instanceId)) {
     throw new Error('result_artifact_instance_identity_missing');
   }
-  const resultPath = join(omcJobsDir, `${jobId}-result.json`);
+  const resultPath = join(omqJobsDir, `${jobId}-result.json`);
   const tmpPath = `${resultPath}.tmp`;
   await writeFile(
     tmpPath,
@@ -732,7 +732,7 @@ export function buildTerminalCliResult(
   return {
     output: buildCliOutput(stateRoot, teamName, status, workerCount, startTimeMs, instanceId),
     exitCode: status === 'completed' ? 0 : 1,
-    notice: `[runtime-cli] phase=${phase} reached terminal state; preserving team state for inspection. Run "omc team shutdown ${teamName}" when explicit cleanup is desired.\n`,
+    notice: `[runtime-cli] phase=${phase} reached terminal state; preserving team state for inspection. Run "omq team shutdown ${teamName}" when explicit cleanup is desired.\n`,
   };
 }
 
@@ -774,8 +774,8 @@ async function writePanesFile(
   sessionName: string,
   ownsWindow: boolean,
 ): Promise<void> {
-  const omcJobsDir = process.env.OMQ_JOBS_DIR;
-  if (!jobId || !omcJobsDir) return;
+  const omqJobsDir = process.env.OMQ_JOBS_DIR;
+  if (!jobId || !omqJobsDir) return;
   const normalized = normalizeRuntimeInstanceId(instanceId);
   if (!normalized) throw new Error('pane_artifact_instance_mismatch');
   const binding = runtimeInstanceBinding(teamName, cwd, normalized);
@@ -805,7 +805,7 @@ async function writePanesFile(
       throw new Error('pane_artifact_missing_runtime_pane');
     }
 
-    const panesPath = join(omcJobsDir, `${jobId}-panes.json`);
+    const panesPath = join(omqJobsDir, `${jobId}-panes.json`);
     await writeFile(
       panesPath + '.tmp',
       JSON.stringify({
@@ -896,7 +896,7 @@ export function readTaskOutputFallback(
 function collectTaskResults(stateRoot: string): TaskResult[] {
   const tasksDir = join(stateRoot, 'tasks');
   const teamName = basename(stateRoot);
-  // stateRoot is `<omcRoot>/state/team/<teamName>`; outputs live at `<omcRoot>/outputs`.
+  // stateRoot is `<omqRoot>/state/team/<teamName>`; outputs live at `<omqRoot>/outputs`.
   const outputsDir = join(stateRoot, '..', '..', '..', 'outputs');
   try {
     const files = readdirSync(tasksDir).filter(f => f.endsWith('.json'));
@@ -1038,7 +1038,7 @@ async function main(): Promise<void> {
 
   if (!isRuntimeV2Enabled()) {
     process.stderr.write(
-      '[runtime-cli] team_start_unsafe_runtime_v1: instance-bound provider cleanup requires runtime v2; set OMC_RUNTIME_V2=1\n',
+      '[runtime-cli] team_start_unsafe_runtime_v1: instance-bound provider cleanup requires runtime v2; set OMQ_RUNTIME_V2=1\n',
     );
     process.exit(1);
     return;
@@ -1161,7 +1161,7 @@ async function main(): Promise<void> {
   }
   if (startupShutdown.isShutdownRequested()) return;
 
-  // Persist pane IDs so MCP server can clean up explicitly via omc_run_team_cleanup.
+  // Persist pane IDs so MCP server can clean up explicitly via omq_run_team_cleanup.
   const jobId = process.env.OMQ_JOB_ID;
   const expectedTaskCount = tasks.length;
   let mismatchStreak = 0;

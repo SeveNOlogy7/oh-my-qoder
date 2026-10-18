@@ -435,10 +435,10 @@ describe("npm package bin surface regression", () => {
         binNames.map((name) => [name, expectedNpmShimNames(name)]),
       ),
     ).toEqual({
-      "oh-my-claudecode": [
-        "oh-my-claudecode",
-        "oh-my-claudecode.cmd",
-        "oh-my-claudecode.ps1",
+      "oh-my-qoder": [
+        "oh-my-qoder",
+        "oh-my-qoder.cmd",
+        "oh-my-qoder.ps1",
       ],
       omq: ["omq", "omq.cmd", "omq.ps1"],
     });
@@ -462,10 +462,10 @@ describe("npm package bin surface regression", () => {
         packedBinNames.map((name) => [name, expectedNpmShimNames(name)]),
       ),
     ).toEqual({
-      "oh-my-claudecode": [
-        "oh-my-claudecode",
-        "oh-my-claudecode.cmd",
-        "oh-my-claudecode.ps1",
+      "oh-my-qoder": [
+        "oh-my-qoder",
+        "oh-my-qoder.cmd",
+        "oh-my-qoder.ps1",
       ],
       omq: ["omq", "omq.cmd", "omq.ps1"],
     });

@@ -124,7 +124,7 @@ type WorkerEnvReturn = ReturnType<typeof import('../model-contract.js').getWorke
 
 const mocks = vi.hoisted(() => {
   const tmuxServerIdentity: TmuxServerIdentity = {
-    socket_path: '/tmp/omc-test-tmux.sock',
+    socket_path: '/tmp/omq-test-tmux.sock',
     server_pid: 4242,
     process_started_at: process.platform === 'darwin'
       ? 'darwin:1700000000:123456'
@@ -448,6 +448,26 @@ describe('runtime v2 startup inbox dispatch', () => {
         throw new Error(`${label} ended before gate: ${JSON.stringify(result)}`);
       }),
     ]);
+  }
+
+  async function runThroughClaudeFinalStartupRecheck<T>(start: () => Promise<T>): Promise<T> {
+    const deliveryGate = deferred<void>();
+    const finalRecheckGate = deferred<void>();
+    startupDeliveryGate = deliveryGate;
+    mocks.retryStartupInboxSubmit.mockImplementationOnce(async () => {
+      finalRecheckGate.resolve();
+      return 'unavailable';
+    });
+    const startup = start();
+    await awaitGateOrRecoveryFailure(deliveryGate.promise, startup, 'startup delivery');
+    await awaitGateOrRecoveryFailure(finalRecheckGate.promise, startup, 'final startup recheck');
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    await flushRealIo();
+    const policy = getWorkerStartupEvidencePolicy('claude');
+    vi.setSystemTime(Date.now() + policy.finalRecheckBudgetMs);
+    await vi.advanceTimersByTimeAsync(250);
+    await flushRealIo();
+    return startup;
   }
 
   async function configureRealUnresolvedStartupLaunch(options: {
@@ -777,32 +797,32 @@ describe('runtime v2 startup inbox dispatch', () => {
   },
   {
     agentType: 'codex',
-    modelEnv: 'OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL',
-    fallbackEnv: 'OMC_CODEX_DEFAULT_MODEL',
+    modelEnv: 'OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL',
+    fallbackEnv: 'OMQ_CODEX_DEFAULT_MODEL',
     model: 'gpt-4o',
     expectedArgs: ['--dangerously-bypass-approvals-and-sandbox', '--model', 'gpt-4o'],
     promptMode: false,
   },
   {
     agentType: 'gemini',
-    modelEnv: 'OMC_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL',
-    fallbackEnv: 'OMC_GEMINI_DEFAULT_MODEL',
+    modelEnv: 'OMQ_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL',
+    fallbackEnv: 'OMQ_GEMINI_DEFAULT_MODEL',
     model: 'gemini-2.0-flash',
     expectedArgs: ['--approval-mode', 'yolo', '--model', 'gemini-2.0-flash'],
     promptMode: true,
   },
   {
     agentType: 'grok',
-    modelEnv: 'OMC_EXTERNAL_MODELS_DEFAULT_GROK_MODEL',
-    fallbackEnv: 'OMC_GROK_DEFAULT_MODEL',
+    modelEnv: 'OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL',
+    fallbackEnv: 'OMQ_GROK_DEFAULT_MODEL',
     model: 'grok-4-fast',
     expectedArgs: ['--always-approve', '--model', 'grok-4-fast'],
     promptMode: true,
   },
   {
     agentType: 'antigravity',
-    modelEnv: 'OMC_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL',
-    fallbackEnv: 'OMC_ANTIGRAVITY_DEFAULT_MODEL',
+    modelEnv: 'OMQ_EXTERNAL_MODELS_DEFAULT_ANTIGRAVITY_MODEL',
+    fallbackEnv: 'OMQ_ANTIGRAVITY_DEFAULT_MODEL',
     model: 'Gemini 3.1 Pro (High)',
     expectedArgs: ['--dangerously-skip-permissions', '--model', 'Gemini 3.1 Pro (High)'],
     promptMode: true,
@@ -1243,7 +1263,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('writes durable inbox dispatch evidence when startup worker notification succeeds', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-dispatch-');
+    cwd = await mkdtempFixture('omq-runtime-v2-dispatch-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     const runtime = await startTeamV2({
@@ -1284,7 +1304,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       expect.objectContaining({
         envVars: expect.objectContaining({
           OMQ_TEAM_WORKER: 'dispatch-team/worker-1',
-          OMC_TEAM_STATE_ROOT: absPath(cwd, TeamPaths.root('dispatch-team')),
+          OMQ_TEAM_STATE_ROOT: absPath(cwd, TeamPaths.root('dispatch-team')),
           OMQ_TEAM_LEADER_CWD: cwd,
         }),
       }),
@@ -1311,7 +1331,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('does not publish a corrupt canonical task when startup publication is interrupted', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-atomic-task-publication-');
+    cwd = await mkdtempFixture('omq-runtime-v2-atomic-task-publication-');
     const taskPath = absPath(cwd, TeamPaths.taskFile('dispatch-team', '1'));
     atomicWriteControl.failCanonicalPath = taskPath;
     const { startTeamV2 } = await import('../runtime-v2.js');
@@ -1329,7 +1349,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('persists dependencies and leaves dependent tasks out of startup dispatch', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-dependencies-');
+    cwd = await mkdtempFixture('omq-runtime-v2-dependencies-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     const runtime = await startTeamV2({
@@ -1344,7 +1364,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     });
 
     const dependent = JSON.parse(await readFile(
-      join(cwd, '.omc', 'state', 'team', 'dispatch-team', 'tasks', 'task-2.json'),
+      join(cwd, '.omq', 'state', 'team', 'dispatch-team', 'tasks', 'task-2.json'),
       'utf8',
     )) as { depends_on?: string[]; status?: string; version?: number; result?: unknown };
     expect(dependent).toMatchObject({ depends_on: ['1'], status: 'pending', version: 1 });
@@ -1380,7 +1400,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       { subject: 'Second task', description: 'invalid', depends_on: ['1'] },
     ]],
   ])('rejects %s task dependencies before startup side effects', async (_label, tasks) => {
-    cwd = await mkdtempFixture('omc-runtime-v2-invalid-dependencies-');
+    cwd = await mkdtempFixture('omq-runtime-v2-invalid-dependencies-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     await expect(startTeamV2({
@@ -1391,7 +1411,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       cwd,
     })).rejects.toThrow(/(?:invalid_task_dependenc(?:y|ies)|cyclic_task_dependency)/);
     expect(mocks.createTeamSession).not.toHaveBeenCalled();
-    await expect(readFile(join(cwd, '.omc', 'state', 'team', 'dispatch-team', 'config.json'), 'utf8'))
+    await expect(readFile(join(cwd, '.omq', 'state', 'team', 'dispatch-team', 'config.json'), 'utf8'))
       .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
@@ -1405,7 +1425,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       { subject: 'Blocked task', description: 'invalid', depends_on: ['1'], owner: 'worker-9' },
     ]],
   ])('rejects %s explicit task owner before state or pane side effects', async (_label, tasks) => {
-    cwd = await mkdtempFixture('omc-runtime-v2-invalid-owner-');
+    cwd = await mkdtempFixture('omq-runtime-v2-invalid-owner-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     await expect(startTeamV2({
@@ -1417,16 +1437,16 @@ describe('runtime v2 startup inbox dispatch', () => {
     })).rejects.toThrow('invalid_task_owner');
 
     expect(mocks.createTeamSession).not.toHaveBeenCalled();
-    await expect(readFile(join(cwd, '.omc', 'state', 'team', 'dispatch-team', 'config.json'), 'utf8'))
+    await expect(readFile(join(cwd, '.omq', 'state', 'team', 'dispatch-team', 'config.json'), 'utf8'))
       .rejects.toMatchObject({ code: 'ENOENT' });
-    await expect(readFile(join(cwd, '.omc', 'state', 'team', 'dispatch-team', 'tasks', 'task-1.json'), 'utf8'))
+    await expect(readFile(join(cwd, '.omq', 'state', 'team', 'dispatch-team', 'tasks', 'task-1.json'), 'utf8'))
       .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it.each(modelContractLaunchCases)(
     'uses the real $agentType model contract at the launch boundary',
     async ({ agentType, modelEnv, fallbackEnv, model, expectedArgs, promptMode }) => {
-      cwd = await mkdtempFixture(`omc-runtime-v2-model-contract-${agentType}-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-model-contract-${agentType}-`);
       await useActualModelContractLaunchBuilder();
       const previousModel = process.env[modelEnv];
       const previousFallback = fallbackEnv ? process.env[fallbackEnv] : undefined;
@@ -1449,7 +1469,7 @@ describe('runtime v2 startup inbox dispatch', () => {
                 owner: 'worker-1',
                 token: `model-contract-${agentType}`,
                 leased_until: '2099-01-01T00:00:00.000Z',
-                launch_attempt_id: config.envVars?.OMC_WORKER_LAUNCH_ATTEMPT_ID,
+                launch_attempt_id: config.envVars?.OMQ_WORKER_LAUNCH_ATTEMPT_ID,
               },
             }), 'utf8');
           });
@@ -1479,7 +1499,7 @@ describe('runtime v2 startup inbox dispatch', () => {
           const promptIndex = launchConfig?.launchArgs?.indexOf('-p') ?? -1;
           expect(promptIndex).toBe(expectedArgs.length);
           expect(launchConfig?.launchArgs?.[promptIndex + 1]).toContain(
-            '$OMC_TEAM_STATE_ROOT/workers/worker-1/inbox.md',
+            '$OMQ_TEAM_STATE_ROOT/workers/worker-1/inbox.md',
           );
           expect(mocks.sendToWorker).not.toHaveBeenCalled();
           expect(mocks.deliverStartupInbox).not.toHaveBeenCalled();
@@ -1498,10 +1518,10 @@ describe('runtime v2 startup inbox dispatch', () => {
   );
 
   it('uses a legacy provider model fallback only when the canonical variable is unset', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-model-contract-legacy-fallback-');
+    cwd = await mkdtempFixture('omq-runtime-v2-model-contract-legacy-fallback-');
     await useActualModelContractLaunchBuilder();
-    const canonicalKey = 'OMC_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL';
-    const fallbackKey = 'OMC_CODEX_DEFAULT_MODEL';
+    const canonicalKey = 'OMQ_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL';
+    const fallbackKey = 'OMQ_CODEX_DEFAULT_MODEL';
     const previousCanonical = process.env[canonicalKey];
     const previousFallback = process.env[fallbackKey];
     delete process.env[canonicalKey];
@@ -1534,7 +1554,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('forwards Claude provider and tier environment variables at the launch boundary', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-claude-env-matrix-');
+    cwd = await mkdtempFixture('omq-runtime-v2-claude-env-matrix-');
     await useActualModelContractLaunchBuilder();
     const values = {
       CLAUDE_MODEL: 'vertex_ai/claude-3-5-sonnet',
@@ -1546,9 +1566,9 @@ describe('runtime v2 startup inbox dispatch', () => {
       ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-6-custom',
       ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-6-custom',
       ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-4-5-custom',
-      OMC_MODEL_HIGH: 'claude-opus-4-6-override',
-      OMC_MODEL_MEDIUM: 'claude-sonnet-4-6-override',
-      OMC_MODEL_LOW: 'claude-haiku-4-5-override',
+      OMQ_MODEL_HIGH: 'claude-opus-4-6-override',
+      OMQ_MODEL_MEDIUM: 'claude-sonnet-4-6-override',
+      OMQ_MODEL_LOW: 'claude-haiku-4-5-override',
     } as const;
     const previous = Object.fromEntries(
       Object.keys(values).map(key => [key, process.env[key]]),
@@ -1578,7 +1598,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('writes the prompt inbox before the provider spawn callback and preserves the v2 pointer contract', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-prompt-inbox-order-');
+    cwd = await mkdtempFixture('omq-runtime-v2-prompt-inbox-order-');
     await useActualModelContractLaunchBuilder();
     let inboxAtProviderSpawn: string | undefined;
     mocks.spawnWorkerInPane.mockImplementationOnce(async (
@@ -1622,7 +1642,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('keeps a no-pane split from creating a provider launch or orphan task assignment', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-no-pane-orphan-');
+    cwd = await mkdtempFixture('omq-runtime-v2-no-pane-orphan-');
     mocks.splitTeamWorkerPaneWithEvidence.mockResolvedValueOnce({
       commandSucceeded: true,
       provider: 'tmux',
@@ -1657,7 +1677,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   it.each(['identified', 'unparseable'] as const)(
     'retains the reservation and pending startup state when session creation cleanup is unknown after a %s native allocation',
     async resourceKind => {
-      cwd = await mkdtempFixture(`omc-runtime-v2-session-create-${resourceKind}-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-session-create-${resourceKind}-`);
       execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
       execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
       execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -1675,7 +1695,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       const creationEvidence = {
         provider: 'tmux' as const,
         operation: 'split-window',
-        rawOutput: resourceKind === 'identified' ? '%77\t/tmp/omc-test-tmux.sock\t4242\n' : 'native output cannot be parsed',
+        rawOutput: resourceKind === 'identified' ? '%77\t/tmp/omq-test-tmux.sock\t4242\n' : 'native output cannot be parsed',
         stderr: 'fixture split failure',
         tmuxServerIdentity: mocks.tmuxServerIdentity,
       };
@@ -1768,7 +1788,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   );
 
   it('performs the existing clean rollback when session creation reports verified cleanup', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-session-create-verified-');
+    cwd = await mkdtempFixture('omq-runtime-v2-session-create-verified-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -1788,7 +1808,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       {
         provider: 'tmux',
         operation: 'split-window',
-        rawOutput: '%77\t/tmp/omc-test-tmux.sock\t4242\n',
+        rawOutput: '%77\t/tmp/omq-test-tmux.sock\t4242\n',
         stderr: '',
         tmuxServerIdentity: mocks.tmuxServerIdentity,
       },
@@ -1858,7 +1878,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('settles every tmux worker between its split and provider spawn', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-layout-order-multi-');
+    cwd = await mkdtempFixture('omq-runtime-v2-layout-order-multi-');
     mocks.splitTeamWorkerPaneWithEvidence.mockClear();
     mocks.applyMainVerticalLayout.mockClear();
     mocks.spawnOwnedWorkerInPane.mockClear();
@@ -1893,7 +1913,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('leaves cmux startup on its native split and provider path', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-cmux-layout-isolation-');
+    cwd = await mkdtempFixture('omq-runtime-v2-cmux-layout-isolation-');
     mocks.createTeamSession.mockResolvedValueOnce({
       sessionName: 'cmux:workspace-1',
       leaderPaneId: 'cmux-leader-1',
@@ -1926,7 +1946,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('persists startup task delegation plans and gives executable result evidence instructions', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-delegation-startup-');
+    cwd = await mkdtempFixture('omq-runtime-v2-delegation-startup-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     await startTeamV2({
@@ -1960,7 +1980,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('disposes a verified-clean startup failure while retaining external cleanup evidence', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-startup-failure-');
+    cwd = await mkdtempFixture('omq-runtime-v2-startup-failure-');
     const teamName = 'dispatch-team';
     const instanceId = ORIGINAL_INSTANCE_ID;
     mocks.spawnWorkerInPane.mockRejectedValueOnce(new Error('claude launch exploded'));
@@ -1999,7 +2019,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('does not persist sensitive cmux worker command payloads in startup failure evidence', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-redacted-startup-failure-');
+    cwd = await mkdtempFixture('omq-runtime-v2-redacted-startup-failure-');
     const secret = 'SECRET_TOKEN_SHOULD_NOT_LEAK';
     const getAttempt = await configureRealUnresolvedStartupLaunch({
       error: 'cmux command failed for both current and legacy forms: current=send-surface ([redacted]); legacy=send ([redacted])',
@@ -2064,7 +2084,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('does not persist sensitive primary cmux failure payloads in startup failure evidence', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-redacted-primary-failure-');
+    cwd = await mkdtempFixture('omq-runtime-v2-redacted-primary-failure-');
     const secret = 'SECRET_TOKEN_SHOULD_NOT_LEAK';
     const getAttempt = await configureRealUnresolvedStartupLaunch({
       error: 'cmux command failed for current form: current=send-surface (cmux transport timed out after partial write [redacted])',
@@ -2072,7 +2092,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       cleanup: 'unverified',
     });
     modelContractMocks.getWorkerEnv.mockImplementation(() => ({
-      OMC_TEAM_WORKER: 'dispatch-team/worker-1',
+      OMQ_TEAM_WORKER: 'dispatch-team/worker-1',
       SECRET_ENV: secret,
     }));
     modelContractMocks.buildWorkerArgv.mockReturnValue(['/usr/bin/claude', '--api-key', secret]);
@@ -2129,7 +2149,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('preserves a dirty worktree after verified provider cleanup during startup rollback', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-dirty-startup-failure-');
+    cwd = await mkdtempFixture('omq-runtime-v2-dirty-startup-failure-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -2187,7 +2207,7 @@ describe('runtime v2 startup inbox dispatch', () => {
 
 
   it('persists runtime-v2 worktree contract fields for split-pane teams', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-worktree-contract-');
+    cwd = await mkdtempFixture('omq-runtime-v2-worktree-contract-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -2212,7 +2232,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(runtime.config.workers[0]).toMatchObject({
       working_dir: teamWorktreePath(cwd, 'dispatch-team', 'worker-1'),
       worktree_repo_root: cwd,
-      worktree_branch: 'omc-team/dispatch-team/worker-1',
+      worktree_branch: 'omq-team/dispatch-team/worker-1',
       worktree_detached: false,
       worktree_created: true,
     });
@@ -2250,7 +2270,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('fails loudly when explicit auto-merge worker registration fails', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-auto-merge-fail-');
+    cwd = await mkdtempFixture('omq-runtime-v2-auto-merge-fail-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -2290,7 +2310,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('wires auto-merge worker cadence and drains before unregistering on shutdown', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-auto-merge-cadence-');
+    cwd = await mkdtempFixture('omq-runtime-v2-auto-merge-cadence-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -2339,7 +2359,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('drains auto-merge before preserving state for live worker panes on shutdown', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-auto-merge-live-pane-');
+    cwd = await mkdtempFixture('omq-runtime-v2-auto-merge-live-pane-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -2376,7 +2396,7 @@ describe('runtime v2 startup inbox dispatch', () => {
 
 
   it('kills the started team session and rolls back worktrees when manifest persistence fails', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-post-session-rollback-');
+    cwd = await mkdtempFixture('omq-runtime-v2-post-session-rollback-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -2446,7 +2466,7 @@ describe('runtime v2 startup inbox dispatch', () => {
 
 
   it('rolls back clean native worktrees when startup fails before config is persisted', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-worktree-rollback-');
+    cwd = await mkdtempFixture('omq-runtime-v2-worktree-rollback-');
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'pipe' });
@@ -2476,7 +2496,7 @@ describe('runtime v2 startup inbox dispatch', () => {
 
 
   it('uses owner-aware startup allocation when task owners are provided', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-owner-startup-');
+    cwd = await mkdtempFixture('omq-runtime-v2-owner-startup-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     const runtime = await startTeamV2({
@@ -2502,7 +2522,7 @@ describe('runtime v2 startup inbox dispatch', () => {
 
 
   it('uses explicit unowned task roles during startup allocation', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-unowned-role-');
+    cwd = await mkdtempFixture('omq-runtime-v2-unowned-role-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     const runtime = await startTeamV2({
@@ -2530,7 +2550,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('preserves explicit worker roles in runtime config during startup fanout', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-worker-roles-');
+    cwd = await mkdtempFixture('omq-runtime-v2-worker-roles-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     const runtime = await startTeamV2({
@@ -2556,8 +2576,38 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(persisted.workers.map((worker: { role: string }) => worker.role)).toEqual(['architect', 'writer']);
   });
 
+  it('writes per-worker role prompts into mixed-role overlays', async () => {
+    cwd = await mkdtempFixture('omq-runtime-v2-mixed-role-overlay-');
+    const { startTeamV2 } = await import('../runtime-v2.js');
+
+    const runtime = await startTeamV2({
+      teamName: 'dispatch-team',
+      workerCount: 2,
+      agentTypes: ['codex', 'gemini'],
+      workerRoles: ['architect', 'writer'],
+      rolePromptByRole: {
+        architect: 'ARCHITECT_ROLE_PROMPT_UNIQUE',
+        writer: 'WRITER_ROLE_PROMPT_UNIQUE',
+      },
+      tasks: [
+        { subject: 'Worker 1 (architect): draft launch plan', description: 'draft launch plan', owner: 'worker-1', role: 'architect' },
+        { subject: 'Worker 2 (writer): draft launch plan', description: 'draft launch plan', owner: 'worker-2', role: 'writer' },
+      ],
+      cwd,
+    });
+
+    expect(runtime.startupFailures).toEqual([]);
+
+    const overlay1 = await readFile(absPath(cwd, TeamPaths.overlay('dispatch-team', 'worker-1')), 'utf-8');
+    const overlay2 = await readFile(absPath(cwd, TeamPaths.overlay('dispatch-team', 'worker-2')), 'utf-8');
+    expect(overlay1).toContain('ARCHITECT_ROLE_PROMPT_UNIQUE');
+    expect(overlay1).not.toContain('WRITER_ROLE_PROMPT_UNIQUE');
+    expect(overlay2).toContain('WRITER_ROLE_PROMPT_UNIQUE');
+    expect(overlay2).not.toContain('ARCHITECT_ROLE_PROMPT_UNIQUE');
+  });
+
   it('routes inferred review work through alias-keyed resolved snapshot entries', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-alias-routing-');
+    cwd = await mkdtempFixture('omq-runtime-v2-alias-routing-');
     await mkdir(join(cwd, '.claude'), { recursive: true });
     await writeFile(
       join(cwd, '.claude', 'omc.jsonc'),
@@ -2642,7 +2692,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('passes through dedicated-window startup requests', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-new-window-');
+    cwd = await mkdtempFixture('omq-runtime-v2-new-window-');
     const { startTeamV2 } = await import('../runtime-v2.js');
 
     await startTeamV2({
@@ -2658,7 +2708,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('fails closed when split aliases the leader pane before any worker launch or inbox delivery', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-leader-alias-');
+    cwd = await mkdtempFixture('omq-runtime-v2-leader-alias-');
     mocks.splitTeamWorkerPaneWithEvidence.mockResolvedValueOnce({
       commandSucceeded: true,
       provider: 'tmux',
@@ -2688,7 +2738,7 @@ describe('runtime v2 startup inbox dispatch', () => {
 
 
   it('fails closed when a distinct split pane is not a member of the provider target', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-foreign-split-');
+    cwd = await mkdtempFixture('omq-runtime-v2-foreign-split-');
     mocks.workerPaneBelongsToOwnedProviderTarget
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);
@@ -2707,7 +2757,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('aborts startup without persisting a live worker when launch acknowledgement fails', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-start-delivery-fail-');
+    cwd = await mkdtempFixture('omq-runtime-v2-start-delivery-fail-');
     const teamName = 'dispatch-team';
     const instanceId = ORIGINAL_INSTANCE_ID;
     mocks.spawnWorkerInPane.mockRejectedValueOnce(new Error('worker_start_ack_ack_timeout:worker-1:%2:attempt'));
@@ -2740,7 +2790,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('cleans the owned pane before provider launch when required layout fails', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-layout-failure-');
+    cwd = await mkdtempFixture('omq-runtime-v2-layout-failure-');
     mocks.applyMainVerticalLayout.mockRejectedValueOnce(new Error('layout failed'));
     const { startTeamV2 } = await import('../runtime-v2.js');
 
@@ -2759,7 +2809,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('does not retain a torn-down worker pane as a future split target when startup readiness fails', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-no-autokill-ready-');
+    cwd = await mkdtempFixture('omq-runtime-v2-no-autokill-ready-');
     mocks.deliverStartupInbox.mockResolvedValueOnce({ ok: false, reason: 'readiness_timeout' });
     const { startTeamV2 } = await import('../runtime-v2.js');
 
@@ -2780,7 +2830,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   it.each(['readiness_timeout', 'copy_mode'])(
     'uses a live pane after a cleaned %s startup failure',
     async (failureReason) => {
-      cwd = await mkdtempFixture('omc-runtime-v2-cleaned-pane-split-');
+      cwd = await mkdtempFixture('omq-runtime-v2-cleaned-pane-split-');
       const deadPaneIds = new Set<string>();
       mocks.deliverStartupInbox.mockResolvedValueOnce({ ok: false, reason: failureReason });
       mocks.nextStartupTaskId = 2;
@@ -2818,7 +2868,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   );
 
   it('tears down the owned worker launch when startup notification fails', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-no-autokill-notify-');
+    cwd = await mkdtempFixture('omq-runtime-v2-no-autokill-notify-');
     mocks.sendToWorker.mockResolvedValue(false);
     const { startTeamV2 } = await import('../runtime-v2.js');
 
@@ -2849,7 +2899,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('fails closed when exact provider process cleanup cannot be verified', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-provider-cleanup-unverified-');
+    cwd = await mkdtempFixture('omq-runtime-v2-provider-cleanup-unverified-');
     mocks.sendToWorker.mockResolvedValue(false);
     launchMocks.retireAndCleanupCurrentWorkerLaunchAttempt.mockResolvedValueOnce(false);
     mocks.killOwnedWorkerPane.mockClear();
@@ -2867,7 +2917,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('retains the instance and every startup artifact when a durable launch cleanup is unknown', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-durable-launch-cleanup-');
+    cwd = await mkdtempFixture('omq-runtime-v2-durable-launch-cleanup-');
     const teamName = 'durable-launch-team';
     const instanceId = '55555555-5555-4555-8555-555555555555';
     execFileSync('git', ['init'], { cwd, stdio: 'pipe' });
@@ -3010,20 +3060,23 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('requires Claude startup evidence without resending the startup inbox', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-claude-evidence-missing-');
+    cwd = await mkdtempFixture('omq-runtime-v2-claude-evidence-missing-');
     mocks.autoStartupEvidence = false;
     const { startTeamV2 } = await import('../runtime-v2.js');
 
-    const runtime = await startTeamV2({
+    const runtime = await runThroughClaudeFinalStartupRecheck(() => startTeamV2({
       teamName: 'dispatch-team',
       workerCount: 1,
       agentTypes: ['claude'],
       tasks: [{ subject: 'Dispatch test', description: 'Verify Claude startup evidence gate' }],
       cwd,
-    });
+    }));
 
     expect(runtime.config.workers[0]?.pane_id).toBe('%2');
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
+    expect(runtime.startupFailures).toEqual([
+      { worker: 'worker-1', reason: 'worker_startup_evidence_missing' },
+    ]);
     expect(mocks.sendToWorker).toHaveBeenCalledTimes(1);
 
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
@@ -3121,7 +3174,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(settled).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
-    await expect(evidencePromise).resolves.toBe(true);
+    await expect(evidencePromise).resolves.toEqual({ settled: true, paneBusy: true });
     expect(Date.now() - startedAt).toBe(20_250);
     expect(policy.engagedPaneRecheckBudgetMs).toBe(30_000);
   });
@@ -3153,7 +3206,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(settled).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
-    await expect(evidencePromise).resolves.toBe(true);
+    await expect(evidencePromise).resolves.toEqual({ settled: true, paneBusy: true });
     expect(Date.now() - startedAt).toBe(31_500);
     expect(probeCalls).toBe(1);
     expect(retryCalls).toBe(0);
@@ -3189,7 +3242,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(settled).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
-    await expect(evidencePromise).resolves.toBe(false);
+    await expect(evidencePromise).resolves.toEqual({ settled: false, paneBusy: true });
     expect(Date.now() - startedAt).toBe(60_000);
     expect(probeCalls).toBe(1);
     expect(retryCalls).toBe(0);
@@ -3213,7 +3266,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       expect(settled).toBe(false);
 
       await vi.advanceTimersByTimeAsync(1);
-      await expect(evidencePromise).resolves.toBe(false);
+      await expect(evidencePromise).resolves.toEqual({ settled: false, paneBusy: false });
     },
   );
 
@@ -3233,11 +3286,34 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(settled).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
-    await expect(evidencePromise).resolves.toBe(false);
+    await expect(evidencePromise).resolves.toEqual({ settled: false, paneBusy: true });
     expect(Date.now() - startedAt).toBe(31_250);
   });
 
-  it('still fails an unengaged Claude pane at the fast 1.25s boundary', async () => {
+  it('accepts delayed evidence for an unengaged Claude pane during the final recheck', async () => {
+    vi.useFakeTimers();
+    const policy = getWorkerStartupEvidencePolicy('claude');
+    const startedAt = Date.now();
+    let hasEvidence = false;
+    setTimeout(() => { hasEvidence = true; }, 20_000);
+    const evidencePromise = settleStartupEvidence(
+      policy,
+      budgetMs => waitForStartupEvidenceBudget(async () => hasEvidence, budgetMs),
+      async () => 'unavailable',
+    );
+    let settled = false;
+    void evidencePromise.finally(() => { settled = true; });
+
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(evidencePromise).resolves.toEqual({ settled: true, paneBusy: false });
+    expect(Date.now() - startedAt).toBe(20_000);
+    expect(policy.finalRecheckBudgetMs).toBe(30_000);
+  });
+
+  it('fails an unengaged Claude pane after its bounded final recheck', async () => {
     vi.useFakeTimers();
     const policy = getWorkerStartupEvidencePolicy('claude');
     const startedAt = Date.now();
@@ -3249,12 +3325,12 @@ describe('runtime v2 startup inbox dispatch', () => {
     let settled = false;
     void evidencePromise.finally(() => { settled = true; });
 
-    await vi.advanceTimersByTimeAsync(1_249);
+    await vi.advanceTimersByTimeAsync(31_249);
     expect(settled).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
-    await expect(evidencePromise).resolves.toBe(false);
-    expect(Date.now() - startedAt).toBe(1_250);
+    await expect(evidencePromise).resolves.toEqual({ settled: false, paneBusy: false });
+    expect(Date.now() - startedAt).toBe(31_250);
   });
 
   it('honors OMQ_TEAM_ENGAGED_PANE_RECHECK_MS when bounding the engaged recheck', async () => {
@@ -3270,7 +3346,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     );
 
     await vi.advanceTimersByTimeAsync(1_750);
-    await expect(evidencePromise).resolves.toBe(false);
+    await expect(evidencePromise).resolves.toEqual({ settled: false, paneBusy: true });
     expect(Date.now() - startedAt).toBe(1_750);
   });
 
@@ -3284,7 +3360,7 @@ describe('runtime v2 startup inbox dispatch', () => {
       budgetMs => waitForStartupEvidenceBudget(async () => hasEvidence, budgetMs),
       async () => {
         // The pane is not engaged, but the worker publishes status evidence at
-        // the exact moment the probe runs; the terminal read-only check must
+        // the exact moment the probe runs; the final read-only check must
         // observe it instead of discarding a healthy launch.
         hasEvidence = true;
         return 'unavailable';
@@ -3297,7 +3373,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(settled).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
-    await expect(evidencePromise).resolves.toBe(true);
+    await expect(evidencePromise).resolves.toEqual({ settled: true, paneBusy: false });
     expect(Date.now() - startedAt).toBe(1_250);
   });
 
@@ -3332,7 +3408,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     expect(settled).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
-    await expect(evidencePromise).resolves.toBe(false);
+    await expect(evidencePromise).resolves.toEqual({ settled: false, paneBusy: false });
     expect(Date.now() - startedAt).toBe(31_000);
   });
 
@@ -3340,7 +3416,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     'keeps a busy %s worker alive for current attempt evidence at 31.5s without retry or teardown',
     async provider => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
-      cwd = await mkdtempFixture(`omc-runtime-v2-${provider}-engaged-late-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-${provider}-engaged-late-`);
       mocks.autoStartupEvidence = false;
       const deliveryGate = deferred<void>();
       const activityProbeGate = deferred<void>();
@@ -3416,7 +3492,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     async provider => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
       process.env.OMQ_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
-      cwd = await mkdtempFixture(`omc-runtime-v2-${provider}-stale-engaged-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-${provider}-stale-engaged-`);
       mocks.autoStartupEvidence = false;
       const deliveryGate = deferred<void>();
       const activityProbeGate = deferred<void>();
@@ -3474,7 +3550,10 @@ describe('runtime v2 startup inbox dispatch', () => {
         expect(mocks.retryStartupInboxSubmit).not.toHaveBeenCalled();
         expect(mocks.killOwnedWorkerPane).toHaveBeenCalledWith(expect.objectContaining({ paneId: '%2' }));
         const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
-        expect(requests[0]).toMatchObject({ status: 'failed', last_reason: 'worker_startup_evidence_missing' });
+        expect(requests[0]).toMatchObject({ status: 'failed', last_reason: 'worker_startup_evidence_missing_pane_busy' });
+        expect(runtime.startupFailures).toEqual([
+          { worker: 'worker-1', reason: 'worker_startup_evidence_missing_pane_busy' },
+        ]);
       } finally {
         if (startPromise) await startPromise;
       }
@@ -3485,7 +3564,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     'executes the actual %s recovery owner at the restart before-first-dispatch checkpoint',
     async provider => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
-      cwd = await mkdtempFixture(`omc-runtime-v2-owner-${provider}-before-dispatch-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-owner-${provider}-before-dispatch-`);
       mocks.autoStartupEvidence = false;
       const fixture = await seedOwnerRecoveryFixture(provider, 'before-dispatch');
       configureOwnerPaneLifecycle();
@@ -3548,7 +3627,7 @@ describe('runtime v2 startup inbox dispatch', () => {
 
   it('requeues the selected task through an exact read when a sibling corrupts after inventory', async () => {
     vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
-    cwd = await mkdtempFixture('omc-runtime-v2-requeue-target-read-');
+    cwd = await mkdtempFixture('omq-runtime-v2-requeue-target-read-');
     mocks.autoStartupEvidence = false;
     const fixture = await seedOwnerRecoveryFixture('codex', 'target-read');
     const taskRoot = absPath(cwd, TeamPaths.tasks(fixture.teamName));
@@ -3647,7 +3726,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('keeps an actual owner recovery promise unsettled behind deferred launch mutation and preserves unrelated task ownership', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-owner-task-preservation-');
+    cwd = await mkdtempFixture('omq-runtime-v2-owner-task-preservation-');
     const fixture = await seedOwnerRecoveryFixture('codex', 'task-preservation');
     const before = await seedRecoveryTaskOwnershipFixture(fixture);
     configureOwnerPaneLifecycle();
@@ -3722,7 +3801,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     async (provider, mode) => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
       process.env.OMQ_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
-      cwd = await mkdtempFixture(`omc-runtime-v2-owner-${provider}-${mode}-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-owner-${provider}-${mode}-`);
       mocks.autoStartupEvidence = false;
       const fixture = await seedOwnerRecoveryFixture(provider, mode);
       configureOwnerPaneLifecycle();
@@ -3769,7 +3848,9 @@ describe('runtime v2 startup inbox dispatch', () => {
       expect(requests).toHaveLength(1);
       expect(requests[0]).toMatchObject({
         status: 'failed',
-        last_reason: 'worker_startup_evidence_missing',
+        last_reason: mode === 'probe-throw'
+          ? 'worker_startup_evidence_missing'
+          : 'worker_startup_evidence_missing_pane_busy',
       });
       const persistedConfig = JSON.parse(await readFile(
         absPath(cwd, TeamPaths.config(fixture.teamName)),
@@ -3793,7 +3874,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   it.each(['codex', 'cursor'] as const)(
     'fails closed at the restart pending-dispatch checkpoint for %s before notify or evidence polling',
     async provider => {
-      cwd = await mkdtempFixture(`omc-runtime-v2-owner-${provider}-pending-dispatch-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-owner-${provider}-pending-dispatch-`);
       mocks.autoStartupEvidence = false;
       const fixture = await seedOwnerRecoveryFixture(provider, 'pending-dispatch');
       await seedRecoveryDispatchCheckpoint(fixture, 'pending');
@@ -3841,7 +3922,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     async (provider, checkpoint, mode) => {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
       process.env.OMQ_TEAM_ENGAGED_PANE_RECHECK_MS = '2000';
-      cwd = await mkdtempFixture(`omc-runtime-v2-owner-${provider}-terminal-${checkpoint}-`);
+      cwd = await mkdtempFixture(`omq-runtime-v2-owner-${provider}-terminal-${checkpoint}-`);
       mocks.autoStartupEvidence = false;
       const fixture = await seedOwnerRecoveryFixture(provider, `terminal-${checkpoint}`);
       await seedRecoveryDispatchCheckpoint(fixture, checkpoint);
@@ -3893,7 +3974,7 @@ describe('runtime v2 startup inbox dispatch', () => {
           committed: false,
           error: 'runtime_owner_unavailable',
         });
-        expect(requests[1]).toMatchObject({ status: 'failed', last_reason: 'worker_startup_evidence_missing' });
+        expect(requests[1]).toMatchObject({ status: 'failed', last_reason: 'worker_startup_evidence_missing_pane_busy' });
         expect(readRecoveryOutcome(cwd, fixture.requestId)).not.toMatchObject({
           kind: 'final',
           outcome: 'succeeded',
@@ -3903,7 +3984,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   );
 
   it('rejects a stale worker status that predates the current startup trigger', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-stale-status-');
+    cwd = await mkdtempFixture('omq-runtime-v2-stale-status-');
     mocks.autoStartupEvidence = false;
     mocks.createTeamSession.mockImplementationOnce(async () => {
       const workerStatusPath = absPath(cwd, TeamPaths.workerStatus('dispatch-team', 'worker-1'));
@@ -3923,13 +4004,13 @@ describe('runtime v2 startup inbox dispatch', () => {
     });
     const { startTeamV2 } = await import('../runtime-v2.js');
 
-    const runtime = await startTeamV2({
+    const runtime = await runThroughClaudeFinalStartupRecheck(() => startTeamV2({
       teamName: 'dispatch-team',
       workerCount: 1,
       agentTypes: ['claude'],
       tasks: [{ subject: 'Dispatch test', description: 'Reject stale status evidence' }],
       cwd,
-    });
+    }));
 
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
@@ -3943,7 +4024,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('rejects a stale task claim that predates the current startup trigger', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-stale-claim-');
+    cwd = await mkdtempFixture('omq-runtime-v2-stale-claim-');
     mocks.autoStartupEvidence = false;
     mocks.createTeamSession.mockImplementationOnce(async () => {
       const taskPath = absPath(cwd, TeamPaths.taskFile('dispatch-team', 'task-1'));
@@ -3965,13 +4046,13 @@ describe('runtime v2 startup inbox dispatch', () => {
     });
     const { startTeamV2 } = await import('../runtime-v2.js');
 
-    const runtime = await startTeamV2({
+    const runtime = await runThroughClaudeFinalStartupRecheck(() => startTeamV2({
       teamName: 'dispatch-team',
       workerCount: 1,
       agentTypes: ['claude'],
       tasks: [{ subject: 'Dispatch test', description: 'Reject stale claim evidence' }],
       cwd,
-    });
+    }));
 
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
@@ -3979,7 +4060,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('does not steal a task already owned by another worker during v2 startup', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-owned-task-preservation-');
+    cwd = await mkdtempFixture('omq-runtime-v2-owned-task-preservation-');
     mocks.autoStartupEvidence = false;
     const existingOwner = 'worker-2';
     const existingClaim = {
@@ -4006,13 +4087,13 @@ describe('runtime v2 startup inbox dispatch', () => {
       };
     });
     const { startTeamV2 } = await import('../runtime-v2.js');
-    const runtime = await startTeamV2({
+    const runtime = await runThroughClaudeFinalStartupRecheck(() => startTeamV2({
       teamName: 'dispatch-team',
       workerCount: 1,
       agentTypes: ['claude'],
       tasks: [{ subject: 'Already owned', description: 'Preserve the existing owner.' }],
       cwd,
-    });
+    }));
 
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
     expect(JSON.parse(await readFile(
@@ -4028,7 +4109,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('does not treat ACK-only mailbox replies as Claude startup evidence or resend the startup inbox', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-claude-evidence-ack-');
+    cwd = await mkdtempFixture('omq-runtime-v2-claude-evidence-ack-');
     mocks.autoStartupEvidence = false;
 
     mocks.sendToWorker.mockImplementation(async () => {
@@ -4049,20 +4130,20 @@ describe('runtime v2 startup inbox dispatch', () => {
 
     const { startTeamV2 } = await import('../runtime-v2.js');
 
-    const runtime = await startTeamV2({
+    const runtime = await runThroughClaudeFinalStartupRecheck(() => startTeamV2({
       teamName: 'dispatch-team',
       workerCount: 1,
       agentTypes: ['claude'],
       tasks: [{ subject: 'Dispatch test', description: 'Verify Claude mailbox ack evidence' }],
       cwd,
-    });
+    }));
 
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
     expect(mocks.sendToWorker).toHaveBeenCalledTimes(1);
   });
 
   it.each(['claim', 'status'] as const)('rejects fresh wrong-attempt %s evidence in isolation', async evidenceKind => {
-    cwd = await mkdtempFixture(`omc-runtime-v2-wrong-attempt-${evidenceKind}-`);
+    cwd = await mkdtempFixture(`omq-runtime-v2-wrong-attempt-${evidenceKind}-`);
     mocks.autoStartupEvidence = false;
 
     mocks.sendToWorker.mockImplementation(async () => {
@@ -4094,13 +4175,13 @@ describe('runtime v2 startup inbox dispatch', () => {
     });
 
     const { startTeamV2 } = await import('../runtime-v2.js');
-    const runtime = await startTeamV2({
+    const runtime = await runThroughClaudeFinalStartupRecheck(() => startTeamV2({
       teamName: 'dispatch-team',
       workerCount: 1,
       agentTypes: ['claude'],
       tasks: [{ subject: 'Dispatch test', description: 'Reject wrong-attempt evidence' }],
       cwd,
-    });
+    }));
 
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
@@ -4108,7 +4189,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('accepts Claude startup once the worker claims the task', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-claude-evidence-claim-');
+    cwd = await mkdtempFixture('omq-runtime-v2-claude-evidence-claim-');
     mocks.autoStartupEvidence = false;
 
     mocks.sendToWorker.mockImplementation(async () => {
@@ -4143,7 +4224,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('accepts Claude startup once worker status shows task progress', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-claude-evidence-status-');
+    cwd = await mkdtempFixture('omq-runtime-v2-claude-evidence-status-');
     mocks.autoStartupEvidence = false;
 
     mocks.sendToWorker.mockImplementation(async () => {
@@ -4232,7 +4313,10 @@ describe('runtime v2 startup inbox dispatch', () => {
 
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
-    expect(requests[0]).toMatchObject({ status: 'failed', last_reason: 'worker_startup_evidence_missing' });
+    expect(requests[0]).toMatchObject({ status: 'failed', last_reason: 'worker_startup_evidence_missing_pane_busy' });
+    expect(runtime.startupFailures).toEqual([
+      { worker: 'worker-1', reason: 'worker_startup_evidence_missing_pane_busy' },
+    ]);
     expect(mocks.killOwnedWorkerPane).toHaveBeenCalledWith(expect.objectContaining({ paneId: '%2' }));
     expect(launchMocks.retireAndCleanupCurrentWorkerLaunchAttempt).toHaveBeenCalledWith(
       expect.objectContaining({ attempt_id: 'attempt-worker-1' }),
@@ -4241,7 +4325,7 @@ describe('runtime v2 startup inbox dispatch', () => {
     );
   });
 
-  it('breaks the resubmit loop immediately and fails fast when the pane is not engaged', async () => {
+  it('fails closed after the final evidence recheck when the pane is not engaged', async () => {
     cwd = await mkdtempFixture('omq-runtime-v2-claude-unengaged-');
     mocks.autoStartupEvidence = false;
 
@@ -4250,24 +4334,64 @@ describe('runtime v2 startup inbox dispatch', () => {
 
     const { startTeamV2 } = await import('../runtime-v2.js');
 
-    const runtime = await startTeamV2({
+    const runtime = await runThroughClaudeFinalStartupRecheck(() => startTeamV2({
       teamName: 'dispatch-team',
       workerCount: 1,
       agentTypes: ['claude'],
-      tasks: [{ subject: 'Dispatch test', description: 'Verify unengaged pane fails fast' }],
+      tasks: [{ subject: 'Dispatch test', description: 'Verify unengaged pane fails closed' }],
       cwd,
-    });
+    }));
 
     expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
+    expect(runtime.startupFailures).toEqual([
+      { worker: 'worker-1', reason: 'worker_startup_evidence_missing' },
+    ]);
+    expect(mocks.captureOwnedTeamPane).not.toHaveBeenCalled();
     expect(mocks.retryStartupInboxSubmit).toHaveBeenCalledTimes(1);
-    expect(Date.now() - startedAt).toBeLessThan(5_000);
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(31_250);
     const requests = await listDispatchRequests('dispatch-team', cwd, { kind: 'inbox' });
     expect(requests[0]).toMatchObject({ status: 'failed', last_reason: 'worker_startup_evidence_missing' });
     expect(mocks.killOwnedWorkerPane).toHaveBeenCalledWith(expect.objectContaining({ paneId: '%2' }));
   });
 
+  it('keeps one claim-task error line on a busy evidence miss and ignores other pane text', async () => {
+    cwd = await mkdtempFixture('omq-runtime-v2-claude-claim-error-');
+    mocks.autoStartupEvidence = false;
+    process.env.OMQ_TEAM_ENGAGED_PANE_RECHECK_MS = '250';
+    mocks.retryStartupInboxSubmit.mockImplementation(async () => 'pane_busy');
+    const claimLine = JSON.stringify({ schema_version: '1.0', timestamp: '2026-09-06T00:00:00.000Z', command: 'omc team api claim-task', ok: true, operation: 'claim-task', data: { ok: false, error: 'claim_conflict' } });
+    mocks.captureOwnedTeamPane.mockImplementation(async () => [
+      'team api claim-task --input "{\\"team_name\\":\\"dispatch-team\\"}" --json',
+      claimLine,
+    ].join('\n'));
+
+    const { startTeamV2 } = await import('../runtime-v2.js');
+    const runtime = await startTeamV2({
+      teamName: 'dispatch-team',
+      workerCount: 1,
+      agentTypes: ['claude'],
+      tasks: [{ subject: 'Dispatch test', description: 'Verify claim error line is kept' }],
+      cwd,
+    });
+
+    expect(runtime.startupFailures).toEqual([
+      {
+        worker: 'worker-1',
+        reason: 'worker_startup_evidence_missing_pane_busy',
+        claimError: '{"ok":false,"error":"claim_conflict"}',
+      },
+    ]);
+    expect(runtime.config.workers[0]?.assigned_tasks).toEqual([]);
+    expect(mocks.captureOwnedTeamPane).toHaveBeenCalledTimes(1);
+    expect(mocks.captureOwnedTeamPane).toHaveBeenCalledWith(expect.anything(), { joinWrappedLines: true });
+    expect(mocks.captureOwnedTeamPane.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.killOwnedWorkerPane.mock.invocationCallOrder[0],
+    );
+  });
+
+
   it('direct grok launch resolves model from grok env vars and never calls resolveClaudeWorkerModel', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-grok-direct-');
+    cwd = await mkdtempFixture('omq-runtime-v2-grok-direct-');
     const originalGrokModel = process.env.OMQ_GROK_DEFAULT_MODEL;
     const originalGrokExternal = process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
     delete process.env.OMQ_GROK_DEFAULT_MODEL;
@@ -4426,7 +4550,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('direct grok launch passes OMQ_GROK_DEFAULT_MODEL through to buildWorkerArgv', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-grok-model-');
+    cwd = await mkdtempFixture('omq-runtime-v2-grok-model-');
     const originalGrokModel = process.env.OMQ_GROK_DEFAULT_MODEL;
     const originalGrokExternal = process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
     delete process.env.OMQ_EXTERNAL_MODELS_DEFAULT_GROK_MODEL;
@@ -4456,7 +4580,7 @@ describe('runtime v2 startup inbox dispatch', () => {
   });
 
   it('keeps gemini prompt-mode launch args to a short inbox pointer and waits for claim evidence', async () => {
-    cwd = await mkdtempFixture('omc-runtime-v2-gemini-prompt-');
+    cwd = await mkdtempFixture('omq-runtime-v2-gemini-prompt-');
 
     modelContractMocks.isPromptModeAgent.mockImplementation((agentType?: string) => agentType === 'gemini');
     let claimedTaskPath: string | undefined;
@@ -4472,7 +4596,7 @@ describe('runtime v2 startup inbox dispatch', () => {
           owner: 'worker-1',
           token: 'gemini-current-token',
           leased_until: '2099-01-01T00:00:00.000Z',
-          launch_attempt_id: config.envVars?.OMC_WORKER_LAUNCH_ATTEMPT_ID,
+          launch_attempt_id: config.envVars?.OMQ_WORKER_LAUNCH_ATTEMPT_ID,
         },
       }, null, 2), 'utf-8');
     });

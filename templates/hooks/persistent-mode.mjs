@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * OMC Persistent Mode Hook (Node.js)
- * Minimal continuation enforcer for all OMC modes.
+ * OMQ Persistent Mode Hook (Node.js)
+ * Minimal continuation enforcer for all OMQ modes.
  * Stripped down for reliability — no optional imports, no PRD, no notepad pruning.
  *
  * Supported modes: ralph, autopilot, ultrapilot, swarm, pipeline, team
@@ -111,7 +111,7 @@ function readJsonFile(path) {
 
 function lockFailureReason(operation) {
   const message = getStateFileLockFailureMessage();
-  return `[OMC] ${operation} failed: ${message} Retry the operation after the lock holder exits.`;
+  return `[OMQ] ${operation} failed: ${message} Retry the operation after the lock holder exits.`;
 }
 
 /**
@@ -789,7 +789,7 @@ function getActiveSubagentCount(stateDir) {
  * Blocking these stops causes a deadlock: can't compact because can't stop,
  * can't continue because context is full.
  *
- * See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
+ * See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/213
  */
 function isContextLimitStop(data) {
   const reason = (data.stop_reason || data.stopReason || "").toLowerCase();
@@ -927,13 +927,13 @@ async function main() {
     const sessionIdRaw = data.sessionId || data.session_id || data.sessionid || "";
     const sessionId = sanitizeSessionId(sessionIdRaw);
     const hasValidSessionId = isValidSessionId(sessionIdRaw);
-    const omcRoot = await resolveOmqStateRoot(directory);
-    const stateDir = join(omcRoot, "state");
+    const omqRoot = await resolveOmqStateRoot(directory);
+    const stateDir = join(omqRoot, "state");
     const globalStateDir = join(homedir(), ".omq", "state");
 
     // CRITICAL: Never block context-limit stops.
     // Blocking these causes a deadlock where Claude Code cannot compact.
-    // See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
+    // See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/213
     if (isContextLimitStop(data)) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
@@ -1301,7 +1301,7 @@ async function main() {
       }
     }
 
-    // Priority 6: Team (omc-teams / staged pipeline)
+    // Priority 6: Team (omq-teams / staged pipeline)
     if (
       team.state?.active &&
       !isStaleState(team.state) &&

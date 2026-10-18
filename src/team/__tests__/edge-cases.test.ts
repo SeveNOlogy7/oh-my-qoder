@@ -753,9 +753,9 @@ describe('tmux-session edge cases', () => {
     it('each part is truncated to 50 chars independently', () => {
       const longName = 'a'.repeat(100);
       const result = sessionName(longName, longName);
-      // 'omc-team-' + 50 chars + '-' + 50 chars = 110 total
+      // 'omq-team-' + 50 chars + '-' + 50 chars = 110 total
       expect(result.length).toBe(110);
-      expect(result).toBe(`omc-team-${'a'.repeat(50)}-${'a'.repeat(50)}`);
+      expect(result).toBe(`omq-team-${'a'.repeat(50)}-${'a'.repeat(50)}`);
     });
   });
 

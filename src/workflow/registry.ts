@@ -135,7 +135,7 @@ function entry(e: WorkflowEntry): WorkflowEntry {
 const ALIAS_MILESTONE = REMOVAL_MILESTONE;
 
 // ---------------------------------------------------------------------------
-// Skills — all 41 installed surfaces + defined Tier-0 targets + legacy alias
+// Skills — all 46 installed surfaces + defined Tier-0 targets + legacy alias
 // names. Classification per plan §4.2 with the owner's authoritative Tier-0
 // decision (plan/execute/review/verify; specialists remain internal).
 // ---------------------------------------------------------------------------
@@ -158,9 +158,9 @@ const SKILL_ENTRIES: readonly WorkflowEntry[] = [
   // Retired in 5.0.0 under the major-version carve-out (policy.isMajorBoundaryRemoval).
   // The following skills were removed outright rather than kept as aliases:
   //   ultrawork, ultraqa, ultrapilot, swarm, pipeline,
-  //   merge-readiness, deep-dive, sciomc, setup, mcp-setup, omc-reference,
-  //   omc-teams, learner, writer-memory, ccg, local-build-reminder.
-  // Their behavior lives in execute / verify / review / research / omc-setup /
+  //   merge-readiness, deep-dive, sciomc, setup, mcp-setup, omq-reference,
+  //   omq-teams, learner, writer-memory, ccg, local-build-reminder.
+  // Their behavior lives in execute / verify / review / research / omq-setup /
   // wiki / remember / team. Owner direction: `autopilot`, `autoresearch`,
   // `ultragoal`, and `ralph` survive as directly-invocable workflows, so they
   // are `keep`.
@@ -186,6 +186,10 @@ const SKILL_ENTRIES: readonly WorkflowEntry[] = [
   entry({ name: 'remember', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'configure-notifications', kind: 'skill', decision: 'keep', riskClass: 'secrets-privacy', owner: REGISTRY_OWNER, notes: 'Opt-in integration handling secrets; hard boundary retained.' }),
   entry({ name: 'project-session-manager', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Utility only; workflow-gate behavior removed per plan.' }),
+  entry({ name: 'pr', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Advisory PR-body assembly from existing verify evidence; never recollects evidence or gates delivery.' }),
+  entry({ name: 'refit', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'User-invoked retrospective; only lands findings approved by the user.' }),
+  entry({ name: 'map', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Router over shipped skills; routes and never executes.' }),
+  entry({ name: 'tdd', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Test-first discipline at pre-agreed seams; opt-in, never a default gate.' }),
   entry({ name: 'ai-slop-cleaner', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Opt-in review tool; never a default gate.' }),
   entry({ name: 'minimal-code-discipline', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Opt-in writing-time discipline; never a default gate.' }),
   entry({ name: 'agent-doc-discipline', kind: 'skill', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Opt-in writing-time discipline for agent-facing documents; mandatory at drydock seed generation and launch C5 sediment; never a default gate.' }),
@@ -232,7 +236,7 @@ const COMMAND_ENTRIES: readonly WorkflowEntry[] = [
   entry({ name: 'wiki', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER }),
   entry({ name: 'verify', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Command form of the Tier-0 verify workflow.' }),
   entry({ name: 'autoresearch', kind: 'command', decision: 'keep', riskClass: 'advisory', owner: REGISTRY_OWNER, notes: 'Retained alongside the research lane (owner direction, 5.0.0).' }),
-  // Retired in 5.0.0: ccg, deep-dive, learner, mcp-setup, omc-teams, sciomc,
+  // Retired in 5.0.0: ccg, deep-dive, learner, mcp-setup, omq-teams, sciomc,
   // writer-memory command files were removed with their skills.
   entry({ name: 'psm', kind: 'command', decision: 'alias-deprecate', canonicalTarget: 'project-session-manager', riskClass: 'advisory', owner: REGISTRY_OWNER, removalMilestone: 'short-name convenience alias; retained by owner direction' }),
   entry({ name: 'release', kind: 'command', decision: 'alias-deprecate', canonicalTarget: 'omc-release', riskClass: 'release-authority', owner: REGISTRY_OWNER, maintainerOnly: true, removalMilestone: 'compatibility alias during migration; never auto-removed without owner approval' }),

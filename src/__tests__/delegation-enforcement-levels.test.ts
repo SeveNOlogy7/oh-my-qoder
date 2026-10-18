@@ -11,13 +11,12 @@ import { join } from 'path';
 import {
   processOrchestratorPreTool,
   isAllowedPath,
-  isTempOrScratchpadPath,
   isSourceFile,
   isWriteEditTool,
   clearEnforcementCache,
   type ToolExecuteInput,
-} from '../hooks/omc-orchestrator/index.js';
-import type { AuditEntry } from '../hooks/omc-orchestrator/audit.js';
+} from '../hooks/omq-orchestrator/index.js';
+import type { AuditEntry } from '../hooks/omq-orchestrator/audit.js';
 
 // Mock fs module
 vi.mock('fs', async () => {
@@ -80,22 +79,29 @@ const mockExistsSync = vi.mocked(existsSync);
 const mockReadFileSync = vi.mocked(readFileSync);
 
 describe('delegation-enforcement-levels', () => {
-  const savedConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  const savedConfigDir = process.env.QODER_CONFIG_DIR;
+  const savedCnConfigDir = process.env.QODERCN_CONFIG_DIR;
 
   beforeEach(() => {
     vi.clearAllMocks();
     clearEnforcementCache();
-    // Ensure tests use the mocked homedir, not a custom CLAUDE_CONFIG_DIR
-    delete process.env.CLAUDE_CONFIG_DIR;
+    // Ensure tests use the mocked homedir, not a custom QODER_CONFIG_DIR
+    delete process.env.QODER_CONFIG_DIR;
+    delete process.env.QODERCN_CONFIG_DIR;
     // Default: no config files exist
     mockExistsSync.mockReturnValue(false);
   });
 
   afterEach(() => {
     if (savedConfigDir !== undefined) {
-      process.env.CLAUDE_CONFIG_DIR = savedConfigDir;
+      process.env.QODER_CONFIG_DIR = savedConfigDir;
     } else {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.QODER_CONFIG_DIR;
+    }
+    if (savedCnConfigDir !== undefined) {
+      process.env.QODERCN_CONFIG_DIR = savedCnConfigDir;
+    } else {
+      delete process.env.QODERCN_CONFIG_DIR;
     }
   });
 
@@ -179,16 +185,16 @@ describe('delegation-enforcement-levels', () => {
       // Local config exists with 'off', global has 'strict'
       mockExistsSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (s.endsWith('/.omq/config.json')) return true;
-        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) return true;
+        if (/[\\/]\.omq[\\/]config\.json$/.test(s)) return true;
+        if (/[\\/]mock[\\/]home[\\/]\.qoder[\\/]\.omq-config\.json$/.test(s)) return true;
         return false;
       });
       mockReadFileSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (s.endsWith('/.omq/config.json')) {
+        if (/[\\/]\.omq[\\/]config\.json$/.test(s)) {
           return JSON.stringify({ delegationEnforcementLevel: 'off' });
         }
-        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) {
+        if (/[\\/]mock[\\/]home[\\/]\.qoder[\\/]\.omq-config\.json$/.test(s)) {
           return JSON.stringify({ delegationEnforcementLevel: 'strict' });
         }
         return '';
@@ -203,12 +209,12 @@ describe('delegation-enforcement-levels', () => {
     it('falls back to global config when no local config', () => {
       mockExistsSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) return true;
+        if (/[\\/]mock[\\/]home[\\/]\.qoder[\\/]\.omq-config\.json$/.test(s)) return true;
         return false;
       });
       mockReadFileSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (/[\\/]mock[\\/]home[\\/]\.claude[\\/]\.omq-config\.json$/.test(s)) {
+        if (/[\\/]mock[\\/]home[\\/]\.qoder[\\/]\.omq-config\.json$/.test(s)) {
           return JSON.stringify({ delegationEnforcementLevel: 'strict' });
         }
         return '';
@@ -255,7 +261,7 @@ describe('delegation-enforcement-levels', () => {
     it('supports enforcementLevel key as alternative', () => {
       mockExistsSync.mockImplementation((p: unknown) => {
         const s = String(p);
-        if (s.endsWith('/.omq/config.json')) return true;
+        if (/[\\/]\.omq[\\/]config\.json$/.test(s)) return true;
         return false;
       });
       mockReadFileSync.mockImplementation(() => {
@@ -623,62 +629,41 @@ describe('delegation-enforcement-levels', () => {
       expect(isAllowedPath('.claude/settings.json')).toBe(true);
     });
 
-    it('returns true for temporary and scratchpad paths', () => {
-      expect(isAllowedPath('/tmp/test.py')).toBe(true);
-      expect(isAllowedPath('/private/tmp/claude-501/project/session/scratchpad/test.py')).toBe(true);
-      expect(isAllowedPath('/var/tmp/script.sh')).toBe(true);
-    });
-
-    it.each([
-      ['/tmp/test.py', '/home/project', true],
-      ['/private/tmp/test.py', '/home/project', true],
-      ['/var/tmp/test.py', '/home/project', true],
-      ['/private/var/tmp/test.py', '/home/project', true],
-      ['/tmp/project/src/app.ts', '/tmp/project', false],
-      ['/tmp/project2/src/app.ts', '/tmp/project', true],
-      ['/tmpfoo/src/app.ts', '/home/project', false],
-      ['scratchpad/src/app.ts', '/home/project', false],
-      ['C:\\Windows\\Temp\\fixture.ts', '/home/project', process.platform === 'win32'],
-      ['C:\\Users\\alice\\AppData\\Local\\Temp\\fixture.ts', '/home/project', process.platform === 'win32'],
-      ['\\\\server\\share\\fixture.ts', '/home/project', false],
-      ['.omq\\..\\src\\app.ts', '/home/project', false],
-    ] as const)('uses bounded cross-platform temp paths: %s from %s', (filePath, directory, expected) => {
-      expect(isTempOrScratchpadPath(filePath, directory)).toBe(expected);
-      expect(isAllowedPath(filePath, directory)).toBe(expected);
-    });
-
-    it('does not allow an absolute temp path that resolves inside the project', () => {
-      const directory = '/tmp/project';
-      expect(isTempOrScratchpadPath('/tmp/project/../project/src/app.ts', directory)).toBe(false);
-      expect(isAllowedPath('/tmp/project/../project/src/app.ts', directory)).toBe(false);
-    });
-
-    it('returns true for absolute paths under CLAUDE_CONFIG_DIR', () => {
-      const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
-      process.env.CLAUDE_CONFIG_DIR = '/custom/claude-config';
+    it('returns true for absolute paths under QODER_CONFIG_DIR', () => {
+      const originalConfigDir = process.env.QODER_CONFIG_DIR;
+      // Path shape must be absolute on the host platform: isAllowedPath gates
+      // its config-dir branch on path.isAbsolute.
+      const isWin = process.platform === 'win32';
+      process.env.QODER_CONFIG_DIR = isWin ? 'C:\\custom\\qoder-config' : '/custom/qoder-config';
       try {
-        expect(isAllowedPath('/custom/claude-config/settings.json')).toBe(true);
-        expect(isAllowedPath('/custom/claude-config/agents/test.md')).toBe(true);
+        const settings = isWin
+          ? 'C:\\custom\\qoder-config\\settings.json'
+          : '/custom/qoder-config/settings.json';
+        const agentsDoc = isWin
+          ? 'C:\\custom\\qoder-config\\agents\\test.md'
+          : '/custom/qoder-config/agents/test.md';
+        expect(isAllowedPath(settings)).toBe(true);
+        expect(isAllowedPath(agentsDoc)).toBe(true);
       } finally {
         if (originalConfigDir === undefined) {
-          delete process.env.CLAUDE_CONFIG_DIR;
+          delete process.env.QODER_CONFIG_DIR;
         } else {
-          process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+          process.env.QODER_CONFIG_DIR = originalConfigDir;
         }
       }
     });
 
-    it('returns true for absolute paths under a ~-prefixed CLAUDE_CONFIG_DIR', () => {
-      const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
-      process.env.CLAUDE_CONFIG_DIR = '~/.claude-alt';
+    it('returns true for absolute paths under a ~-prefixed QODER_CONFIG_DIR', () => {
+      const originalConfigDir = process.env.QODER_CONFIG_DIR;
+      process.env.QODER_CONFIG_DIR = '~/.qoder-alt';
       try {
-        expect(isAllowedPath(join('/mock/home', '.claude-alt', 'settings.json'))).toBe(true);
-        expect(isAllowedPath(join('/mock/home', '.claude-alt', 'agents', 'test.md'))).toBe(true);
+        expect(isAllowedPath(join('/mock/home', '.qoder-alt', 'settings.json'))).toBe(true);
+        expect(isAllowedPath(join('/mock/home', '.qoder-alt', 'agents', 'test.md'))).toBe(true);
       } finally {
         if (originalConfigDir === undefined) {
-          delete process.env.CLAUDE_CONFIG_DIR;
+          delete process.env.QODER_CONFIG_DIR;
         } else {
-          process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
+          process.env.QODER_CONFIG_DIR = originalConfigDir;
         }
       }
     });

@@ -14,12 +14,12 @@ import { resetJevResolverState } from '../../jev/index.js';
 
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_MAX_REQUESTS',
-  'OMC_JEV_EXCERPT_CHARS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_MAX_REQUESTS',
+  'OMQ_JEV_EXCERPT_CHARS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
 ] as const;
 
 const CANDIDATES: PruningCandidate[] = [
@@ -36,7 +36,7 @@ beforeEach(async () => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OMC_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV_LOG_DIR = logDir;
 });
 
 afterEach(async () => {
@@ -60,7 +60,7 @@ function captureFetch(score: number): { fetchFn: typeof fetch; calls: CapturedCa
       ok: true,
       status: 200,
       json: async () => ({
-        answers: { staleness: { type: 'Score', score, confidence: 0.8 } },
+        answers: { staleness: { type: 'score', score, confidence: 0.8 } },
       }),
     } as unknown as Response;
   }) as unknown as typeof fetch;
@@ -85,7 +85,7 @@ async function readLogLine(): Promise<string> {
 describe('recordContextPruningShadow', () => {
   it('with key set, records a shadow comparison: heuristic action + Jev Score', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'context-pruning';
+    process.env.OMQ_JEV = 'context-pruning';
     const { fetchFn, calls } = captureFetch(3);
     const result = await recordContextPruningShadow({
       action: 'warn',
@@ -109,14 +109,14 @@ describe('recordContextPruningShadow', () => {
       candidateCount: 1,
       candidates: [{ tool: 'read', tokens: 1200, excerpt: 'src/index.ts line one' }],
     });
-    expect(body.questions.staleness.type).toBe('Score');
+    expect(body.questions.staleness.type).toBe('score');
 
     const line = JSON.parse(await readLogLine());
     expect(line).toMatchObject({
       point: 'context-pruning',
       mode: 'shadow',
       heuristic: 'warn',
-      jev: { type: 'Score', score: 3 },
+      jev: { type: 'score', score: 3 },
       confidence: 0.8,
     });
   });
@@ -135,9 +135,9 @@ describe('recordContextPruningShadow', () => {
     await expect(readFile(join(logDir, 'shadow.jsonl'), 'utf8')).rejects.toThrow();
   });
 
-  it('with OMC_JEV=off: zero calls even with a key', async () => {
+  it('with OMQ_JEV=off: zero calls even with a key', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'off';
+    process.env.OMQ_JEV = 'off';
     const { fetchFn, calls } = captureFetch(1);
     const result = await recordContextPruningShadow({
       action: 'compact',
@@ -153,7 +153,7 @@ describe('recordContextPruningShadow', () => {
 
   it('bounds candidate excerpts before sending', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'context-pruning';
+    process.env.OMQ_JEV = 'context-pruning';
     const long = 'a'.repeat(500);
     const { fetchFn, calls } = captureFetch(2);
     await recordContextPruningShadow({
@@ -186,7 +186,7 @@ describe('hook wiring: createPreemptiveCompactionHook + context-pruning shadow',
 
   it('warning message is byte-identical with and without the key, and the shadow line is logged with the key', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'context-pruning';
+    process.env.OMQ_JEV = 'context-pruning';
     const { fetchFn } = captureFetch(4);
 
     const withKey = postToolUseOnce(fetchFn, 'jev-wiring-with-key');

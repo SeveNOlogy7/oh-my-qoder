@@ -122,7 +122,7 @@ describe('runtime-cli v2 shutdown publication', () => {
     try {
       const teamName = 'terminal-snapshot';
       await reserveTeamInstance({ teamName, cwd, instanceId: INSTANCE_ID });
-      const stateRoot = join(cwd, '.omc', 'state', 'team', teamName);
+      const stateRoot = join(cwd, '.omq', 'state', 'team', teamName);
       mkdirSync(join(stateRoot, 'tasks'), { recursive: true });
       writeFileSync(join(stateRoot, 'manifest.json'), JSON.stringify({
         schema_version: 2,
@@ -316,8 +316,8 @@ describe('runtime-cli result artifact writer', () => {
 
   it('no-ops when jobs dir is missing even if job id is provided', async () => {
     const jobsDir = mkdtempSync(join(tmpdir(), 'runtime-cli-artifact-missing-dir-'));
-    const previousJobsDir = process.env.OMC_JOBS_DIR;
-    delete process.env.OMC_JOBS_DIR;
+    const previousJobsDir = process.env.OMQ_JOBS_DIR;
+    delete process.env.OMQ_JOBS_DIR;
     try {
       await writeResultArtifact(
         {
@@ -335,8 +335,8 @@ describe('runtime-cli result artifact writer', () => {
 
       expect(readdirSync(jobsDir)).toEqual([]);
     } finally {
-      if (previousJobsDir === undefined) delete process.env.OMC_JOBS_DIR;
-      else process.env.OMC_JOBS_DIR = previousJobsDir;
+      if (previousJobsDir === undefined) delete process.env.OMQ_JOBS_DIR;
+      else process.env.OMQ_JOBS_DIR = previousJobsDir;
       rmSync(jobsDir, { recursive: true, force: true });
     }
   });
@@ -354,7 +354,7 @@ describe('runtime-cli result artifact writer', () => {
           workerCount: 0,
         },
         '2026-03-02T12:00:00.000Z',
-        'omc-invalid',
+        'omq-invalid',
         jobsDir,
       )).rejects.toThrow('result_artifact_instance_identity_missing');
       expect(readdirSync(jobsDir)).toEqual([]);
@@ -397,7 +397,7 @@ describe('runtime-cli terminal preservation helper', () => {
         },
       ]);
       expect(result.notice).toContain('preserving team state');
-      expect(result.notice).toContain(`omc team shutdown ${teamName}`);
+      expect(result.notice).toContain(`omq team shutdown ${teamName}`);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -435,7 +435,7 @@ describe('runtime-cli terminal preservation helper', () => {
         },
       ]);
       expect(result.notice).toContain('phase=cancelled');
-      expect(result.notice).toContain(`omc team shutdown ${teamName}`);
+      expect(result.notice).toContain(`omq team shutdown ${teamName}`);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -668,7 +668,7 @@ describe('runtime-cli recovery intent cleanup', () => {
   }
 
   async function seedIntent(cwd: string, requestId: string, recoveryId: string): Promise<string> {
-    const stateRoot = join(cwd, '.omc', 'state', 'team', 'intent-team');
+    const stateRoot = join(cwd, '.omq', 'state', 'team', 'intent-team');
     if (!existsSync(stateRoot)) {
       await reserveTeamInstance({ teamName: 'intent-team', cwd, instanceId: INSTANCE_ID });
     }

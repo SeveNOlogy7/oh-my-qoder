@@ -20,8 +20,8 @@ function hasActiveOmcPluginForDiagnostics(): boolean {
   try {
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     for (const candidate of [settings.enabledPlugins, settings.plugins]) {
-      if (Array.isArray(candidate) && candidate.some((id) => typeof id === 'string' && id.toLowerCase().includes('oh-my-claudecode'))) return true;
-      if (candidate && typeof candidate === 'object' && Object.entries(candidate as Record<string, unknown>).some(([id, value]) => id.toLowerCase().includes('oh-my-claudecode') && value !== false)) return true;
+      if (Array.isArray(candidate) && candidate.some((id) => typeof id === 'string' && id.toLowerCase().includes('oh-my-qoder'))) return true;
+      if (candidate && typeof candidate === 'object' && Object.entries(candidate as Record<string, unknown>).some(([id, value]) => id.toLowerCase().includes('oh-my-qoder') && value !== false)) return true;
     }
   } catch { /* malformed settings are not proof of an active plugin */ }
   return false;
@@ -360,8 +360,8 @@ export function checkEnvFlags(): ConflictReport['envFlags'] {
   return { disableOmc, skipHooks };
 }
 
-// omq-reference = the fork spelling; omc-reference = already-installed 4.x/5.0 upgrades; wiki = the v5.1.0 setup-synced skill.
-const SETUP_FALLBACK_SKILL_NAMES = new Set(['omq-reference', 'omc-reference', 'wiki']);
+// omq-reference = the fork spelling; omq-reference = already-installed 4.x/5.0 upgrades; wiki = the v5.1.0 setup-synced skill.
+const SETUP_FALLBACK_SKILL_NAMES = new Set(['omq-reference', 'omq-reference', 'wiki']);
 
 function parseSemverLikeVersion(version: string): number[] | null {
   if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
@@ -412,7 +412,7 @@ function readInstalledPluginRoots(): string[] {
       : parsed as Record<string, unknown>;
 
     return Object.entries(plugins)
-      .filter(([key]) => key.startsWith('oh-my-claudecode'))
+      .filter(([key]) => key.startsWith('oh-my-qoder'))
       .flatMap(([, value]) => Array.isArray(value) ? value : [])
       .map(entry => entry && typeof entry === 'object' && 'installPath' in entry
         ? (entry as { installPath?: unknown }).installPath
@@ -471,18 +471,14 @@ function getSetupFallbackCanonicalSkillPaths(baseName: string): string[] {
 }
 
 function isSupportedSetupFallbackSkill(legacySkillsDir: string, entry: string, baseName: string): boolean {
-  if (hasActiveOmcPluginForDiagnostics()) {
-    return false;
-  }
   if (!SETUP_FALLBACK_SKILL_NAMES.has(baseName)) {
     return false;
   }
 
-  // scripts/setup-claude-md.sh intentionally syncs the raw bundled
-  // skills/wiki/SKILL.md file into ~/.claude/skills/wiki/SKILL.md. Keep the
-  // retired omc-reference fallback for already-installed 4.x upgrades.
-  // as a Claude CLI fallback. Suppress only that exact, unmodified sync so real
-  // legacy collisions and user-edited fallback copies still surface.
+  // setup-claude-md.sh may sync the raw bundled wiki skill as a CLI fallback.
+  // Keep the retired omq-reference fallback for already-installed 4.x upgrades.
+  // Suppress only an exact byte-for-byte copy so real legacy collisions and
+  // user-edited fallback copies still surface, even with the plugin active.
   if (entry.toLowerCase() !== baseName) {
     return false;
   }
@@ -493,10 +489,10 @@ function isSupportedSetupFallbackSkill(legacySkillsDir: string, entry: string, b
   }
 
   try {
-    const installedContent = readFileSync(installedSkillPath, 'utf-8');
+    const installedContent = readFileSync(installedSkillPath);
     return getSetupFallbackCanonicalSkillPaths(baseName).some(canonicalSkillPath => (
       existsSync(canonicalSkillPath)
-      && installedContent === readFileSync(canonicalSkillPath, 'utf-8')
+      && installedContent.equals(readFileSync(canonicalSkillPath))
     ));
   } catch {
     return false;
@@ -522,12 +518,12 @@ function isVerifiedStandaloneManagedSkill(legacySkillsDir: string, entry: string
 
   const canonicalNames = new Set<string>([baseName]);
   // The shipped skills carry the omq- prefix (omq-doctor, omq-setup, omq-teams);
-  // the omc- strip stays for skills installed by pre-fork 4.x/5.0 upgrades.
+  // the omq- strip stays for skills installed by pre-fork 4.x/5.0 upgrades.
   if (baseName.startsWith('omq-')) {
     canonicalNames.add(baseName.slice('omq-'.length));
   }
-  if (baseName.startsWith('omc-')) {
-    canonicalNames.add(baseName.slice('omc-'.length));
+  if (baseName.startsWith('omq-')) {
+    canonicalNames.add(baseName.slice('omq-'.length));
   }
   const canonicalPaths = Array.from(canonicalNames).flatMap((name: string) => getSetupFallbackCanonicalSkillPaths(name));
   try {
@@ -677,7 +673,7 @@ export function runConflictCheck(): ConflictReport {
 
   // Determine if there are actual conflicts
   const hasConflicts =
-    hookConflicts.some(h => !h.isOmq) || // Non-OMC hooks present
+    hookConflicts.some(h => !h.isOmq) || // Non-OMQ hooks present
     legacySkills.length > 0 || // Legacy skills colliding with plugin
     envFlags.disableOmc || // OMQ is disabled
     envFlags.skipHooks.length > 0 || // Hooks are being skipped

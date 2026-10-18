@@ -36,6 +36,9 @@ const WHITELIST_FILES = new Set([
   'scripts/pre-tool-enforcer.mjs',
   'scripts/skill-injector.mjs',
   'scripts/session-start.mjs',
+  'scripts/code-simplifier.mjs',
+  // Hook templates (shipped in distribution, own resolver pre-dist)
+  'templates/hooks/code-simplifier.mjs',
   // Multi-repo test fixtures and audits (construct fake .omq trees)
   'scripts/smoke-multirepo.mjs',
   'scripts/audit-multirepo-e2e.mjs',
@@ -68,11 +71,11 @@ function isWhitelisted(filePath) {
 /**
  * A match is benign when the first argument resolves to a known GLOBAL config root
  * (homedir(), os.homedir(), getClaudeConfigDir(), CLAUDE_CONFIG_DIR). These are
- * NOT workspace state — they're per-user installs of the OMC binary itself.
+ * NOT workspace state — they're per-user installs of the OMQ binary itself.
  * The multi-repo enforcement applies only to workspace-scoped `.omq/`.
  */
 // Global config first-arg patterns. When join()'s first arg is one of these,
-// the construction is a per-user OMC install config path (NOT workspace state).
+// the construction is a per-user OMQ install config path (NOT workspace state).
 const GLOBAL_FIRST_ARG_PATTERNS = [
   /^(?:path\.)?join\(\s*homedir\(\)\s*,/,
   /^(?:path\.)?join\(\s*os\.homedir\(\)\s*,/,

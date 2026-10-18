@@ -56,7 +56,7 @@ function writeInstalledPluginRegistry(claudeConfigDir: string, pluginRoot: strin
   writeFileSync(
     join(pluginsDir, 'installed_plugins.json'),
     JSON.stringify({
-      'oh-my-claudecode': [
+      'oh-my-qoder': [
         { installPath: pluginRoot },
       ],
     }, null, 2)
@@ -66,7 +66,7 @@ function writeInstalledPluginRegistry(claudeConfigDir: string, pluginRoot: strin
 function writeEnabledPluginSettings(claudeConfigDir: string): void {
   writeFileSync(
     join(claudeConfigDir, 'settings.json'),
-    JSON.stringify({ plugins: ['oh-my-claudecode'] }, null, 2)
+    JSON.stringify({ plugins: ['oh-my-qoder'] }, null, 2)
   );
 }
 
@@ -118,7 +118,7 @@ describe('installer bundled + standalone skill sync', () => {
   let originalHome: string | undefined;
 
   beforeEach(() => {
-    tempRoot = mkdtempSync(join(tmpdir(), 'omc-installer-omc-reference-'));
+    tempRoot = mkdtempSync(join(tmpdir(), 'omq-installer-omq-reference-'));
     homeDir = join(tempRoot, 'home');
     claudeConfigDir = join(homeDir, '.claude');
     mkdirSync(homeDir, { recursive: true });
@@ -173,7 +173,7 @@ describe('installer bundled + standalone skill sync', () => {
   });
 
   it('installs bundled skills when no enabled OMC plugin is configured', async () => {
-    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-claudecode', '4.10.2');
+    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-qoder', '4.10.2');
     mkdirSync(join(pluginRoot, 'skills', 'ultragoal'), { recursive: true });
     writeFileSync(join(pluginRoot, 'skills', 'ultragoal', 'SKILL.md'), 'name: ultragoal\n');
     writeInstalledPluginRegistry(claudeConfigDir, pluginRoot);
@@ -199,7 +199,7 @@ describe('installer bundled + standalone skill sync', () => {
   });
 
   it('skips bundled skill sync when an installed plugin already provides skills', async () => {
-    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-claudecode', '4.10.2');
+    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-qoder', '4.10.2');
     writeMinimallyCompletePluginPayload(pluginRoot);
     writeInstalledPluginRegistry(claudeConfigDir, pluginRoot);
     writeEnabledPluginSettings(claudeConfigDir);
@@ -216,7 +216,7 @@ describe('installer bundled + standalone skill sync', () => {
   });
 
   it('forces bundled skill sync with noPlugin even when plugin skills exist', async () => {
-    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-claudecode', '4.10.2');
+    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-qoder', '4.10.2');
     mkdirSync(join(pluginRoot, 'skills', 'ultragoal'), { recursive: true });
     writeFileSync(join(pluginRoot, 'skills', 'ultragoal', 'SKILL.md'), 'name: ultragoal\n');
     writeInstalledPluginRegistry(claudeConfigDir, pluginRoot);
@@ -235,7 +235,7 @@ describe('installer bundled + standalone skill sync', () => {
   });
 
   it('falls back to bundled skills when plugin is enabled but skill files are unavailable', async () => {
-    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-claudecode', '4.10.2');
+    const pluginRoot = join(tempRoot, 'plugin-cache', 'oh-my-qoder', '4.10.2');
     mkdirSync(pluginRoot, { recursive: true });
     writeInstalledPluginRegistry(claudeConfigDir, pluginRoot);
     writeEnabledPluginSettings(claudeConfigDir);

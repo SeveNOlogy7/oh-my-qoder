@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Invoke parallel document-specialist agents for external web searches and documentation lookup"
 ---
 
 # OMQ external-context

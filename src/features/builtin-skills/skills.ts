@@ -14,7 +14,7 @@ import { join, dirname, basename, resolve, relative, isAbsolute, win32 } from 'p
 import { fileURLToPath } from 'url';
 import type { BuiltinSkill } from './types.js';
 import { parseFrontmatter, parseFrontmatterAliases } from '../../utils/frontmatter.js';
-import { rewriteOmcCliInvocations } from '../../utils/omc-cli-rendering.js';
+import { rewriteOmqCliInvocations } from '../../utils/omq-cli-rendering.js';
 import { parseSkillPipelineMetadata, renderSkillPipelineGuidance } from '../../utils/skill-pipeline.js';
 import { renderSkillResourcesGuidance } from '../../utils/skill-resources.js';
 import { renderSkillRuntimeGuidance } from './runtime-guidance.js';
@@ -176,7 +176,7 @@ function getFrontmatterString(metadata: Record<string, unknown>, key: string): s
 }
 
 function readSkillBodyOverride(skillPath: string, metadata: Record<string, unknown>, fallbackBody: string): string {
-  const bodyPath = getFrontmatterString(metadata, 'omc-full-body');
+  const bodyPath = getFrontmatterString(metadata, 'omq-full-body');
   if (!bodyPath) {
     return fallbackBody;
   }
@@ -239,7 +239,7 @@ function normalizeSkillNameForRuntimeRendering(skillName: string): string {
 
 export function renderBundledSkillBody(skillName: string, body: string): string {
   const normalizedSkillName = normalizeSkillNameForRuntimeRendering(skillName);
-  const rewrittenBody = rewriteOmcCliInvocations(body.trim());
+  const rewrittenBody = rewriteOmqCliInvocations(body.trim());
   return normalizedSkillName === 'deep-interview' || normalizedSkillName === 'deep-dive'
     ? applyDeepInterviewRuntimeSettings(rewrittenBody)
     : rewrittenBody;

@@ -233,7 +233,7 @@ describe('#3873 non-git state-root anchoring', () => {
       for (const dir of [repo, join(repo, 'x'), join(repo, 'x', 'y')]) {
         process.chdir(dir);
         clearWorktreeCache();
-        expect(getOmcRoot()).toBe(join(realpathSync(repo), '.omc'));
+        expect(getOmcRoot()).toBe(join(realpathSync(repo), '.omq'));
       }
     });
 
@@ -273,7 +273,7 @@ describe('#3873 non-git state-root anchoring', () => {
       execFileSync('git', ['init', '-q'], { cwd: repo });
       process.chdir(repo);
       clearWorktreeCache();
-      expect(getOmcRoot()).toBe(join(realpathSync(repo), '.omc'));
+      expect(getOmcRoot()).toBe(join(realpathSync(repo), '.omq'));
     });
 
     it('.omq-workspace remains separate from non-git canonical anchoring', () => {

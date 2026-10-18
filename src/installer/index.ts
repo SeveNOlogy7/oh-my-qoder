@@ -1,7 +1,7 @@
 /**
  * Installer Module
  *
- * Handles installation of OMC agents, commands, and configuration
+ * Handles installation of OMQ agents, commands, and configuration
  * into the Claude Code config directory (~/.claude/).
  *
  * Cross-platform support via Node.js-based hook scripts (.mjs).
@@ -46,7 +46,7 @@ export const SETTINGS_FILE = join(QODER_CONFIG_DIR, 'settings.json');
 export const VERSION_FILE = join(QODER_CONFIG_DIR, '.omq-version.json');
 const OMQ_MANAGED_SKILL_MARKER = '.omq-managed';
 const PLUGIN_FULL_SKILL_BODIES_DIR = 'skill-bodies';
-const PLUGIN_COMPACT_SKILL_SHIM_MARKER = '<!-- OMC:COMPACT-PLUGIN-SKILL -->';
+const PLUGIN_COMPACT_SKILL_SHIM_MARKER = '<!-- OMQ:COMPACT-PLUGIN-SKILL -->';
 
 /**
  * Core commands - DISABLED for v3.0+
@@ -140,7 +140,7 @@ function currentSkillsDir(): string {
 }
 
 /**
- * Detects the newest installed OMC version from persistent metadata or
+ * Detects the newest installed OMQ version from persistent metadata or
  * existing CLAUDE.md markers so an older CLI package cannot overwrite a
  * newer installation during `omc setup`.
  */
@@ -163,7 +163,7 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-function extractOmcVersionMarker(content: string): string | null {
+function extractOmqVersionMarker(content: string): string | null {
   const match = content.match(OMQ_VERSION_MARKER_PATTERN);
   return match?.[1] ?? null;
 }
@@ -195,7 +195,7 @@ function getNewestInstalledVersionHint(): string | null {
   for (const candidatePath of claudeCandidates) {
     if (!existsSync(candidatePath)) continue;
     try {
-      const detectedVersion = extractOmcVersionMarker(readFileSync(candidatePath, 'utf-8'));
+      const detectedVersion = extractOmqVersionMarker(readFileSync(candidatePath, 'utf-8'));
       if (isComparableVersion(detectedVersion)) {
         candidates.push(detectedVersion);
       }
@@ -311,7 +311,7 @@ export interface InstallOptions {
   noPlugin?: boolean;
   /**
    * Dev plugin-dir mode: skip copying agents and bundled skills into
-   * `<configDir>` because the user is launching OMC via
+   * `<configDir>` because the user is launching OMQ via
    * `claude --plugin-dir <path>` (or `omc --plugin-dir <path>`) and the
    * plugin already provides them at runtime. HUD, hooks, CLAUDE.md, and
    * `.omq-config.json` are still installed. Mutually exclusive with
@@ -342,7 +342,7 @@ export function isHudEnabledInConfig(): boolean {
 /**
  * Does this statusLine entry belong to OMQ?
  *
- * Matches our own HUD (`omq-hud.mjs`) plus the ancestor's (`omc-hud.mjs`): an
+ * Matches our own HUD (`omq-hud.mjs`) plus the ancestor's (`omq-hud.mjs`): an
  * install upgraded from the ancestor still carries the old filename, and treating
  * it as foreign would leave two statuslines configured at once.
  */
@@ -357,16 +357,14 @@ export function isOmqStatusLine(statusLine: unknown): boolean {
   return /(?:omq|omc)-hud/.test(command.toLowerCase());
 }
 
-/** @deprecated ancestor spelling kept for vendored call sites; use isOmqStatusLine. */
-export const isOmcStatusLine = isOmqStatusLine;
-
 /**
- * Known OMC hook script filenames installed into .claude/hooks/.
+ * Known OMQ hook script filenames installed into .claude/hooks/.
  * Must be kept in sync with HOOKS_SETTINGS_CONFIG_NODE command entries.
  */
 const OMQ_HOOK_FILENAMES = new Set([
   'keyword-detector.mjs',
   'session-start.mjs',
+  'session-end.mjs',
   'pre-tool-use.mjs',
   'post-tool-use.mjs',
   'post-tool-use-failure.mjs',
@@ -451,7 +449,7 @@ function isShippedStandaloneHookPayload(targetPath: string, filename: string, lo
  * Does this hook command belong to OMQ?
  *
  * Both brands are accepted on purpose: `omq`/`oh-my-qoder` is what a fresh
- * install writes, while an upgraded install keeps `omc`/`oh-my-claudecode`
+ * install writes, while an upgraded install keeps `omc`/`oh-my-qoder`
  * paths and its hook entries must still be recognised as ours so the merge
  * logic does not treat them as a third party's hooks. A command that matches
  * neither brand (and whose filename is not one of our hook scripts) stays
@@ -479,22 +477,22 @@ export function isOmqHook(command: string): boolean {
 /** @deprecated ancestor spelling kept for vendored call sites; use isOmqHook. */
 export const isOmcHook = isOmqHook;
 
-function isStandaloneOmcHookCommand(command: string): boolean {
+function isStandaloneOmqHookCommand(command: string): boolean {
   const lowerCommand = command.toLowerCase();
   const containsHooksDir = /hooks[/\\]/.test(lowerCommand);
   const hookFilenameMatch = lowerCommand.match(/([a-z0-9-]+\.mjs)(?:$|["'\s])/);
   return !!(containsHooksDir && hookFilenameMatch && OMQ_HOOK_FILENAMES.has(hookFilenameMatch[1]));
 }
 
-function getStandaloneOmcHookFilename(command: string): string | null {
-  if (!isStandaloneOmcHookCommand(command)) {
+function getStandaloneOmqHookFilename(command: string): string | null {
+  if (!isStandaloneOmqHookCommand(command)) {
     return null;
   }
   const hookFilenameMatch = command.toLowerCase().match(/([a-z0-9-]+\.mjs)(?:$|["'\s])/);
   return hookFilenameMatch?.[1] ?? null;
 }
 
-function collectActiveStandaloneOmcHookFilenames(hooks: Record<string, unknown>): Set<string> {
+function collectActiveStandaloneOmqHookFilenames(hooks: Record<string, unknown>): Set<string> {
   const active = new Set<string>();
 
   for (const groups of Object.values(hooks)) {
@@ -511,7 +509,7 @@ function collectActiveStandaloneOmcHookFilenames(hooks: Record<string, unknown>)
         if (hook.type !== 'command' || typeof hook.command !== 'string') {
           continue;
         }
-        const filename = getStandaloneOmcHookFilename(hook.command);
+        const filename = getStandaloneOmqHookFilename(hook.command);
         if (filename) {
           active.add(filename);
         }
@@ -558,7 +556,7 @@ export function isClaudeInstalled(): boolean {
  * Detection method:
  * - QODER_PLUGIN_ROOT is what this host exports; CLAUDE_PLUGIN_ROOT is still read
  *   because manifests and skill shims adopted from the ancestor carry that name.
- *   The same pair is accepted by isHookCommandOurs() and resolveInstalledOmcPluginRoots().
+ *   The same pair is accepted by isHookCommandOurs() and resolveInstalledOmqPluginRoots().
  *
  * @returns true if running in plugin context, false otherwise
  */
@@ -595,8 +593,8 @@ export function isProjectScopedPlugin(): boolean {
   return !normalizedPluginRoot.startsWith(normalizedGlobalBase);
 }
 
-type HookEntry = { type: string; command: string };
-type HookGroup = { hooks: HookEntry[] };
+export type HookEntry = { type: string; command: string };
+export type HookGroup = { hooks: HookEntry[] };
 
 type SettingsHookEntry = { type?: unknown; command?: unknown; [key: string]: unknown };
 type SettingsHookGroup = { hooks?: unknown; [key: string]: unknown };
@@ -660,7 +658,7 @@ function filterSettingsPluginDuplicateHooks(
   return { hooks: filteredHooks, removed, removedByEvent };
 }
 
-function pruneLegacyStandaloneHookScripts(log: (msg: string) => void, activeStandaloneOmcHookFilenames = new Set<string>()): void {
+function pruneLegacyStandaloneHookScripts(log: (msg: string) => void, activeStandaloneOmqHookFilenames = new Set<string>()): void {
   if (!existsSync(HOOKS_DIR)) {
     return;
   }
@@ -675,7 +673,7 @@ function pruneLegacyStandaloneHookScripts(log: (msg: string) => void, activeStan
     const targetPath = join(HOOKS_DIR, filename);
     try {
       if (
-        !activeStandaloneOmcHookFilenames.has(filename)
+        !activeStandaloneOmqHookFilenames.has(filename)
         && statSync(targetPath).isFile()
         && isShippedStandaloneHookPayload(targetPath, filename, 'hooks')
       ) {
@@ -689,7 +687,7 @@ function pruneLegacyStandaloneHookScripts(log: (msg: string) => void, activeStan
   }
 
   const hooksLibDir = join(HOOKS_DIR, 'lib');
-  const preserveSharedHookLibPayload = activeStandaloneOmcHookFilenames.size > 0;
+  const preserveSharedHookLibPayload = activeStandaloneOmqHookFilenames.size > 0;
   if (existsSync(hooksLibDir) && !preserveSharedHookLibPayload) {
     for (const filename of readdirSync(hooksLibDir)) {
       if (!listStandaloneHookLibPayloadFilenames().has(filename)) {
@@ -737,8 +735,8 @@ function configureInstallerSettings(
 
   {
     let existingHooks = { ...((settings.hooks || {}) as Record<string, unknown>) };
-    const enabledOmcPlugin = context.runningAsPlugin || isOmcPluginEnabledInSettings(settings);
-    const pluginHandlesHooks = context.pluginProvidesHookFiles && enabledOmcPlugin;
+    const enabledOmqPlugin = context.runningAsPlugin || isOmqPluginEnabledInSettings(settings);
+    const pluginHandlesHooks = context.pluginProvidesHookFiles && enabledOmqPlugin;
 
     if (pluginHandlesHooks) {
       const snapshot = collectPluginHookManifestSnapshot();
@@ -764,7 +762,7 @@ function configureInstallerSettings(
         const isLegacy = group.hooks.every(h =>
           h.type === 'command'
           && typeof h.command === 'string'
-          && isStandaloneOmcHookCommand(h.command)
+          && isStandaloneOmqHookCommand(h.command)
         );
         if (isLegacy) legacyRemoved++;
         return !isLegacy;
@@ -781,20 +779,20 @@ function configureInstallerSettings(
     }
 
     if (pluginHandlesHooks) {
-      const activeStandaloneOmcHookFilenames = collectActiveStandaloneOmcHookFilenames(existingHooks);
-      pruneLegacyStandaloneHookScripts(context.log, activeStandaloneOmcHookFilenames);
+      const activeStandaloneOmqHookFilenames = collectActiveStandaloneOmqHookFilenames(existingHooks);
+      pruneLegacyStandaloneHookScripts(context.log, activeStandaloneOmqHookFilenames);
     }
 
     const shouldConfigureSettingsHooks = (!context.runningAsPlugin || !!context.allowPluginHookRefresh) && !pluginHandlesHooks;
     if (shouldConfigureSettingsHooks) {
       const desiredHooks = getHooksSettingsConfig().hooks as Record<string, HookGroup[]>;
 
-      for (const [eventType, newOmcGroups] of Object.entries(desiredHooks)) {
+      for (const [eventType, newOmqGroups] of Object.entries(desiredHooks)) {
         const currentGroups = (existingHooks[eventType] as HookGroup[] | undefined) ?? [];
         existingHooks[eventType] = mergeHookGroups(
           eventType,
           currentGroups,
-          newOmcGroups,
+          newOmqGroups,
           context.options,
           context.log,
           context.result,
@@ -849,7 +847,7 @@ function configureInstallerSettings(
     }
 
     const needsMigration = typeof settings.statusLine === 'string'
-      && isOmcStatusLine(settings.statusLine);
+      && isOmqStatusLine(settings.statusLine);
     if (!settings.statusLine || needsMigration) {
       settings.statusLine = {
         type: 'command',
@@ -858,7 +856,7 @@ function configureInstallerSettings(
       context.log(needsMigration
         ? '  Migrated statusLine from legacy string to object format'
         : '  Configured statusLine');
-    } else if (context.options.force && isOmcStatusLine(settings.statusLine)) {
+    } else if (context.options.force && isOmqStatusLine(settings.statusLine)) {
       settings.statusLine = {
         type: 'command',
         command: statusLineCommand
@@ -889,6 +887,7 @@ function configureInstallerSettings(
 const STANDALONE_HOOK_TEMPLATE_FILES = [
   'keyword-detector.mjs',
   'session-start.mjs',
+  'session-end.mjs',
   'pre-tool-use.mjs',
   'post-tool-use.mjs',
   'post-tool-use-failure.mjs',
@@ -921,16 +920,19 @@ function readStandalonePackageIdentity(packageDir: string): { root: string; name
 function standaloneStateLockBridge(packageDir: string): string {
   const identity = readStandalonePackageIdentity(packageDir);
   return `import { lstatSync, readFileSync, realpathSync } from 'node:fs';
-import { relative, isAbsolute, sep } from 'node:path';
+import { join, relative, resolve, isAbsolute, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const PACKAGE_ROOT = ${JSON.stringify(identity.root)};
 const EXPECTED_PACKAGE_NAME = ${JSON.stringify(identity.name)};
 const EXPECTED_PACKAGE_VERSION = ${JSON.stringify(identity.version)};
-const PACKAGE_JSON = PACKAGE_ROOT + sep + 'package.json';
-const HELPER_PATH = PACKAGE_ROOT + sep + 'scripts' + sep + 'lib' + sep + 'state-lock.mjs';
+const PACKAGE_JSON = join(PACKAGE_ROOT, 'package.json');
+const HELPER_PATH = join(PACKAGE_ROOT, 'scripts', 'lib', 'state-lock.mjs');
+function samePath(left, right) {
+  return resolve(left) === resolve(right);
+}
 function validatePackageOwnedHelper() {
-  if (!lstatSync(PACKAGE_ROOT).isDirectory() || realpathSync(PACKAGE_ROOT) !== PACKAGE_ROOT || !lstatSync(PACKAGE_JSON).isFile() || !lstatSync(HELPER_PATH).isFile()) throw new Error('OMQ state-lock bridge package root is unavailable');
-  if (realpathSync(PACKAGE_JSON) !== PACKAGE_JSON) throw new Error('OMC state-lock bridge manifest identity changed');
+  if (!lstatSync(PACKAGE_ROOT).isDirectory() || !samePath(realpathSync(PACKAGE_ROOT), PACKAGE_ROOT) || !lstatSync(PACKAGE_JSON).isFile() || !lstatSync(HELPER_PATH).isFile()) throw new Error('OMQ state-lock bridge package root is unavailable');
+  if (!samePath(realpathSync(PACKAGE_JSON), PACKAGE_JSON)) throw new Error('OMQ state-lock bridge manifest identity changed');
   const helperReal = realpathSync(HELPER_PATH);
   const helperRelative = relative(PACKAGE_ROOT, helperReal);
   if (isAbsolute(helperRelative) || helperRelative === '..' || helperRelative.startsWith('..' + sep)) throw new Error('OMQ state-lock bridge helper escapes package root');
@@ -1043,39 +1045,39 @@ function ensureStandaloneHookScripts(log: (msg: string) => void): void {
   log('  Installed standalone hook scripts');
 }
 
-function mergeHookGroups(
+export function mergeHookGroups(
   eventType: string,
   existingGroups: HookGroup[],
-  newOmcGroups: HookGroup[],
+  newOmqGroups: HookGroup[],
   options: { force?: boolean; forceHooks?: boolean; allowPluginHookRefresh?: boolean },
   log: (msg: string) => void,
   result: InstallResult,
 ): HookGroup[] {
-  const nonOmcGroups = existingGroups.filter(group =>
-    group.hooks.some(h => h.type === 'command' && !isOmcHook(h.command))
+  const nonOmqGroups = existingGroups.filter(group =>
+    group.hooks.some(h => h.type === 'command' && !isOmqHook(h.command))
   );
-  const hasNonOmcHook = nonOmcGroups.length > 0;
-  const nonOmcCommand = hasNonOmcHook
-    ? nonOmcGroups[0].hooks.find(h => h.type === 'command' && !isOmcHook(h.command))?.command ?? ''
+  const hasNonOmqHook = nonOmqGroups.length > 0;
+  const nonOmqCommand = hasNonOmqHook
+    ? nonOmqGroups[0].hooks.find(h => h.type === 'command' && !isOmqHook(h.command))?.command ?? ''
     : '';
 
   if (options.forceHooks && !options.allowPluginHookRefresh) {
-    if (hasNonOmcHook) {
-      log(`  Warning: Overwriting non-OMC ${eventType} hook with --force-hooks: ${nonOmcCommand}`);
-      result.hookConflicts.push({ eventType, existingCommand: nonOmcCommand });
+    if (hasNonOmqHook) {
+      log(`  Warning: Overwriting non-OMQ ${eventType} hook with --force-hooks: ${nonOmqCommand}`);
+      result.hookConflicts.push({ eventType, existingCommand: nonOmqCommand });
     }
     log(`  Updated ${eventType} hook (--force-hooks)`);
-    return newOmcGroups;
+    return newOmqGroups;
   }
 
   if (options.force) {
-    if (hasNonOmcHook) {
-      log(`  Merged ${eventType} hooks (updated OMC hooks, preserved non-OMC hook: ${nonOmcCommand})`);
-      result.hookConflicts.push({ eventType, existingCommand: nonOmcCommand });
+    if (hasNonOmqHook) {
+      log(`  Merged ${eventType} hooks (updated OMQ hooks, preserved non-OMQ hook: ${nonOmqCommand})`);
+      result.hookConflicts.push({ eventType, existingCommand: nonOmqCommand });
     } else {
       log(`  Updated ${eventType} hook (--force)`);
     }
-    return [...nonOmcGroups, ...newOmcGroups];
+    return [...nonOmqGroups, ...newOmqGroups];
   }
 
   // Nothing is registered for this event yet, so this is a first-time install
@@ -1084,12 +1086,12 @@ function mergeHookGroups(
   // list into settings.json while the log claims the event was already set up.
   if (existingGroups.length === 0) {
     log(`  Installed ${eventType} hook`);
-    return newOmcGroups;
+    return newOmqGroups;
   }
 
-  if (hasNonOmcHook) {
-    log(`  Warning: ${eventType} hook has non-OMC hook. Skipping. Use --force-hooks to override.`);
-    result.hookConflicts.push({ eventType, existingCommand: nonOmcCommand });
+  if (hasNonOmqHook) {
+    log(`  Warning: ${eventType} hook has non-OMQ hook. Skipping. Use --force-hooks to override.`);
+    result.hookConflicts.push({ eventType, existingCommand: nonOmqCommand });
   } else {
     log(`  ${eventType} hook already configured, skipping`);
   }
@@ -1122,7 +1124,7 @@ function equalAgentWitnesses(left: Map<string, Buffer>, right: Map<string, Buffe
 }
 
 function getActiveAgentFiles(): Set<string> | null {
-  const pluginRootResolution = resolveInstalledOmcPluginRoots();
+  const pluginRootResolution = resolveInstalledOmqPluginRoots();
   if (pluginRootResolution.mode === 'unknown' || !pluginRootResolution.cleanupAllowed) return null;
 
   const roots = pluginRootResolution.mode === 'legacy'
@@ -1149,7 +1151,7 @@ function listAgentDirectoryEntries(agentsDir: string) {
 }
 
 /**
- * Remove stale OMC agents only when their exact raw bytes match the bounded,
+ * Remove stale OMQ agents only when their exact raw bytes match the bounded,
  * release-authenticated historical inventory and their basename is absent from
  * both the resolved active payload and the current package. All uncertain ownership
  * and filesystem states preserve.
@@ -1224,10 +1226,10 @@ export function prunePluginDuplicateAgents(log: (msg: string) => void): string[]
 }
 
 /**
- * Remove stale OMC-created skill directories from the config skills directory.
+ * Remove stale OMQ-created skill directories from the config skills directory.
  *
  * Similar to cleanupStaleAgents but for skill directories. Removes directories
- * that contain a SKILL.md with OMC frontmatter but are no longer shipped by
+ * that contain a SKILL.md with OMQ frontmatter but are no longer shipped by
  * the current package version. User-created skills are preserved.
  */
 export function cleanupStaleSkills(
@@ -1271,12 +1273,12 @@ export function cleanupStaleSkills(
   for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     if (currentSkillNames.has(entry.name)) continue;
-    if (entry.name === 'omc-learned') continue;
+    if (entry.name === 'omq-learned') continue;
 
     const skillDir = join(skillsDir, entry.name);
     const skillMdPath = join(skillDir, 'SKILL.md');
     if (!existsSync(skillMdPath)) continue;
-    if (!isOmcManagedSkillDir(skillDir)) continue;
+    if (!isOmqManagedSkillDir(skillDir)) continue;
 
     try {
       rmSync(skillDir, { recursive: true, force: true });
@@ -1335,7 +1337,7 @@ export function prunePluginDuplicateSkills(log: (msg: string) => void): string[]
   const removed: string[] = [];
   for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    if (entry.name === 'omc-learned' || entry.name === '.omq-trash') continue;
+    if (entry.name === 'omq-learned' || entry.name === '.omq-trash') continue;
 
     // Only prune skills whose name matches a plugin-provided skill
     if (!pluginSkillNames.has(entry.name)) continue;
@@ -1347,13 +1349,13 @@ export function prunePluginDuplicateSkills(log: (msg: string) => void): string[]
       const standaloneContent = readFileSync(skillMdPath, 'utf-8').trim();
 
       // Safety check: only remove if the standalone content exactly matches the
-      // plugin's copy, OR the directory is explicitly marked as OMC-owned via the
+      // plugin's copy, OR the directory is explicitly marked as OMQ-owned via the
       // .omq-managed marker file. Frontmatter structure alone is not a reliable
       // ownership signal — user skills routinely use the same ---/name: format.
       const pluginContent = pluginSkillHashes.get(entry.name);
       const skillDir = join(skillsDir, entry.name);
 
-      if (pluginContent === standaloneContent || isOmcManagedSkillDir(skillDir)) {
+      if (pluginContent === standaloneContent || isOmqManagedSkillDir(skillDir)) {
         rmSync(skillDir, { recursive: true, force: true });
         removed.push(entry.name);
         log(`  Pruned plugin-duplicate skill: ${entry.name}/`);
@@ -1419,36 +1421,36 @@ const OMQ_PLUGIN_IDS = new Set([
   'oh-my-qoder@omq',
   'oh-my-qoder@local',
   'oh-my-qoder@oh-my-qoder',
-  'oh-my-claudecode',
-  'oh-my-claudecode@omc',
-  'oh-my-claudecode@oh-my-claudecode',
+  'oh-my-qoder',
+  'oh-my-qoder@omc',
+  'oh-my-qoder@oh-my-qoder',
 ]);
-const OMQ_PLUGIN_MANIFEST_NAME = 'oh-my-claudecode';
+const OMQ_PLUGIN_MANIFEST_NAME = 'oh-my-qoder';
 // The name this fork's own manifest declares (.qoder-plugin/plugin.json). The
 // payload guard accepts either spelling for the same reason isOmqPluginId() does:
 // an install carried over from the ancestor keeps the old name on disk.
 const FORK_PLUGIN_MANIFEST_NAME = 'oh-my-qoder';
 const OMQ_PLUGIN_NAME_MARKERS = [FORK_PLUGIN_MANIFEST_NAME, OMQ_PLUGIN_MANIFEST_NAME];
 
-function isOfficialOmcPluginId(pluginId: string): boolean {
+function isOfficialOmqPluginId(pluginId: string): boolean {
   return OMQ_PLUGIN_IDS.has(pluginId.toLowerCase());
 }
 
-function isOmcPluginLookalike(pluginId: string): boolean {
+function isOmqPluginLookalike(pluginId: string): boolean {
   const lowered = pluginId.toLowerCase();
   return OMQ_PLUGIN_NAME_MARKERS.some(marker => lowered.includes(marker));
 }
 
-function resolveInstalledOmcPluginRoots(): PluginRootResolution {
+function resolveInstalledOmqPluginRoots(): PluginRootResolution {
   // --plugin-dir is the lifecycle source of truth. Claude's hook context is
   // equivalent when it is the only explicit root. An explicit root is never
   // supplemented by registry candidates: validation failure must preserve.
-  const omcPluginRoot = process.env[OMQ_PLUGIN_ROOT_ENV]?.trim();
+  const omqPluginRoot = process.env[OMQ_PLUGIN_ROOT_ENV]?.trim();
   const claudePluginRoot = process.env.CLAUDE_PLUGIN_ROOT?.trim();
-  if (omcPluginRoot && claudePluginRoot && resolve(omcPluginRoot) !== resolve(claudePluginRoot)) {
+  if (omqPluginRoot && claudePluginRoot && resolve(omqPluginRoot) !== resolve(claudePluginRoot)) {
     return { mode: 'unknown', roots: [], cleanupAllowed: false };
   }
-  const explicitRoot = omcPluginRoot || claudePluginRoot;
+  const explicitRoot = omqPluginRoot || claudePluginRoot;
   if (explicitRoot) {
     return { mode: 'plugin', roots: [explicitRoot], cleanupAllowed: true };
   }
@@ -1472,13 +1474,13 @@ function resolveInstalledOmcPluginRoots(): PluginRootResolution {
     const pluginRoots = new Set<string>();
     let ambiguous = false;
     for (const [pluginId, entries] of Object.entries(plugins as PluginRegistry)) {
-      const official = isOfficialOmcPluginId(pluginId);
+      const official = isOfficialOmqPluginId(pluginId);
       if (!Array.isArray(entries) || entries.length === 0) {
         ambiguous = true;
         continue;
       }
       if (!official) {
-        if (isOmcPluginLookalike(pluginId)) ambiguous = true;
+        if (isOmqPluginLookalike(pluginId)) ambiguous = true;
         continue;
       }
 
@@ -1508,7 +1510,7 @@ function resolveInstalledOmcPluginRoots(): PluginRootResolution {
 }
 
 export function getInstalledOmcPluginRoots(): string[] {
-  const resolution = resolveInstalledOmcPluginRoots();
+  const resolution = resolveInstalledOmqPluginRoots();
   return resolution.mode === 'plugin' ? resolution.roots : [];
 }
 
@@ -1668,7 +1670,7 @@ function hasCompletePluginPayload(root: string): boolean {
 }
 
 function collectPluginHookManifestSnapshot(): PluginHookManifestSnapshot {
-  const resolution = resolveInstalledOmcPluginRoots();
+  const resolution = resolveInstalledOmqPluginRoots();
   if (resolution.mode !== 'plugin' || !resolution.cleanupAllowed) {
     return {
       valid: false,
@@ -1796,9 +1798,10 @@ function getKnownMarketplaceInstallRoots(): string[] {
     const roots = new Set<string>();
 
     for (const [marketplaceId, entry] of Object.entries(raw)) {
-      const isOmcMarketplace = marketplaceId.toLowerCase().includes('omc')
-        || marketplaceId.toLowerCase().includes('oh-my-claudecode');
-      if (!isOmcMarketplace) {
+      const isOmqMarketplace = marketplaceId.toLowerCase().includes('omq')
+        || marketplaceId.toLowerCase().includes('omc')
+        || marketplaceId.toLowerCase().includes('oh-my-qoder');
+      if (!isOmqMarketplace) {
         continue;
       }
 
@@ -1935,14 +1938,14 @@ function renderCompactPluginSkillShim(skillDirName: string, content: string): st
   let frontmatter = extractFrontmatterBlock(content) ?? `name: ${skillDirName}`;
   const rawDescription = getFrontmatterStringValue(parsed.metadata, 'short_description')
     ?? getFrontmatterStringValue(parsed.metadata, 'description')
-    ?? `Invoke the ${skillDirName} OMC skill.`;
+    ?? `Invoke the ${skillDirName} OMQ skill.`;
   const description = normalizeCompactSkillDescription(rawDescription);
   const fullBodyRelPath = `../../${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md`;
 
   frontmatter = upsertYamlStringField(frontmatter, 'description', description);
-  frontmatter = upsertYamlStringField(frontmatter, 'omc-full-body', fullBodyRelPath);
+  frontmatter = upsertYamlStringField(frontmatter, 'omq-full-body', fullBodyRelPath);
 
-  return `---\n${frontmatter.trim()}\n---\n\n${PLUGIN_COMPACT_SKILL_SHIM_MARKER}\n\n# ${skillDirName}\n\nThis is a compact Claude Code plugin registry shim. It keeps startup skill descriptions small while preserving the full OMC skill body for on-demand invocation.\n\nWhen this skill is invoked, read and follow the full bundled instructions from the active plugin root:\n\n\`${'${CLAUDE_PLUGIN_ROOT:-${OMQ_PLUGIN_ROOT}}'}/${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\`\n\nThe plugin root is the directory containing both \`skills/\` and \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\`. Do not resolve \`${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\` under this shim's \`skills/${skillDirName}/\` directory; \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\` is a direct child of the plugin root. The same archived body path is recorded in frontmatter as \`omc-full-body: ${fullBodyRelPath}\` for hosts that understand plugin-root-relative metadata.\n`;
+  return `---\n${frontmatter.trim()}\n---\n\n${PLUGIN_COMPACT_SKILL_SHIM_MARKER}\n\n# ${skillDirName}\n\nThis is a compact Claude Code plugin registry shim. It keeps startup skill descriptions small while preserving the full OMQ skill body for on-demand invocation.\n\nWhen this skill is invoked, read and follow the full bundled instructions from the active plugin root:\n\n\`${'${CLAUDE_PLUGIN_ROOT:-${OMQ_PLUGIN_ROOT}}'}/${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\`\n\nThe plugin root is the directory containing both \`skills/\` and \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\`. Do not resolve \`${PLUGIN_FULL_SKILL_BODIES_DIR}/${skillDirName}/SKILL.md\` under this shim's \`skills/${skillDirName}/\` directory; \`${PLUGIN_FULL_SKILL_BODIES_DIR}/\` is a direct child of the plugin root. The same archived body path is recorded in frontmatter as \`omq-full-body: ${fullBodyRelPath}\` for hosts that understand plugin-root-relative metadata.\n`;
 }
 
 export function compactPluginSkillPayload(targetRoot: string): { compacted: number; totalBytes: number; errors: string[] } {
@@ -2084,7 +2087,7 @@ export function syncInstalledPluginPayload(): {
     return {
       synced: false,
       errors: [
-        'Unable to find a complete OMC package source to repair installed plugin roots',
+        'Unable to find a complete OMQ package source to repair installed plugin roots',
         ...sourceResolution.errors,
       ],
       sourceRoot: null,
@@ -2097,7 +2100,7 @@ export function syncInstalledPluginPayload(): {
 }
 
 /**
- * Detect whether an installed Claude Code plugin already provides OMC agent
+ * Detect whether an installed Claude Code plugin already provides OMQ agent
  * markdown files, so the legacy ~/.claude/agents copy can be skipped.
  */
 export function hasPluginProvidedAgentFiles(): boolean {
@@ -2124,11 +2127,11 @@ export function hasPluginProvidedHookFiles(): boolean {
  * Both brand spellings are accepted on purpose, the same convention
  * isHookCommandOurs() documents above: a Qoder install enables `oh-my-qoder@...`,
  * while settings and manifests carried over from an ancestor install still say
- * `oh-my-claudecode`. Narrowing this list is only safe once the shipped
+ * `oh-my-qoder`. Narrowing this list is only safe once the shipped
  * hooks/hooks.json manifest and the plugin-root readers move to the fork
  * spelling together -- those three disagree today.
  */
-const OMQ_PLUGIN_ID_MARKERS = ['oh-my-qoder', 'oh-my-claudecode'];
+const OMQ_PLUGIN_ID_MARKERS = ['oh-my-qoder', 'oh-my-qoder'];
 
 function isOmqPluginId(value: string): boolean {
   const lowered = value.toLowerCase();
@@ -2181,17 +2184,17 @@ export function hasEnabledOmqPlugin(): boolean {
   return false;
 }
 
-function isOmcPluginEnabledInSettings(settings: Record<string, unknown>): boolean {
+function isOmqPluginEnabledInSettings(settings: Record<string, unknown>): boolean {
   for (const candidate of [settings.enabledPlugins, settings.plugins]) {
     if (Array.isArray(candidate)) {
       if (candidate.some(plugin =>
-        typeof plugin === 'string' && plugin.toLowerCase().includes('oh-my-claudecode')
+        typeof plugin === 'string' && plugin.toLowerCase().includes('oh-my-qoder')
       )) {
         return true;
       }
     } else if (candidate && typeof candidate === 'object') {
       if (Object.entries(candidate as Record<string, unknown>).some(([pluginId, value]) =>
-        pluginId.toLowerCase().includes('oh-my-claudecode') && value !== false
+        pluginId.toLowerCase().includes('oh-my-qoder') && value !== false
       )) {
         return true;
       }
@@ -2300,10 +2303,10 @@ function getManagedSkillMarkerPath(skillDir: string): string {
 }
 
 function markSkillAsOmcManaged(skillDir: string): void {
-  writeFileSync(getManagedSkillMarkerPath(skillDir), 'omc-managed\n');
+  writeFileSync(getManagedSkillMarkerPath(skillDir), 'omq-managed\n');
 }
 
-function isOmcManagedSkillDir(skillDir: string): boolean {
+function isOmqManagedSkillDir(skillDir: string): boolean {
   return existsSync(getManagedSkillMarkerPath(skillDir));
 }
 
@@ -2343,6 +2346,22 @@ function syncBundledSkillDefinitions(log: (msg: string) => void, options?: { saf
 
     const relativePath = join(targetDirName, 'SKILL.md');
     const targetDir = join(SKILLS_DIR, targetDirName);
+
+    let targetStat: ReturnType<typeof lstatSync> | null = null;
+    try {
+      targetStat = lstatSync(targetDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        log(`  Warning: Could not safely inspect ${targetDir}; treating it as a user-managed entry, so the bundled skill was not installed. Remove or rename it to enable OMQ's version.`);
+        continue;
+      }
+    }
+
+    if (targetStat && (targetStat.isSymbolicLink() || !targetStat.isDirectory())) {
+      log(`  Warning: ${targetDir} is a user-managed entry; the bundled skill was not installed. Remove or rename it to enable OMQ's version.`);
+      continue;
+    }
+
     cpSync(sourceDir, targetDir, { recursive: true, force: true });
     markSkillAsOmcManaged(targetDir);
     installedSkills.push(relativePath.replace(/\\/g, '/'));
@@ -2364,7 +2383,7 @@ function syncUserSkillCompatShims(log: (msg: string) => void): string[] {
 
 
 /**
- * Extract the embedded OMC version from a CLAUDE.md file.
+ * Extract the embedded OMQ version from a CLAUDE.md file.
  *
  * Primary source of truth is the injected `<!-- OMQ:VERSION:x.y.z -->` marker.
  * Falls back to legacy headings that may include a version string inline.
@@ -2376,7 +2395,7 @@ export function extractOmcVersionFromClaudeMd(content: string): string | null {
     return markerVersion.startsWith('v') ? markerVersion : `v${markerVersion}`;
   }
 
-  const headingMatch = content.match(/^#\s+oh-my-claudecode.*?\b(v?\d+\.\d+\.\d+(?:[-+][^\s]+)?)\b/m);
+  const headingMatch = content.match(/^#\s+oh-my-qoder.*?\b(v?\d+\.\d+\.\d+(?:[-+][^\s]+)?)\b/m);
   if (headingMatch?.[1]) {
     const headingVersion = headingMatch[1].trim();
     return headingVersion.startsWith('v') ? headingVersion : `v${headingVersion}`;
@@ -2386,7 +2405,7 @@ export function extractOmcVersionFromClaudeMd(content: string): string | null {
 }
 
 /**
- * Keep persisted setup metadata in sync with the installed OMC runtime version.
+ * Keep persisted setup metadata in sync with the installed OMQ runtime version.
  *
  * This intentionally updates only already-configured users by default so
  * installer/reconciliation flows do not accidentally mark fresh installs as if
@@ -2437,36 +2456,36 @@ export function syncPersistedSetupVersion(options?: {
 }
 
 /**
- * Merge OMC content into existing CLAUDE.md using markers
+ * Merge OMQ content into existing CLAUDE.md using markers
  * @param existingContent - Existing CLAUDE.md content (null if file doesn't exist)
- * @param omcContent - New OMC content to inject
+ * @param omqContent - New OMQ content to inject
  * @returns Merged content with markers
  */
-export function mergeClaudeMd(existingContent: string | null, omcContent: string, version?: string): string {
+export function mergeClaudeMd(existingContent: string | null, omqContent: string, version?: string): string {
   const START_MARKER = OMQ_START_MARKER;
   const END_MARKER = OMQ_END_MARKER;
   const USER_CUSTOMIZATIONS = '<!-- User customizations -->';
 
   // Idempotency guard: accept the current managed representation as input.
-  let cleanOmcContent = omcContent;
-  const sourceMarkers = parseClaudeMdMarkers(omcContent);
+  let cleanOmqContent = omqContent;
+  const sourceMarkers = parseClaudeMdMarkers(omqContent);
   if (sourceMarkers.state === 'corrupt' || sourceMarkers.managedRanges.length > 1) {
-    throw new Error('OMC content must contain at most one complete managed block');
+    throw new Error('OMQ content must contain at most one complete managed block');
   }
   if (sourceMarkers.managedRanges.length === 1) {
     const managed = sourceMarkers.managedRanges[0];
-    cleanOmcContent = omcContent.slice(managed.contentStart, managed.contentEnd).trim();
+    cleanOmqContent = omqContent.slice(managed.contentStart, managed.contentEnd).trim();
   }
 
-  cleanOmcContent = cleanOmcContent.replace(/<!-- OMQ:VERSION:[^\s]*? -->\n?/, '');
+  cleanOmqContent = cleanOmqContent.replace(/<!-- OMQ:VERSION:[^\s]*? -->\n?/, '');
   const versionMarker = version ? `<!-- OMQ:VERSION:${version} -->\n` : '';
   if (!existingContent) {
-    return `${START_MARKER}\n${versionMarker}${cleanOmcContent}\n${END_MARKER}\n`;
+    return `${START_MARKER}\n${versionMarker}${cleanOmqContent}\n${END_MARKER}\n`;
   }
 
   const existingMarkers = parseClaudeMdMarkers(existingContent);
   if (existingMarkers.state === 'corrupt') {
-    throw new Error(`Existing CLAUDE.md has corrupt OMC markers: ${existingMarkers.diagnostics.join(', ')}`);
+    throw new Error(`Existing CLAUDE.md has corrupt OMQ markers: ${existingMarkers.diagnostics.join(', ')}`);
   }
 
   const legacy = analyzeLegacyClaudeMd(existingContent);
@@ -2476,14 +2495,209 @@ export function mergeClaudeMd(existingContent: string | null, omcContent: string
     ...generatedUserCustomizationHeaderRanges(existingMarkers),
   ]);
   if (preservedUserContent.trim().length === 0) {
-    return `${START_MARKER}\n${versionMarker}${cleanOmcContent}\n${END_MARKER}\n`;
+    return `${START_MARKER}\n${versionMarker}${cleanOmqContent}\n${END_MARKER}\n`;
   }
-  return `${START_MARKER}\n${versionMarker}${cleanOmcContent}\n${END_MARKER}\n\n${USER_CUSTOMIZATIONS}\n${preservedUserContent}`;
+  return `${START_MARKER}\n${versionMarker}${cleanOmqContent}\n${END_MARKER}\n\n${USER_CUSTOMIZATIONS}\n${preservedUserContent}`;
 }
 
 /**
- * Install OMC agents, commands, skills, and hooks
+ * Install OMQ agents, commands, skills, and hooks
  */
+/**
+ * Location of the Qoder desktop's agent store. The desktop (Electron) app
+ * persists its agent/agent-team registry in its own data file, separate from
+ * the CLI's agents/ directories. Returns null when the current platform has
+ * no well-known desktop data location.
+ */
+export function desktopAgentStorePath(): string | null {
+  const dirName = 'com.qodercn.app.stable';
+  const fileName = 'qoder-data.v1.json';
+  if (isWindows()) {
+    const appData = process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming');
+    return join(appData, dirName, fileName);
+  }
+  if (process.platform === 'darwin') {
+    return join(homedir(), 'Library', 'Application Support', dirName, fileName);
+  }
+  return join(homedir(), '.config', dirName, fileName);
+}
+
+const DESKTOP_AGENT_NAME_PREFIX = 'OMQ ';
+
+export interface DesktopAgentsSyncResult {
+  synced: boolean;
+  added: string[];
+  updated: string[];
+  removed: string[];
+  reason?: string;
+}
+
+function desktopAgentStoreUnchanged(): boolean {
+  // The desktop rewrites the store from memory on every transaction, so a
+  // write while the app is running gets clobbered. Best-effort detection of
+  // the running app; on detection failure we assume it is closed.
+  try {
+    if (isWindows()) {
+      const out = execSync('tasklist /FI "IMAGENAME eq Qoder CN.exe" /NH', { encoding: 'utf-8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'] });
+      return !/Qoder CN\.exe/i.test(out);
+    }
+    const out = execSync('pgrep -f "Qoder" || true', { encoding: 'utf-8', timeout: 15000, shell: '/bin/sh' });
+    return out.trim().length === 0;
+  } catch {
+    return true;
+  }
+}
+
+function buildDesktopAgentEntry(options: {
+  name: string;
+  description: string;
+  instructions: string;
+  deviceId: string;
+  now: string;
+}): Record<string, unknown> {
+  const runtimeId = randomUUID();
+  return {
+    id: randomUUID(),
+    name: options.name,
+    avatarUrl: null,
+    description: options.description,
+    instructions: options.instructions,
+    revision: 1,
+    skillRefs: [],
+    mcpServerNames: [],
+    pluginRefs: [],
+    allowedTools: [],
+    disallowedTools: [],
+    projectIds: [],
+    collaborationEnabled: false,
+    enabled: true,
+    createdAt: options.now,
+    updatedAt: options.now,
+    model: null,
+    permissionMode: 'auto',
+    inputPolicy: { whileRunning: 'steer', whileQueued: 'separate' },
+    cloudAgentId: null,
+    cloudAgentVersion: null,
+    runtimeProfileId: 'runtime:qoder',
+    runtimeId,
+    runtime: {
+      id: runtimeId,
+      deviceId: options.deviceId,
+      engineId: 'runtime:qoder',
+      model: null,
+      permissionMode: 'auto',
+      enabled: true,
+      serverRuntimeId: null,
+      serverRegistrationId: null,
+      createdAt: options.now,
+      updatedAt: options.now,
+    },
+  };
+}
+
+/**
+ * Mirror the package's agent definitions into the Qoder desktop's agent
+ * store so the desktop agent UI shows them. The desktop reads only its own
+ * dataService store (com.qodercn.app.stable/qoder-data.v1.json), never the
+ * CLI agents/ directories, so CLI-side provisioning alone is invisible there.
+ *
+ * Courtesy rules mirroring the file-witness cleanup philosophy:
+ * - entries whose revision moved past 1 were edited by the user and are
+ *   never overwritten;
+ * - archived entries are never touched;
+ * - OMQ-marked entries whose source agent file disappeared are removed.
+ *
+ * Best-effort: never throws; returns a reason when it could not sync.
+ */
+export function syncDesktopAgents(log: (msg: string) => void = () => {}, options?: { storePath?: string; agentsDir?: string; desktopRunning?: boolean }): DesktopAgentsSyncResult {
+  const empty: DesktopAgentsSyncResult = { synced: false, added: [], updated: [], removed: [] };
+  const storePath = options?.storePath ?? desktopAgentStorePath();
+  if (!storePath || !existsSync(storePath)) {
+    return { ...empty, reason: 'desktop agent store not found' };
+  }
+  const desktopRunning = options?.desktopRunning ?? !desktopAgentStoreUnchanged();
+  if (desktopRunning) {
+    return { ...empty, reason: 'Qoder desktop is running - quit it and re-run the install to sync desktop agents' };
+  }
+
+  let store: Record<string, unknown> & { agents?: Array<Record<string, unknown>> };
+  try {
+    store = JSON.parse(readFileSync(storePath, 'utf-8'));
+  } catch (error) {
+    return { ...empty, reason: `desktop agent store unreadable: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  if (!Array.isArray(store.agents)) {
+    return { ...empty, reason: 'desktop agent store has no agents array' };
+  }
+
+  const agentsDir = options?.agentsDir ?? join(getPackageDir(), 'agents');
+  if (!existsSync(agentsDir)) {
+    return { ...empty, reason: 'package agents directory not found' };
+  }
+  const deviceId = store.agents.find((a): a is { runtime?: { deviceId?: string } } =>
+    typeof (a as { runtime?: { deviceId?: unknown } }).runtime?.deviceId === 'string'
+  )?.runtime?.deviceId ?? '';
+  const now = new Date().toISOString();
+
+  const desired = new Map<string, { description: string; instructions: string }>();
+  for (const file of readdirSync(agentsDir)) {
+    if (!file.endsWith('.md')) continue;
+    const { metadata, body } = parseFrontmatter(readFileSync(join(agentsDir, file), 'utf-8'));
+    // The shipped agent files may carry CRLF; the desktop store is written LF.
+    // Normalize before comparing so CRLF checkouts are not mistaken for changes.
+    const name = DESKTOP_AGENT_NAME_PREFIX + (metadata.name?.trim() || basename(file, '.md'));
+    desired.set(name, { description: (metadata.description ?? '').trim().replace(/\r\n/g, '\n'), instructions: body.trim().replace(/\r\n/g, '\n') });
+  }
+
+  const added: string[] = [];
+  const updated: string[] = [];
+  const removed: string[] = [];
+  const existingOmq = store.agents.filter((a): a is { name: string } =>
+    typeof a.name === 'string' && a.name.startsWith(DESKTOP_AGENT_NAME_PREFIX)
+  );
+
+  for (const [name, want] of desired) {
+    const current = existingOmq.find((a) => a.name === name) as
+      | { revision?: number; description?: string; instructions?: string; archivedAt?: unknown; updatedAt?: string }
+      | undefined;
+    if (!current) {
+      store.agents.push(buildDesktopAgentEntry({ name, description: want.description, instructions: want.instructions, deviceId, now }));
+      added.push(name);
+      continue;
+    }
+    if (current.archivedAt != null) continue; // user archived it - leave alone
+    if ((current.revision ?? 1) > 1) continue; // user edited it - never overwrite
+    if (current.description !== want.description || current.instructions !== want.instructions) {
+      current.description = want.description;
+      current.instructions = want.instructions;
+      current.revision = (current.revision ?? 1) + 1;
+      current.updatedAt = now;
+      updated.push(name);
+    }
+  }
+
+  const desiredNames = new Set(desired.keys());
+  for (const entry of existingOmq) {
+    const archived = (entry as { archivedAt?: unknown }).archivedAt != null;
+    const edited = ((entry as { revision?: number }).revision ?? 1) > 1;
+    if (!desiredNames.has(entry.name) && !archived && !edited) {
+      store.agents = store.agents.filter((a) => a !== entry);
+      removed.push(entry.name);
+    }
+  }
+
+  if (added.length === 0 && updated.length === 0 && removed.length === 0) {
+    return { synced: true, added, updated, removed, reason: 'already in sync' };
+  }
+  try {
+    writeFileSync(storePath, JSON.stringify(store, null, 1));
+  } catch (error) {
+    return { synced: false, added, updated, removed, reason: `store write failed: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  log(`Desktop agent sync: +${added.length} ~${updated.length} -${removed.length}`);
+  return { synced: true, added, updated, removed };
+}
+
 export function install(options: InstallOptions = {}): InstallResult {
   const result: InstallResult = {
     success: false,
@@ -2516,7 +2730,7 @@ export function install(options: InstallOptions = {}): InstallResult {
   if (isComparableVersion(targetVersion)
     && isComparableVersion(installedVersionHint)
     && compareVersions(targetVersion, installedVersionHint) < 0) {
-    const message = `Skipping install: installed OMC ${installedVersionHint} is newer than CLI package ${targetVersion}. Run "omc update" to update the CLI package, then rerun "omc setup".`;
+    const message = `Skipping install: installed OMQ ${installedVersionHint} is newer than CLI package ${targetVersion}. Run "omq update" to update the CLI package, then rerun "omq setup".`;
     log(message);
     result.success = true;
     result.message = message;
@@ -2537,7 +2751,7 @@ export function install(options: InstallOptions = {}): InstallResult {
     }
     if (pluginPayloadSync.targetRoots.length > 0) {
       result.errors.push(...pluginPayloadSync.errors.map(error => `Plugin cache sync failed: ${error}`));
-      result.message = 'Installation failed: OMC plugin cache is incomplete and could not be repaired';
+      result.message = 'Installation failed: OMQ plugin cache is incomplete and could not be repaired';
       return result;
     }
   }
@@ -2546,14 +2760,14 @@ export function install(options: InstallOptions = {}): InstallResult {
       ? pluginPayloadSync.targetRoots.join(', ')
       : 'installed plugin roots';
     const sourceSummary = pluginPayloadSync.sourceRoot ?? 'unknown source';
-    log(`Repaired installed OMC plugin payload from ${sourceSummary} -> ${targetSummary}`);
+    log(`Repaired installed OMQ plugin payload from ${sourceSummary} -> ${targetSummary}`);
   }
 
   const pluginProvidesAgentFiles = hasPluginProvidedAgentFiles();
   const pluginProvidesSkillFiles = hasPluginProvidedSkillFiles();
   const pluginProvidesHookFiles = hasPluginProvidedHookFiles();
-  const enabledOmcPlugin = hasEnabledOmqPlugin();
-  // Dev plugin-dir mode: user launched OMC via `claude --plugin-dir <path>` or
+  const enabledOmqPlugin = hasEnabledOmqPlugin();
+  // Dev plugin-dir mode: user launched OMQ via `claude --plugin-dir <path>` or
   // `omc --plugin-dir <path>`. The plugin already exposes agents/skills at runtime,
   // so skip copying them into <configDir>. Auto-detected via OMQ_PLUGIN_ROOT in CLI.
   // `noPlugin` still wins (CLI enforces precedence and warns), so we ignore
@@ -2564,7 +2778,7 @@ export function install(options: InstallOptions = {}): InstallResult {
   }
   const shouldInstallLegacyAgents = !runningAsPlugin && !pluginProvidesAgentFiles && !pluginDirMode;
   const shouldInstallBundledSkills =
-    !pluginDirMode && (options.noPlugin === true || !enabledOmcPlugin || !pluginProvidesSkillFiles);
+    !pluginDirMode && (options.noPlugin === true || !enabledOmqPlugin || !pluginProvidesSkillFiles);
   const allowPluginHookRefresh = runningAsPlugin && options.refreshHooksInPlugin && !projectScoped;
   if (runningAsPlugin) {
     log('Detected Claude Code plugin context - skipping agent/command file installation');
@@ -2579,7 +2793,7 @@ export function install(options: InstallOptions = {}): InstallResult {
     }
     // Don't return early - continue to install HUD (unless project-scoped)
   } else if (pluginProvidesAgentFiles) {
-    log('Detected installed OMC plugin agent definitions - skipping legacy ~/.claude/agents sync');
+    log('Detected installed OMQ plugin agent definitions - skipping legacy ~/.claude/agents sync');
   }
 
   // Check Claude installation (optional)
@@ -2641,12 +2855,22 @@ export function install(options: InstallOptions = {}): InstallResult {
         }
       }
 
-      // Clean up stale OMC-created agents from previous versions
+      // Clean up stale OMQ-created agents from previous versions
       if (existsSync(AGENTS_DIR)) {
         const removedAgents = cleanupStaleAgents(log);
         if (removedAgents.length > 0) {
           log(`Cleaned up ${removedAgents.length} stale agent(s)`);
         }
+      }
+
+      // Mirror agents into the Qoder desktop's agent store (best-effort)
+      try {
+        const desktopSync = syncDesktopAgents(log);
+        if (desktopSync.reason && !desktopSync.synced) {
+          log(`Desktop agent sync skipped: ${desktopSync.reason}`);
+        }
+      } catch {
+        // Desktop store sync is opportunistic - never fail the install over it
       }
 
       // Skip command installation - all commands are now plugin-scoped skills
@@ -2689,7 +2913,7 @@ export function install(options: InstallOptions = {}): InstallResult {
       // Skip when the plugin already provides hooks AND is enabled to prevent
       // duplicate firing (#2252). If the plugin is disabled, standalone scripts
       // are still needed for settings.json hook entries to work at runtime.
-      if (!(pluginProvidesHookFiles && enabledOmcPlugin)) {
+      if (!(pluginProvidesHookFiles && enabledOmqPlugin)) {
         ensureStandaloneHookScripts(log);
       } else {
         log('Skipping standalone hook scripts (plugin-provided hooks are available)');
@@ -2702,13 +2926,13 @@ export function install(options: InstallOptions = {}): InstallResult {
     // Single source of truth for the installed-directory naming mode: stale
     // cleanup must evaluate the same mode the sync used, or a renamed skill
     // leaves its pre-rename directory behind.
-    const useSafeStandaloneSkillNames = !enabledOmcPlugin || options.noPlugin === true;
+    const useSafeStandaloneSkillNames = !enabledOmqPlugin || options.noPlugin === true;
 
     if (shouldInstallBundledSkills) {
       log(options.noPlugin
         ? 'Installing bundled skills from local package (--no-plugin)...'
-        : !enabledOmcPlugin
-          ? 'Installing bundled skills from local package (no enabled OMC plugin detected)...'
+        : !enabledOmqPlugin
+          ? 'Installing bundled skills from local package (no enabled OMQ plugin detected)...'
           : 'Installing bundled skills from local package (enabled plugin skill files not found)...');
       result.installedSkills.push(...syncBundledSkillDefinitions(log, {
         safeStandaloneNames: useSafeStandaloneSkillNames,
@@ -2724,7 +2948,7 @@ export function install(options: InstallOptions = {}): InstallResult {
       log('Skipping bundled skill installation (managed by plugin system)');
     }
 
-    // Clean up stale OMC-created skills from previous versions
+    // Clean up stale OMQ-created skills from previous versions
     if (existsSync(SKILLS_DIR)) {
       const removedSkills = cleanupStaleSkills(log, {
         safeStandaloneNames: useSafeStandaloneSkillNames,
@@ -2825,14 +3049,14 @@ export function install(options: InstallOptions = {}): InstallResult {
       //    even when node is not on PATH (nvm/fnm users, issue #892).
       try {
         const configPath = join(QODER_CONFIG_DIR, OMQ_CONFIG_FILE_REL);
-        let omcConfig: Record<string, unknown> = {};
+        let omqConfig: Record<string, unknown> = {};
         if (existsSync(configPath)) {
-          omcConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+          omqConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
         }
         const detectedNode = resolveNodeBinary();
         if (detectedNode !== 'node') {
-          omcConfig.nodeBinary = detectedNode;
-          writeFileSync(configPath, JSON.stringify(omcConfig, null, 2));
+          omqConfig.nodeBinary = detectedNode;
+          writeFileSync(configPath, JSON.stringify(omqConfig, null, 2));
           log(`  Saved node binary path to .omq-config.json: ${detectedNode}`);
         }
       } catch {
@@ -2875,15 +3099,15 @@ export function install(options: InstallOptions = {}): InstallResult {
 
       // Write workspace-level template-version stamp for drift detection in session-start
       try {
-        const omcRoot = getOmcRoot();
-        mkdirSync(omcRoot, { recursive: true });
+        const omqRoot = getOmcRoot();
+        mkdirSync(omqRoot, { recursive: true });
         const templateVersionStamp = {
           version: targetVersion,
           installedAt: new Date().toISOString(),
           pluginRoot: process.env.CLAUDE_PLUGIN_ROOT ?? null
         };
         writeFileSync(
-          join(omcRoot, 'template-version.json'),
+          join(omqRoot, 'template-version.json'),
           JSON.stringify(templateVersionStamp, null, 2)
         );
         log('Saved template-version stamp');
@@ -2921,7 +3145,7 @@ export function install(options: InstallOptions = {}): InstallResult {
 }
 
 /**
- * Check if OMC is already installed
+ * Check if OMQ is already installed
  */
 export function isInstalled(): boolean {
   return existsSync(VERSION_FILE) && (existsSync(AGENTS_DIR) || hasPluginProvidedAgentFiles());

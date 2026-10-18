@@ -42,12 +42,12 @@ This creates a navigable hierarchy:
 
 Stock Claude Code discovers nested `CLAUDE.md` by basename and never loads a
 nested `AGENTS.md`; a root `@AGENTS.md` import does not reach subdirectories
-either. The nested files generated here are delivered by OMC's PostToolUse
+either. The nested files generated here are delivered by OMQ's PostToolUse
 directory-context injector, which walks up from each accessed file and injects
 the nearest `AGENTS.md`/`README.md` once per session.
 
-That means the hierarchy requires OMC's hooks to be active. When OMC hooks are
-disabled (`DISABLE_OMC=1`, `OMC_SKIP_HOOKS=post-tool-use`) or the plugin is not
+That means the hierarchy requires OMQ's hooks to be active. When OMQ hooks are
+disabled (`DISABLE_OMQ=1`, `OMQ_SKIP_HOOKS=post-tool-use`) or the plugin is not
 registered, add a root-level `CLAUDE.md` symlink or `@AGENTS.md` import for the
 root file and expect nested files to stay unread.
 

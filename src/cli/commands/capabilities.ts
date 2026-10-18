@@ -6,7 +6,7 @@ import { allCustomTools, toSdkToolFormat } from '../../tools/index.js';
 import { getAgentDefinitions } from '../../agents/definitions.js';
 
 export const CAPABILITIES_LOCK_SCHEMA_VERSION = '1.0';
-export const DEFAULT_CAPABILITIES_LOCKFILE = 'omc-capabilities.lock.json';
+export const DEFAULT_CAPABILITIES_LOCKFILE = 'omq-capabilities.lock.json';
 
 type FixtureKind =
   | 'tool_selection'
@@ -63,7 +63,7 @@ interface CapabilitySkillSurface {
 
 interface CapabilitySurface {
   schemaVersion: string;
-  generatedBy: 'omc capabilities';
+  generatedBy: 'omq capabilities';
   contract: {
     runner: 'deterministic-local';
     liveProbeCompatible: true;
@@ -76,7 +76,7 @@ interface CapabilitySurface {
 
 export interface CapabilitiesLockfile {
   schemaVersion: string;
-  generatedBy: 'omc capabilities lock';
+  generatedBy: 'omq capabilities lock';
   surfaceDigest: string;
   surface: CapabilitySurface;
   fixtures: CapabilityFixture[];
@@ -206,7 +206,7 @@ export function collectCapabilitySurface(root = packageRoot()): CapabilitySurfac
 
   return {
     schemaVersion: CAPABILITIES_LOCK_SCHEMA_VERSION,
-    generatedBy: 'omc capabilities',
+    generatedBy: 'omq capabilities',
     contract: {
       runner: 'deterministic-local',
       liveProbeCompatible: true,
@@ -274,7 +274,7 @@ export function defaultCapabilityFixtures(surface = collectCapabilitySurface()):
       kind: 'no_hallucinated_tool',
       description: 'A requested tool that is absent from the surface is rejected.',
       expectedOutcome: 'pass',
-      toolName: 'omc_nonexistent_hallucinated_tool',
+      toolName: 'omq_nonexistent_hallucinated_tool',
     },
     {
       id: 'deterministic-tool-restraint',
@@ -349,7 +349,7 @@ export function buildCapabilitiesLockfile(): CapabilitiesLockfile {
   const fixtures = defaultCapabilityFixtures(surface);
   return {
     schemaVersion: CAPABILITIES_LOCK_SCHEMA_VERSION,
-    generatedBy: 'omc capabilities lock',
+    generatedBy: 'omq capabilities lock',
     surfaceDigest: digestCapabilitySurface(surface),
     surface,
     fixtures,

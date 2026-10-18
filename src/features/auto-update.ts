@@ -1,7 +1,7 @@
 /**
  * Auto-Update System
  *
- * Provides version checking and auto-update functionality for oh-my-claudecode.
+ * Provides version checking and auto-update functionality for oh-my-qoder.
  *
  * Features:
  * - Check for new versions from GitHub releases
@@ -15,7 +15,7 @@ import { join, dirname } from 'path';
 import { execSync, execFileSync } from 'child_process';
 import { TaskTool } from '../hooks/beads-context/types.js';
 import {
-  install as installOmc,
+  install as installOmq,
   HOOKS_DIR,
   isProjectScopedPlugin,
   isRunningAsPlugin,
@@ -30,7 +30,7 @@ import { OMQ_CONFIG_FILE_REL } from '../lib/paths.js';
 
 /** GitHub repository information */
 export const REPO_OWNER = 'Yeachan-Heo';
-export const REPO_NAME = 'oh-my-claudecode';
+export const REPO_NAME = 'oh-my-qoder';
 export const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
 export const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}`;
 
@@ -239,7 +239,7 @@ function restoreGlobalClaudeCodeIfNeeded(
  * and cache rebuilds reinstall old versions. (See #506)
  */
 function syncMarketplaceClone(verbose: boolean = false): { ok: boolean; message: string } {
-  const marketplacePath = join(getClaudeConfigDir(), 'plugins', 'marketplaces', 'omc');
+  const marketplacePath = join(getClaudeConfigDir(), 'plugins', 'marketplaces', 'omq');
   if (!existsSync(marketplacePath)) {
     return { ok: true, message: 'Marketplace clone not found; skipping' };
   }
@@ -349,7 +349,7 @@ function deriveUpdatedPluginInstallPath(
 ): string {
   if (existingInstallPath?.trim()) {
     const normalized = existingInstallPath.replace(/\\/g, '/').toLowerCase();
-    if (normalized.includes('/plugins/cache/') && normalized.includes('/oh-my-claudecode/')) {
+    if (normalized.includes('/plugins/cache/') && normalized.includes('/oh-my-qoder/')) {
       return replaceLastPathSegmentPreservingSeparators(existingInstallPath, newVersion);
     }
   }
@@ -399,9 +399,10 @@ function syncInstalledPluginRegistryVersion(
 
     for (const [pluginId, entriesValue] of Object.entries(plugins)) {
       const normalizedPluginId = pluginId.toLowerCase();
-      const isOmcPlugin = normalizedPluginId === 'oh-my-claudecode@omc'
-        || normalizedPluginId === 'oh-my-claudecode';
-      if (!isOmcPlugin || !Array.isArray(entriesValue)) {
+      const isOmqPlugin = normalizedPluginId === 'oh-my-qoder@omq'
+        || normalizedPluginId === 'oh-my-qoder@omc'
+        || normalizedPluginId === 'oh-my-qoder';
+      if (!isOmqPlugin || !Array.isArray(entriesValue)) {
         continue;
       }
 
@@ -460,7 +461,7 @@ export function shouldBlockStandaloneUpdateInCurrentSession(): boolean {
 }
 
 export function syncPluginCache(verbose: boolean = false): { synced: boolean; skipped: boolean; errors: string[] } {
-  const pluginCacheRoot = join(getClaudeConfigDir(), 'plugins', 'cache', 'omc', 'oh-my-claudecode');
+  const pluginCacheRoot = join(getClaudeConfigDir(), 'plugins', 'cache', 'omq', 'oh-my-qoder');
   if (!existsSync(pluginCacheRoot)) {
     return { synced: false, skipped: true, errors: [] };
   }
@@ -818,7 +819,7 @@ function getGitHubUpdateToken(): string | null {
 function getGitHubReleaseHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'oh-my-claudecode-updater'
+    'User-Agent': 'oh-my-qoder-updater'
   };
 
   const token = getGitHubUpdateToken();
@@ -886,7 +887,7 @@ export async function fetchLatestRelease(): Promise<ReleaseInfo> {
     // No releases found - try to get version from package.json in repo
     const pkgResponse = await fetch(`${GITHUB_RAW_URL}/main/package.json`, {
       headers: {
-        'User-Agent': 'oh-my-claudecode-updater'
+        'User-Agent': 'oh-my-qoder-updater'
       }
     });
 
@@ -994,7 +995,7 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
   }
 
   try {
-    const installResult = installOmc({
+    const installResult = installOmq({
       force: true,
       verbose: options?.verbose ?? false,
       skipQoderCheck: true,
@@ -1067,21 +1068,21 @@ export function reconcileUpdateRuntime(options?: { verbose?: boolean; skipGraceP
   };
 }
 
-function resolveOmcBinaryPath(): string {
+function resolveOmqBinaryPath(): string {
   if (process.platform === 'win32') {
-    return getFirstResolvedBinaryPath(execFileSync('where.exe', ['omc.cmd'], {
+    return getFirstResolvedBinaryPath(execFileSync('where.exe', ['omq.cmd'], {
       encoding: 'utf-8',
       stdio: 'pipe',
       timeout: 5000,
       windowsHide: true,
-    }), 'omc');
+    }), 'omq');
   }
 
-  return getFirstResolvedBinaryPath(execSync('which omc 2>/dev/null || where omc 2>NUL', {
+  return getFirstResolvedBinaryPath(execSync('which omq 2>/dev/null || where omq 2>NUL', {
     encoding: 'utf-8',
     stdio: 'pipe',
     timeout: 5000,
-  }), 'omc');
+  }), 'omq');
 }
 
 /**
@@ -1104,7 +1105,7 @@ export async function performUpdate(options?: {
         success: false,
         previousVersion,
         newVersion: 'unknown',
-        message: 'Running inside an active Claude Code plugin session. Use "/plugin install oh-my-claudecode" to update, or pass --standalone to force npm update.',
+        message: 'Running inside an active Claude Code plugin session. Use "/plugin install oh-my-qoder" to update, or pass --standalone to force npm update.',
       };
     }
 
@@ -1144,17 +1145,17 @@ export async function performUpdate(options?: {
 
       // CRITICAL FIX: After npm updates the global package, the current process
       // still has OLD code loaded in memory. We must re-exec to run reconciliation
-      // with the NEW code. Otherwise, installOmc() runs OLD logic against NEW files.
+      // with the NEW code. Otherwise, installOmq() runs OLD logic against NEW files.
       if (!process.env.OMQ_UPDATE_RECONCILE) {
         // Set flag to prevent infinite loop
         process.env.OMQ_UPDATE_RECONCILE = '1';
 
-        // Find the omc binary path
-        const omcPath = resolveOmcBinaryPath();
+        // Find the omq binary path
+        const omqPath = resolveOmqBinaryPath();
 
         // Re-exec with reconcile subcommand
         try {
-          execFileSync(omcPath, ['update-reconcile', ...(options?.clean ? ['--skip-grace-period'] : [])], {
+          execFileSync(omqPath, ['update-reconcile', ...(options?.clean ? ['--skip-grace-period'] : [])], {
             encoding: 'utf-8',
             stdio: options?.verbose ? 'inherit' : 'pipe',
             timeout: 60000,
@@ -1208,7 +1209,7 @@ export async function performUpdate(options?: {
       throw new Error(
         'Auto-update via npm failed. Please run manually:\n' +
         '  npm install -g oh-my-claude-sisyphus@latest\n' +
-        'Or use: /plugin install oh-my-claudecode\n' +
+        'Or use: /plugin install oh-my-qoder\n' +
         `Error: ${npmError instanceof Error ? npmError.message : npmError}`
       );
     }
@@ -1229,19 +1230,19 @@ export async function performUpdate(options?: {
  */
 export function formatUpdateNotification(checkResult: UpdateCheckResult): string {
   if (!checkResult.updateAvailable) {
-    return `oh-my-claudecode is up to date (v${checkResult.currentVersion ?? 'unknown'})`;
+    return `oh-my-qoder is up to date (v${checkResult.currentVersion ?? 'unknown'})`;
   }
 
   const lines = [
     '╔═══════════════════════════════════════════════════════════╗',
-    '║           oh-my-claudecode Update Available!              ║',
+    '║           oh-my-qoder Update Available!              ║',
     '╚═══════════════════════════════════════════════════════════╝',
     '',
     `  Current version: ${checkResult.currentVersion ?? 'unknown'}`,
     `  Latest version:  ${checkResult.latestVersion}`,
     '',
     '  To update, run: /update',
-    '  Or reinstall via: /plugin install oh-my-claudecode',
+    '  Or reinstall via: /plugin install oh-my-qoder',
     ''
   ];
 

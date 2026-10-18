@@ -45,7 +45,7 @@ describe('multi-repo workspace anchor', () => {
     if (parent) rmSync(parent, { recursive: true, force: true });
   });
 
-  it('sibling sub-repos both resolve .omc root to the parent workspace anchor', () => {
+  it('sibling sub-repos both resolve .omq root to the parent workspace anchor', () => {
     writeFileSync(join(parent, '.omq-workspace'), '{}');
     clearWorktreeCache();
 

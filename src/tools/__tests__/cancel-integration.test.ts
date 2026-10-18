@@ -387,7 +387,7 @@ describe('cancel-integration', () => {
           ],
         })
       );
-      const missionPath = join(TEST_DIR, '.omc', 'state', 'mission-state.json');
+      const missionPath = join(TEST_DIR, '.omq', 'state', 'mission-state.json');
       const missionBytes = readFileSync(missionPath);
 
       const result = await stateClearTool.handler({
@@ -444,10 +444,10 @@ describe('cancel-integration', () => {
       const sessionB = 'team-cancel-scoped-b';
       const teamA = 'scoped-team-a';
       const teamB = 'scoped-team-b';
-      const sessionDirA = join(TEST_DIR, '.omc', 'state', 'sessions', sessionA);
-      const sessionDirB = join(TEST_DIR, '.omc', 'state', 'sessions', sessionB);
-      const runtimeRootA = join(TEST_DIR, '.omc', 'state', 'team', teamA);
-      const runtimeRootB = join(TEST_DIR, '.omc', 'state', 'team', teamB);
+      const sessionDirA = join(TEST_DIR, '.omq', 'state', 'sessions', sessionA);
+      const sessionDirB = join(TEST_DIR, '.omq', 'state', 'sessions', sessionB);
+      const runtimeRootA = join(TEST_DIR, '.omq', 'state', 'team', teamA);
+      const runtimeRootB = join(TEST_DIR, '.omq', 'state', 'team', teamB);
       mkdirSync(sessionDirA, { recursive: true });
       mkdirSync(sessionDirB, { recursive: true });
       mkdirSync(join(runtimeRootA, 'tasks'), { recursive: true });
@@ -475,7 +475,7 @@ describe('cancel-integration', () => {
       );
       const taskABytes = readFileSync(join(runtimeRootA, 'tasks', 'task-a.json'));
       const taskBBytes = readFileSync(join(runtimeRootB, 'tasks', 'task-b.json'));
-      const missionPath = join(TEST_DIR, '.omc', 'state', 'mission-state.json');
+      const missionPath = join(TEST_DIR, '.omq', 'state', 'mission-state.json');
       const missionBytes = readFileSync(missionPath);
 
       await stateClearTool.handler({
@@ -496,14 +496,14 @@ describe('cancel-integration', () => {
     it('should clear all Team sessions while preserving all native runtime and HUD records', async () => {
       for (const teamName of ['alpha-team', 'beta-team']) {
         const sessionId = `${teamName}-session`;
-        const sessionDir = join(TEST_DIR, '.omc', 'state', 'sessions', sessionId);
+        const sessionDir = join(TEST_DIR, '.omq', 'state', 'sessions', sessionId);
         mkdirSync(sessionDir, { recursive: true });
         writeFileSync(join(sessionDir, 'team-state.json'), JSON.stringify({
           active: true, team_name: teamName, session_id: sessionId,
         }));
       }
-      const alphaRuntimeRoot = join(TEST_DIR, '.omc', 'state', 'team', 'alpha-team');
-      const betaRuntimeRoot = join(TEST_DIR, '.omc', 'state', 'team', 'beta-team');
+      const alphaRuntimeRoot = join(TEST_DIR, '.omq', 'state', 'team', 'alpha-team');
+      const betaRuntimeRoot = join(TEST_DIR, '.omq', 'state', 'team', 'beta-team');
       mkdirSync(alphaRuntimeRoot, { recursive: true });
       mkdirSync(betaRuntimeRoot, { recursive: true });
       const alphaConfigPath = join(alphaRuntimeRoot, 'config.json');
@@ -511,7 +511,7 @@ describe('cancel-integration', () => {
       writeFileSync(alphaConfigPath, JSON.stringify({ instance_id: 'alpha-new-instance' }));
       writeFileSync(betaConfigPath, JSON.stringify({ instance_id: 'beta-new-instance' }));
       writeFileSync(
-        join(TEST_DIR, '.omc', 'state', 'mission-state.json'),
+        join(TEST_DIR, '.omq', 'state', 'mission-state.json'),
         JSON.stringify({
           updatedAt: new Date().toISOString(),
           missions: [
@@ -523,7 +523,7 @@ describe('cancel-integration', () => {
       );
       const alphaConfigBytes = readFileSync(alphaConfigPath);
       const betaConfigBytes = readFileSync(betaConfigPath);
-      const missionPath = join(TEST_DIR, '.omc', 'state', 'mission-state.json');
+      const missionPath = join(TEST_DIR, '.omq', 'state', 'mission-state.json');
       const missionBytes = readFileSync(missionPath);
 
       const result = await stateClearTool.handler({
@@ -532,8 +532,8 @@ describe('cancel-integration', () => {
       });
 
       for (const teamName of ['alpha-team', 'beta-team']) {
-        expect(existsSync(join(TEST_DIR, '.omc', 'state', 'team', teamName))).toBe(true);
-        expect(existsSync(join(TEST_DIR, '.omc', 'state', 'sessions', `${teamName}-session`, 'team-state.json'))).toBe(false);
+        expect(existsSync(join(TEST_DIR, '.omq', 'state', 'team', teamName))).toBe(true);
+        expect(existsSync(join(TEST_DIR, '.omq', 'state', 'sessions', `${teamName}-session`, 'team-state.json'))).toBe(false);
       }
       expect(readFileSync(alphaConfigPath)).toEqual(alphaConfigBytes);
       expect(readFileSync(betaConfigPath)).toEqual(betaConfigBytes);
@@ -544,9 +544,9 @@ describe('cancel-integration', () => {
     });
 
     it('preserves uncaptured Team runtime and HUD records during aggregate clear', async () => {
-      const runtimeRoot = join(TEST_DIR, '.omc', 'state', 'team', 'uncaptured-team');
+      const runtimeRoot = join(TEST_DIR, '.omq', 'state', 'team', 'uncaptured-team');
       const taskPath = join(runtimeRoot, 'task.json');
-      const missionPath = join(TEST_DIR, '.omc', 'state', 'mission-state.json');
+      const missionPath = join(TEST_DIR, '.omq', 'state', 'mission-state.json');
       mkdirSync(runtimeRoot, { recursive: true });
       writeFileSync(taskPath, '{"status":"in_progress"}');
       writeFileSync(missionPath, JSON.stringify({

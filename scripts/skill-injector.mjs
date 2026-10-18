@@ -99,7 +99,7 @@ function validateSessionId(sessionId) {
  * @param {string} startDir - Directory to start from (data.cwd)
  * @returns {string} Absolute path to the .omq root directory
  */
-function resolveOmcRootSync(startDir) {
+function resolveOmqRootSync(startDir) {
   let dir = startDir;
 
   // Walk up looking for .omq-workspace or .git
@@ -583,7 +583,7 @@ async function main() {
     const sessionId = validateSessionId(rawSessionId) ?? (data.session_id || data.sessionId || 'unknown');
 
     // Resolve OMC root (walk up from data.cwd looking for workspace markers)
-    const omcRoot = resolveOmcRootSync(directory);
+    const omcRoot = resolveOmqRootSync(directory);
 
     // Skip if no prompt
     if (!prompt) {

@@ -1,5 +1,5 @@
 /**
- * Hooks Module for Oh-My-ClaudeCode
+ * Hooks Module for Oh-My-Qoder
  *
  * This module provides the TypeScript bridge for Claude Code's native shell hook system.
  * Shell scripts call these TypeScript functions for complex logic processing.
@@ -185,8 +185,8 @@ export {
 } from './rules-injector/index.js';
 
 export {
-  // OMC Orchestrator
-  createOmcOrchestratorHook,
+  // OMQ Orchestrator
+  createOmqOrchestratorHook,
   isAllowedPath,
   isWriteEditTool,
   getGitDiffStats,
@@ -207,7 +207,7 @@ export {
   SINGLE_TASK_DIRECTIVE,
   type ToolExecuteInput as OrchestratorToolInput,
   type ToolExecuteOutput as OrchestratorToolOutput
-} from './omc-orchestrator/index.js';
+} from './omq-orchestrator/index.js';
 
 export {
   // Auto Slash Command

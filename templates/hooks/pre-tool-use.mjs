@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OMC Pre-Tool-Use Hook (Node.js)
+ * OMQ Pre-Tool-Use Hook (Node.js)
  * Enforces delegation by warning when orchestrator attempts direct source file edits.
  * Also activates skill-active state for Stop hook protection (issue #1033).
  */
@@ -43,17 +43,17 @@ const PROTECTION_CONFIGS = {
 
 const SKILL_PROTECTION = {
   // Already have mode state → no protection needed
-  'omc-teams': 'none', cancel: 'none',
+  'omq-teams': 'none', cancel: 'none',
   // Instant / read-only → no protection needed
-  trace: 'none', hud: 'none', 'omc-doctor': 'none', 'omc-help': 'none',
-  'learn-about-omc': 'none', note: 'none',
+  trace: 'none', hud: 'none', 'omq-doctor': 'none', 'omq-help': 'none',
+  'learn-about-omq': 'none', 'learn-about-omc': 'none', note: 'none',
   // Light protection (3 reinforcements)
   tdd: 'light', 'build-fix': 'light', analyze: 'light', skill: 'light',
   'configure-notifications': 'light',
   // Medium protection (5 reinforcements)
   'code-review': 'medium', 'security-review': 'medium', plan: 'medium',
   ralplan: 'medium', review: 'medium', 'external-context': 'medium',
-  sciomc: 'medium', skillify: 'medium', learner: 'medium', 'omc-setup': 'medium',
+  sciomc: 'medium', skillify: 'medium', learner: 'medium', 'omq-setup': 'medium',
   'mcp-setup': 'medium', 'project-session-manager': 'medium',
   'writer-memory': 'medium', 'ralph-init': 'medium',
   // Heavy protection (10 reinforcements)
@@ -163,12 +163,12 @@ async function confirmSkillModeStates(directory, skillName, sessionId) {
 // Skill vs agent namespace guard (issue #3667)
 //
 // Task/Agent subagent_type identifiers and bundled skills share the same
-// `oh-my-claudecode:` namespace. Deny skill names before Claude Code's native
+// `oh-my-qoder:` namespace. Deny skill names before Claude Code's native
 // agent boundary so callers receive actionable Skill-tool guidance instead of
 // a generic "Agent type not found" error.
 // ---------------------------------------------------------------------------
 
-const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-qoder:', 'omq:', 'oh-my-claudecode:', 'omc:'];
+const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-qoder:', 'omq:', 'omc:'];
 const SKILL_IDENTIFIER_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 function splitAgentNamespace(subagentType) {
@@ -249,7 +249,7 @@ const CC_NATIVE_SKILL_COMMANDS = new Set([
 
 function toSafeSkillName(name) {
   const normalized = name.trim();
-  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omc-${normalized}` : normalized;
+  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omq-${normalized}` : normalized;
 }
 
 let cachedCanonicalSkillRegistry = null;
@@ -508,7 +508,7 @@ function workerCommandViolation(command) {
     return 'Team worker cannot run tmux pane/session orchestration commands.';
   }
   if (WORKER_BLOCKED_TEAM_CLI_PATTERN.test(command)) {
-    return 'Team worker cannot run team orchestration commands (except `omc team api ...`).';
+    return 'Team worker cannot run team orchestration commands (except `omq team api ...`).';
   }
   if (WORKER_BLOCKED_SKILL_PATTERN.test(command)) {
     return 'Team worker cannot invoke orchestration skills (`$team`, `$autopilot`, `$ralph`).';

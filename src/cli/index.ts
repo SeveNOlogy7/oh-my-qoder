@@ -21,7 +21,7 @@ import {
   loadConfig,
   getConfigPaths,
 } from '../config/loader.js';
-import { createOmcSession } from '../index.js';
+import { createOmqSession } from '../index.js';
 import {
   checkForUpdates,
   performUpdate,
@@ -44,6 +44,7 @@ import {
   waitDetectCommand
 } from './commands/wait.js';
 import { doctorConflictsCommand } from './commands/doctor-conflicts.js';
+import { ralphCommand } from './commands/ralph.js';
 import { doctorTeamRoutingCommand } from './commands/doctor-team-routing.js';
 import { capabilitiesCheckCommand, capabilitiesLockCommand } from './commands/capabilities.js';
 import { sessionSearchCommand } from './commands/session-search.js';
@@ -66,6 +67,8 @@ import { askCommand, ASK_USAGE } from './ask.js';
 import { graphCommand } from './graph.js';
 import { checkpointCommand } from './checkpoint.js';
 import { lookoutCommand } from './lookout.js';
+import { intakeCommand } from './commands/intake.js';
+import { factoryCommand } from './commands/factory.js';
 import { warnIfWin32 } from './win32-warning.js';
 import { autoresearchCommand } from './autoresearch.js';
 import { parseHudWatchInterval, runHudWatchLoop } from './hud-watch.js';
@@ -667,7 +670,7 @@ program
 Examples:
   $ omq info                     Show agents, features, and MCP servers`)
   .action(async () => {
-    const session = createOmcSession();
+    const session = createOmqSession();
 
     console.log(chalk.blue.bold('\nOh-My-ClaudeCode System Information\n'));
     console.log(chalk.gray('━'.repeat(50)));
@@ -714,7 +717,7 @@ Examples:
   $ omq test-prompt "analyze this code"     See how magic keywords are detected
   $ omq test-prompt "analyze this code"     Test prompt enhancement`)
   .action(async (prompt: string) => {
-    const session = createOmcSession();
+    const session = createOmqSession();
 
     console.log(chalk.blue('Original prompt:'));
     console.log(chalk.gray(prompt));
@@ -875,7 +878,7 @@ Examples:
     }
 
     console.log(chalk.gray('\n━'.repeat(50)));
-    console.log(chalk.gray('\nTo check for updates, run: oh-my-claudecode update --check'));
+    console.log(chalk.gray('\nTo check for updates, run: oh-my-qoder update --check'));
   });
 
 /**
@@ -1299,6 +1302,9 @@ Examples:
     process.exit(exitCode);
   });
 
+// Headless AFK ralph launcher (factory AFK profile + declared verify commands).
+ralphCommand(program);
+
 /**
  * Setup command - Official CLI entry point for omq-setup
  *
@@ -1430,12 +1436,12 @@ program
 
     if (result.success) {
       console.log(chalk.green('✓ Oh-My-ClaudeCode installed successfully!'));
-      console.log(chalk.gray('  Run "oh-my-claudecode info" to see available agents.'));
+      console.log(chalk.gray('  Run "oh-my-qoder info" to see available agents.'));
       console.log(chalk.yellow('  Run "/omq-default" (project) or "/omq-default-global" (global) in Claude Code.'));
     } else {
       // Don't fail the npm install, just warn
       console.warn(chalk.yellow('⚠ Could not complete OMQ setup:'), result.message);
-      console.warn(chalk.gray('  Run "oh-my-claudecode install" manually to complete setup.'));
+      console.warn(chalk.gray('  Run "oh-my-qoder install" manually to complete setup.'));
     }
   });
 
@@ -1572,6 +1578,8 @@ program
 program.addCommand(graphCommand());
 program.addCommand(checkpointCommand());
 program.addCommand(lookoutCommand());
+program.addCommand(intakeCommand());
+program.addCommand(factoryCommand());
 
 /**
  * Returns the fully-configured commander program.

@@ -638,6 +638,31 @@ describe('agent output summarization / truncation (issue #1373)', () => {
     expect(out.hookSpecificOutput?.additionalContext).toContain('TaskOutput clipped');
     expect(out).not.toHaveProperty('suppressOutput');
   });
+
+  it.each(['abc', '300junk', '1.5', '1e2', '0', '-1', ' 300 ', '01'])(
+    'falls back to safe defaults for malformed agent output limits (%s)',
+    malformedLimit => {
+      const output = `important-result:${'x'.repeat(320)}`;
+      const out = runPostToolVerifier(
+        {
+          tool_name: 'TaskOutput',
+          tool_response: output,
+          session_id: 'malformed-agent-output-limit',
+          cwd: process.cwd(),
+        },
+        {
+          OMQ_AGENT_OUTPUT_ANALYSIS_LIMIT: malformedLimit,
+          OMQ_AGENT_OUTPUT_SUMMARY_LIMIT: malformedLimit,
+        },
+      );
+
+      expect(out.hookSpecificOutput?.additionalContext).toContain(
+        `TaskOutput summary: ${output}`,
+      );
+      expect(out.hookSpecificOutput?.additionalContext).not.toContain('TaskOutput clipped');
+      expect(out.hookSpecificOutput?.additionalContext).not.toContain('[truncated]');
+    },
+  );
 });
 
 describe('post-tool hook regression coverage (issue #2615)', () => {
@@ -1030,7 +1055,7 @@ describe('OMQ_QUIET hook message suppression (issue #1646)', () => {
       writeFileSync(
         join(tempDir, '.omq', 'state', 'subagent-tracking.json'),
         JSON.stringify({
-          agents: [{ status: 'running', agent_type: 'oh-my-claudecode:executor' }],
+          agents: [{ status: 'running', agent_type: 'oh-my-qoder:executor' }],
           total_completed: 1,
           total_failed: 0,
         }),
@@ -1059,7 +1084,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-claudecode:plan' },
+        tool_input: { skill: 'oh-my-qoder:plan' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1074,11 +1099,11 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
   it('does not clear parent-owned skill-active-state for nested child Skill completion in post-tool-verifier', () => {
     withTempDir((tempDir) => {
       const sessionId = 'skill-nested-script';
-      writeSkillStateFixtures(tempDir, sessionId, 'omc-setup');
+      writeSkillStateFixtures(tempDir, sessionId, 'omq-setup');
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-claudecode:mcp-setup' },
+        tool_input: { skill: 'oh-my-qoder:mcp-setup' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1097,7 +1122,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runHookScript(TEMPLATE_HOOK_PATH, {
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-claudecode:plan' },
+        tool_input: { skill: 'oh-my-qoder:plan' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1120,7 +1145,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
       mkdirSync(homeDir, { recursive: true });
       const out = runHookScript(TEMPLATE_HOOK_PATH, {
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-claudecode:ralph' },
+        tool_input: { skill: 'oh-my-qoder:ralph' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1140,7 +1165,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-claudecode:ralplan' },
+        tool_input: { skill: 'oh-my-qoder:ralplan' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1164,7 +1189,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
       const out = runHookScript(TEMPLATE_HOOK_PATH, {
         tool_name: 'Skill',
         tool_input: {
-          skill: 'oh-my-claudecode:plan',
+          skill: 'oh-my-qoder:plan',
           args: '--consensus issue #2368',
         },
         tool_response: { ok: true },
@@ -1189,7 +1214,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-claudecode:deep-interview' },
+        tool_input: { skill: 'oh-my-qoder:deep-interview' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,
@@ -1208,7 +1233,7 @@ describe('Skill active state cleanup on PostToolUse (issue #2103)', () => {
 
       const out = runPostToolVerifier({
         tool_name: 'Skill',
-        tool_input: { skill: 'oh-my-claudecode:self-improve' },
+        tool_input: { skill: 'oh-my-qoder:self-improve' },
         tool_response: { ok: true },
         session_id: sessionId,
         cwd: tempDir,

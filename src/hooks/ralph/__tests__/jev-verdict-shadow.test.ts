@@ -7,12 +7,12 @@ import { applyRalphVerdictShadow } from '../jev-shadow.js';
 
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_MAX_REQUESTS',
-  'OMC_JEV_EXCERPT_CHARS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_MAX_REQUESTS',
+  'OMQ_JEV_EXCERPT_CHARS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
 ] as const;
 
 let logDir = '';
@@ -25,7 +25,7 @@ beforeEach(async () => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OMC_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV_LOG_DIR = logDir;
 });
 
 afterEach(async () => {
@@ -44,7 +44,7 @@ function stubFetch(): { fetchFn: typeof fetch; calls: Array<{ url: string; body:
     return {
       ok: true,
       status: 200,
-      json: async () => ({ answers: { completion_criteria_met: { type: 'Noul', noul: true, confidence: 0.9 } } }),
+      json: async () => ({ answers: { completion_criteria_met: { type: 'noul', noul: true, confidence: 0.9 } } }),
     } as unknown as Response;
   }) as unknown as typeof fetch;
   return { fetchFn, calls };
@@ -56,9 +56,9 @@ async function readLogLines(): Promise<string[]> {
 }
 
 describe('applyRalphVerdictShadow', () => {
-  it('with TYPESAFE_API_KEY + OMC_JEV=ralph-verdict, records a shadow line with the twin verdict and the Jev Noul', async () => {
+  it('with TYPESAFE_API_KEY + OMQ_JEV=ralph-verdict, records a shadow line with the twin verdict and the Jev Noul', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'ralph-verdict';
+    process.env.OMQ_JEV = 'ralph-verdict';
     const { fetchFn, calls } = stubFetch();
 
     const approved = await applyRalphVerdictShadow({
@@ -106,7 +106,7 @@ describe('applyRalphVerdictShadow', () => {
     for (const entry of parsed) {
       expect(entry.point).toBe('ralph-verdict');
       expect(entry.mode).toBe('shadow');
-      expect(entry.jev?.type).toBe('Noul');
+      expect(entry.jev?.type).toBe('noul');
     }
     expect(parsed.map((entry) => entry.heuristic)).toEqual([true, false]);
   });
@@ -125,7 +125,7 @@ describe('applyRalphVerdictShadow', () => {
     await expect(readLogLines()).rejects.toThrow();
   });
 
-  it('without OMC_JEV opt-in, a key alone triggers zero fetch calls (strict per-point opt-in)', async () => {
+  it('without OMQ_JEV opt-in, a key alone triggers zero fetch calls (strict per-point opt-in)', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
     const { fetchFn, calls } = stubFetch();
     const result = await applyRalphVerdictShadow({
@@ -142,8 +142,8 @@ describe('applyRalphVerdictShadow', () => {
 
   it('on Jev timeout the verdict is unchanged and a degraded line is logged', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'ralph-verdict';
-    process.env.OMC_JEV_TIMEOUT_MS = '20';
+    process.env.OMQ_JEV = 'ralph-verdict';
+    process.env.OMQ_JEV_TIMEOUT_MS = '20';
     const fetchFn = (async () => new Promise<Response>(() => {})) as unknown as typeof fetch;
     const result = await applyRalphVerdictShadow({
       verdict: true,

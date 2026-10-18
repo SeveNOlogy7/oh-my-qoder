@@ -11,18 +11,18 @@ const environmentIsolation = await vi.hoisted(async () => {
   const previous = {
     home: process.env.HOME,
     userProfile: process.env.USERPROFILE,
-    stateDir: process.env.OMC_STATE_DIR,
+    stateDir: process.env.OMQ_STATE_DIR,
   };
   const root = mkdtempSync(pathJoin(process.cwd(), '.tmp-runtime-storage-boundary-import-'));
   process.env.HOME = root;
   process.env.USERPROFILE = root;
-  process.env.OMC_STATE_DIR = pathJoin(root, 'state');
+  process.env.OMQ_STATE_DIR = pathJoin(root, 'state');
   return { previous, root };
 });
 
 const mocks = vi.hoisted(() => {
   const tmuxServerIdentity = {
-    socket_path: '/tmp/omc-test-tmux.sock',
+    socket_path: '/tmp/omq-test-tmux.sock',
     server_pid: 4242,
     process_started_at: process.platform === 'darwin'
       ? 'darwin:1700000000:123456'
@@ -193,13 +193,13 @@ describe('runtime storage boundaries', () => {
   let previousStateDir: string | undefined;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omc-runtime-storage-boundary-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omq-runtime-storage-boundary-'));
     previousHome = process.env.HOME;
     previousUserProfile = process.env.USERPROFILE;
-    previousStateDir = process.env.OMC_STATE_DIR;
+    previousStateDir = process.env.OMQ_STATE_DIR;
     process.env.HOME = cwd;
     process.env.USERPROFILE = cwd;
-    process.env.OMC_STATE_DIR = join(cwd, 'private-state-root');
+    process.env.OMQ_STATE_DIR = join(cwd, 'private-state-root');
 
     mocks.createTeamSession.mockReset();
     mocks.createTeamSession.mockResolvedValue({
@@ -313,7 +313,7 @@ describe('runtime storage boundaries', () => {
     modelMocks.buildValidatedWorkerLaunchDescriptor.mockReturnValue(launchDescriptor);
     modelMocks.getWorkerEnv.mockReset();
     modelMocks.getWorkerEnv.mockImplementation((name: string, worker: string) => ({
-      OMC_TEAM_WORKER: `${name}/${worker}`,
+      OMQ_TEAM_WORKER: `${name}/${worker}`,
     }));
     modelMocks.isPromptModeAgent.mockReset();
     modelMocks.isPromptModeAgent.mockReturnValue(false);
@@ -331,8 +331,8 @@ describe('runtime storage boundaries', () => {
     else process.env.HOME = previousHome;
     if (previousUserProfile === undefined) delete process.env.USERPROFILE;
     else process.env.USERPROFILE = previousUserProfile;
-    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousStateDir;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
     await rm(cwd, { recursive: true, force: true });
   });
 
@@ -470,7 +470,7 @@ afterAll(async () => {
   else process.env.HOME = previous.home;
   if (previous.userProfile === undefined) delete process.env.USERPROFILE;
   else process.env.USERPROFILE = previous.userProfile;
-  if (previous.stateDir === undefined) delete process.env.OMC_STATE_DIR;
-  else process.env.OMC_STATE_DIR = previous.stateDir;
+  if (previous.stateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = previous.stateDir;
   await rm(root, { recursive: true, force: true });
 });

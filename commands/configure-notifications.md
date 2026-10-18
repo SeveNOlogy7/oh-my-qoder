@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Configure notification integrations (Telegram, Discord, Slack) via natural language"
 ---
 
 # OMQ configure-notifications

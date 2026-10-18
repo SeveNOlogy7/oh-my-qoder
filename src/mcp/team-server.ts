@@ -632,7 +632,7 @@ async function handleStart(args: unknown): Promise<TeamToolResponse> {
   validateTeamName(input.teamName);
   if (!isRuntimeV2Enabled()) {
     throw new Error(
-      'team_start_unsafe_runtime_v1: instance-bound provider cleanup requires runtime v2; set OMC_RUNTIME_V2=1',
+      'team_start_unsafe_runtime_v1: instance-bound provider cleanup requires runtime v2; set OMQ_RUNTIME_V2=1',
     );
   }
   const cwd = resolve(input.cwd);

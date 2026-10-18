@@ -60,7 +60,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('compacts installed plugin SKILL.md files while archiving full on-demand skill bodies', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-plugin-skill-budget-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-plugin-skill-budget-'));
     try {
       cpSync(SKILLS_DIR, join(tempRoot, 'skills'), { recursive: true });
       const originalBytes = skillPayloadBytes(tempRoot);
@@ -87,7 +87,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
 
         expect(Buffer.byteLength(shim), `${skillDir} compact shim size`).toBeLessThan(COMPACT_PLUGIN_SKILL_PER_FILE_BUDGET_BYTES);
         expect(shim, `${skillDir} shim should point to archived body`).toContain(`../../skill-bodies/${skillDir}/SKILL.md`);
-        expect(shim, `${skillDir} shim should expose runtime body override`).toContain('omc-full-body:');
+        expect(shim, `${skillDir} shim should expose runtime body override`).toContain('omq-full-body:');
         expect(shim, `${skillDir} shim should prefer plugin root env vars`).toContain(
           `\${CLAUDE_PLUGIN_ROOT:-\${OMQ_PLUGIN_ROOT}}/skill-bodies/${skillDir}/SKILL.md`,
         );
@@ -108,7 +108,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('uses platform-safe containment for archived full-body skill paths', () => {
-    const winRoot = 'C:\\Users\\me\\.claude\\plugins\\cache\\omc\\oh-my-claudecode\\4.13.7';
+    const winRoot = 'C:\\Users\\me\\.claude\\plugins\\cache\\omq\\oh-my-qoder\\4.13.7';
     const winArchivedBody = win32.join(winRoot, 'skill-bodies', 'plan', 'SKILL.md');
     const winEscapedBody = win32.join(winRoot, '..', 'other-plugin', 'SKILL.md');
 
@@ -136,7 +136,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
   });
 
   it('materializes declared plugin command wrappers into cache sync targets', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-plugin-commands-cache-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-plugin-commands-cache-'));
     try {
       const sourceRoot = join(tempRoot, 'source');
       const targetRoot = join(tempRoot, 'cache', 'omq', 'oh-my-qoder', '4.14.1');

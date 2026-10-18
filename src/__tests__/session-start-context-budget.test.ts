@@ -54,10 +54,10 @@ describe.each(HOOK_SCRIPTS)(
     let home: string;
 
     beforeEach(() => {
-      root = mkdtempSync(join(tmpdir(), "omc-budget-env-"));
+      root = mkdtempSync(join(tmpdir(), "omq-budget-env-"));
       project = join(root, "project");
       home = join(root, "home");
-      mkdirSync(join(project, ".omc"), { recursive: true });
+      mkdirSync(join(project, ".omq"), { recursive: true });
       mkdirSync(home, { recursive: true });
       execFileSync("git", ["init", "--quiet"], {
         cwd: project,
@@ -65,7 +65,7 @@ describe.each(HOOK_SCRIPTS)(
       });
       // 7,000 chars of Priority Context: over the default 6,000-char aggregate budget on its own.
       writeFileSync(
-        join(project, ".omc", "notepad.md"),
+        join(project, ".omq", "notepad.md"),
         `## Priority Context\n${"- keep this priority line\n".repeat(280)}${SENTINEL}\n`,
         "utf-8",
       );

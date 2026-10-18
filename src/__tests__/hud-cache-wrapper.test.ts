@@ -200,11 +200,11 @@ describe('HUD cache wrapper lock ownership (issue #3933 defect 1)', () => {
       env: {
         ...process.env,
         PATH: `${fakeBin}:/usr/bin:/bin`,
-        OMC_HUD_CACHE_DIR: cacheDir,
-        OMC_HUD_SYNC_REFRESH: '1',
+        OMQ_HUD_CACHE_DIR: cacheDir,
+        OMQ_HUD_SYNC_REFRESH: '1',
         // Reclaiming another session's abandoned lock is part of the interval-gated
         // global sweep, and the previous run in this cache dir already stamped it.
-        OMC_HUD_SWEEP_INTERVAL_SECONDS: '0',
+        OMQ_HUD_SWEEP_INTERVAL_SECONDS: '0',
       },
       timeout: 2000,
     });
@@ -433,14 +433,14 @@ describe('HUD cache wrapper per-session cache TTL (issue #3938)', () => {
   });
 
   it('does not re-sweep the shared cache directory while the sweep stamp is fresh (issue #4045)', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-hud-4045-throttle-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-hud-4045-throttle-'));
     const cacheDir = join(tempRoot, 'cache');
     mkdirSync(cacheDir, { recursive: true });
 
     const hudScript = join(tempRoot, 'fake-hud.mjs');
     writeFileSync(hudScript, "process.stdin.resume(); process.stdin.on('end', () => console.log('sweep-ok'));\n");
 
-    const env = { ...process.env, OMC_HUD_CACHE_DIR: cacheDir, OMC_HUD_SYNC_REFRESH: '1' };
+    const env = { ...process.env, OMQ_HUD_CACHE_DIR: cacheDir, OMQ_HUD_SYNC_REFRESH: '1' };
     const render = (sessionId: string) =>
       execFileSync('sh', [wrapperPath, hudScript], {
         input: JSON.stringify({ session_id: sessionId, cwd: tempRoot }),
@@ -470,7 +470,7 @@ describe('HUD cache wrapper per-session cache TTL (issue #3938)', () => {
       execFileSync('sh', [wrapperPath, hudScript], {
         input: JSON.stringify({ session_id: 'sweep-third', cwd: tempRoot }),
         encoding: 'utf8',
-        env: { ...env, OMC_HUD_SWEEP_INTERVAL_SECONDS: '5' },
+        env: { ...env, OMQ_HUD_SWEEP_INTERVAL_SECONDS: '5' },
         timeout: 4000,
       }),
     ).toBe('sweep-ok\n');
@@ -480,7 +480,7 @@ describe('HUD cache wrapper per-session cache TTL (issue #3938)', () => {
   });
 
   it('sweeps expired session caches without spawning a process per file (issue #4045)', () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), 'omc-hud-4045-fanout-'));
+    const tempRoot = mkdtempSync(join(tmpdir(), 'omq-hud-4045-fanout-'));
     const cacheDir = join(tempRoot, 'cache');
     mkdirSync(cacheDir, { recursive: true });
 
@@ -527,8 +527,8 @@ describe('HUD cache wrapper per-session cache TTL (issue #3938)', () => {
       env: {
         ...process.env,
         PATH: `${fakeBin}:${process.env.PATH ?? '/usr/bin:/bin'}`,
-        OMC_HUD_CACHE_DIR: cacheDir,
-        OMC_HUD_SYNC_REFRESH: '1',
+        OMQ_HUD_CACHE_DIR: cacheDir,
+        OMQ_HUD_SYNC_REFRESH: '1',
       },
       timeout: 10_000,
     });

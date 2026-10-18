@@ -48,7 +48,7 @@ function seedCleanYard(root: string): void {
   );
   writeFileSync(join(root, 'CONTEXT.md'), '---\ndocumentLanguage: en\n---\n\n# Glossary\n');
   writeFileSync(join(root, '.mcp.json'), '{"mcpServers": {}}\n');
-  for (const dir of ['docs/adr', 'docs/standards', 'docs/business', 'design-system', '.omc/skills', 'scripts']) {
+  for (const dir of ['docs/adr', 'docs/standards', 'docs/business', 'design-system', '.omq/skills', 'scripts']) {
     mkdirSync(join(root, dir), { recursive: true });
   }
   writeFileSync(join(root, 'docs', 'standards', 'architecture.md'), '# Architecture Standards\n');

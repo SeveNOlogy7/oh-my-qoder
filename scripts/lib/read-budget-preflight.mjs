@@ -15,7 +15,7 @@
 // output at 25,000 tokens, so a full read of a 2,500 line file silently returns
 // a fraction of it and still reads like a complete answer.
 //
-// Configuration (`.omc-config.json` or `.omc/config.json`):
+// Configuration (`.omq-config.json` or `.omq/config.json`):
 //
 //   {
 //     "context": {
@@ -38,11 +38,11 @@
 // Binaries are skipped outright rather than decoded as UTF-8: a PNG has no
 // meaningful line count, and none of the remedies below apply to it.
 //
-// Env overrides: `OMC_READ_BUDGET=off` disables the gate entirely (this is the
+// Env overrides: `OMQ_READ_BUDGET=off` disables the gate entirely (this is the
 // replacement for explore.md's unenforceable "unless the caller specifically
 // asked for full file content" clause — a PreToolUse hook cannot see caller
-// intent, so the escape has to be explicit). `OMC_READ_BUDGET_MAX_LINES` and
-// `OMC_READ_BUDGET_MAX_BYTES` override the thresholds for one-off runs.
+// intent, so the escape has to be explicit). `OMQ_READ_BUDGET_MAX_LINES` and
+// `OMQ_READ_BUDGET_MAX_BYTES` override the thresholds for one-off runs.
 //
 // Bash is gated too, but only for a bare `cat <file>`: `cat f | grep x`,
 // `cat f > g`, and `sed -n '1,200p' f` are all targeted reads and stay allowed.
@@ -96,14 +96,14 @@ function parsePositiveDecimalInteger(value) {
 }
 
 function resolveMaxLines(cfg, env) {
-  const fromEnv = parsePositiveDecimalInteger(env.OMC_READ_BUDGET_MAX_LINES);
+  const fromEnv = parsePositiveDecimalInteger(env.OMQ_READ_BUDGET_MAX_LINES);
   if (fromEnv !== null) return fromEnv;
   if (Number.isFinite(cfg?.maxLines) && cfg.maxLines > 0) return cfg.maxLines;
   return DEFAULT_MAX_LINES;
 }
 
 function resolveMaxBytes(cfg, env) {
-  const fromEnv = parsePositiveDecimalInteger(env.OMC_READ_BUDGET_MAX_BYTES);
+  const fromEnv = parsePositiveDecimalInteger(env.OMQ_READ_BUDGET_MAX_BYTES);
   if (fromEnv !== null) return fromEnv;
   if (Number.isFinite(cfg?.maxBytes) && cfg.maxBytes > 0) return cfg.maxBytes;
   return DEFAULT_MAX_BYTES;
@@ -319,22 +319,22 @@ function remedy(displayPath) {
 
 function warnReason(displayPath, measurement, maxLines, maxBytes) {
   return (
-    `[OMC READ BUDGET] \`${displayPath}\` is ${describeSize(measurement, maxLines, maxBytes)}. ` +
+    `[OMQ READ BUDGET] \`${displayPath}\` is ${describeSize(measurement, maxLines, maxBytes)}. ` +
     'This full read is allowed once. ' +
     `${remedy(displayPath)} ` +
     'Read caps its own output at 25,000 tokens, so a full read of a file this size returns a partial ' +
     'view that still reads like a complete answer. ' +
-    'Further full reads of this file are denied — off switch: `OMC_READ_BUDGET=off`.'
+    'Further full reads of this file are denied — off switch: `OMQ_READ_BUDGET=off`.'
   );
 }
 
 function denyReason(displayPath, measurement, maxLines, maxBytes) {
   return (
-    `[OMC READ BUDGET] Denied: \`${displayPath}\` is ${describeSize(measurement, maxLines, maxBytes)} ` +
+    `[OMQ READ BUDGET] Denied: \`${displayPath}\` is ${describeSize(measurement, maxLines, maxBytes)} ` +
     'and this call has no `offset`/`limit`. ' +
     `${remedy(displayPath)} ` +
     'Allowlist verbatim-value paths via `context.readBudget.allowPaths`, raise ' +
-    '`context.readBudget.maxLines`/`context.readBudget.maxBytes`, or disable with `OMC_READ_BUDGET=off`.'
+    '`context.readBudget.maxLines`/`context.readBudget.maxBytes`, or disable with `OMQ_READ_BUDGET=off`.'
   );
 }
 
@@ -346,7 +346,7 @@ function denyReason(displayPath, measurement, maxLines, maxBytes) {
  * @param {object} [args.toolInput] - Tool input payload.
  * @param {string} [args.stateDir] - Directory used to persist warn-once state.
  * @param {object} [args.env=process.env] - Environment for the off switch/threshold.
- * @param {Function} [args.loadOmcConfig] - Resolved OMC config loader.
+ * @param {Function} [args.loadOmcConfig] - Resolved OMQ config loader.
  * @param {string} [args.cwd=process.cwd()] - Directory used to resolve relative paths.
  * @returns {null | { decision: 'block' | 'warn', reason: string, path: string, lineCount: number,
  *   byteSize: number, trigger: 'bytes' | 'lines' }}
@@ -360,7 +360,7 @@ export function evaluateReadBudget({
   cwd = process.cwd(),
 } = {}) {
   if (!toolName) return null;
-  if ((env.OMC_READ_BUDGET || '').trim().toLowerCase() === 'off') return null;
+  if ((env.OMQ_READ_BUDGET || '').trim().toLowerCase() === 'off') return null;
 
   const cfg = readBudgetConfig(loadOmcConfig);
   if (cfg && cfg.enabled === false) return null;

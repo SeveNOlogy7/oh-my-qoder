@@ -1,15 +1,15 @@
 # Setup Hook
 
-Handles OMC initialization and maintenance tasks.
+Handles OMQ initialization and maintenance tasks.
 
 ## Triggers
 
 ### `init`
-Initializes OMC directory structure and environment on first run or explicit setup.
+Initializes OMQ directory structure and environment on first run or explicit setup.
 
 **What it does:**
 - Creates required directories: `.omq/state/`, `.omq/logs/`, `.omq/notepads/`, `.omq/state/checkpoints/`, `.omq/plans/`
-- Validates existing config files (`.omc-config.json`)
+- Validates existing config files (`.omq-config.json`)
 - Sets environment variables (`OMQ_INITIALIZED=true`) if `CLAUDE_ENV_FILE` is available
 
 **Example Input:**
@@ -30,13 +30,13 @@ Initializes OMC directory structure and environment on first run or explicit set
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "Setup",
-    "additionalContext": "OMC initialized:\n- 5 directories created\n- 1 configs validated\n- Environment variables set: OMQ_INITIALIZED"
+    "additionalContext": "OMQ initialized:\n- 5 directories created\n- 1 configs validated\n- Environment variables set: OMQ_INITIALIZED"
   }
 }
 ```
 
 ### `maintenance`
-Performs periodic maintenance tasks to keep OMC state clean.
+Performs periodic maintenance tasks to keep OMQ state clean.
 
 **What it does:**
 - Prunes old state files (default: 7 days old)
@@ -68,7 +68,7 @@ Performs periodic maintenance tasks to keep OMC state clean.
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "Setup",
-    "additionalContext": "OMC maintenance completed:\n- 3 old state files pruned\n- 1 orphaned state files cleaned\n- Swarm database vacuumed"
+    "additionalContext": "OMQ maintenance completed:\n- 3 old state files pruned\n- 1 orphaned state files cleaned\n- Swarm database vacuumed"
   }
 }
 ```
@@ -78,7 +78,7 @@ Performs periodic maintenance tasks to keep OMC state clean.
 ### Directory Management
 
 #### `ensureDirectoryStructure(directory: string): string[]`
-Creates all required OMC directories.
+Creates all required OMQ directories.
 
 **Returns:** Array of created directory paths.
 
@@ -94,13 +94,13 @@ Validates that config files exist and are readable.
 
 ```typescript
 const validated = validateConfigFiles('/path/to/project');
-// => ['/path/to/project/.omc-config.json']
+// => ['/path/to/project/.omq-config.json']
 ```
 
 ### Environment Variables
 
 #### `setEnvironmentVariables(): string[]`
-Sets environment variables for OMC initialization.
+Sets environment variables for OMQ initialization.
 
 **Returns:** Array of environment variable names set.
 
@@ -214,7 +214,7 @@ interface HookOutput {
 ```typescript
 import { processSetup } from './hooks/setup';
 
-// Initialize OMC
+// Initialize OMQ
 const initResult = await processSetup({
   session_id: 'session-123',
   transcript_path: '/tmp/transcript.md',
@@ -244,7 +244,7 @@ console.log(maintenanceResult.hookSpecificOutput.additionalContext);
 ```bash
 #!/bin/bash
 
-# Initialize OMC
+# Initialize OMQ
 INPUT=$(cat <<EOF
 {
   "session_id": "session-123",

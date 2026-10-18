@@ -312,14 +312,14 @@ interface MinimaxCodingPlanResponse {
  * Get the legacy (pre-split) cache file path
  */
 function getLegacyCachePath(): string {
-  return join(getClaudeConfigDir(), 'plugins', 'oh-my-claudecode', '.usage-cache.json');
+  return join(getClaudeConfigDir(), 'plugins', 'oh-my-qoder', '.usage-cache.json');
 }
 
 /**
  * Get the provider-specific cache file path
  */
 function getCachePath(source: UsageSource): string {
-  return join(getClaudeConfigDir(), 'plugins', 'oh-my-claudecode', `.usage-cache-${source}.json`);
+  return join(getClaudeConfigDir(), 'plugins', 'oh-my-qoder', `.usage-cache-${source}.json`);
 }
 
 /**

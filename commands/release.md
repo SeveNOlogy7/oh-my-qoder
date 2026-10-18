@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Generic release assistant — analyzes repo release rules, caches them in .omq/RELEASE_RULE.md, then guides the release"
 ---
 
 # OMQ release

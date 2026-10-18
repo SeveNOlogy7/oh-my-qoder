@@ -24,7 +24,7 @@ describe('unified MCP registry sync', () => {
   beforeEach(() => {
     originalEnv = { ...process.env };
     originalPlatform = process.platform;
-    testRoot = mkdtempSync(join(tmpdir(), 'omc-mcp-registry-'));
+    testRoot = mkdtempSync(join(tmpdir(), 'omq-mcp-registry-'));
     claudeDir = join(testRoot, '.claude');
     codexDir = join(testRoot, '.codex');
     omcDir = join(testRoot, '.omq');
@@ -73,7 +73,7 @@ describe('unified MCP registry sync', () => {
     });
 
     const codexConfig = readFileSync(getCodexConfigPath(), 'utf-8');
-    expect(codexConfig).toContain('# BEGIN OMC MANAGED MCP REGISTRY');
+    expect(codexConfig).toContain('# BEGIN OMQ MANAGED MCP REGISTRY');
     expect(codexConfig).toContain('[mcp_servers.gitnexus]');
     expect(codexConfig).toContain('command = "gitnexus"');
     expect(codexConfig).toContain('args = ["mcp"]');
@@ -353,12 +353,12 @@ describe('unified MCP registry sync', () => {
       'command = "custom-local"',
       'args = ["serve"]',
       '',
-      '# BEGIN OMC MANAGED MCP REGISTRY',
+      '# BEGIN OMQ MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.old_registry]',
       'command = "legacy"',
       '',
-      '# END OMC MANAGED MCP REGISTRY',
+      '# END OMQ MANAGED MCP REGISTRY',
       '',
     ].join('\n');
 
@@ -408,8 +408,8 @@ describe('unified MCP registry sync', () => {
     expect(result.changed).toBe(true);
     expect(result.content.match(/\[mcp_servers\.atlassian\]/g)).toHaveLength(1);
     expect(result.content).toContain('[mcp_servers.storybook_local]');
-    expect(result.content).toContain('# BEGIN OMC MANAGED MCP REGISTRY');
-    expect(result.content).toContain('# END OMC MANAGED MCP REGISTRY');
+    expect(result.content).toContain('# BEGIN OMQ MANAGED MCP REGISTRY');
+    expect(result.content).toContain('# END OMQ MANAGED MCP REGISTRY');
 
     const second = syncCodexConfigToml(result.content, registry);
     expect(second.changed).toBe(false);
@@ -495,13 +495,13 @@ describe('unified MCP registry sync', () => {
     writeFileSync(getCodexConfigPath(), [
       'model = "gpt-5"',
       '',
-      '# BEGIN OMC MANAGED MCP REGISTRY',
+      '# BEGIN OMQ MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.gitnexus]',
       'command = "gitnexus"',
       'args = ["mcp"]',
       '',
-      '# END OMC MANAGED MCP REGISTRY',
+      '# END OMQ MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -538,13 +538,13 @@ describe('unified MCP registry sync', () => {
     }, null, 2));
     mkdirSync(codexDir, { recursive: true });
     writeFileSync(getCodexConfigPath(), [
-      '# BEGIN OMC MANAGED MCP REGISTRY',
+      '# BEGIN OMQ MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.gitnexus]',
       'command = "gitnexus"',
       'args = ["wrong"]',
       '',
-      '# END OMC MANAGED MCP REGISTRY',
+      '# END OMQ MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -566,13 +566,13 @@ describe('unified MCP registry sync', () => {
       },
     }, null, 2));
     writeFileSync(getCodexConfigPath(), [
-      '# BEGIN OMC MANAGED MCP REGISTRY',
+      '# BEGIN OMQ MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.remoteOmc]',
       'url = "https://lab.example.com/mcp"',
       'startup_timeout_sec = 30',
       '',
-      '# END OMC MANAGED MCP REGISTRY',
+      '# END OMQ MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -651,13 +651,13 @@ describe('unified MCP registry sync', () => {
     }, null, 2));
     mkdirSync(codexDir, { recursive: true });
     writeFileSync(getCodexConfigPath(), [
-      '# BEGIN OMC MANAGED MCP REGISTRY',
+      '# BEGIN OMQ MANAGED MCP REGISTRY',
       '',
       '[mcp_servers.remoteOmc]',
       'url = "https://staging.example.com/mcp"',
       'startup_timeout_sec = 30',
       '',
-      '# END OMC MANAGED MCP REGISTRY',
+      '# END OMQ MANAGED MCP REGISTRY',
       '',
     ].join('\n'));
 
@@ -771,6 +771,24 @@ describe('unified MCP registry sync', () => {
 
     const status = inspectUnifiedMcpRegistrySync();
 
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+  });
+
+  it('escapes newlines in args so the rendered Codex TOML stays valid and round-trips (issue #4157)', () => {
+    const script = '# ok-mcp-v2\nBUNDLE="$HOME/ok.sh"\r\nexec "$BUNDLE" mcp';
+    const registry = {
+      'open-knowledge': { command: '/bin/sh', args: ['-l', '-c', script] },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    syncUnifiedMcpRegistryTargets({});
+
+    const toml = readFileSync(getCodexConfigPath(), 'utf-8');
+    expect(toml).toContain('args = ["-l", "-c", "# ok-mcp-v2\\nBUNDLE=\\"$HOME/ok.sh\\"\\r\\nexec \\"$BUNDLE\\" mcp"]');
+
+    const status = inspectUnifiedMcpRegistrySync();
     expect(status.codexMissing).toEqual([]);
     expect(status.codexMismatched).toEqual([]);
   });
@@ -987,5 +1005,103 @@ describe('unified MCP registry sync', () => {
     expect(status.codexMismatched).toEqual([]);
     expect(status.claudeMissing).toEqual([]);
     expect(status.claudeMismatched).toEqual([]);
+  });
+
+  it('round-trips all TOML-forbidden control characters with proper escapes (issue #4157)', () => {
+    // Create a registry with a command that contains all control characters that must be escaped:
+    // - \n (U+000A) newline: \n
+    // - \r (U+000D) carriage return: \r
+    // - \t (U+0009) tab: \t (TOML allows tab in basic strings, but we escape for safety)
+    // - \b (U+0008) backspace: \b
+    // - \f (U+000C) form feed: \f
+    // - \x00 (U+0000) NUL: \u0000
+    // - \x1f (U+001F) unit separator (last control char before space): \u001f
+    // - \x7f (U+007F) DEL: \u007f
+    // - quotes and backslashes
+    const testString = 'test\nnewline\rcarriage\ttab\bbackspace\fformfeed\x00null\x1funit\x7fdel"quote\\backslash';
+    const registry = {
+      'control-test': { command: '/bin/sh', args: [testString] },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    syncUnifiedMcpRegistryTargets({});
+
+    // Read the rendered TOML
+    const toml = readFileSync(getCodexConfigPath(), 'utf-8');
+
+    // Verify that the TOML block is present
+    expect(toml).toContain('[mcp_servers.control-test]');
+
+    // Verify that raw control characters are NOT in the TOML output
+    // (except tab, which is allowed but we escape anyway)
+    for (let i = 0; i <= 0x1f; i++) {
+      if (i !== 0x09 && i !== 0x0a && i !== 0x0d) {
+        // Skip the control characters we handle elsewhere
+        const char = String.fromCharCode(i);
+        expect(toml).not.toContain(char);
+      }
+    }
+    expect(toml).not.toContain(String.fromCharCode(0x7f));
+
+    // Verify that the proper escapes are present
+    expect(toml).toContain('\\n'); // newline escape
+    expect(toml).toContain('\\r'); // carriage return escape
+    expect(toml).toContain('\\t'); // tab escape
+    expect(toml).toContain('\\b'); // backspace escape
+    expect(toml).toContain('\\f'); // form feed escape
+    expect(toml).toContain('\\u0000'); // NUL escape
+    expect(toml).toContain('\\u001f'); // unit separator escape
+    expect(toml).toContain('\\u007f'); // DEL escape
+    expect(toml).toContain('\\"'); // quote escape
+    expect(toml).toContain('\\\\'); // backslash escape
+
+    // Verify that the registry is still in sync (no round-trip errors)
+    const status = inspectUnifiedMcpRegistrySync();
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+  });
+
+  it('round-trips Windows paths with backslash followed by u (not unicode escape) correctly (issue #4157)', () => {
+    // Regression test: C:\users\u0041dir should NOT decode the \u0041 as unicode.
+    // In TOML: the original path is C:\users\u0041dir (literal text, not unicode escape).
+    // Escaped TOML string: "C:\\\\users\\\\u0041dir" (each \ becomes \\\\, and u0041 stays as u0041).
+    // When unescaped, should return to: C:\users\u0041dir
+    const windowsPath = 'C:\\users\\u0041dir';
+    const registry = {
+      'windows-path': { command: windowsPath, args: [] },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    syncUnifiedMcpRegistryTargets({});
+
+    const status = inspectUnifiedMcpRegistrySync();
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
+  });
+
+  it('round-trips backslash followed by n (not newline escape) correctly (issue #4157)', () => {
+    // Regression test: a literal backslash followed by the letter 'n' should NOT be decoded as newline.
+    // This can occur in Windows paths or other contexts.
+    // Original: "path\\nfile.txt" (backslash-n, not a newline)
+    // Escaped TOML: "path\\\\nfile.txt" (the \\ becomes \\\\ for the backslash)
+    // When unescaped, should return to: "path\\nfile.txt" (backslash followed by n, not a newline)
+    const backslashN = 'path\\nfile.txt';
+    const registry = {
+      'backslash-n': { command: '/bin/sh', args: [backslashN] },
+    };
+
+    writeFileSync(getUnifiedMcpRegistryPath(), JSON.stringify(registry, null, 2));
+    writeFileSync(getClaudeMcpConfigPath(), JSON.stringify({ mcpServers: registry }, null, 2));
+    syncUnifiedMcpRegistryTargets({});
+
+    const toml = readFileSync(getCodexConfigPath(), 'utf-8');
+    // The TOML should contain the escaped form: \\n (backslash escape followed by n)
+    expect(toml).toContain('\\\\n');
+
+    const status = inspectUnifiedMcpRegistrySync();
+    expect(status.codexMissing).toEqual([]);
+    expect(status.codexMismatched).toEqual([]);
   });
 });

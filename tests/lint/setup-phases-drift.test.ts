@@ -9,7 +9,7 @@
  *
  * This test locks the setup phases to the shipped surface so they cannot
  * drift again:
- *  - every `/oh-my-claudecode:<skill>` reference in the setup phases must
+ *  - every `/oh-my-qoder:<skill>` reference in the setup phases must
  *    resolve to a skill the plugin actually ships (`.claude-plugin/plugin.json`)
  *  - no setup phase may reference a name retired in 5.0.0 (the canonical
  *    retired list in docs/CLAUDE.md, kept byte-identical to CLAUDE.md)
@@ -90,22 +90,22 @@ describe("setup phases drift enforcement (issue #3871)", () => {
     expect(retired.has("ultrawork")).toBe(true);
     expect(skills.has("mcp-setup")).toBe(false);
     expect(skills.has("ultrawork")).toBe(false);
-    expect(skills.has("omc-setup")).toBe(true);
+    expect(skills.has("omq-setup")).toBe(true);
     for (const name of retired) {
       expect(skills.has(name), `retired ${name} must not be shipped`).toBe(false);
     }
   });
 
-  it("every referenced /oh-my-claudecode:<skill> exists in the shipped plugin", () => {
+  it("every referenced /oh-my-qoder:<skill> exists in the shipped plugin", () => {
     for (const file of PHASE_FILES) {
       const content = readPhase(file);
-      const referenced = [...content.matchAll(/\/oh-my-claudecode:([a-z0-9-]+)/g)].map(
+      const referenced = [...content.matchAll(/\/oh-my-qoder:([a-z0-9-]+)/g)].map(
         (m) => m[1],
       );
       for (const name of referenced) {
         expect(
           skills.has(name),
-          `${file} references /oh-my-claudecode:${name}, but the plugin does not ship a skill with that name`,
+          `${file} references /oh-my-qoder:${name}, but the plugin does not ship a skill with that name`,
         ).toBe(true);
       }
     }
@@ -115,7 +115,7 @@ describe("setup phases drift enforcement (issue #3871)", () => {
     for (const file of PHASE_FILES) {
       const content = readPhase(file);
       // An invocation-shaped reference is any of:
-      //   /oh-my-claudecode:<name>   <name>: <task>   "invoke the <name> skill"
+      //   /oh-my-qoder:<name>   <name>: <task>   "invoke the <name> skill"
       // Plain-prose retirement notices (a dedicated block listing removed
       // names, or a "removed in 5.0.0" sentence) are allowed — users and the
       // setup agent must still be told what no longer exists.
@@ -124,7 +124,7 @@ describe("setup phases drift enforcement (issue #3871)", () => {
         .replace(/[^.\n]*removed in 5\.0\.0[^.\n]*\.?/gi, "");
       for (const name of retired) {
         const invocationPatterns = [
-          new RegExp(`/oh-my-claudecode:${name}\\b`),
+          new RegExp(`/oh-my-qoder:${name}\\b`),
           new RegExp(`^#{1,6}.*\\b${name}\\b.*(step|skill|invoke)`, "im"),
           new RegExp(`invoke (?:the )?.{0,20}\\b${name}\\b (?:skill|workflow)`, "i"),
         ];
@@ -174,14 +174,14 @@ describe("setup phases drift enforcement (issue #3871)", () => {
     const root = mkdtempSync(join(tmpdir(), "setup-drift-cleanup-"));
     const original = JSON.stringify({ silentAutoUpdate: false, defaultExecutionMode: "ultrawork" }, null, 2) + "\n";
     try {
-      const config = join(root, ".omc-config.json");
+      const config = join(root, ".omq-config.json");
       writeFileSync(config, original);
       execFileSync("bash", ["-c", snippet!], { env: { ...process.env, CLAUDE_CONFIG_DIR: root } });
       const cleaned = JSON.parse(readFileSync(config, "utf8")) as Record<string, unknown>;
       expect(cleaned).toEqual({ silentAutoUpdate: false });
 
       const tildeConfigDir = join(root, "nested");
-      const tildeConfig = join(tildeConfigDir, ".omc-config.json");
+      const tildeConfig = join(tildeConfigDir, ".omq-config.json");
       mkdirSync(tildeConfigDir, { recursive: true });
       writeFileSync(tildeConfig, original);
       execFileSync("bash", ["-c", snippet!], {
@@ -225,12 +225,12 @@ describe("setup phases drift enforcement (issue #3871)", () => {
     expect(snippet, "Phase 2 must keep an executable resume-boundary snippet").toBeTruthy();
     const root = mkdtempSync(join(tmpdir(), "setup-drift-resume-"));
     try {
-      mkdirSync(join(root, ".omc", "state"), { recursive: true });
-      writeFileSync(join(root, ".omc", "state", "setup-state.json"), JSON.stringify({ lastCompletedStep: 7 }));
+      mkdirSync(join(root, ".omq", "state"), { recursive: true });
+      writeFileSync(join(root, ".omq", "state", "setup-state.json"), JSON.stringify({ lastCompletedStep: 7 }));
       const resumed = execFileSync("bash", ["-c", `${snippet}\nprintf '%s:%s\\n' "$RESUMED_PHASE_TWO_BOUNDARY" "$RESUME_LAST_COMPLETED_STEP"`], { cwd: root });
       expect(resumed.toString()).toContain("true:7");
 
-      writeFileSync(join(root, ".omc", "state", "setup-state.json"), JSON.stringify({ lastCompletedStep: 2 }));
+      writeFileSync(join(root, ".omq", "state", "setup-state.json"), JSON.stringify({ lastCompletedStep: 2 }));
       const fresh = execFileSync("bash", ["-c", `${snippet}\nprintf '%s:%s\\n' "$RESUMED_PHASE_TWO_BOUNDARY" "$RESUME_LAST_COMPLETED_STEP"`], { cwd: root });
       expect(fresh.toString()).toContain("false:2");
     } finally {
@@ -240,10 +240,10 @@ describe("setup phases drift enforcement (issue #3871)", () => {
 
   it("uses the installed plan and review skill names in the welcome text", () => {
     const welcome = readPhase("04-welcome.md");
-    expect(welcome).toContain("/oh-my-claudecode:omc-plan");
-    expect(welcome).toContain("/oh-my-claudecode:omc-review");
-    expect(welcome).not.toContain("/oh-my-claudecode:plan");
-    expect(welcome).not.toContain("/oh-my-claudecode:review");
+    expect(welcome).toContain("/oh-my-qoder:omq-plan");
+    expect(welcome).toContain("/oh-my-qoder:omq-review");
+    expect(welcome).not.toContain("/oh-my-qoder:plan");
+    expect(welcome).not.toContain("/oh-my-qoder:review");
   });
 
   it("executes the team config normalizer for a backslash-tilde path", () => {
@@ -257,7 +257,7 @@ describe("setup phases drift enforcement (issue #3871)", () => {
         cwd: root,
         env: { ...process.env, HOME: root, CLAUDE_CONFIG_DIR: "~\\claude" },
       });
-      expect(output.toString().trim()).toBe(join(root, "claude", ".omc-config.json"));
+      expect(output.toString().trim()).toBe(join(root, "claude", ".omq-config.json"));
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

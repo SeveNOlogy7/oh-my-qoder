@@ -13,11 +13,12 @@
  * ```
  */
 
-import { pathToFileURL } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import {
   existsSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmdirSync,
 } from "fs";
 import { dirname, join } from "path";
@@ -39,7 +40,7 @@ import {
   writeStateFileLockedIf,
 } from "../lib/mode-state-io.js";
 import { SESSION_END_MODE_STATE_FILES } from "../lib/mode-names.js";
-import { formatOmcCliInvocation } from "../utils/omc-cli-rendering.js";
+import { formatOmqCliInvocation } from "../utils/omq-cli-rendering.js";
 import { createSwallowedErrorLogger } from "../lib/swallowed-error.js";
 import { dispatchNotificationInBackground } from "./background-notifications.js";
 import { readCanonicalTeamStateCandidate } from "./team-canonical-state.js";
@@ -62,7 +63,7 @@ import { recordTaskSizeShadow } from "./task-size-detector/jev-shadow.js";
 import {
   processOrchestratorPreTool,
   processOrchestratorPostTool,
-} from "./omc-orchestrator/index.js";
+} from "./omq-orchestrator/index.js";
 import { normalizeHookInput } from "./bridge-normalize.js";
 import {
   addBackgroundTask,
@@ -415,7 +416,7 @@ function cleanupMissionStateForSession(directory: string, sessionId: string): vo
  *
  * Claude Code SessionStart input currently provides session metadata such as
  * session_id, transcript_path, cwd, source, model, and agent_type, but no
- * stable owner process for the interactive session. In installed OMC hooks the
+ * stable owner process for the interactive session. In installed OMQ hooks the
  * immediate hook parent belongs to scripts/run.cjs and is intentionally
  * short-lived, so same-boot PID liveness checks are not reliable here. SessionEnd
  * remains the primary same-boot cleanup path; SessionStart only reconciles
@@ -453,7 +454,7 @@ async function reconcileAbandonedSessionStarts(directory: string, currentSession
 
     if (!hasDurableAbandonmentEvidence(marker)) continue;
 
-    // Deliberately narrow: clear only OMC session-scoped mode/mission state.
+    // Deliberately narrow: clear only OMQ session-scoped mode/mission state.
     // Do not call team runtime shutdown here; SessionStart must not kill tmux PIDs.
     cleanupSessionModeStateFiles(directory, sessionId);
     cleanupMissionStateForSession(directory, sessionId);
@@ -695,7 +696,7 @@ function isConsensusPlanningSkillInvocation(skillName: string | null, toolInput:
     return true;
   }
 
-  if (skillName !== "omc-plan" && skillName !== "plan") {
+  if (skillName !== "omq-plan" && skillName !== "plan") {
     return false;
   }
 
@@ -1083,7 +1084,7 @@ function workerBashBlockReason(command: string): string | null {
     return "Team worker cannot run tmux pane/session orchestration commands.";
   }
   if (WORKER_BLOCKED_TEAM_CLI_PATTERN.test(command)) {
-    return `Team worker cannot run team orchestration commands. Use only \`${formatOmcCliInvocation("team api ... --json")}\`.`;
+    return `Team worker cannot run team orchestration commands. Use only \`${formatOmqCliInvocation("team api ... --json")}\`.`;
   }
   if (WORKER_BLOCKED_SKILL_PATTERN.test(command)) {
     return "Team worker cannot invoke orchestration skills (`$team`, `$autopilot`, `$ralph`).";
@@ -1278,7 +1279,7 @@ function getPromptText(input: HookInput): string {
 }
 
 function isExplicitAskSlashInvocation(promptText: string): boolean {
-  return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?ask\s+(?:qwen|claude|codex|gemini|antigravity|agy|grok|cursor)\b/i.test(promptText);
+  return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-qoder:|omc:)?ask\s+(?:qwen|claude|codex|gemini|antigravity|agy|grok|cursor)\b/i.test(promptText);
 }
 
 function activateRalplanStartupState(directory: string, sessionId?: string): void {
@@ -1769,10 +1770,10 @@ async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
       case "gemini":
       case "cursor":
       case "antigravity": {
-        const teamStartCommand = formatOmcCliInvocation(`team start --agent ${keywordType} --count N --task "<task from user message>"`);
+        const teamStartCommand = formatOmqCliInvocation(`team start --agent ${keywordType} --count N --task "<task from user message>"`);
         messages.push(
           `[MAGIC KEYWORD: team]\n` +
-            `User intent: delegate to ${keywordType} CLI workers via ${formatOmcCliInvocation('team')}.\n` +
+            `User intent: delegate to ${keywordType} CLI workers via ${formatOmqCliInvocation('team')}.\n` +
             `Agent type: ${keywordType}. Parse N from user message (default 1).\n` +
             `Invoke: ${teamStartCommand}`,
         );
@@ -2205,13 +2206,13 @@ Please continue working on these tasks.
 This environment uses a non-standard model provider (AWS Bedrock, Google Vertex AI, or a proxy such as CC Switch / LiteLLM).
 
 How to pass \`model\` on Task/Agent calls:
-- Prefer a tier alias: \`model: "sonnet"\`, \`model: "opus"\`, \`model: "haiku"\`, or \`model: "fable"\` (Claude Fable 5, above Opus). OMC's pre-tool enforcer resolves these to provider-safe IDs when one of these env vars is set: \`ANTHROPIC_DEFAULT_SONNET_MODEL\` (and siblings \`ANTHROPIC_DEFAULT_OPUS_MODEL\` / \`ANTHROPIC_DEFAULT_HAIKU_MODEL\` / \`ANTHROPIC_DEFAULT_FABLE_MODEL\`), \`CLAUDE_CODE_BEDROCK_SONNET_MODEL\` (and siblings \`CLAUDE_CODE_BEDROCK_OPUS_MODEL\` / \`CLAUDE_CODE_BEDROCK_HAIKU_MODEL\` / \`CLAUDE_CODE_BEDROCK_FABLE_MODEL\`), or \`OMQ_SUBAGENT_MODEL\`.
+- Prefer a tier alias: \`model: "sonnet"\`, \`model: "opus"\`, \`model: "haiku"\`, or \`model: "fable"\` (Claude Fable 5, above Opus). OMQ's pre-tool enforcer resolves these to provider-safe IDs when one of these env vars is set: \`ANTHROPIC_DEFAULT_SONNET_MODEL\` (and siblings \`ANTHROPIC_DEFAULT_OPUS_MODEL\` / \`ANTHROPIC_DEFAULT_HAIKU_MODEL\` / \`ANTHROPIC_DEFAULT_FABLE_MODEL\`), \`CLAUDE_CODE_BEDROCK_SONNET_MODEL\` (and siblings \`CLAUDE_CODE_BEDROCK_OPUS_MODEL\` / \`CLAUDE_CODE_BEDROCK_HAIKU_MODEL\` / \`CLAUDE_CODE_BEDROCK_FABLE_MODEL\`), or \`OMQ_SUBAGENT_MODEL\`.
 - If none of those env vars are configured, the enforcer will deny the tier alias with an env-var configuration hint — set one of them in your \`settings.json\` env or shell profile.
 - The enforcer denies tier aliases it cannot resolve. It also denies provider-specific IDs that carry a \`[1m]\` context-window suffix or otherwise fail subagent-safe validation (sub-agents cannot inherit \`[1m]\`). Valid provider-specific IDs without extended-context suffixes are allowed.
 
 When the session model carries a \`[1m]\` suffix, passing an explicit \`model\` is REQUIRED — omitting it will be denied (sub-agents cannot inherit the \`[1m]\` suffix). Use a tier alias (requires resolver env vars above); the Agent tool schema does not accept provider-specific IDs, so tier aliases are the only valid option.
 
-When the session model has no \`[1m]\` suffix, omitting \`model\` is safe UNLESS a custom sub-agent definition pins a bare Anthropic model ID (e.g. \`model: claude-sonnet-4-6\` in agent frontmatter). When resolver env vars are configured, the enforcer will deny that call with tier-alias guidance; when they are absent, the call is not denied by the enforcer but will fail at the provider. Either way, custom sub-agents should pin tier aliases (not bare Anthropic IDs) in their frontmatter. Shipped OMC agents already do this and are unaffected.
+When the session model has no \`[1m]\` suffix, omitting \`model\` is safe UNLESS a custom sub-agent definition pins a bare Anthropic model ID (e.g. \`model: claude-sonnet-4-6\` in agent frontmatter). When resolver env vars are configured, the enforcer will deny that call with tier-alias guidance; when they are absent, the call is not denied by the enforcer but will fail at the provider. Either way, custom sub-agents should pin tier aliases (not bare Anthropic IDs) in their frontmatter. Shipped OMQ agents already do this and are unaffected.
 
 The CLAUDE.md instruction "Pass model on Task calls: haiku, sonnet, opus" applies here — subject to the resolution prerequisites above.
 
@@ -2588,7 +2589,7 @@ function processPreToolUse(input: HookInput): HookOutput {
   // Activate skill state when Skill tool is invoked (issue #1033)
   // This writes skill-active-state.json so the Stop hook can prevent premature
   // session termination while a skill is executing.
-  // Pass rawSkillName so writeSkillActiveState can distinguish OMC built-in
+  // Pass rawSkillName so writeSkillActiveState can distinguish OMQ built-in
   // skills from project custom skills with the same name (issue #1581).
   if (input.toolName === "Skill") {
     const skillName = getInvokedSkillName(input.toolInput);
@@ -2828,9 +2829,9 @@ function getInvokedSkillName(toolInput: unknown): string | null {
 
 /**
  * Extract the raw (un-normalized) skill name from Skill tool input.
- * Used to distinguish OMC built-in skills (prefixed with 'oh-my-qoder:')
+ * Used to distinguish OMQ built-in skills (prefixed with 'oh-my-qoder:')
  * from project custom skills or other plugin skills with the same bare name.
- * See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/1581
+ * See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/1581
  */
 function getRawSkillName(toolInput: unknown): string | undefined {
   if (!toolInput || typeof toolInput !== "object") return undefined;
@@ -2875,7 +2876,7 @@ async function processPostToolUse(input: HookInput): Promise<HookOutput> {
     // Clear skill-active state on skill completion to prevent false-blocking.
     // Without this, every non-'none' skill falsely blocks stops until TTL expires.
     // Guard: only clear if the completing skill owns the active state.
-    // When a parent skill (e.g. omc-setup) invokes a child skill (e.g. mcp-setup),
+    // When a parent skill (e.g. omq-setup) invokes a child skill (e.g. mcp-setup),
     // the child's PostToolUse fires first — we must not delete the parent's state.
     const { clearSkillActiveState, readSkillActiveState } = await import("./skill-state/index.js");
     const currentState = readSkillActiveState(directory, input.sessionId);
@@ -3478,12 +3479,45 @@ export async function main(): Promise<void> {
 // Run if called directly (works in both ESM and bundled CJS)
 // In CJS bundle, check if this is the main module by comparing with process.argv[1]
 // In ESM, we can use import.meta.url comparison
+/**
+ * Symlink-robust entry comparison: two URLs are the same entry when they are
+ * identical or when their realpaths match. A symlinked entry (e.g.
+ * ~/.local/bin/omc -> bridge/cli.cjs) yields a different URL than the module's
+ * own, but points at the same real file — the bridge must still dispatch
+ * instead of exiting silently. Exported for tests.
+ */
+export function isSameEntryRealpath(
+  entryUrl: string | undefined,
+  moduleUrl: string,
+): boolean {
+  if (!entryUrl) return true;
+  if (entryUrl === moduleUrl) return true;
+  try {
+    return (
+      realpathSync(fileURLToPath(entryUrl)) ===
+      realpathSync(fileURLToPath(moduleUrl))
+    );
+  } catch {
+    return false;
+  }
+}
+
 function isMainModule(): boolean {
   try {
-    return import.meta.url === pathToFileURL(process.argv[1]).href;
+    // First check: must have --hook=<type> argument, otherwise this is not a hook invocation
+    const hasHookArg = process.argv.slice(2).some((a) => a.startsWith("--hook="));
+    if (!hasHookArg) {
+      return false;
+    }
+
+    const argvPath = process.argv[1];
+    return isSameEntryRealpath(
+      argvPath ? pathToFileURL(argvPath).href : undefined,
+      import.meta.url,
+    );
   } catch {
-    // In CJS bundle, always run main() when loaded directly
-    return true;
+    // In CJS bundle, only run main() when loaded directly AND has hook arguments
+    return false;
   }
 }
 

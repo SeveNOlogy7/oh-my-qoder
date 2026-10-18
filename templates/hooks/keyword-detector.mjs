@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * OMC Keyword Detector Hook (Node.js)
+ * OMQ Keyword Detector Hook (Node.js)
  * Detects magic keywords and invokes skill tools
  * Cross-platform: Windows, macOS, Linux
  *
@@ -37,7 +37,7 @@ const { resolveSessionStatePathsForHook } = await import(pathToFileURL(join(__di
 const { parseWorkflowInvocation, selectWorkflowProfile, createWorkflowState, isValidWorkflowTrackingState, isWorkflowRuntimeSupported, resolveWorkflowStagePrompt, takeWorkflowTranscriptFailure } = await import(pathToFileURL(join(__dirname, 'lib', 'workflow-profile-runtime.mjs')).href);
 
 
-const _omcRoot = process.env.CLAUDE_PLUGIN_ROOT || join(__dirname, '..');
+const _omqRoot = process.env.CLAUDE_PLUGIN_ROOT || join(__dirname, '..');
 const SKILL_INVOCATION_USER_REQUEST_MAX = 1200;
 
 function compactHookText(text, maxChars = SKILL_INVOCATION_USER_REQUEST_MAX) {
@@ -50,7 +50,7 @@ function compactHookText(text, maxChars = SKILL_INVOCATION_USER_REQUEST_MAX) {
 function getSkillPathCandidates(skillName) {
   const roots = [
     process.env.CLAUDE_PLUGIN_ROOT,
-    _omcRoot,
+    _omqRoot,
     process.cwd(),
   ].filter(Boolean);
   return [...new Set(roots.map(root => join(root, 'skills', skillName, 'SKILL.md')))];
@@ -145,11 +145,11 @@ function extractPrompt(input) {
 }
 
 function isExplicitAskSlashInvocation(prompt) {
-  return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?ask\s+(?:claude|codex|gemini|grok)\b/i.test(prompt);
+  return /^\s*\/(?:oh-my-qoder:|omq:|omc:)?ask\s+(?:claude|codex|gemini|grok)\b/i.test(prompt);
 }
 
 function isRetiredSlashInvocation(prompt) {
-  return /^\s*\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?(?:ultrawork|ulw|uw|울트라워크|ウルトラワーク|ccg|claude-codex-gemini|씨씨지|シーシージー)(?=\s|$|[?!.,;:])/i.test(prompt);
+  return /^\s*\/(?:oh-my-qoder:|omq:|omc:)?(?:ultrawork|ulw|uw|울트라워크|ウルトラワーク|ccg|claude-codex-gemini|씨씨지|シーシージー)(?=\s|$|[?!.,;:])/i.test(prompt);
 }
 
 // Sanitize text to prevent false positives from code blocks, XML tags, URLs, and file paths
@@ -216,7 +216,7 @@ const PASTED_MAGIC_KEYWORD_HEADER_PATTERN =
 const ROLE_BOUNDARY_PATTERN =
   /^<\s*\/?\s*(system|human|assistant|user|tool_use|tool_result)\b[^>]*>/i;
 const SKILL_TRANSCRIPT_LINE_PATTERN =
-  /^\s*Skill:\s+(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:|oh-my-codex:)/i;
+  /^\s*Skill:\s+(?:oh-my-qoder:|omq:|omc:|oh-my-codex:)/i;
 const USER_REQUEST_LINE_PATTERN = /^\s*User request(?:\s*\([^)]*\))?:\s*$/i;
 const SHELL_TRANSCRIPT_LINE_PATTERN = /^\s*[$%❯]\s+/;
 const GIT_DIFF_START_PATTERNS = [
@@ -374,7 +374,7 @@ const QUESTION_FOLLOWUP_PATTERNS = [
 // recognized block header. They must be stripped only in that context —
 // never standalone — because a user might legitimately start a prompt with
 // "Task: …" or similar (Codex automated review P1/P2 on #2795).
-const ECHO_CONTINUATION = '(?:\\r?\\n[ \\t]*(?:Task:\\s|When FULLY complete \\(after Architect verification\\)|run\\s+\\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)cancel).*)*';
+const ECHO_CONTINUATION = '(?:\\r?\\n[ \\t]*(?:Task:\\s|When FULLY complete \\(after Architect verification\\)|run\\s+\\/(?:oh-my-qoder:|omq:|omc:)cancel).*)*';
 
 // Each pattern is a single logical block: the block header line + zero or
 // more continuation lines emitted right after it. The whole match is
@@ -402,7 +402,7 @@ const SYSTEM_ECHO_BLOCK_PATTERNS = [
 
 const SYSTEM_ECHO_SIGNATURES = [
   /\bWhen FULLY complete \(after Architect verification\)\b/i,
-  /\brun\s+\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)cancel\b/i,
+  /\brun\s+\/(?:oh-my-qoder:|omq:|omc:)cancel\b/i,
   /\[RALPH LOOP\s*-\s*ITERATION\b/i,
 ];
 
@@ -548,7 +548,7 @@ function hasActivationIntentNearKeyword(context, keyword) {
 
 function hasDirectInvocationPrefix(text, position) {
   const prefix = text.slice(0, position);
-  return /^\s*(?:[$/!]\s*|force:\s*|(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:|oh-my-codex:)\s*)?$/i.test(prefix);
+  return /^\s*(?:[$/!]\s*|force:\s*|(?:oh-my-qoder:|omq:|omc:|oh-my-codex:)\s*)?$/i.test(prefix);
 }
 
 function hasConversationalInvocationNearKeyword(text, position, _keywordLength, _keywordText) {
@@ -588,7 +588,7 @@ function hasExplicitRalphInvocationContext(text, position, keywordLength, keywor
   const prefix = text.slice(0, position);
   const suffix = text.slice(position + keywordLength);
 
-  if (/^\s*(?:[$/!]\s*|force:\s*|\/?(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:|oh-my-codex:)\s*)$/i.test(prefix)) {
+  if (/^\s*(?:[$/!]\s*|force:\s*|\/?(?:oh-my-qoder:|omq:|omc:|oh-my-codex:)\s*)$/i.test(prefix)) {
     return true;
   }
 
@@ -1005,7 +1005,7 @@ async function resumeWorkflowProfile(directory, sessionId, workflowName) {
     if (result.value?.error) throw new Error('workflow_descriptor_integrity_failed');
     if (!result.acquired || !result.value?.stagePrompt) return null;
     const cleanupFailure = retireStaleWorkflowCancelSignal(writePath, result.value.workflowRunId);
-    if (cleanupFailure) process.stderr.write(`[OMC] ${cleanupFailure}\n`);
+    if (cleanupFailure) process.stderr.write(`[OMQ] ${cleanupFailure}\n`);
     return result.value.stagePrompt;
   } catch (error) {
     if (error?.message === 'workflow_emergency_recovery_failed' || error?.message === 'workflow_transcript_record_too_large') throw error;
@@ -1060,7 +1060,7 @@ async function activateWorkflowProfile(directory, sessionId, task, workflow, tra
     if (result.acquired && result.value?.error === 'workflow_recovery_failure') throw new Error('workflow_emergency_recovery_failed');
     if (!result.acquired || !result.value || typeof result.value.stagePrompt !== 'string') return null;
     const cleanupFailure = retireStaleWorkflowCancelSignal(writePath, result.value.workflowRunId);
-    if (cleanupFailure) process.stderr.write(`[OMC] ${cleanupFailure}\n`);
+    if (cleanupFailure) process.stderr.write(`[OMQ] ${cleanupFailure}\n`);
     return result.value.stagePrompt;
   } catch (error) {
     if (error?.message === 'workflow_emergency_recovery_failed' || error?.message === 'workflow_transcript_record_too_large') throw error;
@@ -1111,7 +1111,7 @@ Arguments: ${args}` : '';
   const skillPath = resolveSkillPath(skillName);
   const pathStatus = existsSync(skillPath)
     ? `Read fallback: open ${skillPath} and follow its SKILL.md instructions.`
-    : `Read fallback: locate skills/${skillName}/SKILL.md in the active oh-my-claudecode plugin/install and follow it.`;
+    : `Read fallback: locate skills/${skillName}/SKILL.md in the active oh-my-qoder plugin/install and follow it.`;
   const ralphLoopNotice = skillName === 'ralph' ? findOfficialRalphLoopNotice(directory) : '';
 
   return `[MAGIC KEYWORD: ${skillName.toUpperCase()}]
@@ -1142,7 +1142,7 @@ function createMultiSkillInvocation(skills, originalPrompt, directory = '') {
     const argsText = s.args ? ` ${s.args}` : '';
     const pathStatus = existsSync(skillPath)
       ? `Read fallback: ${skillPath}`
-      : `Read fallback: locate skills/${s.name}/SKILL.md in the active oh-my-claudecode plugin/install`;
+      : `Read fallback: locate skills/${s.name}/SKILL.md in the active oh-my-qoder plugin/install`;
     return `### Skill ${i + 1}: ${s.name.toUpperCase()}
 Preferred invocation: /oh-my-qoder:${s.name}${argsText}
 ${pathStatus}`;
@@ -1376,14 +1376,14 @@ function findOfficialRalphLoopNotice(directory) {
     if (typeof installPath !== 'string' || installPath.length === 0) continue;
     const commandFile = join(installPath, 'commands', 'ralph-loop.md');
     if (existsSync(commandFile)) {
-      return 'Note: the official Anthropic `ralph-loop` plugin is also installed. `/ralph` runs OMC\'s ralph; use `/ralph-loop` for the official plugin.';
+      return 'Note: the official Anthropic `ralph-loop` plugin is also installed. `/ralph` runs OMQ\'s ralph; use `/ralph-loop` for the official plugin.';
     }
   }
 
   return '';
 }
 
-// Read the OMC JSONC config the way src/config/loader.ts does, inlined so the
+// Read the OMQ JSONC config the way src/config/loader.ts does, inlined so the
 // standalone hook stays build-independent (mirrors scripts/lib/agent-model-config.mjs).
 function getOmcUserConfigDir() {
   if (process.platform === 'win32') {
@@ -1699,7 +1699,7 @@ async function main() {
       }
       if (activationError) {
         console.log(JSON.stringify(createHookOutput(
-          `[OMC STATE ERROR] ${activationError} No ${mode.name} state was activated.`,
+          `[OMQ STATE ERROR] ${activationError} No ${mode.name} state was activated.`,
         )));
         return;
       }

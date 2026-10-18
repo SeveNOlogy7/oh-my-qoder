@@ -8,7 +8,7 @@ ADR: `docs/adr/03665-jev-degradation-contract.md`
 
 ## Problem Statement
 
-OMC's orchestration makes dozens of narrow decisions per session — which skill
+OMQ's orchestration makes dozens of narrow decisions per session — which skill
 or mode to trigger, which model tier to route a task to, whether an autonomous
 loop should keep going, which context to prune. Today every one of these is
 decided by keyword lists, regexes, or prose instructions to the main model:
@@ -18,13 +18,13 @@ even when the decision is trivial.
 
 A System One model (Jev) answers exactly this shape of question: state in,
 typed judgment out, calibrated probabilities, ~100ms, fractions of a cent.
-The problem is not that OMC lacks the judgments — it is that the judgments
+The problem is not that OMQ lacks the judgments — it is that the judgments
 have no clean seam, no measured quality, and no way to upgrade the mechanism
 without rewriting each site.
 
 ## Solution
 
-Every narrow decision in OMC's orchestration becomes a **judgment point**: a
+Every narrow decision in OMQ's orchestration becomes a **judgment point**: a
 single named decision with two implementations — the existing **heuristic
 twin** and a Jev implementation — behind one resolver. Jev is opt-in via
 environment configuration; unconfigured, timed out, unavailable, or over
@@ -34,18 +34,18 @@ the workflow never blocks on Jev. Each judgment point rolls out through
 acted on, and promotion to active requires recorded evidence that Jev matches
 or beats the twin.
 
-The user-visible effect: OMC triggers the right skill more robustly, routes
+The user-visible effect: OMQ triggers the right skill more robustly, routes
 tasks to the right model tier more accurately, and stops ralph/autopilot loops
 on evidence of completion instead of keyword heuristics — and users who never
 configure anything see zero behavior change.
 
 ## User Stories
 
-1. As an OMC user, I want my prompt's intent classified by a decision model instead of a keyword list, so that phrasings the keyword list never anticipated still trigger the right skill.
-2. As an OMC user, I want loop continuation decided on evidence of substantive progress, so that ralph stops when the work is done instead of when a keyword stops matching.
-3. As an OMC user, I want model-tier routing to consider what the task actually is, so that simple tasks stop paying opus latency and cost.
-4. As an OMC user who never configures Jev, I want zero behavior change, so that my existing workflow is untouched.
-5. As an OMC user with a `TYPESAFE_API_KEY`, I want Jev judgment to light up by just setting the key, so that adoption is one env var.
+1. As an OMQ user, I want my prompt's intent classified by a decision model instead of a keyword list, so that phrasings the keyword list never anticipated still trigger the right skill.
+2. As an OMQ user, I want loop continuation decided on evidence of substantive progress, so that ralph stops when the work is done instead of when a keyword stops matching.
+3. As an OMQ user, I want model-tier routing to consider what the task actually is, so that simple tasks stop paying opus latency and cost.
+4. As an OMQ user who never configures Jev, I want zero behavior change, so that my existing workflow is untouched.
+5. As an OMQ user with a `TYPESAFE_API_KEY`, I want Jev judgment to light up by just setting the key, so that adoption is one env var.
 6. As a cost-sensitive user, I want a per-session request cap, so that a misbehaving hook can never run up a bill.
 7. As a latency-sensitive user, I want a timeout on every Jev call, so that a slow API never makes my prompt feel laggy.
 8. As a privacy-conscious user, I want only metadata and bounded excerpts sent to the judgment API, so that my repository contents stay local.
@@ -62,13 +62,13 @@ configure anything see zero behavior change.
 
 - **One seam, one module**: a judgment resolver that every hook consults. Inputs: point name, state, typed questions, heuristic twin result. Responsibilities: config resolution, degraded-mode gate, circuit breaker, shadow dispatch, shadow logging. Call sites never talk to the Jev client directly.
 - **Zero-dependency Jev client**: hand-rolled `fetch` to `POST /v1/systemone` (model `jev-latest`). No official SDK. No retry on the interactive path; timeout via `AbortController`.
-- **Config contract (env, following existing OMC kill-switch conventions)**:
+- **Config contract (env, following existing OMQ kill-switch conventions)**:
   - `TYPESAFE_API_KEY` — presence enables Jev globally
-  - `OMC_JEV=off` — master switch overriding key presence
-  - `OMC_JEV=<point[,point...]>` — explicit per-point opt-in; unset = no points enabled (a key alone sends nothing anywhere, per owner review of #4058)
-  - `OMC_JEV_TIMEOUT_MS` — per-call timeout, default `250`
-  - `OMC_JEV_MAX_REQUESTS` — per-session request cap; exceeded → degraded mode for the rest of the session
-  - `OMC_JEV_EXCERPT_CHARS` — max excerpt length sent in state, default `200`
+  - `OMQ_JEV=off` — master switch overriding key presence
+  - `OMQ_JEV=<point[,point...]>` — explicit per-point opt-in; unset = no points enabled (a key alone sends nothing anywhere, per owner review of #4058)
+  - `OMQ_JEV_TIMEOUT_MS` — per-call timeout, default `2000` (measured single-question round-trips are 465-605 ms)
+  - `OMQ_JEV_MAX_REQUESTS` — per-session request cap; exceeded → degraded mode for the rest of the session
+  - `OMQ_JEV_EXCERPT_CHARS` — max excerpt length sent in state, default `200`
 - **Five judgment points, in delivery order**:
   1. **Intent classification** — Choice over the intent categories; twin is the in-flight intent-drafting classification logic on this branch; state is the user request excerpt plus conversation metadata.
   2. **Loop continuation** (ralph/autopilot persistent-mode Stop hook) — Noul ("is the task complete?") + Score ("substantive progress this iteration?"). Twin: the mode's existing Stop-hook completion criteria.
@@ -79,14 +79,14 @@ configure anything see zero behavior change.
 - **Circuit breaker**: 3 consecutive failures/timeouts per point → that point degrades for the rest of the session without further Jev calls.
 - **Shadow log**: JSONL under the ignored state root, one line per comparison:
   `{ts, point, mode, state, heuristic, jev, confidence, durationMs}`. No repository code paths, no file contents beyond bounded excerpts.
-- **State construction privacy**: metadata (paths, command names, counts) plus excerpts bounded by `OMC_JEV_EXCERPT_CHARS`. Never whole files. Applies to all five points.
+- **State construction privacy**: metadata (paths, command names, counts) plus excerpts bounded by `OMQ_JEV_EXCERPT_CHARS`. Never whole files. Applies to all five points.
 - **Promotion is manual and evidence-based**: shadow data reviewed by a maintainer; a point flips to active only with evidence that Jev ≥ twin on real traffic.
 
 ## Testing Decisions
 
 - **What makes a good test here**: external behavior only — given a stubbed HTTP transport, the resolver returns the twin's answer when the key is absent, the Jev answer when configured and the transport responds, the twin's answer on timeout/cap/master-off, and writes a comparison line in shadow mode. No mocking of internals; the transport stub is the only fake.
 - **Modules tested**: the judgment resolver (config parsing, degraded-mode gates, circuit breaker, shadow logging, tri-state dispatch) and the Jev client (request shape, timeout, error mapping). The twins themselves stay covered by existing hook unit tests, unchanged.
-- **Prior art**: the repo's existing hook unit-test suites that run hook scripts against fixture stdin JSON and assert emitted decisions; resolver tests follow the same shape with the transport stub injected via an env override (e.g. `OMC_JEV_ENDPOINT` pointing at a local stub server).
+- **Prior art**: the repo's existing hook unit-test suites that run hook scripts against fixture stdin JSON and assert emitted decisions; resolver tests follow the same shape with the transport stub injected via an env override (e.g. `OMQ_JEV_ENDPOINT` pointing at a local stub server).
 
 ## Out of Scope
 
@@ -94,7 +94,7 @@ configure anything see zero behavior change.
 - The official TypeSafe JavaScript SDK as a dependency.
 - Auto-promotion from shadow to active, or an eval dashboard/UI.
 - Changing any heuristic twin's behavior — twins are frozen baselines.
-- The fact-forcing gate as an OMC judgment point (GateGuard is a separate harness layer); listed in the glossary enum aspirationally, inclusion needs an owner decision.
+- The fact-forcing gate as an OMQ judgment point (GateGuard is a separate harness layer); listed in the glossary enum aspirationally, inclusion needs an owner decision.
 - Non-interactive/CI usage policy (rate limits, batching) — decide after interactive rollout data exists.
 
 ## Further Notes

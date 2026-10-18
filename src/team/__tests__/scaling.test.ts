@@ -63,7 +63,7 @@ vi.mock('../team-owner-epoch.js', () => ({
 
 const tmuxSessionMocks = vi.hoisted(() => {
   const tmuxServerIdentity: TmuxServerIdentity = {
-    socket_path: '/tmp/omc-test-tmux.sock',
+    socket_path: '/tmp/omq-test-tmux.sock',
     server_pid: 4242,
     process_started_at: process.platform === 'darwin'
       ? 'darwin:1700000000:123456'
@@ -317,9 +317,9 @@ describe('scaleUp duplicate worker guard', () => {
   }
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omc-scaling-duplicate-'));
-    previousStateDir = process.env.OMC_STATE_DIR;
-    process.env.OMC_STATE_DIR = join(await realpath(cwd), '.omc-state');
+    cwd = await mkdtemp(join(tmpdir(), 'omq-scaling-duplicate-'));
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    process.env.OMQ_STATE_DIR = join(await realpath(cwd), '.omq-state');
     vi.clearAllMocks();
     processIdentityMocks.currentProcessStartIdentity.mockImplementation((pid = process.pid) => currentPlatformProcessIdentity(pid));
     processIdentityMocks.isProcessIdentityDead.mockReturnValue(false);
@@ -453,8 +453,8 @@ describe('scaleUp duplicate worker guard', () => {
 
   afterEach(async () => {
     if (cwd) await rm(cwd, { recursive: true, force: true });
-    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousStateDir;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
   });
 
   it('skips past colliding worker names when next_worker_index is stale without touching real tmux', async () => {
@@ -500,7 +500,7 @@ describe('scaleUp duplicate worker guard', () => {
     await mkdir(worktreePath, { recursive: true });
     gitWorktreeMocks.ensureWorkerWorktree.mockReturnValueOnce({
       path: worktreePath,
-      branch: 'omc-team/demo-team/worker-2',
+      branch: 'omq-team/demo-team/worker-2',
       workerName: 'worker-2',
       teamName: 'demo-team',
       createdAt: new Date().toISOString(),
@@ -942,7 +942,7 @@ describe('scaleUp duplicate worker guard', () => {
       'claude',
       [{ subject: 'demo', description: 'demo task' }],
       cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: false });
@@ -978,7 +978,7 @@ describe('scaleUp duplicate worker guard', () => {
       'claude',
       [{ subject: 'demo', description: 'demo task' }],
       cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: false });
@@ -1018,7 +1018,7 @@ describe('scaleUp duplicate worker guard', () => {
       'claude',
       [{ subject: 'demo', description: 'demo task' }],
       cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1', OMC_TEAM_SKIP_READY_WAIT: '1' } as NodeJS.ProcessEnv,
+      { OMQ_TEAM_SCALING_ENABLED: '1', OMQ_TEAM_SKIP_READY_WAIT: '1' } as NodeJS.ProcessEnv,
     );
 
     expect(result).toMatchObject({ ok: false });
@@ -1430,7 +1430,7 @@ describe('scaleUp duplicate worker guard', () => {
     processIdentityMocks.isProcessIdentityDead.mockReturnValue(true);
 
     const result = await scaleDown('demo-team', cwd, { workerNames: ['worker-2'], force: true },
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
 
     expect(result).toEqual({ ok: false, error: 'team_mutation_busy' });
   });
@@ -1467,7 +1467,7 @@ describe('scaleUp duplicate worker guard', () => {
     });
 
     const result = await scaleUp('demo-team', 1, 'claude', [{ subject: 'demo', description: 'blocked by effects fence' }], cwd,
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
 
     expect(result).toMatchObject({ ok: false });
     expect(config.active_scale_up?.phase).toBe('effects');
@@ -1488,7 +1488,7 @@ describe('scaleUp duplicate worker guard', () => {
     tmuxSessionMocks.getWorkerLiveness.mockResolvedValue('dead');
 
     await scaleDown('demo-team', cwd, { workerNames: ['worker-2'], force: true },
-      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
+      { OMQ_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv);
 
     // Positive proof: the committed fence did NOT block scale-down from
     // entering the drain phase. The scale-down reservation was acquired

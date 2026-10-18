@@ -126,4 +126,17 @@ for (const required of ['bridge/cli.cjs', 'bridge/team-mcp.cjs', 'dist/hooks/ski
     throw new Error(`${required} missing in the installed copy - build or packaging is incomplete.`);
   }
 }
+// Mirror the agents into the Qoder desktop's own agent store (best-effort):
+// the desktop agent UI reads com.qodercn.app.stable/qoder-data.v1.json, never
+// the CLI agents/ directories, so CLI provisioning alone is invisible there.
+try {
+  const { syncDesktopAgents } = await import(new URL('../dist/installer/index.js', import.meta.url).href);
+  const desktopSync = syncDesktopAgents((msg) => console.log(msg));
+  if (desktopSync.reason && !desktopSync.synced) {
+    console.log(`desktop agent sync skipped: ${desktopSync.reason}`);
+  }
+} catch (error) {
+  console.log(`desktop agent sync unavailable: ${error instanceof Error ? error.message : String(error)}`);
+}
+
 console.log('\ndone. Restart Qoder (or /plugins reload) and run: omq doctor conflicts');

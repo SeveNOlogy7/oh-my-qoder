@@ -40,12 +40,12 @@ export function getNativeContainedFs(): NativeContainedFs {
           loaded = createRequire(import.meta.url)(binary) as NativeContainedFs;
           return loaded;
         } catch (cause) {
-          throw new Error(`The contained filesystem backend is unavailable at ${binary}. Build it with node scripts/build-contained-fs.mjs before running graph commands.`, { cause });
+          throw new Error(`The contained filesystem backend is unavailable at ${binary}. Build it with node scripts/build-contained-fs.mjs (from the installed package directory) before running graph or team commands.`, { cause });
         }
       }
     }
     const parent = dirname(directory);
-    if (parent === directory) throw new Error("Cannot locate the OMC package for the contained filesystem backend");
+    if (parent === directory) throw new Error("Cannot locate the OMQ package for the contained filesystem backend");
     directory = parent;
   }
 }

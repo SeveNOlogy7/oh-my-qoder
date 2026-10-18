@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Worktree-first dev environment manager for issues, PRs, and features with optional tmux sessions"
 ---
 
 # OMQ project-session-manager

@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Agentic memory system for writers - track characters, relationships, scenes, and themes"
 ---
 
 # OMQ writer-memory

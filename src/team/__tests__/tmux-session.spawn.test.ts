@@ -7,7 +7,7 @@ const supportsStrictTmuxFixture = fixtureProcessStartIdentity !== null
   && (process.platform === 'darwin' || process.platform === 'linux');
 const fixtureTmuxServerIdentity: TmuxServerIdentity | undefined = supportsStrictTmuxFixture
   ? {
-      socket_path: '/tmp/omc-tmux-session-spawn.sock',
+      socket_path: '/tmp/omq-tmux-session-spawn.sock',
       server_pid: process.pid,
       process_started_at: fixtureProcessStartIdentity!,
     }
@@ -178,7 +178,7 @@ vi.mock('../../cli/tmux-utils.js', async (importOriginal) => {
             mockedCalls.paneStatus = mockedCalls.paneStatusAfterEnter;
           }
         }
-        const marker = success.match(/OMC_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
+        const marker = success.match(/OMQ_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
         return { stdout: marker ? `${marker}\n` : '', stderr: '' };
       }
       return { stdout: '', stderr: '' };
@@ -642,7 +642,7 @@ describe('spawnWorkerInPane', () => {
     await expect(spawnWorkerInPane('session:0', '%2', {
       teamName: 'safe-team',
       workerName: 'worker-1',
-      envVars: { OMC_TEAM_NAME: 'safe-team' },
+      envVars: { OMQ_TEAM_NAME: 'safe-team' },
       launchBinary: 'codex',
       cwd: '/tmp',
     })).rejects.toThrow('worker_start_tmux_server_identity_missing');

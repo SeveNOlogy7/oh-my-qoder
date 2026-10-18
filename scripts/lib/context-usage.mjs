@@ -110,13 +110,13 @@ export async function resolveHudCacheContextPercent(data, directory) {
     const hudStdin = await import(
       pathToFileURL(join(pluginRoot, 'dist', 'hud', 'stdin.js')).href,
     );
-    const { getWorktreeRoot, getSessionStateDir, listSessionIds, resolveOmcPath } = worktreePaths;
+    const { getWorktreeRoot, getSessionStateDir, listSessionIds, resolveOmqPath } = worktreePaths;
     const { getContextPercent } = hudStdin;
     if (
       typeof getWorktreeRoot !== 'function' ||
       typeof getSessionStateDir !== 'function' ||
       typeof listSessionIds !== 'function' ||
-      typeof resolveOmcPath !== 'function' ||
+      typeof resolveOmqPath !== 'function' ||
       typeof getContextPercent !== 'function'
     ) {
       return null;
@@ -152,7 +152,7 @@ export async function resolveHudCacheContextPercent(data, directory) {
     // cache first, then the most recently updated session-scoped cache as
     // a last resort (e.g. a detached watcher that never inherited session
     // env vars).
-    let cached = readJsonFile(resolveOmcPath('state/' + HUD_CACHE_FILENAME, root));
+    let cached = readJsonFile(resolveOmqPath('state/' + HUD_CACHE_FILENAME, root));
 
     if (cached === null) {
       let bestPath = null;

@@ -166,13 +166,13 @@ describe('mode-state-io', () => {
     });
 
     it('uses one state-root SQLite lock database for nested session paths when available', () => {
-      const statePath = join(tempDir, '.omc', 'state', 'sessions', 'session-a', 'autopilot-state.json');
+      const statePath = join(tempDir, '.omq', 'state', 'sessions', 'session-a', 'autopilot-state.json');
       mkdirSync(dirname(statePath), { recursive: true });
       expect(withStateFileMutationLock(statePath, () => true)).toMatchObject({ acquired: true, value: true });
       if (getStateMutationLockDiagnostic()) {
-        expect(existsSync(join(tempDir, '.omc', 'state', '.state-mutation-locks.db'))).toBe(false);
+        expect(existsSync(join(tempDir, '.omq', 'state', '.state-mutation-locks.db'))).toBe(false);
       } else {
-        expect(existsSync(join(tempDir, '.omc', 'state', '.state-mutation-locks.db'))).toBe(true);
+        expect(existsSync(join(tempDir, '.omq', 'state', '.state-mutation-locks.db'))).toBe(true);
       }
       expect(existsSync(join(dirname(statePath), '.state-mutation-locks.db'))).toBe(false);
     });

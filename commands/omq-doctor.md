@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Diagnose and fix oh-my-qoder installation issues"
 ---
 
 # OMQ omq-doctor

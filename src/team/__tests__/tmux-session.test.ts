@@ -22,6 +22,7 @@ import {
   type WorkerPaneLiveness,
 } from '../tmux-session.js';
 import { isValidTmuxServerIdentity, type TmuxServerIdentity } from '../types.js';
+import type { WorkerLaunchAttempt } from '../worker-launch-ack.js';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -69,19 +70,25 @@ describe('sanitizeName', () => {
 
 describe('sessionName', () => {
   it('builds correct session name', () => {
-    expect(sessionName('myteam', 'codex1')).toBe('omc-team-myteam-codex1');
+    expect(sessionName('myteam', 'codex1')).toBe('omq-team-myteam-codex1');
   });
 
   it('sanitizes both parts', () => {
-    expect(sessionName('my team!', 'work@er')).toBe('omc-team-myteam-worker');
+    expect(sessionName('my team!', 'work@er')).toBe('omq-team-myteam-worker');
   });
 });
 
 describe('detached session target normalization', () => {
-  it('normalizes only the explicit zero-window response form', () => {
+  it('normalizes numeric window indices from new-session responses', () => {
+    // Base-index 0: new-session creates window 0
     expect(normalizeDetachedSessionTarget('worker-detached-session:0')).toBe('worker-detached-session');
-    expect(normalizeDetachedSessionTarget('worker-detached-session:1')).toBeNull();
+    // Base-index 1: new-session creates window 1
+    expect(normalizeDetachedSessionTarget('worker-detached-session:1')).toBe('worker-detached-session');
+    // Base-index with custom offset: new-session might create window 5
+    expect(normalizeDetachedSessionTarget('worker-detached-session:5')).toBe('worker-detached-session');
+    // Non-numeric suffixes are rejected
     expect(normalizeDetachedSessionTarget('worker-detached-session:workers')).toBeNull();
+    // Session name alone is accepted
     expect(normalizeDetachedSessionTarget('worker-detached-session')).toBe('worker-detached-session');
   });
 });
@@ -121,7 +128,7 @@ describe('verifyTeamTargetOwnership tmux target kinds', () => {
       ? 'darwin:1:1'
       : 'unsupported:identity';
   const serverIdentity: TmuxServerIdentity = {
-    socket_path: '/tmp/omc-tmux-membership.sock',
+    socket_path: '/tmp/omq-tmux-membership.sock',
     server_pid: 42,
     process_started_at: processStartedAt,
   };
@@ -208,6 +215,28 @@ describe('verifyTeamTargetOwnership tmux target kinds', () => {
       .resolves.toEqual({ kind: 'unavailable' });
     expect(tmuxExec).not.toHaveBeenCalled();
   });
+
+  it('handles base-index 0: numeric windows with index 0', async () => {
+    const tmuxExec = vi.fn(async () => ({ stdout: '%9\n', stderr: '' }));
+
+    await expect(verifyTeamTargetOwnership(target('dispatch-session:0'), dependenciesFor(tmuxExec)))
+      .resolves.toMatchObject({ kind: 'owned', paneId: '%9', tmuxServerIdentity: serverIdentity });
+
+    expect(tmuxExec).toHaveBeenCalledWith([
+      '-S', serverIdentity.socket_path, 'list-panes', '-t', '=dispatch-session:0', '-F', '#{pane_id}',
+    ]);
+  });
+
+  it('handles base-index 1: numeric windows with index 1', async () => {
+    const tmuxExec = vi.fn(async () => ({ stdout: '%9\n', stderr: '' }));
+
+    await expect(verifyTeamTargetOwnership(target('dispatch-session:1'), dependenciesFor(tmuxExec)))
+      .resolves.toMatchObject({ kind: 'owned', paneId: '%9', tmuxServerIdentity: serverIdentity });
+
+    expect(tmuxExec).toHaveBeenCalledWith([
+      '-S', serverIdentity.socket_path, 'list-panes', '-t', '=dispatch-session:1', '-F', '#{pane_id}',
+    ]);
+  });
 });
 
 describe('tmux server incarnation identity', () => {
@@ -219,7 +248,7 @@ describe('tmux server incarnation identity', () => {
         ? 'win32:1'
         : `${process.platform}:native`;
   const identity: TmuxServerIdentity = {
-    socket_path: '/tmp/omc-tmux-test.sock',
+    socket_path: '/tmp/omq-tmux-test.sock',
     server_pid: 42,
     process_started_at: startIdentity,
   };
@@ -363,7 +392,7 @@ describe('applyMainVerticalLayout', () => {
   function guardedResult(args: string[]): { stdout: string; stderr: string } {
     expect(args.slice(0, 3)).toEqual(['-S', identity.socket_path, 'if-shell']);
     expect(args[3]).toContain('--tmux-server-identity-guard');
-    const marker = args[4]?.match(/OMC_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
+    const marker = args[4]?.match(/OMQ_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
     expect(marker).toBeDefined();
     return { stdout: `${marker}\n`, stderr: '' };
   }
@@ -1027,7 +1056,7 @@ describe('pane readiness startup banners', () => {
     const capture = [
       'Read .omq/state/team/example/workers/worker-1/inbox.md, execute now, report concrete progress.',
       '─────────────────────────────────────────────',
-      '[OMC] Starting...',
+      '[OMQ] Starting...',
       '⏵⏵ bypass permissions on (shift+tab to cycle)',
     ].join('\n');
 
@@ -1111,8 +1140,8 @@ describe('pane readiness startup banners', () => {
     // Claude Code v2.1.142 renders the permission-mode indicator
     // ("⏵⏵ bypass permissions on (shift+tab to cycle)") *below* the prompt
     // as a persistent idle-state UI element. Before this fix, the pane was
-    // misread as still bootstrapping and OMC never dispatched the inbox to
-    // claude workers, leaving them hung with "[OMC] Starting..." forever.
+    // misread as still bootstrapping and OMQ never dispatched the inbox to
+    // claude workers, leaving them hung with "[OMQ] Starting..." forever.
     const capture = [
       '▐▛███▜▌   Claude Code v2.1.142',
       '▝▜█████▛▘  Opus 4.7 (1M context) · Claude Max',
@@ -1157,6 +1186,17 @@ describe('pane readiness startup banners', () => {
     expect(paneLooksReady(capture)).toBe(true);
     expect(paneHasActiveTask(capture)).toBe(true);
   });
+
+  it.each(['✢', '✳', '✶', '✽', '✺', '✹', '✸', '✷', '*'])(
+    'treats Claude Code spinner glyph %s as an active task',
+    (glyph) => {
+      expect(paneHasActiveTask(`${glyph} Compacting…`)).toBe(true);
+    },
+  );
+
+  it('treats a Claude Code spinner status suffix as an active task', () => {
+    expect(paneHasActiveTask('✻ Compacting… (12 tokens, 3s)')).toBe(true);
+  });
 });
 
 describe('sendToWorker implementation guards', () => {
@@ -1181,6 +1221,108 @@ describe('sendToWorker implementation guards', () => {
     expect(source).toContain('Safety gate: copy-mode can turn on while we retry');
     expect(source).toContain('Before fallback control keys, re-check copy-mode');
     expect(source).toContain('Fail-closed: one final submit attempt');
+  });
+});
+
+describe('buildWorkerStartCommand MAX_CANON compliance (issue #4191)', () => {
+  it('keeps supervised launch command under 1024 bytes even with long cwd paths', () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux');
+    vi.stubEnv('SHELL', '/bin/bash');
+    
+    // Create a long cwd (300+ chars) to simulate real-world paths
+    const longCwd = '/home/user/projects/very/deep/nested/directory/structure/' +
+      'with/many/components/that/add/up/to/make/a/realistically/long/path/to/the/working/' +
+      'directory/where/the/team/would/be/running/from/and/this/represents/typical/monorepo/' +
+      'layouts/or/deeply/nested/project/structures/that/developers/might/encounter/in/' +
+      'their/workflows/on/their/systems/today';
+    
+    const attempt: WorkerLaunchAttempt = {
+      schema_version: 1 as const,
+      attempt_id: '11111111-1111-4111-8111-111111111111',
+      nonce: '22222222-2222-4222-8222-222222222222',
+      instance_id: '33333333-3333-4333-8333-333333333333',
+      team_name: 'test-team',
+      worker_name: 'worker-1',
+      pane_id: '%2',
+      provider: 'codex' as const,
+      created_at: '2026-01-01T00:00:00.000Z',
+      currentPath: '/tmp/current.json',
+      expectedPath: '/tmp/expected.json',
+      ackPath: '/tmp/ack.json',
+      decisionPath: '/tmp/decision.json',
+      startedPath: '/tmp/provider-started.json',
+      transportOwnerPath: '/tmp/transport-owner.json',
+      bootstrapDescriptorPath: '/tmp/bootstrap.json',
+      wrapperPath: '/tmp/launch.cmd',
+      transportCleanupCompletePath: '/tmp/transport-cleanup-complete.json',
+      runtimeCliPath: '/opt/omc/runtime-cli.cjs',
+    };
+    
+    // Simulate what runtime-v2 passes in envVars with long paths
+    const envVarsWithLongPaths = {
+      OMQ_TEAM_WORKER: 'test-team/worker-1',
+      OMQ_TEAM_NAME: 'test-team',
+      OMQ_WORKER_AGENT_TYPE: 'codex',
+      OMQ_TEAM_STATE_ROOT: `/home/user/projects/very/deep/nested/directory/structure/with/many/components/.omq/state/team/test-team`,
+      OMQ_TEAM_LEADER_CWD: longCwd,
+      OMQ_TEAM_WORKTREE_PATH: `/home/user/projects/very/deep/nested/directory/structure/with/many/components/worktree`,
+      OMQ_TEAM_WORKER_CWD: `/home/user/projects/very/deep/nested/directory/structure/with/many/components/worker-cwd`,
+    };
+    
+    const cmd = buildWorkerStartCommand({
+      teamName: 'test-team',
+      workerName: 'worker-1',
+      envVars: envVarsWithLongPaths,
+      launchBinary: '/usr/bin/codex',
+      launchArgs: ['--full-auto'],
+      cwd: longCwd,
+      provider: 'codex',
+      launchAttempt: attempt,
+    });
+    
+    const cmdBytes = Buffer.byteLength(cmd, 'utf8');
+    
+    // Key assertion: command must stay under 1024 bytes (macOS MAX_CANON limit)
+    // to avoid truncation in terminal line discipline
+    expect(cmdBytes).toBeLessThan(1024);
+    expect(cmdBytes).toBeGreaterThan(100); // Sanity check - not too short
+    
+    // Verify supervised launch only includes OMQ_WORKER_LAUNCH_SPEC_FILE
+    // NOT the long env vars that would push it over the limit
+    expect(cmd).toContain("OMQ_WORKER_LAUNCH_SPEC_FILE='/tmp/bootstrap.json'");
+    expect(cmd).not.toContain('OMQ_TEAM_STATE_ROOT');
+    expect(cmd).not.toContain('OMQ_TEAM_LEADER_CWD');
+    expect(cmd).not.toContain('OMQ_TEAM_WORKER_CWD');
+    expect(cmd).not.toContain(longCwd);
+    
+    // Verify it still invokes the runtime CLI correctly
+    expect(cmd).toContain('--worker-launch');
+    expect(cmd).toContain('/opt/omc/runtime-cli.cjs');
+  });
+  
+  it('non-supervised launches still include env vars normally', () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux');
+    vi.stubEnv('SHELL', '/bin/bash');
+    
+    const cmd = buildWorkerStartCommand({
+      teamName: 'test-team',
+      workerName: 'worker-1',
+      envVars: {
+        OMQ_TEAM_WORKER: 'test-team/worker-1',
+        OMQ_TEAM_NAME: 'test-team',
+        OMQ_TEAM_STATE_ROOT: '/tmp/state',
+      },
+      launchBinary: '/usr/bin/codex',
+      launchArgs: ['--full-auto'],
+      cwd: '/tmp',
+      provider: 'codex',
+      // No launchAttempt - non-supervised
+    });
+    
+    // Non-supervised launches should include all env vars
+    expect(cmd).toContain('OMQ_TEAM_WORKER');
+    expect(cmd).toContain('OMQ_TEAM_NAME');
+    expect(cmd).toContain('OMQ_TEAM_STATE_ROOT');
   });
 });
 

@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Install or refresh oh-my-qoder for plugin, npm, and local-dev setups from the canonical setup flow"
 ---
 
 # OMQ omq-setup

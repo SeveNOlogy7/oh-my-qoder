@@ -28,17 +28,17 @@ const BOUND_CHARS = 200;
 
 /**
  * Mirror of the log-dir resolution in src/hooks/jev/config.ts:
- *   OMC_JEV_LOG_DIR || join(getOmcRoot(), 'state', 'jev')
+ *   OMQ_JEV_LOG_DIR || join(getOmcRoot(), 'state', 'jev')
  * Path resolution is delegated to resolveOmqStateRoot so workspace markers,
- * OMC_STATE_DIR branding and worktree common-dir resolution stay in one place.
+ * OMQ_STATE_DIR branding and worktree common-dir resolution stay in one place.
  */
 export async function defaultLogPath(env = process.env, cwd = process.cwd()) {
-  if (env.OMC_JEV_LOG_DIR) return join(env.OMC_JEV_LOG_DIR, 'shadow.jsonl');
-  // resolveOmqStateRoot owns workspace markers, OMC_STATE_DIR branding and
-  // worktree common-dir resolution; deriving `.omc` here would fork that
+  if (env.OMQ_JEV_LOG_DIR) return join(env.OMQ_JEV_LOG_DIR, 'shadow.jsonl');
+  // resolveOmqStateRoot owns workspace markers, OMQ_STATE_DIR branding and
+  // worktree common-dir resolution; deriving `.omq` here would fork that
   // contract (and trips scripts/ci/check-multirepo-paths.mjs).
-  const omcRoot = await resolveOmqStateRoot(gitTopLevel(cwd) || cwd);
-  return join(omcRoot, 'state', 'jev', 'shadow.jsonl');
+  const omqRoot = await resolveOmqStateRoot(gitTopLevel(cwd) || cwd);
+  return join(omqRoot, 'state', 'jev', 'shadow.jsonl');
 }
 
 function gitTopLevel(cwd) {
@@ -56,18 +56,19 @@ function gitTopLevel(cwd) {
  * Compare one twin answer against one Jev answer.
  * Returns true/false when the pair is comparable, null when incommensurable
  * (including missing Jev answer, e.g. degraded lines).
- * Comparable shapes: twin boolean <-> Jev Noul.noul; twin string <-> Jev
- * Choice.choice; twin number <-> Jev Score.score.
+ * Comparable shapes: twin boolean <-> Jev noul.noul; twin string <-> Jev
+ * choice.choice; twin number <-> Jev score.score. Answer types are the
+ * lower-case wire literals the API returns.
  */
 export function comparePair(heuristic, jev) {
   if (jev === null || typeof jev !== 'object') return null;
-  if (jev.type === 'Noul' && typeof heuristic === 'boolean' && typeof jev.noul === 'boolean') {
+  if (jev.type === 'noul' && typeof heuristic === 'boolean' && typeof jev.noul === 'boolean') {
     return heuristic === jev.noul;
   }
-  if (jev.type === 'Choice' && typeof heuristic === 'string' && typeof jev.choice === 'string') {
+  if (jev.type === 'choice' && typeof heuristic === 'string' && typeof jev.choice === 'string') {
     return heuristic === jev.choice;
   }
-  if (jev.type === 'Score' && typeof heuristic === 'number' && typeof jev.score === 'number') {
+  if (jev.type === 'score' && typeof heuristic === 'number' && typeof jev.score === 'number') {
     return heuristic === jev.score;
   }
   return null;

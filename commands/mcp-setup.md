@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Configure popular MCP servers for enhanced agent capabilities"
 ---
 
 # OMQ mcp-setup

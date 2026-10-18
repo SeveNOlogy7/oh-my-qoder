@@ -30,16 +30,16 @@ function entry(point, mode, heuristic, jev, durationMs, state = null) {
 
 const FIXTURE = [
   // interleaved points: model-routing and intent alternate
-  entry('model-routing', 'shadow', 'haiku', { type: 'Choice', choice: 'haiku' }, 40),
-  entry('intent', 'shadow', 'build', { type: 'Choice', choice: 'build' }, 10, { prompt: 'add a hook' }),
+  entry('model-routing', 'shadow', 'haiku', { type: 'choice', choice: 'haiku' }, 40),
+  entry('intent', 'shadow', 'build', { type: 'choice', choice: 'build' }, 10, { prompt: 'add a hook' }),
   entry('model-routing', 'degraded', 'haiku', null, 60),
-  entry('intent', 'shadow', 'build', { type: 'Choice', choice: 'query' }, 20, { prompt: 'add a hook' }),
+  entry('intent', 'shadow', 'build', { type: 'choice', choice: 'query' }, 20, { prompt: 'add a hook' }),
   // twin boolean vs Jev Noul: comparable, agrees
-  entry('intent', 'shadow', true, { type: 'Noul', noul: true }, 30),
+  entry('intent', 'shadow', true, { type: 'noul', noul: true }, 30),
   // twin number vs Jev Score: comparable, agrees
-  entry('intent', 'shadow', 3, { type: 'Score', score: 3 }, 40),
+  entry('intent', 'shadow', 3, { type: 'score', score: 3 }, 40),
   // twin string vs Jev Score: incommensurable -> nonComparable, not disagreement
-  entry('intent', 'shadow', 'build', { type: 'Score', score: 3 }, 50),
+  entry('intent', 'shadow', 'build', { type: 'score', score: 3 }, 50),
   // malformed lines: unparseable, and parsed but unattributable
   'not json at all',
   JSON.stringify({ point: 'intent', mode: 7, heuristic: 'x', jev: null, durationMs: 1 }),
@@ -57,20 +57,20 @@ function runCli(args) {
 
 describe('comparePair commensurability', () => {
   it('twin boolean <-> Jev Noul.noul', () => {
-    expect(comparePair(true, { type: 'Noul', noul: true })).toBe(true);
-    expect(comparePair(false, { type: 'Noul', noul: true })).toBe(false);
+    expect(comparePair(true, { type: 'noul', noul: true })).toBe(true);
+    expect(comparePair(false, { type: 'noul', noul: true })).toBe(false);
   });
   it('twin string <-> Jev Choice.choice', () => {
-    expect(comparePair('build', { type: 'Choice', choice: 'build' })).toBe(true);
-    expect(comparePair('build', { type: 'Choice', choice: 'query' })).toBe(false);
+    expect(comparePair('build', { type: 'choice', choice: 'build' })).toBe(true);
+    expect(comparePair('build', { type: 'choice', choice: 'query' })).toBe(false);
   });
   it('twin number <-> Jev Score.score', () => {
-    expect(comparePair(3, { type: 'Score', score: 3 })).toBe(true);
-    expect(comparePair(3, { type: 'Score', score: 5 })).toBe(false);
+    expect(comparePair(3, { type: 'score', score: 3 })).toBe(true);
+    expect(comparePair(3, { type: 'score', score: 5 })).toBe(false);
   });
   it('incommensurable and missing answers return null', () => {
-    expect(comparePair('build', { type: 'Score', score: 3 })).toBeNull();
-    expect(comparePair(true, { type: 'Choice', choice: 'build' })).toBeNull();
+    expect(comparePair('build', { type: 'score', score: 3 })).toBeNull();
+    expect(comparePair(true, { type: 'choice', choice: 'build' })).toBeNull();
     expect(comparePair('build', null)).toBeNull();
     expect(comparePair('build', undefined)).toBeNull();
   });
@@ -116,7 +116,7 @@ describe('analyzeLog per-point stats', () => {
 
   it('bounds disagreement example state at 200 chars', () => {
     const longState = { prompt: 'x'.repeat(500) };
-    const text = entry('intent', 'shadow', 'a', { type: 'Choice', choice: 'b' }, 1, longState) + '\n';
+    const text = entry('intent', 'shadow', 'a', { type: 'choice', choice: 'b' }, 1, longState) + '\n';
     const r = analyzeLog(text, 'long.jsonl');
     expect(r.points[0].disagreements[0].state.length).toBeLessThanOrEqual(203); // 200 + '...'
   });
@@ -161,25 +161,25 @@ describe('CLI surface', () => {
 });
 
 describe('defaultLogPath resolution', () => {
-  it('honors OMC_JEV_LOG_DIR', async () => {
-    expect(await defaultLogPath({ OMC_JEV_LOG_DIR: '/tmp/jevdir' })).toContain(join('/tmp/jevdir', 'shadow.jsonl'));
+  it('honors OMQ_JEV_LOG_DIR', async () => {
+    expect(await defaultLogPath({ OMQ_JEV_LOG_DIR: '/tmp/jevdir' })).toContain(join('/tmp/jevdir', 'shadow.jsonl'));
   });
   // Branding is resolved by resolveOmqStateRoot, which reads process.env for
-  // OMC_STATE_DIR so every hook and script agrees on one state root.
-  it('honors OMC_STATE_DIR with a project-id segment', async () => {
-    const previous = process.env.OMC_STATE_DIR;
-    process.env.OMC_STATE_DIR = '/tmp/omc-state';
+  // OMQ_STATE_DIR so every hook and script agrees on one state root.
+  it('honors OMQ_STATE_DIR with a project-id segment', async () => {
+    const previous = process.env.OMQ_STATE_DIR;
+    process.env.OMQ_STATE_DIR = '/tmp/omq-state';
     try {
       const p = await defaultLogPath({}, root);
-      expect(p).toContain(join('/tmp/omc-state'));
+      expect(p).toContain(join('/tmp/omq-state'));
       expect(p).toContain(join('state', 'jev', 'shadow.jsonl'));
     } finally {
-      if (previous === undefined) delete process.env.OMC_STATE_DIR;
-      else process.env.OMC_STATE_DIR = previous;
+      if (previous === undefined) delete process.env.OMQ_STATE_DIR;
+      else process.env.OMQ_STATE_DIR = previous;
     }
   });
-  it('falls back to the worktree .omc state root', async () => {
+  it('falls back to the worktree .omq state root', async () => {
     const p = await defaultLogPath({}, root);
-    expect(p).toContain(join(root, '.omc', 'state', 'jev', 'shadow.jsonl'));
+    expect(p).toContain(join(root, '.omq', 'state', 'jev', 'shadow.jsonl'));
   });
 });

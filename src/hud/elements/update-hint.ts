@@ -31,9 +31,9 @@ export function renderUpdateHints(input: UpdateHintInput): string[] {
   if (input.omqUpdateAvailable) {
     const command =
       input.omqUpdateSource === 'marketplace'
-        ? 'claude plugin marketplace update omc && claude plugin update oh-my-claudecode@omc'
+        ? 'claude plugin marketplace update omq && claude plugin update oh-my-qoder@omq'
         : 'npm i -g oh-my-claude-sisyphus@latest';
-    lines.push(`${YELLOW}${BOLD}[!] omc ${input.omqUpdateAvailable} - paste: ! ${command}${RESET}`);
+    lines.push(`${YELLOW}${BOLD}[!] omq ${input.omqUpdateAvailable} - paste: ! ${command}${RESET}`);
   }
 
   if (input.claudeCodeUpdateAvailable) {

@@ -209,7 +209,7 @@ describe('Installer Constants', () => {
 
         // Detect pattern: command file that tells user to invoke the same-named skill
         const skillInvokePattern = new RegExp(
-          `/oh-my-claudecode:${commandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+          `/oh-my-qoder:${commandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
           'i'
         );
 
@@ -357,19 +357,19 @@ describe('Installer Constants', () => {
   describe('extractOmcVersionFromClaudeMd()', () => {
     it('prefers the OMC version marker', () => {
       const content = `<!-- OMQ:VERSION:4.7.7 -->
-# oh-my-claudecode - Intelligent Multi-Agent Orchestration`;
+# oh-my-qoder - Intelligent Multi-Agent Orchestration`;
       expect(extractOmcVersionFromClaudeMd(content)).toBe('v4.7.7');
     });
 
     it('falls back to legacy heading versions', () => {
-      const content = '# oh-my-claudecode v4.6.0 - Intelligent Multi-Agent Orchestration';
+      const content = '# oh-my-qoder v4.6.0 - Intelligent Multi-Agent Orchestration';
       expect(extractOmcVersionFromClaudeMd(content)).toBe('v4.6.0');
     });
   });
 
   describe('syncPersistedSetupVersion()', () => {
     it('updates setupVersion for already-configured installs', () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'omc-installer-test-'));
+      const tempDir = mkdtempSync(join(tmpdir(), 'omq-installer-test-'));
       const configPath = join(tempDir, '.omq-config.json');
       writeFileSync(configPath, JSON.stringify({ setupCompleted: '2026-03-03T17:59:08+09:00', setupVersion: 'v4.6.0' }, null, 2));
 
@@ -386,7 +386,7 @@ describe('Installer Constants', () => {
     });
 
     it('does not create setupVersion for fresh installs by default', () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'omc-installer-test-'));
+      const tempDir = mkdtempSync(join(tmpdir(), 'omq-installer-test-'));
       const configPath = join(tempDir, '.omq-config.json');
       writeFileSync(configPath, JSON.stringify({ hudEnabled: true }, null, 2));
 
@@ -533,7 +533,7 @@ describe('Installer Constants', () => {
     });
 
     it('should return true when CLAUDE_PLUGIN_ROOT is set', () => {
-      process.env.CLAUDE_PLUGIN_ROOT = '/home/user/.claude/plugins/marketplaces/oh-my-claudecode';
+      process.env.CLAUDE_PLUGIN_ROOT = '/home/user/.claude/plugins/marketplaces/oh-my-qoder';
       expect(isRunningAsPlugin()).toBe(true);
     });
 
@@ -565,13 +565,13 @@ describe('Installer Constants', () => {
 
     it('should return false for global plugin installation', () => {
       // Global plugins are under ~/.claude/plugins/
-      process.env.CLAUDE_PLUGIN_ROOT = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '3.9.0');
+      process.env.CLAUDE_PLUGIN_ROOT = join(QODER_CONFIG_DIR, 'plugins', 'cache', 'omq', 'oh-my-qoder', '3.9.0');
       expect(isProjectScopedPlugin()).toBe(false);
     });
 
     it('should return true for project-scoped plugin installation', () => {
       // Project-scoped plugins are in the project's .claude/plugins/ directory
-      process.env.CLAUDE_PLUGIN_ROOT = '/home/user/myproject/.claude/plugins/oh-my-claudecode';
+      process.env.CLAUDE_PLUGIN_ROOT = '/home/user/myproject/.claude/plugins/oh-my-qoder';
       expect(isProjectScopedPlugin()).toBe(true);
     });
 

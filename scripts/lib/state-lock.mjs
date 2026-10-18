@@ -7,7 +7,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const SQLITE_NATIVE_BINDING = 'better_sqlite3.node';
 const SQLITE_NATIVE_BINDING_REMEDIATION =
-  'Run `npm rebuild better-sqlite3` in the OMC plugin directory, then restart Claude Code.';
+  'Run `npm rebuild better-sqlite3` in the OMQ plugin directory, then restart Claude Code.';
 let Database = null;
 let sqliteBindingLoadError = null;
 
@@ -115,7 +115,7 @@ function canonicalKey(lockPath) {
 
 function stateFileLockingTestOverride() {
   if (process.env.NODE_ENV !== 'test') return null;
-  return process.env.OMQ_TEST_FLOCK_AVAILABLE === '0' || process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE === '1'
+  return process.env.OMQ_TEST_FLOCK_AVAILABLE === '0' || process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE === '1'
     ? false
     : null;
 }
@@ -157,6 +157,12 @@ function ownerArtifactIdentity(path) {
 /** Remove only the exact dead publication that was inspected. */
 function reclaimDeadOwner(path, observed, identity) {
   const quarantinePath = `${path}.reclaim.${process.pid}.${randomUUID()}`;
+  // Verify the file at path still has the expected identity before renaming.
+  // If it has changed, another process has published a replacement and we must not remove it.
+  const current = ownerArtifactIdentity(path);
+  if (!current || current.dev !== identity.dev || current.ino !== identity.ino) {
+    return 'changed';
+  }
   try {
     renameSync(path, quarantinePath);
   } catch (error) {
@@ -251,7 +257,7 @@ function recordFailure(kind, detail) {
 }
 
 export function getStateFileLockDiagnostic() {
-  if (process.env.NODE_ENV === 'test' && process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE === '1') {
+  if (process.env.NODE_ENV === 'test' && process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE === '1') {
     sqliteBindingLoadError = nativeBindingDiagnostic('simulated native binding load failure');
   }
   return sqliteBindingLoadError;
@@ -335,13 +341,20 @@ function acquireFileLock(lockPath, attempts) {
         return null;
       }
 
+      // Capture the file identity before the probe. If it changes during the probe,
+      // another process has published a replacement lock and we must skip reclamation.
+      const identity = ownerArtifactIdentity(lockPath);
+      if (!identity) continue;
       const existing = readOwner(lockPath);
       if (existing === 'absent') continue;
       if (!existing) {
         recordFailure('unverifiable');
-        console.error(`[omc-lock] state_mutation_lock_unverifiable: ${lockPath}`);
+        console.error(`[omq-lock] state_mutation_lock_unverifiable: ${lockPath}`);
         return null;
       }
+      // Re-verify the identity hasn't changed before probing liveness.
+      const recheck = ownerArtifactIdentity(lockPath);
+      if (!recheck || recheck.dev !== identity.dev || recheck.ino !== identity.ino) continue;
       const live = ownerLive(existing);
       if (live === null) {
         recordFailure('unverifiable');
@@ -353,11 +366,6 @@ function acquireFileLock(lockPath, attempts) {
           Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
           continue;
         }
-        return null;
-      }
-      const identity = ownerArtifactIdentity(lockPath);
-      if (!identity) {
-        recordFailure('unverifiable');
         return null;
       }
       const reclaimed = reclaimDeadOwner(lockPath, existing, identity);
@@ -384,7 +392,7 @@ export function acquireStateFileLockSync(filePath, attempts = 50, requireExclusi
   }
 
   if (!bypassTestOverride && stateFileLockingTestOverride() === false) {
-    if (process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE === '1') {
+    if (process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE === '1') {
       sqliteBindingLoadError = nativeBindingDiagnostic('simulated native binding load failure');
     }
     return acquireFileLock(lockPath, attempts);
@@ -419,7 +427,7 @@ export function acquireStateFileLockSync(filePath, attempts = 50, requireExclusi
     createdAt: new Date().toISOString(),
     nonce: randomUUID(),
   };
-  const retry = code => code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED' || code === 'OMC_LOCK_PUBLICATION_RACE' || code === 'OMC_LOCK_RECLAIM_RACE';
+  const retry = code => code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED' || code === 'OMQ_LOCK_PUBLICATION_RACE' || code === 'OMQ_LOCK_RECLAIM_RACE';
   try {
     db.exec('BEGIN IMMEDIATE');
     const row = db.prepare('SELECT version, pid, process_start, created_at, nonce FROM state_mutation_locks WHERE lock_key = ?').get(key);
@@ -450,7 +458,7 @@ export function acquireStateFileLockSync(filePath, attempts = 50, requireExclusi
         db.exec('ROLLBACK');
         db.close();
         recordFailure('unverifiable');
-        console.error(`[omc-lock] state_mutation_lock_unverifiable: ${lockPath}`);
+        console.error(`[omq-lock] state_mutation_lock_unverifiable: ${lockPath}`);
         return null;
       }
       const live = ownerLive(artifact);
@@ -527,14 +535,14 @@ export function releaseStateFileLockSync(lock) {
       if (current === 'absent') return true;
       if (!current || !sameOwner(current, lock.owner)) {
         recordFailure('unverifiable', `State mutation lock release failed; owner metadata changed or disappeared: ${lock.path}`);
-        console.error(`[omc-lock] state_mutation_lock_release_failed: ${lock.path}`);
+        console.error(`[omq-lock] state_mutation_lock_release_failed: ${lock.path}`);
         return false;
       }
       unlinkSync(lock.path);
       return true;
     } catch (error) {
       recordFailure('unverifiable', `State mutation lock release failed for ${lock.path}: ${error?.code || 'unknown error'}`);
-      console.error(`[omc-lock] state_mutation_lock_release_failed: ${lock.path} ${error?.code || ''}`.trim());
+      console.error(`[omq-lock] state_mutation_lock_release_failed: ${lock.path} ${error?.code || ''}`.trim());
       return false;
     }
   }
@@ -546,7 +554,7 @@ export function releaseStateFileLockSync(lock) {
     if (!row || row.version !== 1 || !sameOwner({ pid: row.pid, processStart: row.process_start, nonce: row.nonce }, lock.owner) || !sameOwner(current === 'absent' ? null : current, lock.owner)) {
       lock.db.exec('ROLLBACK');
       recordFailure('unverifiable', `State mutation lock release failed; owner metadata changed or disappeared: ${lock.path}`);
-      console.error(`[omc-lock] state_mutation_lock_release_failed: ${lock.path}`);
+      console.error(`[omq-lock] state_mutation_lock_release_failed: ${lock.path}`);
       return false;
     }
     unlinkSync(lock.path);
@@ -556,7 +564,7 @@ export function releaseStateFileLockSync(lock) {
   } catch (error) {
     try { lock.db.exec('ROLLBACK'); } catch {}
     recordFailure('unverifiable', `State mutation lock release failed for ${lock.path}: ${error?.code || 'unknown error'}`);
-    console.error(`[omc-lock] state_mutation_lock_release_failed: ${lock.path} ${error?.code || ''}`.trim());
+    console.error(`[omq-lock] state_mutation_lock_release_failed: ${lock.path} ${error?.code || ''}`.trim());
     return false;
   } finally {
     try { lock.db.close(); } catch {}
@@ -630,7 +638,7 @@ export function releaseRecoveryClaim(path, owner) {
       try { unlinkSync(path); }
       catch (error) {
         recordFailure('unverifiable', `Recovery claim release failed for ${path}: ${error?.code || 'unknown error'}`);
-        console.error(`[omc-lock] recovery_claim_release_failed: ${path} ${error?.code || ''}`.trim());
+        console.error(`[omq-lock] recovery_claim_release_failed: ${path} ${error?.code || ''}`.trim());
         released = false;
       }
     }

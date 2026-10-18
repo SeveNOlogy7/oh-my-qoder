@@ -23,7 +23,7 @@ import {
   resolveLiveData,
 } from './live-data.js';
 import { parseFrontmatter, parseFrontmatterAliases, stripOptionalQuotes } from '../../utils/frontmatter.js';
-import { rewriteOmcCliInvocations } from '../../utils/omc-cli-rendering.js';
+import { rewriteOmqCliInvocations } from '../../utils/omq-cli-rendering.js';
 import { parseSkillPipelineMetadata, renderSkillPipelineGuidance } from '../../utils/skill-pipeline.js';
 import { renderSkillResourcesGuidance } from '../../utils/skill-resources.js';
 import { renderSkillRuntimeGuidance } from '../../features/builtin-skills/runtime-guidance.js';
@@ -209,7 +209,7 @@ export function discoverAllCommands(): CommandInfo[] {
   const userSkills = discoverSkillsFromDir(userSkillsDir);
   const builtinSkills = discoverSkillsFromDir(getSkillsDir());
 
-  // Priority: project commands > user commands > project Claude Code skills > project OMC skills > project compatibility skills > user skills > builtin skills
+  // Priority: project commands > user commands > project Claude Code skills > project OMQ skills > project compatibility skills > user skills > builtin skills
   const prioritized = [
     ...projectCommands,
     ...userCommands,
@@ -355,7 +355,7 @@ function formatCommandTemplate(cmd: CommandInfo, args: string): string {
     : resolveLiveData(resolvedContent);
   const injectedContent = cmd.scope === 'skill'
     ? renderBundledSkillBody(cmd.metadata.name, baseContent)
-    : rewriteOmcCliInvocations(baseContent);
+    : rewriteOmqCliInvocations(baseContent);
   const runtimeGuidance = cmd.scope === 'skill' && !isDeepInterviewAutoresearch
     ? renderSkillRuntimeGuidance(cmd.metadata.name)
     : '';

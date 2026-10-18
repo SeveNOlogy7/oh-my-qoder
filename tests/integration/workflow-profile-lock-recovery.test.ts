@@ -51,7 +51,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   while (created.length) rmSync(created.pop()!, { recursive: true, force: true });
   delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
-  delete process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE;
+  delete process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE;
 });
 
 describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) => {
@@ -92,7 +92,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
     writeFileSync(lockPath, 'corrupt');
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(lockApi.acquireStateFileLockSync(statePath, 2)).toBeNull();
-    expect(error).toHaveBeenCalledWith(`[omc-lock] state_mutation_lock_unverifiable: ${lockPath}`);
+    expect(error).toHaveBeenCalledWith(`[omq-lock] state_mutation_lock_unverifiable: ${lockPath}`);
     expect(readFileSync(lockPath, 'utf8')).toBe('corrupt');
   });
 
@@ -110,7 +110,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
   it('serializes concurrent reclaimers without removing a live replacement', async () => {
     const { statePath, lockPath } = fixture();
     process.env.NODE_ENV = 'test';
-    process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
+    process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
     writeFileSync(lockPath, JSON.stringify(owner({ pid: 999999999, processStart: '1' })));
     const logPath = `${statePath}.critical.log`;
     const childScript = String.raw`
@@ -170,7 +170,7 @@ describe.each(modules)('recoverable workflow mutation lock (%s)', (modulePath) =
   it('uses the shipped owner-file fallback when better-sqlite3 cannot load', async () => {
     const { statePath, lockPath } = fixture();
     process.env.NODE_ENV = 'test';
-    process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
+    process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
     const lockApi = await import(`${pathToFileURL(join(root, 'scripts', 'lib', 'state-lock.mjs')).href}?unavailable=${randomUUID()}`) as {
       acquireStateFileLockSync(path: string, attempts?: number): unknown;
       getStateFileLockDiagnostic(): string | null;

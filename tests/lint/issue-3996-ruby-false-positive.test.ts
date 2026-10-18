@@ -8,10 +8,10 @@
  * truthful Node-runtime check. These guards keep it out of the shipped
  * surfaces:
  *  - scripts/plugin-setup.mjs must not probe Ruby at post-install
- *  - the omc-doctor and omc-setup Ralph steps must stay Ruby-free and must
+ *  - the omq-doctor and omq-setup Ralph steps must stay Ruby-free and must
  *    keep checking the real prerequisites (Node runtime, writable config dir)
  *  - skills/deep-interview/SKILL.md must cite the plan skill in a form that
- *    resolves (`Skill("oh-my-claudecode:plan")`), not `/omc-plan`
+ *    resolves (`Skill("oh-my-qoder:plan")`), not `/omq-plan`
  *
  * Rollback boundary: delete tests/lint/issue-3996-ruby-false-positive.test.ts
  * — no runtime change.
@@ -33,16 +33,16 @@ describe("issue #3996: no Ralph/Ruby false positive in shipped surfaces", () => 
     expect(content).not.toContain("checkRalphRubyDependency");
   });
 
-  it("omc-doctor Step 5 checks Ralph runtime prerequisites without Ruby", () => {
-    const content = read("skills/omc-doctor/SKILL.md");
+  it("omq-doctor Step 5 checks Ralph runtime prerequisites without Ruby", () => {
+    const content = read("skills/omq-doctor/SKILL.md");
     expect(content).toContain("Check Ralph Runtime Prerequisites");
     expect(content).toContain("node --version");
     expect(content).not.toMatch(/\bruby\b/i);
     expect(content).not.toContain("Ralph Ruby Dependency");
   });
 
-  it("omc-setup Step 2.0 checks Ralph runtime prerequisites without Ruby", () => {
-    const content = read("skills/omc-setup/phases/02-configure.md");
+  it("omq-setup Step 2.0 checks Ralph runtime prerequisites without Ruby", () => {
+    const content = read("skills/omq-setup/phases/02-configure.md");
     expect(content).toContain("Step 2.0: Check Ralph Runtime Prerequisites");
     expect(content).toContain("node --version");
     expect(content).not.toMatch(/\bruby\b/i);

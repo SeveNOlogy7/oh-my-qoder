@@ -69,8 +69,8 @@ const PRIVATE_ENV_KEYS = [
   'XDG_CACHE_HOME',
   'XDG_DATA_HOME',
   'CLAUDE_CONFIG_DIR',
-  'OMC_STATE_DIR',
-  'OMC_RUNTIME_CLI_PATH',
+  'OMQ_STATE_DIR',
+  'OMQ_RUNTIME_CLI_PATH',
   'TMUX_TMPDIR',
   'TMPDIR',
   'TEMP',
@@ -369,7 +369,7 @@ describe.skipIf(!HAS_POSIX_TMUX)('runtime v2 ordinary shutdown interruption', ()
 
   beforeEach(async () => {
     // Keep tmux's Unix-domain socket below macOS's pathname length limit.
-    fixtureRoot = await mkdtemp(join(tmpdir(), 'omc-pr5-'));
+    fixtureRoot = await mkdtemp(join(tmpdir(), 'omq-pr5-'));
     cwd = join(fixtureRoot, 'workdir');
     home = join(fixtureRoot, 'home');
     stateDir = join(fixtureRoot, 'state');
@@ -388,8 +388,8 @@ describe.skipIf(!HAS_POSIX_TMUX)('runtime v2 ordinary shutdown interruption', ()
     process.env.XDG_CACHE_HOME = join(home, 'cache');
     process.env.XDG_DATA_HOME = join(home, 'data');
     process.env.CLAUDE_CONFIG_DIR = join(home, '.claude');
-    process.env.OMC_STATE_DIR = stateDir;
-    process.env.OMC_RUNTIME_CLI_PATH = RUNTIME_CLI_PATH;
+    process.env.OMQ_STATE_DIR = stateDir;
+    process.env.OMQ_RUNTIME_CLI_PATH = RUNTIME_CLI_PATH;
     process.env.TMUX_TMPDIR = tmuxTmpDir;
     const privateTmpDir = join(fixtureRoot, 'tmp');
     process.env.TMPDIR = privateTmpDir;
@@ -399,7 +399,7 @@ describe.skipIf(!HAS_POSIX_TMUX)('runtime v2 ordinary shutdown interruption', ()
     delete process.env.PSMUX_SESSION;
     await mkdir(privateTmpDir, { recursive: true });
 
-    sessionName = `omc-shutdown-interruption-${randomUUID().slice(0, 8)}`;
+    sessionName = `omq-shutdown-interruption-${randomUUID().slice(0, 8)}`;
     child = undefined;
     attempt = undefined;
     bootstrap = undefined;
@@ -480,7 +480,7 @@ describe.skipIf(!HAS_POSIX_TMUX)('runtime v2 ordinary shutdown interruption', ()
   it('takes over an interrupted ordinary owner and cleans only its provider and panes', async () => {
     const teamName = 'shutdown-interruption-team';
     const workerName = 'worker-1';
-    const runtimeCliPath = process.env.OMC_RUNTIME_CLI_PATH!;
+    const runtimeCliPath = process.env.OMQ_RUNTIME_CLI_PATH!;
     const stateRoot = join(getOmcRoot(cwd), 'state', 'team', teamName);
     const configPath = join(stateRoot, 'config.json');
     const providerMarker = join(cwd, 'provider-started.json');
@@ -603,9 +603,9 @@ describe.skipIf(!HAS_POSIX_TMUX)('runtime v2 ordinary shutdown interruption', ()
       cwd: REPO_ROOT,
       env: {
         ...process.env,
-        OMC_TEST_TEAM_NAME: teamName,
-        OMC_TEST_CWD: cwd,
-        OMC_TEST_INSTANCE_ID: TEAM_INSTANCE_ID,
+        OMQ_TEST_TEAM_NAME: teamName,
+        OMQ_TEST_CWD: cwd,
+        OMQ_TEST_INSTANCE_ID: TEAM_INSTANCE_ID,
       },
       stdio: 'ignore',
     });
@@ -709,7 +709,7 @@ describe.skipIf(!HAS_POSIX_TMUX)('runtime v2 ordinary shutdown interruption', ()
     const teamNameA = 'shutdown-incarnation-a';
     const teamNameB = 'shutdown-incarnation-b';
     const workerName = 'worker-1';
-    const runtimeCliPath = process.env.OMC_RUNTIME_CLI_PATH!;
+    const runtimeCliPath = process.env.OMQ_RUNTIME_CLI_PATH!;
     const stateRootA = join(getOmcRoot(cwd), 'state', 'team', teamNameA);
     const stateRootB = join(getOmcRoot(cwd), 'state', 'team', teamNameB);
     const configPathA = join(stateRootA, 'config.json');

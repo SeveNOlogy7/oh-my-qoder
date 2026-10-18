@@ -133,7 +133,7 @@ function fixtureTmuxServerIdentity(stateCwd = cwd): { socket_path: string; serve
   const processStartedAt = currentStrictProcessStartIdentity();
   if (!processStartedAt) throw new Error('fixture tmux process identity unavailable');
   const identity = {
-    socket_path: join(stateCwd, '.omc-fixture-tmux.sock'),
+    socket_path: join(stateCwd, '.omq-fixture-tmux.sock'),
     server_pid: process.pid,
     process_started_at: processStartedAt,
   };
@@ -211,12 +211,12 @@ function persistFixtureAuthority(teamName: string, stateCwd: string): void {
 let cwd = '';
 let previousHome: string | undefined;
 let previousUserProfile: string | undefined;
-let previousOmcStateDir: string | undefined;
+let previousOmqStateDir: string | undefined;
 
 beforeEach(() => {
   previousHome = process.env.HOME;
   previousUserProfile = process.env.USERPROFILE;
-  previousOmcStateDir = process.env.OMQ_STATE_DIR;
+  previousOmqStateDir = process.env.OMQ_STATE_DIR;
 });
 
 function mkdtempSync(prefix: string): string {
@@ -264,8 +264,8 @@ afterEach(() => {
   else process.env.HOME = previousHome;
   if (previousUserProfile === undefined) delete process.env.USERPROFILE;
   else process.env.USERPROFILE = previousUserProfile;
-  if (previousOmcStateDir === undefined) delete process.env.OMQ_STATE_DIR;
-  else process.env.OMQ_STATE_DIR = previousOmcStateDir;
+  if (previousOmqStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = previousOmqStateDir;
 });
 
 async function expectRecoveryLockReleased(teamName: string, workerName: string, suffix: string): Promise<void> {
@@ -446,7 +446,7 @@ describe('recovery pane rollback evidence', () => {
   });
 
   it('reconciles an accepted initial launch pointer before treating the worker as already running', async () => {
-    cwd = mkdtempSync(join(tmpdir(), 'omc-recovery-initial-pointer-'));
+    cwd = mkdtempSync(join(tmpdir(), 'omq-recovery-initial-pointer-'));
     const teamName = 'initial-pointer-team';
     const requestId = 'initial-pointer-request';
     const recoveryId = 'initial-pointer-recovery';
@@ -777,7 +777,7 @@ describe('recovery pane rollback evidence', () => {
   });
 
   it('completes an idle Gemini recovery without requiring fabricated progress evidence', async () => {
-    cwd = mkdtempSync(join(tmpdir(), 'omc-recovery-idle-gemini-'));
+    cwd = mkdtempSync(join(tmpdir(), 'omq-recovery-idle-gemini-'));
     const teamName = 'idle-gemini-team';
     const requestId = 'idle-gemini-request';
     const recoveryId = 'idle-gemini-recovery';
@@ -907,9 +907,9 @@ describe('recovery pane rollback evidence', () => {
       });
       const launchEnv: Record<string, string> = {
         ...config.envVars,
-        OMC_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
+        OMQ_WORKER_LAUNCH_ATTEMPT_ID: attempt.attempt_id,
       };
-      launchEnv.OMC_RECOVERY_GATE_SPEC = JSON.stringify({
+      launchEnv.OMQ_RECOVERY_GATE_SPEC = JSON.stringify({
         ...gateSpec,
         launchAttempt: attempt,
       });

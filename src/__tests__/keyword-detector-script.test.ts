@@ -88,7 +88,7 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
     const sessionId = 'session-lock-contention';
     try {
       execFileSync('git', ['init', '--quiet'], { cwd, stdio: 'pipe' });
-      const statePath = join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+      const statePath = join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
       const lockPath = `${statePath}.mutation.lock`;
       mkdirSync(dirname(lockPath), { recursive: true });
       writeFileSync(lockPath, JSON.stringify({
@@ -100,14 +100,14 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
       }));
 
       const output = runKeywordDetector('ralph this task', cwd, sessionId, {
-        OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE: '1',
+        OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE: '1',
       });
       const context = output.hookSpecificOutput?.additionalContext ?? '';
 
-      expect(context).toContain('[OMC STATE ERROR]');
+      expect(context).toContain('[OMQ STATE ERROR]');
       expect(context).toContain('better_sqlite3.node');
       expect(context).toContain('No ralph state was activated.');
-      expect(existsSync(join(cwd, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
+      expect(existsSync(join(cwd, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json'))).toBe(false);
       expect(existsSync(lockPath)).toBe(true);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
@@ -212,11 +212,11 @@ describe('keyword-detector.mjs mode-message dispatch', () => {
     '/oh-my-qoder:ウルトラワーク build me an app',
     '/omc:씨씨지 deep interview this task',
     '/oh-my-qoder:シーシージー deep interview this task',
-    '/oh-my-claudecode:ultrawork build me an app',
-    '/oh-my-claudecode:ulw build me an app',
-    '/oh-my-claudecode:uw build me an app',
-    '/oh-my-claudecode:ccg deep interview this task',
-    '/oh-my-claudecode:claude-codex-gemini deep interview this task',
+    '/oh-my-qoder:ultrawork build me an app',
+    '/oh-my-qoder:ulw build me an app',
+    '/oh-my-qoder:uw build me an app',
+    '/oh-my-qoder:ccg deep interview this task',
+    '/oh-my-qoder:claude-codex-gemini deep interview this task',
   ])('passes through retired slash route before dispatching arguments: %s', (prompt) => {
     for (const detectorPath of [SCRIPT_PATH, TEMPLATE_PATH]) {
       const cwd = mkdtempSync(join(tmpdir(), 'keyword-detector-retired-slash-'));

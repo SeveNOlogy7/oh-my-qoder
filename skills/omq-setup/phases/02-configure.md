@@ -25,7 +25,7 @@ Use the Skill tool to invoke: `hud` with args: `setup`
 Do not generate, normalize, or patch `statusLine` paths inline in this phase. This is especially important on Windows, where backslash path handling must stay inside the `hud` skill.
 
 This will:
-1. Install the HUD wrapper script to `~/.qoder/hud/omc-hud.mjs`
+1. Install the HUD wrapper script to `~/.qoder/hud/omq-hud.mjs`
 2. Configure `statusLine` in `~/.qoder/settings.json`
 3. Report status and prompt to restart if needed
 
@@ -37,7 +37,7 @@ bash "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/setup-progress.sh" 
 
 ## Step 2.2: Repair Stale Plugin Cache References
 
-After a marketplace update, Qoder CLI may still have old OMC cache paths in the running session or plugin registry. Repair those references before any cache cleanup so setup does not repeatedly emit stale plugin directory errors.
+After a marketplace update, Qoder CLI may still have old OMQ cache paths in the running session or plugin registry. Repair those references before any cache cleanup so setup does not repeatedly emit stale plugin directory errors.
 
 ```bash
 node "${OMQ_SETUP_PLUGIN_ROOT:-${QODER_PLUGIN_ROOT}}/scripts/repair-plugin-cache.mjs"
@@ -54,10 +54,10 @@ const p=require('path'),f=require('fs');
 const d=process.env.QODER_CONFIG_DIR||process.env.QODERCN_CONFIG_DIR||(()=>{throw new Error('config root unset - run this inside a Qoder session')})();
 let v='';
 // Try cache directory first
-const b=p.join(d,'plugins','cache','omc','oh-my-qoder');
+const b=p.join(d,'plugins','cache','omq','oh-my-qoder');
 try{const vs=f.readdirSync(b).filter(x=>/^\d/.test(x)).sort((a,c)=>a.localeCompare(c,void 0,{numeric:true}));if(vs.length)v=vs[vs.length-1]}catch{}
-// Try .omc-version.json second
-if(v==='')try{const j=JSON.parse(f.readFileSync('.omc-version.json','utf-8'));v=j.version||''}catch{}
+// Try .omq-version.json second
+if(v==='')try{const j=JSON.parse(f.readFileSync('.omq-version.json','utf-8'));v=j.version||''}catch{}
 // Try AGENTS.md header third
 if(v==='')for(const c of['.qoder/AGENTS.md',p.join(d,'AGENTS.md')]){try{const m=f.readFileSync(c,'utf-8').match(/^# oh-my-qoder.*?(v?\d+\.\d+\.\d+)/m);if(m){v=m[1].replace(/^v/,'');break}}catch{}}
 console.log('Installed:',v||'(not found)');
@@ -91,10 +91,10 @@ Use the AskUserQuestion tool to prompt the user:
 **Options:**
 1. **ultrawork (maximum capability)** - Uses all agent tiers including Opus for complex tasks. Best for challenging work where quality matters most. (Recommended)
 
-Store the preference in `~/.qoder/.omc-config.json`:
+Store the preference in `~/.qoder/.omq-config.json`:
 
 ```bash
-CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omq-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -124,25 +124,25 @@ echo "Default execution mode set to: USER_CHOICE"
 
 **Note**: This preference ONLY affects generic keywords ("fast", "parallel"). Explicit keywords ("ulw") always override this preference.
 
-## Step 2.5: Install OMC CLI Tool
+## Step 2.5: Install OMQ CLI Tool
 
 The OMQ CLI (`omq` command) provides standalone helper commands such as `omq hud`, `omq teleport`, and `omq team ...`.
 
 First, check if the CLI is already installed:
 
 ```bash
-if command -v omc &>/dev/null; then
-  OMC_CLI_VERSION=$(omc --version 2>/dev/null | head -1 || echo "installed")
-  echo "OMC CLI already installed: $OMC_CLI_VERSION"
-  OMC_CLI_INSTALLED="true"
+if command -v omq &>/dev/null; then
+  OMQ_CLI_VERSION=$(omq --version 2>/dev/null | head -1 || echo "installed")
+  echo "OMQ CLI already installed: $OMQ_CLI_VERSION"
+  OMQ_CLI_INSTALLED="true"
 else
-  OMC_CLI_INSTALLED="false"
+  OMQ_CLI_INSTALLED="false"
 fi
 ```
 
-If `OMC_CLI_INSTALLED` is `"true"`, skip the rest of this step.
+If `OMQ_CLI_INSTALLED` is `"true"`, skip the rest of this step.
 
-If `OMC_CLI_INSTALLED` is `"false"`, use AskUserQuestion:
+If `OMQ_CLI_INSTALLED` is `"false"`, use AskUserQuestion:
 
 **Question:** "Would you like to install the OMQ CLI globally for standalone helper commands? (`omq`, `omq hud`, `omq teleport`)"
 
@@ -154,19 +154,19 @@ If user chooses **Yes**:
 
 ```bash
 if ! command -v npm &>/dev/null; then
-  echo "WARNING: npm not found. Cannot install OMC CLI automatically."
+  echo "WARNING: npm not found. Cannot install OMQ CLI automatically."
   echo "Install Node.js/npm first, then run: npm install -g oh-my-qoder"
 else
   if npm install -g oh-my-qoder 2>&1; then
-    echo "OMC CLI installed successfully."
-    if command -v omc &>/dev/null; then
-      OMC_CLI_VERSION=$(omc --version 2>/dev/null | head -1 || echo "installed")
-      echo "Verified: omc $OMC_CLI_VERSION"
+    echo "OMQ CLI installed successfully."
+    if command -v omq &>/dev/null; then
+      OMQ_CLI_VERSION=$(omq --version 2>/dev/null | head -1 || echo "installed")
+      echo "Verified: omq $OMQ_CLI_VERSION"
     else
-      echo "Installed but 'omc' not on PATH. You may need to restart your shell."
+      echo "Installed but 'omq' not on PATH. You may need to restart your shell."
     fi
   else
-    echo "WARNING: Failed to install OMC CLI (permission issue or network error)."
+    echo "WARNING: Failed to install OMQ CLI (permission issue or network error)."
     echo "You can install manually later: npm install -g oh-my-qoder"
     echo "Or with sudo: sudo npm install -g oh-my-qoder"
   fi
@@ -217,7 +217,7 @@ If beads or beads-rust is detected, use AskUserQuestion:
 Store the preference:
 
 ```bash
-CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omq-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then

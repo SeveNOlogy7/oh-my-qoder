@@ -36,7 +36,7 @@ function fixtureTeamRoot(cwd: string, teamName: string): string {
 
 const tmuxMocks = vi.hoisted(() => {
   const tmuxServerIdentity = {
-    socket_path: '/tmp/omc-test-tmux.sock',
+    socket_path: '/tmp/omq-test-tmux.sock',
     server_pid: 4242,
     process_started_at: process.platform === 'darwin'
       ? 'darwin:1700000000:123456'
@@ -135,7 +135,7 @@ describe('shutdownTeamV2 detached worktree cleanup', () => {
   let previousOmcStateDir: string | undefined;
 
   beforeEach(() => {
-    previousOmcStateDir = process.env.OMC_STATE_DIR;
+    previousOmcStateDir = process.env.OMQ_STATE_DIR;
     tmuxMocks.killWorkerPanes.mockClear();
     tmuxMocks.killTeamSession.mockClear();
     tmuxMocks.resolveSplitPaneWorkerPaneIds.mockClear();
@@ -175,14 +175,14 @@ describe('shutdownTeamV2 detached worktree cleanup', () => {
     tmuxMocks.verifyTeamTargetOwnership.mockResolvedValue({ kind: 'owned' });
     tmuxMocks.observeTeamSessionTargetPresence.mockReset();
     tmuxMocks.observeTeamSessionTargetPresence.mockResolvedValue({ kind: 'owned' });
-    repoDir = mkdtempSync(join(tmpdir(), 'omc-runtime-v2-shutdown-'));
+    repoDir = mkdtempSync(join(tmpdir(), 'omq-runtime-v2-shutdown-'));
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoDir, stdio: 'pipe' });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: repoDir, stdio: 'pipe' });
     writeFileSync(join(repoDir, 'README.md'), '# test\n', 'utf-8');
     execFileSync('git', ['add', 'README.md'], { cwd: repoDir, stdio: 'pipe' });
     execFileSync('git', ['commit', '-m', 'init'], { cwd: repoDir, stdio: 'pipe' });
-    process.env.OMC_STATE_DIR = join(repoDir, '.omc-state');
+    process.env.OMQ_STATE_DIR = join(repoDir, '.omq-state');
   });
 
   afterEach(async () => {
@@ -190,8 +190,8 @@ describe('shutdownTeamV2 detached worktree cleanup', () => {
       await terminateWorkerLaunchProvider(attempt, 2_000).catch(() => false);
       await bootstrap.catch(() => undefined);
     }
-    if (previousOmcStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousOmcStateDir;
+    if (previousOmcStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousOmcStateDir;
     rmSync(repoDir, { recursive: true, force: true });
   });
 
@@ -458,9 +458,81 @@ describe('shutdownTeamV2 detached worktree cleanup', () => {
       instanceId: TEAM_INSTANCE_ID,
     });
     const { shutdownTeamV2 } = await import('../runtime-v2.js');
-    await expect(shutdownTeamV2(teamName, repoDir, { timeoutMs: 0 })).resolves.toEqual({
-      outcome: 'preserved', reason: 'worker_pane_liveness_unknown', workers: ['worker-unknown'],
+    await expect(shutdownTeamV2(teamName, repoDir, { timeoutMs: 0, force: true })).resolves.toEqual({
+      outcome: 'preserved', reason: 'worker_process_reaped_pane_unconfirmed', workers: ['worker-unknown'],
     });
+
+    expect(tmuxMocks.killTeamSession).not.toHaveBeenCalled();
+    expect(existsSync(worktree.path)).toBe(true);
+    expect(existsSync(teamRoot)).toBe(true);
+    expect(existsSync(absPath(repoDir, TeamPaths.teamInstanceReservation(
+      binding.workspace_hash,
+      teamName,
+    )))).toBe(true);
+    expect(existsSync(absPath(repoDir, TeamPaths.teamInstanceCleanupReceipt(
+      binding.workspace_hash,
+      teamName,
+      TEAM_INSTANCE_ID,
+    )))).toBe(false);
+  });
+
+  it('logs pane cleanup errors while keeping worktrees and team state', async () => {
+    const teamName = 'shutdown-kill-error-team';
+    await reserveFixtureInstance(teamName, repoDir);
+    const teamRoot = fixtureTeamRoot(repoDir, teamName);
+    mkdirSync(teamRoot, { recursive: true });
+    const worktree = createWorkerWorktree(teamName, 'worker-kill-error', repoDir);
+    const launchAttempt = await prepareAcceptedLaunch(repoDir, teamName, 'worker-kill-error', '%45');
+    writeFileSync(join(teamRoot, 'config.json'), JSON.stringify({
+      name: teamName,
+      instance_id: TEAM_INSTANCE_ID,
+      tmux_server_identity: tmuxMocks.tmuxServerIdentity,
+      task: 'demo',
+      agent_type: 'claude',
+      worker_launch_mode: 'interactive',
+      worker_count: 1,
+      max_workers: 20,
+      workers: [{
+        name: 'worker-kill-error',
+        index: 1,
+        role: 'executor',
+        assigned_tasks: [],
+        pane_id: '%45',
+        worker_cli: 'claude',
+        launch_attempt_id: launchAttempt.attempt_id,
+        launch_descriptor: { schema_version: 1, provider: 'claude', model: null, binary: '/bin/echo', args: [] },
+        working_dir: worktree.path,
+        team_state_root: teamRoot,
+        worktree_path: worktree.path,
+        worktree_created: true,
+      }],
+      created_at: new Date().toISOString(),
+      tmux_session: `${teamName}:0`,
+      leader_pane_id: null,
+      hud_pane_id: null,
+      resize_hook_name: null,
+      resize_hook_target: null,
+      next_task_id: 1,
+    }, null, 2), 'utf-8');
+    tmuxMocks.getWorkerLiveness.mockResolvedValue('alive');
+    tmuxMocks.killOwnedWorkerPane.mockRejectedValueOnce(new Error('pane kill failed'));
+
+    const binding = createTeamInstanceBinding({
+      teamName,
+      cwd: repoDir,
+      instanceId: TEAM_INSTANCE_ID,
+    });
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const { shutdownTeamV2 } = await import('../runtime-v2.js');
+    try {
+      await expect(shutdownTeamV2(teamName, repoDir, { timeoutMs: 0, force: true })).resolves.toEqual({
+        outcome: 'preserved', reason: 'worker_process_reaped_pane_unconfirmed', workers: ['worker-kill-error'],
+      });
+      expect(stderr.mock.calls.map(([chunk]) => String(chunk)).join(''))
+        .toContain('worker pane cleanup failed for worker-kill-error: pane kill failed');
+    } finally {
+      stderr.mockRestore();
+    }
 
     expect(tmuxMocks.killTeamSession).not.toHaveBeenCalled();
     expect(existsSync(worktree.path)).toBe(true);

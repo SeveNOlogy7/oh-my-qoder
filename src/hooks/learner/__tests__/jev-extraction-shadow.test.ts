@@ -13,11 +13,11 @@ const ROUTINE = 'Ran the test suite and it passed.';
 const TEST_KEY = 'test-key-123';
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_EXCERPT_CHARS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_EXCERPT_CHARS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
 ] as const;
 
 let logDir = '';
@@ -30,8 +30,8 @@ beforeEach(() => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OMC_JEV_LOG_DIR = logDir;
-  process.env.OMC_JEV_ENDPOINT = 'http://127.0.0.1:1/v1/systemone';
+  process.env.OMQ_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV_ENDPOINT = 'http://127.0.0.1:1/v1/systemone';
 });
 
 afterEach(() => {
@@ -52,7 +52,7 @@ function stubFetch(noul = false): { fetchFn: typeof fetch; calls: Array<{ body: 
       status: 200,
       json: async () => ({
         answers: {
-          extractable_moment: { type: 'Noul', noul, confidence: 0.8 },
+          extractable_moment: { type: 'noul', noul, confidence: 0.8 },
         },
       }),
     } as unknown as Response;
@@ -76,7 +76,7 @@ async function waitForLogLines(count: number): Promise<string[]> {
 describe('learner-extraction shadow judgment point', () => {
   it('with config, records a shadow line with the twin detection and the Jev Noul', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'learner-extraction';
+    process.env.OMQ_JEV = 'learner-extraction';
     const { fetchFn, calls } = stubFetch(true);
 
     const result = await recordLearnerExtractionShadow(EXTRACTABLE, 'fix the auth bug', fetchFn);
@@ -99,7 +99,7 @@ describe('learner-extraction shadow judgment point', () => {
     expect(entry.point).toBe('learner-extraction');
     expect(entry.mode).toBe('shadow');
     expect(entry.heuristic.detected).toBe(true);
-    expect(entry.jev?.type).toBe('Noul');
+    expect(entry.jev?.type).toBe('noul');
     expect(entry.state).toMatchObject({
       assistant_message: EXTRACTABLE,
       user_message: 'fix the auth bug',
@@ -123,7 +123,7 @@ describe('learner-extraction shadow judgment point', () => {
     expect(existsSync(join(logDir, 'shadow.jsonl'))).toBe(false);
   });
 
-  it('without OMC_JEV opt-in, a key alone triggers zero fetch calls (strict per-point opt-in)', async () => {
+  it('without OMQ_JEV opt-in, a key alone triggers zero fetch calls (strict per-point opt-in)', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
     const { fetchFn, calls } = stubFetch();
 
@@ -135,9 +135,9 @@ describe('learner-extraction shadow judgment point', () => {
     expect(existsSync(join(logDir, 'shadow.jsonl'))).toBe(false);
   });
 
-  it('with OMC_JEV=off, zero fetch calls even with a key', async () => {
+  it('with OMQ_JEV=off, zero fetch calls even with a key', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'off';
+    process.env.OMQ_JEV = 'off';
     const { fetchFn, calls } = stubFetch();
 
     const result = await recordLearnerExtractionShadow(ROUTINE, undefined, fetchFn);
@@ -148,8 +148,8 @@ describe('learner-extraction shadow judgment point', () => {
 
   it('bounds the message excerpt in the logged state', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'learner-extraction';
-    process.env.OMC_JEV_EXCERPT_CHARS = '40';
+    process.env.OMQ_JEV = 'learner-extraction';
+    process.env.OMQ_JEV_EXCERPT_CHARS = '40';
     const { fetchFn } = stubFetch();
 
     await recordLearnerExtractionShadow(EXTRACTABLE, undefined, fetchFn);
@@ -162,8 +162,8 @@ describe('learner-extraction shadow judgment point', () => {
 
   it('on never-resolving Jev fetch, the detection is unchanged (degraded, host behavior identical)', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'learner-extraction';
-    process.env.OMC_JEV_TIMEOUT_MS = '20';
+    process.env.OMQ_JEV = 'learner-extraction';
+    process.env.OMQ_JEV_TIMEOUT_MS = '20';
     const fetchFn = vi.fn(async () => new Promise<Response>(() => {})) as unknown as typeof fetch;
 
     const result = await recordLearnerExtractionShadow(EXTRACTABLE, undefined, fetchFn);

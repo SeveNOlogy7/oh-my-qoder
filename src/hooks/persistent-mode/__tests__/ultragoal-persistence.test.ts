@@ -206,7 +206,7 @@ describe('ultragoal persistence and Claude /goal enforcement', () => {
   it('allows trusted plugin CLI cancel/state bootstrap and denies untrusted node scripts (#3630)', () => {
     const cwd = makeTempProject('omc-ultragoal-plugin-cancel-');
     writeUltragoalState(cwd);
-    const pluginEntry = join(cwd, 'bin', 'oh-my-claudecode.js');
+    const pluginEntry = join(cwd, 'bin', 'oh-my-qoder.js');
     mkdirSync(join(cwd, 'bin'), { recursive: true });
     writeFileSync(pluginEntry, '#!/usr/bin/env node\n');
 

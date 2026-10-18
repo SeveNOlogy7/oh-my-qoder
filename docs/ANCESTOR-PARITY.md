@@ -24,7 +24,8 @@
 | v5.3.0 | 2026-09-06 | **adopted** | this round: pin `5174b8a`, adoption `35f99d2` (6840/6840 blob-verified), see below |
 | v5.4.0 | 2026-09-11 | **adopted** | this round: pin `83c3fab`, adoption `b9aaa2d` (6909/6909 blob-verified), see below |
 | v5.5.0 | 2026-09-22 | **adopted** | this round: pin `11b237f`, adoption `5c933c8` (7005/7005 blob-verified), see below |
-| v5.6.0 | 2026-10-01 | not measured | — |
+| v5.6.0 | 2026-10-01 | **adopted** | this round: pin `c56fc5e`, adoption `78b03e9` (7077/7077 blobs measured via the GitHub API — see the caveat below), see below |
+| v5.6.1 | not measured | not measured | — |
 | v5.6.2 | 2026-10-06 | not measured | latest ancestor tag at this round's time of writing |
 
 ## Blob-tree diff v4.15.1 to v5.0.0
@@ -219,13 +220,52 @@ adopted surface above.
 | docs token face rewrites (`docs/REFERENCE.md`, `docs/shared/features.md`, `README.md`, among the hop's doc rewrites) | upstream text carries the `omc` cancel-keyword spellings | fork spellings re-asserted in the docs lane: `REFERENCE.md` cancel rows restored to the `omq` spelling (authority v4.15.1 form and the shipped detector tokens); `features.md`/`README.md` keep the authority's own `omc` spelling at those paths |
 | plugin manifests + `CHANGELOG.md` | version 5.4.0 -> v5.5.0 and release notes | adopted verbatim (the fork's pre-adoption blobs equalled the v5.4.0 versions; byte-verified against the cached v5.5.0 tree) |
 
+## Blob-tree diff v5.5.0 to v5.6.0
+
+Method: full git tree blob SHA comparison of the cached ancestor trees (`truncated: false`,
+7005 to 7077 blobs). Measured this round from `.omq/cache/ancestor-v5.6.0-tree.json`.
+
+| Metric | All files | Adoption surface (excluding `.github/**`) |
+|--------|----------:|----------------------------------------:|
+| Added | 73 | 73 |
+| Modified | 144 | 139 |
+| Removed | 1 | 1 |
+| Unchanged | 6860 | 6860 |
+
+Excluded from the surface this round: 5 paths under `.github/**` (`CLAUDE.md`,
+`generated-artifact-authorizations.json`, `release-body.md`, `workflows/ci.yml`,
+`workflows/release.yml`). The fork carries 159 OMQ-only paths (disjoint by construction).
+
+`CONTEXT.md` was removed upstream and is **removed-kept** under the round's rule 2 — the fork
+still tracks it and nothing was restored.
+
+### Provenance caveat on the blob count
+
+The 7077 figure was measured through the GitHub API (`/git/trees/<sha>?recursive=1`,
+`truncated: false`). Repeated `git fetch` attempts from the upstream repository failed on this
+box with `RPC failed; curl 18 transfer closed with outstanding read data remaining` and later
+`Recv failure: Connection was reset`, so the ancestor tree could not be obtained over the git
+protocol and no authoritative **treeSha** was measured. Do not cite a treeSha for this round.
+
+## v5.6.0 changes that touched OMQ surfaces
+
+| Change | Detail | OMQ disposition |
+|--------|--------|-----------------|
+| `CliAgentType` loses `'qwen'` | upstream narrowed the CLI agent union to `'claude' \| 'codex' \| 'gemini' \| 'cursor' \| 'grok' \| 'antigravity'`, while `src/team/cli-agent-types.ts` still builds a `Set<CliAgentType>` containing `'qwen'` | **fork feature restored**: `model-contract.ts` re-includes `'qwen'`. Proven necessary — without it tsc fails with `TS2769` on `cli-agent-types.ts:10` and `TS2741` on the `Record<CliAgentType, …>` tables |
+| `InstallOptions` gains `skipClaudeCheck`; `hud/index.ts` imports `./omc-state.js` and declares `omcVersion`/`omcUpdateSource` | upstream renaming on the installer/HUD surface | **fork identity restored**: `skipQoderCheck`, `./omq-state.js`, `omqVersion`, `omqUpdateSource`. A blind bulk rename is wrong here — the legacy corpora (`src/installer/legacy-claude-md-corpus.ts`, `src/installer/__tests__/fixtures/legacy-guides.json`) and the `tests/known-failures-*.json` failure signatures legitimately keep ancestor spellings |
+| `canonicalTeamStatePath`'s prefix guard still tested the ancestor `.omc` spelling while `TeamPaths.*` emits `.omq/…` strings | the guard never matched, so every real call fell through to `canonicalTeamCwd()` instead of `canonicalTeamOmcRoot()`; `assertTeamStatePathSafeSync` then threw `team_instance_path_outside_storage_root` | **root-cause fix** (`b6142e5`). Proven by before/after: with the guard reverted to `.omc`, all four production shapes (`recoveryLifecycleLock`, `teamInstanceReservation`, `teamInstanceAuthorityRoot`, `teamInstanceCleanupRoot`) resolve OUTSIDE the canonical root and the assertion throws; with `.omq` they resolve INSIDE and it does not. `team-instance.test.ts` 17/17 |
+| v1 mutation entrypoints retired | `src/team/runtime-v1-legacy.ts:21` now fails closed (`retired_v1_runtime:spawnWorkerForTask`), while fork tests still call the v1 entrypoints | **upstream behaviour kept**, fork tests flagged: this is a genuine v5.6.0-vs-fork divergence (the `retired-v1-runtime` family, 14 added rows). Proven not a regression from the state-paths fix — it fails identically with that fix reverted |
+| `--pool=threads` / fork-storm failure on win32 | the default pool forks one worker per CPU and dies with `fatal error in forked process - WFSO timed out after longjpp`; `--pool=threads` is materially worse (160/159 failures vs 21 at medium load) | terminal run of record uses `npx vitest run --exclude "tests/perf/**" --no-file-parallelism`; measured 842 files / 15715 tests, `Tests 1287 failed \| 14173 passed \| 255 skipped` |
+| 73 new non-`dist` files | `scripts/{budget-guard,git-guardrails,jev-resolve,runs-reconciler,stale-run-reporter}.mjs`, `scripts/lib/{enforcement-log,jev-shadow,run-reaper}.mjs`, four skills (`map`, `pr`, `refit`, `tdd`), `GLOSSARY.md`, `docs/design/*`, `docs/factory/t6-acceptance`, `src/factory/**`, `src/cli/commands/{factory,intake,ralph}.ts`, `src/lib/{host-load-gate,runs-ledger}.ts`, `src/hooks/session-end/{chain-enqueuer,check-evidence,guardrails,routing,spawn-next}.ts`, `templates/hooks/session-end.mjs`, ~40 new tests | adopted verbatim; the naming/identity repair restored fork spellings inside them |
+| `inventory/inventory-graph.json` declared `generated.distFiles: 5066` | that figure was inherited from the ancestor when v5.4/v5.5 adoption copied the artifact across, and the fork generator had never re-run to correct it | **stale value corrected** (`726969b`): `--write` regenerates it to `distFiles: 0`. Verified deterministic, not data loss — `listTrackedGenerated` has existed since the v5.0.0 alignment, `dist/` was never tracked (`git log --diff-filter=A -- 'dist/*'` is empty), and `.gitignore` ignored `dist/` from the initial commit |
+
 ## Migration milestones
 
 | Milestone | Scope | State | Evidence |
 |-----------|-------|-------|----------|
-| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.5.0) | pin `11b237f` |
+| M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.6.0) | pin `c56fc5e` |
 | M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 993 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
-| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132`; v5.4.0 round: `83c3fab` (pin), `b9aaa2d` (adoption), `32be4ea` (identity), repair lanes through `37607c7`; v5.5.0 round: `11b237f` (pin), `5c933c8` (adoption), `e595087` (identity), repair lanes through `ddd7e88` |
+| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132`; v5.4.0 round: `83c3fab` (pin), `b9aaa2d` (adoption), `32be4ea` (identity), repair lanes through `37607c7`; v5.5.0 round: `11b237f` (pin), `5c933c8` (adoption), `e595087` (identity), repair lanes through `ddd7e88`; v5.6.0 round: `c56fc5e` (pin), `78b03e9` (adoption), repair lanes through `726969b` |
 | M3 Upstream contributions | 2-4 named PRs to shrink rename surface | not started | not measured |
 | M4 Pipeline gate | Triggered only if backport demand > 10/quarter | not started | not measured |
 

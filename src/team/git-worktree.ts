@@ -5,7 +5,7 @@
  *
  * Native team worktrees live at:
  *   {repoRoot}/.omq/team/{team}/worktrees/{worker}
- * Branch naming (branch mode): omc-team/{teamName}/{workerName}
+ * Branch naming (branch mode): omq-team/{teamName}/{workerName}
  *
  * The public create/remove helpers are kept for legacy callers, but the
  * implementation is conservative: compatible clean worktrees are reused,
@@ -91,7 +91,7 @@ export function getWorktreePath(repoRoot: string, teamName: string, workerName: 
 
 /** Get branch name for a worker. */
 export function getBranchName(teamName: string, workerName: string): string {
-  return `omc-team/${sanitizeName(teamName)}/${sanitizeName(workerName)}`;
+  return `omq-team/${sanitizeName(teamName)}/${sanitizeName(workerName)}`;
 }
 
 function git(repoRoot: string, args: string[], cwd = repoRoot): string {
@@ -260,12 +260,12 @@ export function installWorktreeRootAgents(
   // getOmcRoot(repoRoot) — which in a .omq-workspace layout sits ABOVE repoRoot.
   // Validate against the shared OMC root (and the worktree itself for AGENTS.md),
   // not the sub-repo, or multi-repo writes throw false path-traversal errors.
-  const omcRoot = getOmcRoot(repoRoot);
-  validateResolvedPath(worktreePath, omcRoot);
+  const omqRoot = getOmcRoot(repoRoot);
+  validateResolvedPath(worktreePath, omqRoot);
   const agentsPath = join(worktreePath, 'AGENTS.md');
   validateResolvedPath(agentsPath, worktreePath);
   const backupPath = getRootAgentsBackupPath(repoRoot, teamName, workerName);
-  validateResolvedPath(backupPath, omcRoot);
+  validateResolvedPath(backupPath, omqRoot);
   ensureDirWithMode(getWorkerStateDir(repoRoot, teamName, workerName));
 
   const previous = readRootAgentsBackup(repoRoot, teamName, workerName);
@@ -300,14 +300,14 @@ export function restoreWorktreeRootAgents(
   repoRoot: string,
   worktreePath?: string,
 ): WorktreeRootAgentsRestoreResult {
-  const omcRoot = getOmcRoot(repoRoot);
+  const omqRoot = getOmcRoot(repoRoot);
   const backupPath = getRootAgentsBackupPath(repoRoot, teamName, workerName);
-  validateResolvedPath(backupPath, omcRoot);
+  validateResolvedPath(backupPath, omqRoot);
   const backup = readRootAgentsBackup(repoRoot, teamName, workerName);
   if (!backup) return { restored: false, reason: 'no_backup' };
 
   const resolvedWorktreePath = worktreePath ?? backup.worktreePath;
-  validateResolvedPath(resolvedWorktreePath, omcRoot);
+  validateResolvedPath(resolvedWorktreePath, omqRoot);
   if (!existsSync(resolvedWorktreePath)) {
     try {
       unlinkSync(backupPath);
@@ -637,7 +637,7 @@ export function removeWorkerWorktree(
     } catch { /* branch may not exist */ }
 
     // If a stale plain directory remains and it is not a registered worktree, remove it
-    // only after the shared path guard proves it is an OMC team worktree child.
+    // only after the shared path guard proves it is an OMQ team worktree child.
     if (existsSync(wtPath) && !isRegisteredWorktreePath(repoRoot, wtPath)) {
       validateWorktreeRemovalTarget({
         candidatePath: wtPath,

@@ -50,7 +50,7 @@ beforeEach(() => {
 
 describe('SessionEnd action runner', () => {
   it('observes a fast child exit via microtask after synchronous identity capture', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-'));
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-'));
     directories.push(directory);
     const child = Object.assign(new EventEmitter(), { pid: 12345, unref: vi.fn() });
     childProcess.spawn.mockImplementation(() => {
@@ -68,7 +68,7 @@ describe('SessionEnd action runner', () => {
   it('waits for a delayed process-tree kill after a deadline even when the child exits immediately', async () => {
     vi.useFakeTimers();
     const now = Date.now();
-    const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-'));
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-'));
     directories.push(directory);
     const child = Object.assign(new EventEmitter(), { pid: 12347, unref: vi.fn() });
     childProcess.spawn.mockReturnValue(child);
@@ -94,7 +94,7 @@ describe('SessionEnd action runner', () => {
   it('returns after the post-kill deadline when Windows-style tree termination fails and the child never exits', async () => {
     vi.useFakeTimers();
     const now = Date.now();
-    const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-'));
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-'));
     directories.push(directory);
     const child = Object.assign(new EventEmitter(), { pid: 12348, unref: vi.fn() });
     childProcess.spawn.mockReturnValue(child);
@@ -111,8 +111,58 @@ describe('SessionEnd action runner', () => {
     expect(child.unref).toHaveBeenCalledOnce();
   });
 
+  it('passes model-provider auth and gh auth context through to every action runner', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-auth-'));
+    directories.push(directory);
+    const child = Object.assign(new EventEmitter(), { pid: 12350, unref: vi.fn() });
+    childProcess.spawn.mockImplementation(() => {
+      queueMicrotask(() => child.emit('exit', 0));
+      return child;
+    });
+
+    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+    vi.stubEnv('ANTHROPIC_BASE_URL', 'https://example.invalid');
+    vi.stubEnv('OMQ_HOOK_BRIDGE', '/tmp/bridge.js');
+
+    // The spawn-next action launches claude chain links from its runner; the
+    // passthrough must reach it or every link exits "Not logged in".
+    const spawnNextContext = context(directory, 'foreground-cleanup');
+    spawnNextContext.actionName = 'spawn-next';
+    await runSessionEndAction(spawnNextContext, async () => undefined);
+    const environment = childProcess.spawn.mock.calls[0][2].env as NodeJS.ProcessEnv;
+    expect(environment).toMatchObject({
+      ANTHROPIC_API_KEY: 'test-key',
+      ANTHROPIC_BASE_URL: 'https://example.invalid',
+      OMQ_HOOK_BRIDGE: '/tmp/bridge.js',
+    });
+    if (process.platform === 'win32') {
+      expect(environment).toHaveProperty('APPDATA', process.env.APPDATA);
+      expect(environment).toHaveProperty('LOCALAPPDATA', process.env.LOCALAPPDATA);
+    }
+  });
+
+  it('does not pass model-provider auth to non spawn-next action children', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+    for (const name of ['callback', 'openclaw', 'foreground-cleanup'] as const) {
+      const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-noauth-'));
+      directories.push(directory);
+      const child = Object.assign(new EventEmitter(), { pid: 12351, unref: vi.fn() });
+      childProcess.spawn.mockReset();
+      childProcess.spawn.mockImplementation(() => {
+        queueMicrotask(() => child.emit('exit', 0));
+        return child;
+      });
+      const ctx = context(directory, 'foreground-cleanup');
+      ctx.actionName = name;
+      ctx.action = { ...ctx.action, payload: {} } as typeof ctx.action;
+      await runSessionEndAction(ctx, async () => undefined);
+      const environment = childProcess.spawn.mock.calls[0][2].env as NodeJS.ProcessEnv;
+      expect(environment).not.toHaveProperty('ANTHROPIC_API_KEY');
+    }
+  });
+
   it('passes notification credentials only to notification action children', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-'));
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-'));
     directories.push(directory);
     const child = Object.assign(new EventEmitter(), { pid: 12346, unref: vi.fn() });
     childProcess.spawn.mockImplementation(() => {
@@ -137,7 +187,7 @@ describe('SessionEnd action runner', () => {
   });
 
   it('uses original bounded OpenClaw routing instead of a recovering session ambient environment', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-'));
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-'));
     directories.push(directory);
     const child = Object.assign(new EventEmitter(), { pid: 12349, unref: vi.fn() });
     childProcess.spawn.mockImplementation(() => {
@@ -181,7 +231,7 @@ describe('SessionEnd action runner', () => {
     expect(environment).not.toHaveProperty('OMQ_DISCORD_WEBHOOK_URL');
   });
   it('fails closed without signalling any PID when synchronous identity capture returns null', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-identity-null-'));
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-identity-null-'));
     directories.push(directory);
     const child = Object.assign(new EventEmitter(), { pid: 99999, unref: vi.fn(), kill: vi.fn() });
     childProcess.spawn.mockImplementation(() => child);
@@ -199,7 +249,7 @@ describe('SessionEnd action runner', () => {
   it('uses synchronous identity for owned-tree termination on deadline', async () => {
     vi.useFakeTimers();
     const now = Date.now();
-    const directory = mkdtempSync(join(tmpdir(), 'omc-action-runner-sync-id-'));
+    const directory = mkdtempSync(join(tmpdir(), 'omq-action-runner-sync-id-'));
     directories.push(directory);
     const child = Object.assign(new EventEmitter(), { pid: 88888, unref: vi.fn() });
     childProcess.spawn.mockReturnValue(child);

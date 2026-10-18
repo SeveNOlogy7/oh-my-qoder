@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Review reusable project knowledge and decide what belongs in project memory, notepad, or durable docs"
 ---
 
 # OMQ remember

@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Deep codebase initialization with hierarchical AGENTS.md documentation"
 ---
 
 # OMQ deepinit

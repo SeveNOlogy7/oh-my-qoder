@@ -1,16 +1,16 @@
 ---
 name: cancel
 aliases: [cancel-ralph]
-description: Cancel any active OMC mode (autopilot, ralph, ultragoal, swarm, ultrapilot, pipeline, team) and clean up retired legacy state
+description: Cancel any active OMQ mode (autopilot, ralph, ultragoal, swarm, ultrapilot, pipeline, team) and clean up retired legacy state
 argument-hint: "[--force] [--all]"
 level: 2
 ---
 
 # Cancel Skill
 
-Intelligent cancellation that detects and cancels the active OMC mode.
+Intelligent cancellation that detects and cancels the active OMQ mode.
 
-**The cancel skill is the standard way to complete and exit any OMC mode.**
+**The cancel skill is the standard way to complete and exit any OMQ mode.**
 When the stop hook detects completion, it instructs the LLM to invoke this
 skill for state cleanup. Retry a failed operation in the same scope and report
 what remains; `--force` changes shutdown urgency, never scope, lock handling,
@@ -52,7 +52,7 @@ Automatically detects and cancels active modes:
   no `TeamDelete`.
 - **Team + Ralph**: Team is cancelled first, then linked Ralph is cleared in
   the same session; a Team failure retains linked Ralph.
-- **OMC Teams, Plan Consensus, and Self-Improve**: Use their mode-specific
+- **OMQ Teams, Plan Consensus, and Self-Improve**: Use their mode-specific
   protected cleanup and preserve artifacts designated for resume.
 
 ## Usage
@@ -80,7 +80,7 @@ If `state_clear` is unavailable or fails, retry the same scoped operation and
 report the failure. The fallback below is only an emergency escape from a
 stop-hook loop for a non-force, non-Team cancellation. It removes files only
 for an explicitly identified current session. Do NOT use this fallback for
-`autopilot`, `team`, or `omc-teams`, or for `--force`/`--all`; never use it to
+`autopilot`, `team`, or `omq-teams`, or for `--force`/`--all`; never use it to
 bypass a lock, ownership check, corruption, or another state-tool failure.
 Linked modes need one protected operation per mode.
 
@@ -101,16 +101,16 @@ if [ -n "${OMQ_STATE_DIR:-}" ]; then
 elif [ "$REPO_ROOT" != "/" ] && [ -d "$REPO_ROOT/.omq" ]; then
   OMQ_STATE="$REPO_ROOT/.omq/state"
 else
-  echo "ERROR: Could not locate .omc state directory" >&2; exit 1
+  echo "ERROR: Could not locate .omq state directory" >&2; exit 1
 fi
-[ -d "$OMC_STATE" ] || { echo "ERROR: State dir not found at $OMC_STATE" >&2; exit 1; }
+[ -d "$OMQ_STATE" ] || { echo "ERROR: State dir not found at $OMQ_STATE" >&2; exit 1; }
 MODE="ralplan" # replace with the target mode
 [ -n "$SESSION_ID" ] || { echo "ERROR: current session identity is required; refusing unscoped fallback" >&2; exit 1; }
 
-if [ -d "$OMC_STATE/sessions/$SESSION_ID" ]; then
-  rm -f "$OMC_STATE/sessions/$SESSION_ID/${MODE}-state.json" \
-    "$OMC_STATE/sessions/$SESSION_ID/${MODE}-stop-breaker.json" \
-    "$OMC_STATE/sessions/$SESSION_ID/skill-active-state.json"
+if [ -d "$OMQ_STATE/sessions/$SESSION_ID" ]; then
+  rm -f "$OMQ_STATE/sessions/$SESSION_ID/${MODE}-state.json" \
+    "$OMQ_STATE/sessions/$SESSION_ID/${MODE}-stop-breaker.json" \
+    "$OMQ_STATE/sessions/$SESSION_ID/skill-active-state.json"
   NOW_ISO="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   EXPIRES_ISO="$(date -u -d "+30 seconds" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || python3 - <<'PY'
 from datetime import datetime, timedelta, timezone
@@ -170,7 +170,7 @@ Use this dependency order when several modes appear in one scoped status:
 5. Shared Swarm state (global pass only)
 6. Ultrapilot and Pipeline
 7. Native Team
-8. Legacy OMC Teams
+8. Legacy OMQ Teams
 9. Plan Consensus and Self-Improve
 
 Ralph linked to Team is excluded from the standalone step and is handled only
@@ -215,7 +215,7 @@ dependent failure and retry it in the same session.
 4. Only after Team clear succeeds, inspect linked Ralph and clear it with the
    same session id (`state_read(mode="ralph", session_id="<session_id>")` then
    `state_clear(mode="ralph", session_id="<session_id>")`). For legacy
-   `omc team` / `/omc-teams` workers, run the
+   `omq team` / `/omq-teams` workers, run the
    captured team-name orphan scan after state cleanup; native Team has no
    `TeamDelete`.
 
@@ -254,13 +254,13 @@ if Team fails, Ralph remains protected. Both operations use the selected id.
 - Ultrapilot, Pipeline, Plan Consensus, and Self-Improve: use their protected
   session-scoped clear and mode-specific resume/artifact rules.
 - Swarm and other shared state are not guessed from a session; process them in
-  the authorized global pass only. OMC Teams use their own tmux/runtime cleanup.
+  the authorized global pass only. OMQ Teams use their own tmux/runtime cleanup.
 
 Self-Improve cleanup clears its resolved state and orphaned worktrees while
 preserving `iteration_state` and recording `status: "user_stopped"` in the
 resolved `agent-settings.json`. New topic roots are not replaced by a flat
-legacy root. OMC Teams are cleaned through their own captured tmux/runtime
-records, never as native Team state; clear `omc-teams` only through that
+legacy root. OMQ Teams are cleaned through their own captured tmux/runtime
+records, never as native Team state; clear `omq-teams` only through that
 mode's protected session operation.
 
 Finally, clear `state_clear(mode="skill-active", session_id="<session_id>")` as
@@ -287,7 +287,7 @@ state_clear(mode="<legacy-mode>")  # no session_id: --all authorization only
 An unscoped `state_clear` is not a legacy-only API: it can revisit session
 state as well as legacy/shared artifacts. Restrict it to the compatibility
 paths explicitly authorized for this pass, including legacy mode JSON, Swarm
-databases/markers, checkpoints, and shared OMC worker registries. Do not clear
+databases/markers, checkpoints, and shared OMQ worker registries. Do not clear
 native Claude roots or any Team root whose owner was not successfully captured
 and cleared; uncaptured Team roots remain protected. Report global cleanup
 failures separately from scoped session failures.
@@ -295,7 +295,7 @@ failures separately from scoped session failures.
 The explicit compatibility set is:
 
 - `.omq/state/{autopilot,ralph,ralph-plan,ralph-verification}-state.json`
-- `.omq/state/{ultrawork,ultraqa,ultrapilot,pipeline,omc-teams}-state.json`
+- `.omq/state/{ultrawork,ultraqa,ultrapilot,pipeline,omq-teams}-state.json`
 - `.omq/state/{ultrapilot-ownership,plan-consensus,ralplan,boulder,hud}.json`
 - `.omq/state/subagent-tracking.json` and `.omq/state/subagent-tracker.lock`
 - `.omq/state/{swarm.db,swarm.db-wal,swarm.db-shm,swarm-active.marker,swarm-tasks.db}`
@@ -308,7 +308,7 @@ These names expand to the following legacy records (and no session-owned
 replacement): `autopilot-state.json`, `ralph-state.json`,
 `ralph-plan-state.json`, `ralph-verification.json`, `ultrawork-state.json`,
 `ultraqa-state.json`, `ultrapilot-state.json`, `ultrapilot-ownership.json`,
-`pipeline-state.json`, `omc-teams-state.json`, `plan-consensus.json`,
+`pipeline-state.json`, `omq-teams-state.json`, `plan-consensus.json`,
 `ralplan-state.json`, `boulder.json`, `hud-state.json`,
 `subagent-tracking.json`, and `subagent-tracker.lock`.
 
@@ -327,7 +327,7 @@ after the per-session gate opens, but must report that global failure and never
 claim a complete reset. It must not delete durable Autopilot, Ultragoal,
 Self-Improve, or Team handoff artifacts merely because they share a directory.
 
-If no active mode is found in the selected scope, report: “No active OMC modes
+If no active mode is found in the selected scope, report: “No active OMQ modes
 detected.” For a current-session command, do not silently broaden that result;
 use `--all` to enumerate other sessions and perform the global pass.
 

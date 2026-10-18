@@ -548,10 +548,10 @@ describe('Contract 9: hooks/hooks.json portability', () => {
   });
 });
 
-// ── Contract 10: Setup installer manages stale OMC-created files ─────────────
-// User requirement: setup cleanup stale ~/.claude/skills and ~/.claude/agents created by OMC
+// ── Contract 10: Setup installer manages stale OMQ-created files ─────────────
+// User requirement: setup cleanup stale ~/.claude/skills and ~/.claude/agents created by OMQ
 
-describe('Contract 10: installer manages stale OMC-created agents and skills', () => {
+describe('Contract 10: installer manages stale OMQ-created agents and skills', () => {
   it('package ships agent definitions that can be enumerated', () => {
     const agentsDir = join(REPO_ROOT, 'agents');
     expect(existsSync(agentsDir)).toBe(true);
@@ -569,11 +569,18 @@ describe('Contract 10: installer manages stale OMC-created agents and skills', (
     expect(skillDirs.length).toBeGreaterThan(5);
   });
 
-  it('syncBundledSkillDefinitions overwrites existing OMC skills (force copy)', () => {
-    // The installer uses cpSync with { force: true } which overwrites stale versions
-    // Verify this by checking the source code pattern
+  it('syncBundledSkillDefinitions overwrites existing OMQ skills (force copy)', () => {
+    // Existing real directories keep force-copy behavior, while unsafe collisions
+    // are rejected before the copy and marker write.
     const installerSource = readFileSync(join(REPO_ROOT, 'src', 'installer', 'index.ts'), 'utf-8');
-    expect(installerSource).toContain('cpSync(sourceDir, targetDir, { recursive: true, force: true })');
+    const targetCheck = installerSource.indexOf('targetStat = lstatSync(targetDir)');
+    const collisionGuard = installerSource.indexOf('targetStat.isSymbolicLink() || !targetStat.isDirectory()');
+    const forceCopy = installerSource.indexOf('cpSync(sourceDir, targetDir, { recursive: true, force: true })');
+    const markerWrite = installerSource.indexOf('markSkillAsOmcManaged(targetDir)');
+    expect(targetCheck).toBeGreaterThanOrEqual(0);
+    expect(collisionGuard).toBeGreaterThan(targetCheck);
+    expect(forceCopy).toBeGreaterThan(collisionGuard);
+    expect(markerWrite).toBeGreaterThan(collisionGuard);
   });
 
   it('install() overwrites existing agent files when force option is used', () => {
@@ -584,7 +591,7 @@ describe('Contract 10: installer manages stale OMC-created agents and skills', (
     expect(installerSource).toContain('existsSync(filepath) && !options.force');
   });
 
-  it('OMC agent filenames are all lowercase kebab-case .md files', () => {
+  it('OMQ agent filenames are all lowercase kebab-case .md files', () => {
     // Ensures agent filenames follow a consistent pattern so stale detection is reliable
     const agentsDir = join(REPO_ROOT, 'agents');
     const agentFiles = readdirSync(agentsDir).filter(f => f.endsWith('.md') && f !== 'AGENTS.md');
@@ -594,7 +601,7 @@ describe('Contract 10: installer manages stale OMC-created agents and skills', (
     }
   });
 
-  it('OMC skill directories match a consistent naming pattern', () => {
+  it('OMQ skill directories match a consistent naming pattern', () => {
     const skillsDir = join(REPO_ROOT, 'skills');
     const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
       .filter(d => d.isDirectory() && existsSync(join(skillsDir, d.name, 'SKILL.md')));
@@ -606,14 +613,14 @@ describe('Contract 10: installer manages stale OMC-created agents and skills', (
 });
 
 
-describe('OMC setup Ralph runtime prerequisites guidance (issue #3996)', () => {
+describe('OMQ setup Ralph runtime prerequisites guidance (issue #3996)', () => {
   it('checks Node and a writable config dir instead of the retired Ruby probe', () => {
     const phasePath = join(REPO_ROOT, 'skills', 'omq-setup', 'phases', '02-configure.md');
     const content = readFileSync(phasePath, 'utf-8');
 
     expect(content).toContain('Step 2.0: Check Ralph Runtime Prerequisites');
     expect(content).toContain('node --version');
-    // The Ruby check was a false positive (issue #3996): OMC has never used Ruby.
+    // The Ruby check was a false positive (issue #3996): OMQ has never used Ruby.
     expect(content).not.toMatch(/\bruby\b/i);
     expect(content).not.toContain('ruby-full');
     expect(content).not.toContain('brew install ruby');

@@ -129,7 +129,7 @@ trap - EXIT
 echo "Teammate display mode set to: TEAMMATE_MODE"
 ```
 
-#### 3.3.3: Configure Team Defaults in omc-config
+#### 3.3.3: Configure Team Defaults in omq-config
 
 Use AskUserQuestion with multiple questions:
 
@@ -148,10 +148,10 @@ Use AskUserQuestion with multiple questions:
 3. **codex** - Use Codex CLI workers by default when installed
 4. **gemini** - Use Gemini CLI workers by default when installed
 
-Store the team configuration in `~/.qoder/.omc-config.json`:
+Store the team configuration in `~/.qoder/.omq-config.json`:
 
 ```bash
-CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omc-config.json"
+CONFIG_FILE="${QODER_CONFIG_DIR:-${QODERCN_CONFIG_DIR:?not set - run this inside a Qoder session}}/.omq-config.json"
 mkdir -p "$(dirname "$CONFIG_FILE")"
 
 if ! command -v jq >/dev/null 2>&1; then

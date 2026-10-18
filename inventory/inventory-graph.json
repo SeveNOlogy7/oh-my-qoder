@@ -5,31 +5,31 @@
   "provenance": {
     "base": "05c800f40d1ad53b42a78609d2667ef4f726808b",
     "planningHead": "0a91273e61dbbd47eb0af4c02844409251e08398",
-    "head": "c3ac0e5937665378b111591f32a3702566e46507",
-    "sourceSha256": "b4aec425992a5ac11af828386b219370ba2bc049ea4bf4838c0cdbe6b8a680fe",
+    "head": "6d68f5dcf7c93086398bf530e5def727d4429a6a",
+    "sourceSha256": "68889ca09056464c5bd35b52e712e084215bac9ccf94d4ab6c7846049533cf0e",
     "generatedAt": null,
     "generator": "scripts/generate-inventory-graph.mjs"
   },
   "base": "05c800f40d1ad53b42a78609d2667ef4f726808b",
   "planningHead": "0a91273e61dbbd47eb0af4c02844409251e08398",
-  "head": "c3ac0e5937665378b111591f32a3702566e46507",
-  "sourceSha256": "b4aec425992a5ac11af828386b219370ba2bc049ea4bf4838c0cdbe6b8a680fe",
+  "head": "6d68f5dcf7c93086398bf530e5def727d4429a6a",
+  "sourceSha256": "68889ca09056464c5bd35b52e712e084215bac9ccf94d4ab6c7846049533cf0e",
   "counts": {
     "public": {
-      "skills": 55,
+      "skills": 59,
       "commands": 27,
       "workflows": 1,
       "agents": 20,
-      "total": 103
+      "total": 107
     },
     "internal": {
-      "hookFiles": 337,
+      "hookFiles": 354,
       "featureFiles": 84,
       "toolFiles": 62,
-      "libFiles": 45,
-      "templateHooks": 22,
-      "srcFiles": 1444,
-      "total": 1466
+      "libFiles": 49,
+      "templateHooks": 23,
+      "srcFiles": 1488,
+      "total": 1511
     },
     "generated": {
       "distFiles": 0,
@@ -39,9 +39,9 @@
     "prompt": {
       "promptLikeFiles": 65
     },
-    "skills": 55,
+    "skills": 59,
     "commands": 27,
-    "hookFiles": 337,
+    "hookFiles": 354,
     "workflows": 1,
     "agentDefinitions": 18,
     "promptLikeFiles": 65
@@ -74,6 +74,7 @@
       "learner",
       "local-build-reminder",
       "loft",
+      "map",
       "mcp-setup",
       "minimal-code-discipline",
       "minimal-prose-discipline",
@@ -82,9 +83,11 @@
       "omq-setup",
       "omq-teams",
       "plan",
+      "pr",
       "project-session-manager",
       "ralph",
       "ralplan",
+      "refit",
       "release",
       "remember",
       "research",
@@ -94,6 +97,7 @@
       "setup",
       "skill",
       "skillify",
+      "tdd",
       "team",
       "trace",
       "ultragoal",
@@ -229,6 +233,7 @@
       "src/hooks/beads-context/types.ts",
       "src/hooks/bridge-normalize.ts",
       "src/hooks/bridge.ts",
+      "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
       "src/hooks/code-simplifier/__tests__/jev-trigger-shadow.test.ts",
       "src/hooks/code-simplifier/index.ts",
       "src/hooks/code-simplifier/jev-shadow.ts",
@@ -255,6 +260,7 @@
       "src/hooks/factcheck/types.ts",
       "src/hooks/index.ts",
       "src/hooks/jev/__tests__/client.test.ts",
+      "src/hooks/jev/__tests__/points-wire-shape.test.ts",
       "src/hooks/jev/__tests__/resolver.test.ts",
       "src/hooks/jev/client.ts",
       "src/hooks/jev/config.ts",
@@ -375,7 +381,9 @@
       "src/hooks/project-memory/storage.ts",
       "src/hooks/project-memory/types.ts",
       "src/hooks/prompt-prerequisites/index.ts",
+      "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
       "src/hooks/ralph/__tests__/jev-verdict-shadow.test.ts",
+      "src/hooks/ralph/feedback-baseline.ts",
       "src/hooks/ralph/index.ts",
       "src/hooks/ralph/jev-shadow.ts",
       "src/hooks/ralph/loop.ts",
@@ -405,6 +413,7 @@
       "src/hooks/rules-injector/finder.test.ts",
       "src/hooks/rules-injector/finder.ts",
       "src/hooks/rules-injector/index.ts",
+      "src/hooks/rules-injector/matcher.test.ts",
       "src/hooks/rules-injector/matcher.ts",
       "src/hooks/rules-injector/parser.test.ts",
       "src/hooks/rules-injector/parser.ts",
@@ -413,23 +422,35 @@
       "src/hooks/self-improve/__tests__/session-isolation.test.ts",
       "src/hooks/session-end/__tests__/action-runner.test.ts",
       "src/hooks/session-end/__tests__/callbacks.test.ts",
+      "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+      "src/hooks/session-end/__tests__/check-evidence.test.ts",
       "src/hooks/session-end/__tests__/cleanup-manifest.test.ts",
       "src/hooks/session-end/__tests__/duplicate-notifications.test.ts",
+      "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+      "src/hooks/session-end/__tests__/guardrails.test.ts",
       "src/hooks/session-end/__tests__/mode-state-cleanup.test.ts",
       "src/hooks/session-end/__tests__/openclaw-session-end.test.ts",
+      "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
       "src/hooks/session-end/__tests__/python-repl-cleanup.test.ts",
+      "src/hooks/session-end/__tests__/routing.test.ts",
       "src/hooks/session-end/__tests__/session-duration.test.ts",
       "src/hooks/session-end/__tests__/session-end-bridge-cleanup.test.ts",
       "src/hooks/session-end/__tests__/session-end-timeout.test.ts",
+      "src/hooks/session-end/__tests__/spawn-next.test.ts",
       "src/hooks/session-end/__tests__/subdirectory-cwd.test.ts",
       "src/hooks/session-end/__tests__/team-cleanup.test.ts",
       "src/hooks/session-end/__tests__/worker.test.ts",
       "src/hooks/session-end/action-runner.ts",
       "src/hooks/session-end/action-watchdog.ts",
       "src/hooks/session-end/callbacks.ts",
+      "src/hooks/session-end/chain-enqueuer.ts",
+      "src/hooks/session-end/check-evidence.ts",
       "src/hooks/session-end/cleanup-manifest.ts",
       "src/hooks/session-end/foreground-bootstrap.ts",
+      "src/hooks/session-end/guardrails.ts",
       "src/hooks/session-end/index.ts",
+      "src/hooks/session-end/routing.ts",
+      "src/hooks/session-end/spawn-next.ts",
       "src/hooks/session-end/worker.ts",
       "src/hooks/setup/README.md",
       "src/hooks/setup/__tests__/prune.test.ts",
@@ -651,11 +672,13 @@
     ],
     "libFiles": [
       "src/lib/__tests__/atomic-write.test.ts",
+      "src/lib/__tests__/host-load-gate.test.ts",
       "src/lib/__tests__/mode-state-io.test.ts",
       "src/lib/__tests__/mode-state-lock.test.ts",
       "src/lib/__tests__/payload-limits.test.ts",
       "src/lib/__tests__/plugin-dir.test.ts",
       "src/lib/__tests__/qoder-cli.test.ts",
+      "src/lib/__tests__/runs-ledger.test.ts",
       "src/lib/__tests__/session-id.test.ts",
       "src/lib/__tests__/session-state-paths.type-test.ts",
       "src/lib/__tests__/swallowed-error.test.ts",
@@ -676,6 +699,7 @@
       "src/lib/env-vars.ts",
       "src/lib/featured-contributors.ts",
       "src/lib/file-lock.ts",
+      "src/lib/host-load-gate.ts",
       "src/lib/hud-wrapper-template.ts",
       "src/lib/job-state-db.ts",
       "src/lib/mode-names.ts",
@@ -686,6 +710,7 @@
       "src/lib/project-memory-merge.ts",
       "src/lib/qoder-cli.ts",
       "src/lib/release-generation.ts",
+      "src/lib/runs-ledger.ts",
       "src/lib/security-config.ts",
       "src/lib/session-id.ts",
       "src/lib/session-isolation.ts",
@@ -716,6 +741,7 @@
       "templates/hooks/post-tool-use-failure.mjs",
       "templates/hooks/post-tool-use.mjs",
       "templates/hooks/pre-tool-use.mjs",
+      "templates/hooks/session-end.mjs",
       "templates/hooks/session-start.mjs",
       "templates/hooks/stop-continuation.mjs",
       "templates/hooks/workflow-drift-guard.mjs"
@@ -790,6 +816,7 @@
     "scriptFiles": [
       "scripts/ancestor-attribution.mjs",
       "scripts/audit-multirepo-e2e.mjs",
+      "scripts/budget-guard.mjs",
       "scripts/build-bridge-entry.mjs",
       "scripts/build-claude-md-coordinator.mjs",
       "scripts/build-cli.mjs",
@@ -826,10 +853,12 @@
       "scripts/generate-inventory-graph.mjs",
       "scripts/generate-prompt-projections.mjs",
       "scripts/generate-skill-entitlements.mjs",
+      "scripts/git-guardrails.mjs",
       "scripts/graph-agent-demo.mjs",
       "scripts/install-local.mjs",
       "scripts/inventory-issue-3698.mjs",
       "scripts/jev-eval.mjs",
+      "scripts/jev-resolve.mjs",
       "scripts/keyword-detector.mjs",
       "scripts/known-failures.mjs",
       "scripts/lib/agent-model-config.mjs",
@@ -841,17 +870,20 @@
       "scripts/lib/config-dir.sh",
       "scripts/lib/context-usage.mjs",
       "scripts/lib/encode-project-path.mjs",
+      "scripts/lib/enforcement-log.mjs",
       "scripts/lib/force-agent-delegation-preflight.mjs",
       "scripts/lib/hook-command-normalizer.mjs",
       "scripts/lib/hud-cache-wrapper.sh",
       "scripts/lib/hud-wrapper-template.mjs",
       "scripts/lib/hud-wrapper-template.txt",
+      "scripts/lib/jev-shadow.mjs",
       "scripts/lib/model-routing-override-message.mjs",
       "scripts/lib/plugin-cache-dir.mjs",
       "scripts/lib/pre-tool-enforcer-preflight.mjs",
       "scripts/lib/precompact-publisher.mjs",
       "scripts/lib/precompact-restore.mjs",
       "scripts/lib/read-budget-preflight.mjs",
+      "scripts/lib/run-reaper.mjs",
       "scripts/lib/skill-entitlements.mjs",
       "scripts/lib/state-lock.mjs",
       "scripts/lib/state-root.cjs",
@@ -884,6 +916,7 @@
       "scripts/risk-assess.mjs",
       "scripts/run-provider-advisor.js",
       "scripts/run.cjs",
+      "scripts/runs-reconciler.mjs",
       "scripts/session-end.mjs",
       "scripts/session-start.mjs",
       "scripts/session-summary.mjs",
@@ -895,6 +928,7 @@
       "scripts/shipyard-audit.mjs",
       "scripts/skill-injector.mjs",
       "scripts/smoke-multirepo.mjs",
+      "scripts/stale-run-reporter.mjs",
       "scripts/status.mjs",
       "scripts/stub-hook.mjs",
       "scripts/subagent-tracker.mjs",
@@ -992,6 +1026,7 @@
       "src/hooks/beads-context/types.ts",
       "src/hooks/bridge-normalize.ts",
       "src/hooks/bridge.ts",
+      "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
       "src/hooks/code-simplifier/__tests__/jev-trigger-shadow.test.ts",
       "src/hooks/code-simplifier/index.ts",
       "src/hooks/code-simplifier/jev-shadow.ts",
@@ -1018,6 +1053,7 @@
       "src/hooks/factcheck/types.ts",
       "src/hooks/index.ts",
       "src/hooks/jev/__tests__/client.test.ts",
+      "src/hooks/jev/__tests__/points-wire-shape.test.ts",
       "src/hooks/jev/__tests__/resolver.test.ts",
       "src/hooks/jev/client.ts",
       "src/hooks/jev/config.ts",
@@ -1138,7 +1174,9 @@
       "src/hooks/project-memory/storage.ts",
       "src/hooks/project-memory/types.ts",
       "src/hooks/prompt-prerequisites/index.ts",
+      "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
       "src/hooks/ralph/__tests__/jev-verdict-shadow.test.ts",
+      "src/hooks/ralph/feedback-baseline.ts",
       "src/hooks/ralph/index.ts",
       "src/hooks/ralph/jev-shadow.ts",
       "src/hooks/ralph/loop.ts",
@@ -1168,6 +1206,7 @@
       "src/hooks/rules-injector/finder.test.ts",
       "src/hooks/rules-injector/finder.ts",
       "src/hooks/rules-injector/index.ts",
+      "src/hooks/rules-injector/matcher.test.ts",
       "src/hooks/rules-injector/matcher.ts",
       "src/hooks/rules-injector/parser.test.ts",
       "src/hooks/rules-injector/parser.ts",
@@ -1176,23 +1215,35 @@
       "src/hooks/self-improve/__tests__/session-isolation.test.ts",
       "src/hooks/session-end/__tests__/action-runner.test.ts",
       "src/hooks/session-end/__tests__/callbacks.test.ts",
+      "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+      "src/hooks/session-end/__tests__/check-evidence.test.ts",
       "src/hooks/session-end/__tests__/cleanup-manifest.test.ts",
       "src/hooks/session-end/__tests__/duplicate-notifications.test.ts",
+      "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+      "src/hooks/session-end/__tests__/guardrails.test.ts",
       "src/hooks/session-end/__tests__/mode-state-cleanup.test.ts",
       "src/hooks/session-end/__tests__/openclaw-session-end.test.ts",
+      "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
       "src/hooks/session-end/__tests__/python-repl-cleanup.test.ts",
+      "src/hooks/session-end/__tests__/routing.test.ts",
       "src/hooks/session-end/__tests__/session-duration.test.ts",
       "src/hooks/session-end/__tests__/session-end-bridge-cleanup.test.ts",
       "src/hooks/session-end/__tests__/session-end-timeout.test.ts",
+      "src/hooks/session-end/__tests__/spawn-next.test.ts",
       "src/hooks/session-end/__tests__/subdirectory-cwd.test.ts",
       "src/hooks/session-end/__tests__/team-cleanup.test.ts",
       "src/hooks/session-end/__tests__/worker.test.ts",
       "src/hooks/session-end/action-runner.ts",
       "src/hooks/session-end/action-watchdog.ts",
       "src/hooks/session-end/callbacks.ts",
+      "src/hooks/session-end/chain-enqueuer.ts",
+      "src/hooks/session-end/check-evidence.ts",
       "src/hooks/session-end/cleanup-manifest.ts",
       "src/hooks/session-end/foreground-bootstrap.ts",
+      "src/hooks/session-end/guardrails.ts",
       "src/hooks/session-end/index.ts",
+      "src/hooks/session-end/routing.ts",
+      "src/hooks/session-end/spawn-next.ts",
       "src/hooks/session-end/worker.ts",
       "src/hooks/setup/README.md",
       "src/hooks/setup/__tests__/prune.test.ts",
@@ -1526,9 +1577,29 @@
         "path": ".mcp.json"
       },
       {
+        "id": ".mimosa/hook-status/sess_3b03f256-826f-48bc-9e39-8e2191ef35ee-ad1bdf450f.json",
+        "kind": "other",
+        "path": ".mimosa/hook-status/sess_3b03f256-826f-48bc-9e39-8e2191ef35ee-ad1bdf450f.json"
+      },
+      {
         "id": ".npmignore",
         "kind": "other",
         "path": ".npmignore"
+      },
+      {
+        "id": ".qoder-credits/report.json",
+        "kind": "other",
+        "path": ".qoder-credits/report.json"
+      },
+      {
+        "id": ".qoder-credits/能否在Qoder CN中安装使用这个插件http__945db77f.canvas.tsx",
+        "kind": "other",
+        "path": ".qoder-credits/能否在Qoder CN中安装使用这个插件http__945db77f.canvas.tsx"
+      },
+      {
+        "id": ".qoder-credits/请帮助我完善一个可复用的 Skill。当前是独立__cb739072.canvas.tsx",
+        "kind": "other",
+        "path": ".qoder-credits/请帮助我完善一个可复用的 Skill。当前是独立__cb739072.canvas.tsx"
       },
       {
         "id": ".qoder-plugin/marketplace.json",
@@ -1569,6 +1640,11 @@
         "id": "CONTRIBUTING.md",
         "kind": "other",
         "path": "CONTRIBUTING.md"
+      },
+      {
+        "id": "GLOSSARY.md",
+        "kind": "other",
+        "path": "GLOSSARY.md"
       },
       {
         "id": "LICENSE",
@@ -2461,6 +2537,11 @@
         "path": "docs/adr/03671-script-side-judgment-channel.md"
       },
       {
+        "id": "docs/adr/03672-env-activated-active-mode.md",
+        "kind": "other",
+        "path": "docs/adr/03672-env-activated-active-mode.md"
+      },
+      {
         "id": "docs/agent-templates/README.md",
         "kind": "other",
         "path": "docs/agent-templates/README.md"
@@ -2511,6 +2592,11 @@
         "path": "docs/design/CONSOLIDATION_PHASE3_ROADMAP.md"
       },
       {
+        "id": "docs/design/FACTORY-FINAL-DESIGN.md",
+        "kind": "other",
+        "path": "docs/design/FACTORY-FINAL-DESIGN.md"
+      },
+      {
         "id": "docs/design/ISSUE-3698-LIGHTWEIGHT-WORKFLOW-PLAN.md",
         "kind": "other",
         "path": "docs/design/ISSUE-3698-LIGHTWEIGHT-WORKFLOW-PLAN.md"
@@ -2529,6 +2615,11 @@
         "id": "docs/design/ISSUE-3712-RELEASE-VERIFICATION.md",
         "kind": "other",
         "path": "docs/design/ISSUE-3712-RELEASE-VERIFICATION.md"
+      },
+      {
+        "id": "docs/design/P2-RUN-LEDGER-AND-INTAKE-PLAN.md",
+        "kind": "other",
+        "path": "docs/design/P2-RUN-LEDGER-AND-INTAKE-PLAN.md"
       },
       {
         "id": "docs/design/SKILLS_2_0_ADAPTATION.md",
@@ -2559,6 +2650,11 @@
         "id": "docs/design/project-session-manager.md",
         "kind": "other",
         "path": "docs/design/project-session-manager.md"
+      },
+      {
+        "id": "docs/factory/t6-acceptance/acceptance-comment.md",
+        "kind": "other",
+        "path": "docs/factory/t6-acceptance/acceptance-comment.md"
       },
       {
         "id": "docs/geobench.md",
@@ -2966,6 +3062,11 @@
         "path": "node:path/win32"
       },
       {
+        "id": "external:node:perf_hooks",
+        "kind": "external",
+        "path": "node:perf_hooks"
+      },
+      {
         "id": "external:node:process",
         "kind": "external",
         "path": "node:process"
@@ -3276,6 +3377,11 @@
         "path": "scripts/audit-multirepo-e2e.mjs"
       },
       {
+        "id": "scripts/budget-guard.mjs",
+        "kind": "script",
+        "path": "scripts/budget-guard.mjs"
+      },
+      {
         "id": "scripts/build-bridge-entry.mjs",
         "kind": "script",
         "path": "scripts/build-bridge-entry.mjs"
@@ -3456,6 +3562,11 @@
         "path": "scripts/generate-skill-entitlements.mjs"
       },
       {
+        "id": "scripts/git-guardrails.mjs",
+        "kind": "script",
+        "path": "scripts/git-guardrails.mjs"
+      },
+      {
         "id": "scripts/graph-agent-demo.mjs",
         "kind": "script",
         "path": "scripts/graph-agent-demo.mjs"
@@ -3474,6 +3585,11 @@
         "id": "scripts/jev-eval.mjs",
         "kind": "script",
         "path": "scripts/jev-eval.mjs"
+      },
+      {
+        "id": "scripts/jev-resolve.mjs",
+        "kind": "script",
+        "path": "scripts/jev-resolve.mjs"
       },
       {
         "id": "scripts/keyword-detector.mjs",
@@ -3531,6 +3647,11 @@
         "path": "scripts/lib/encode-project-path.mjs"
       },
       {
+        "id": "scripts/lib/enforcement-log.mjs",
+        "kind": "script",
+        "path": "scripts/lib/enforcement-log.mjs"
+      },
+      {
         "id": "scripts/lib/force-agent-delegation-preflight.mjs",
         "kind": "script",
         "path": "scripts/lib/force-agent-delegation-preflight.mjs"
@@ -3554,6 +3675,11 @@
         "id": "scripts/lib/hud-wrapper-template.txt",
         "kind": "script",
         "path": "scripts/lib/hud-wrapper-template.txt"
+      },
+      {
+        "id": "scripts/lib/jev-shadow.mjs",
+        "kind": "script",
+        "path": "scripts/lib/jev-shadow.mjs"
       },
       {
         "id": "scripts/lib/model-routing-override-message.mjs",
@@ -3584,6 +3710,11 @@
         "id": "scripts/lib/read-budget-preflight.mjs",
         "kind": "script",
         "path": "scripts/lib/read-budget-preflight.mjs"
+      },
+      {
+        "id": "scripts/lib/run-reaper.mjs",
+        "kind": "script",
+        "path": "scripts/lib/run-reaper.mjs"
       },
       {
         "id": "scripts/lib/skill-entitlements.mjs",
@@ -3746,6 +3877,11 @@
         "path": "scripts/run.cjs"
       },
       {
+        "id": "scripts/runs-reconciler.mjs",
+        "kind": "script",
+        "path": "scripts/runs-reconciler.mjs"
+      },
+      {
         "id": "scripts/session-end.mjs",
         "kind": "script",
         "path": "scripts/session-end.mjs"
@@ -3799,6 +3935,11 @@
         "id": "scripts/smoke-multirepo.mjs",
         "kind": "script",
         "path": "scripts/smoke-multirepo.mjs"
+      },
+      {
+        "id": "scripts/stale-run-reporter.mjs",
+        "kind": "script",
+        "path": "scripts/stale-run-reporter.mjs"
       },
       {
         "id": "scripts/status.mjs",
@@ -4121,6 +4262,11 @@
         "path": "skills/loft/SKILL.md"
       },
       {
+        "id": "skills/map/SKILL.md",
+        "kind": "skill",
+        "path": "skills/map/SKILL.md"
+      },
+      {
         "id": "skills/mcp-setup/SKILL.md",
         "kind": "skill",
         "path": "skills/mcp-setup/SKILL.md"
@@ -4134,6 +4280,11 @@
         "id": "skills/minimal-prose-discipline/SKILL.md",
         "kind": "skill",
         "path": "skills/minimal-prose-discipline/SKILL.md"
+      },
+      {
+        "id": "skills/omc-setup/phases/04-welcome.md",
+        "kind": "other",
+        "path": "skills/omc-setup/phases/04-welcome.md"
       },
       {
         "id": "skills/omq-doctor/SKILL.md",
@@ -4179,6 +4330,11 @@
         "id": "skills/plan/SKILL.md",
         "kind": "skill",
         "path": "skills/plan/SKILL.md"
+      },
+      {
+        "id": "skills/pr/SKILL.md",
+        "kind": "skill",
+        "path": "skills/pr/SKILL.md"
       },
       {
         "id": "skills/project-session-manager/SKILL.md",
@@ -4291,6 +4447,11 @@
         "path": "skills/ralplan/SKILL.md"
       },
       {
+        "id": "skills/refit/SKILL.md",
+        "kind": "skill",
+        "path": "skills/refit/SKILL.md"
+      },
+      {
         "id": "skills/release/SKILL.md",
         "kind": "skill",
         "path": "skills/release/SKILL.md"
@@ -4394,6 +4555,11 @@
         "id": "skills/skillify/SKILL.md",
         "kind": "skill",
         "path": "skills/skillify/SKILL.md"
+      },
+      {
+        "id": "skills/tdd/SKILL.md",
+        "kind": "skill",
+        "path": "skills/tdd/SKILL.md"
       },
       {
         "id": "skills/team/SKILL.md",
@@ -4569,6 +4735,11 @@
         "id": "src/__tests__/canonical-identity-provenance.test.ts",
         "kind": "src",
         "path": "src/__tests__/canonical-identity-provenance.test.ts"
+      },
+      {
+        "id": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "kind": "src",
+        "path": "src/__tests__/chain-enqueuer-registration.test.ts"
       },
       {
         "id": "src/__tests__/claude-goal-adapter-doc.test.ts",
@@ -4784,6 +4955,11 @@
         "id": "src/__tests__/helpers/prompt-test-helpers.ts",
         "kind": "src",
         "path": "src/__tests__/helpers/prompt-test-helpers.ts"
+      },
+      {
+        "id": "src/__tests__/hook-bridge-main-module.test.ts",
+        "kind": "src",
+        "path": "src/__tests__/hook-bridge-main-module.test.ts"
       },
       {
         "id": "src/__tests__/hooks-command-escaping.test.ts",
@@ -5136,6 +5312,16 @@
         "path": "src/__tests__/jev-eval-script.test.mjs"
       },
       {
+        "id": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "kind": "src",
+        "path": "src/__tests__/jev-plugin-hook-wiring.test.mjs"
+      },
+      {
+        "id": "src/__tests__/jev-resolve-script.test.mjs",
+        "kind": "src",
+        "path": "src/__tests__/jev-resolve-script.test.mjs"
+      },
+      {
         "id": "src/__tests__/job-management-sqlite.test.ts",
         "kind": "src",
         "path": "src/__tests__/job-management-sqlite.test.ts"
@@ -5441,6 +5627,11 @@
         "path": "src/__tests__/pre-compact-cwd.test.ts"
       },
       {
+        "id": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts",
+        "kind": "src",
+        "path": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts"
+      },
+      {
         "id": "src/__tests__/pre-tool-enforcer.test.ts",
         "kind": "src",
         "path": "src/__tests__/pre-tool-enforcer.test.ts"
@@ -5661,6 +5852,11 @@
         "path": "src/__tests__/run-cjs-windows-stdio-contract.test.ts"
       },
       {
+        "id": "src/__tests__/run-cjs-worker-skip-guard.test.ts",
+        "kind": "src",
+        "path": "src/__tests__/run-cjs-worker-skip-guard.test.ts"
+      },
+      {
         "id": "src/__tests__/runtime-guidance-plan-ralph.test.ts",
         "kind": "src",
         "path": "src/__tests__/runtime-guidance-plan-ralph.test.ts"
@@ -5679,6 +5875,11 @@
         "id": "src/__tests__/session-end-empty-stdin.test.ts",
         "kind": "src",
         "path": "src/__tests__/session-end-empty-stdin.test.ts"
+      },
+      {
+        "id": "src/__tests__/session-end-forwarder-fallback.test.ts",
+        "kind": "src",
+        "path": "src/__tests__/session-end-forwarder-fallback.test.ts"
       },
       {
         "id": "src/__tests__/session-end-process-exit.test.ts",
@@ -6311,6 +6512,11 @@
         "path": "src/cli/__tests__/plugin-dir-capture.test.ts"
       },
       {
+        "id": "src/cli/__tests__/ralph-afk.test.ts",
+        "kind": "src",
+        "path": "src/cli/__tests__/ralph-afk.test.ts"
+      },
+      {
         "id": "src/cli/__tests__/self-improve-paths.test.ts",
         "kind": "src",
         "path": "src/cli/__tests__/self-improve-paths.test.ts"
@@ -6426,6 +6632,16 @@
         "path": "src/cli/commands/__tests__/doctor-team-routing.test.ts"
       },
       {
+        "id": "src/cli/commands/__tests__/factory-init.test.ts",
+        "kind": "src",
+        "path": "src/cli/commands/__tests__/factory-init.test.ts"
+      },
+      {
+        "id": "src/cli/commands/__tests__/intake.test.ts",
+        "kind": "src",
+        "path": "src/cli/commands/__tests__/intake.test.ts"
+      },
+      {
         "id": "src/cli/commands/__tests__/team-role-shorthand.test.ts",
         "kind": "src",
         "path": "src/cli/commands/__tests__/team-role-shorthand.test.ts"
@@ -6469,6 +6685,21 @@
         "id": "src/cli/commands/doctor-team-routing.ts",
         "kind": "src",
         "path": "src/cli/commands/doctor-team-routing.ts"
+      },
+      {
+        "id": "src/cli/commands/factory.ts",
+        "kind": "src",
+        "path": "src/cli/commands/factory.ts"
+      },
+      {
+        "id": "src/cli/commands/intake.ts",
+        "kind": "src",
+        "path": "src/cli/commands/intake.ts"
+      },
+      {
+        "id": "src/cli/commands/ralph.ts",
+        "kind": "src",
+        "path": "src/cli/commands/ralph.ts"
       },
       {
         "id": "src/cli/commands/ralphthon.ts",
@@ -6619,6 +6850,41 @@
         "id": "src/constants/names.ts",
         "kind": "src",
         "path": "src/constants/names.ts"
+      },
+      {
+        "id": "src/factory/__tests__/check-run.test.ts",
+        "kind": "src",
+        "path": "src/factory/__tests__/check-run.test.ts"
+      },
+      {
+        "id": "src/factory/__tests__/listener.test.ts",
+        "kind": "src",
+        "path": "src/factory/__tests__/listener.test.ts"
+      },
+      {
+        "id": "src/factory/__tests__/status.test.ts",
+        "kind": "src",
+        "path": "src/factory/__tests__/status.test.ts"
+      },
+      {
+        "id": "src/factory/listener.ts",
+        "kind": "src",
+        "path": "src/factory/listener.ts"
+      },
+      {
+        "id": "src/factory/status.ts",
+        "kind": "src",
+        "path": "src/factory/status.ts"
+      },
+      {
+        "id": "src/factory/watchdog.test.ts",
+        "kind": "src",
+        "path": "src/factory/watchdog.test.ts"
+      },
+      {
+        "id": "src/factory/watchdog.ts",
+        "kind": "src",
+        "path": "src/factory/watchdog.ts"
       },
       {
         "id": "src/features/AGENTS.md",
@@ -7606,6 +7872,11 @@
         "path": "src/hooks/bridge.ts"
       },
       {
+        "id": "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/code-simplifier/__tests__/global-config-path.test.ts"
+      },
+      {
         "id": "src/hooks/code-simplifier/__tests__/jev-trigger-shadow.test.ts",
         "kind": "hook",
         "path": "src/hooks/code-simplifier/__tests__/jev-trigger-shadow.test.ts"
@@ -7734,6 +8005,11 @@
         "id": "src/hooks/jev/__tests__/client.test.ts",
         "kind": "hook",
         "path": "src/hooks/jev/__tests__/client.test.ts"
+      },
+      {
+        "id": "src/hooks/jev/__tests__/points-wire-shape.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/jev/__tests__/points-wire-shape.test.ts"
       },
       {
         "id": "src/hooks/jev/__tests__/resolver.test.ts",
@@ -8336,9 +8612,19 @@
         "path": "src/hooks/prompt-prerequisites/index.ts"
       },
       {
+        "id": "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/ralph/__tests__/feedback-baseline.test.ts"
+      },
+      {
         "id": "src/hooks/ralph/__tests__/jev-verdict-shadow.test.ts",
         "kind": "hook",
         "path": "src/hooks/ralph/__tests__/jev-verdict-shadow.test.ts"
+      },
+      {
+        "id": "src/hooks/ralph/feedback-baseline.ts",
+        "kind": "hook",
+        "path": "src/hooks/ralph/feedback-baseline.ts"
       },
       {
         "id": "src/hooks/ralph/index.ts",
@@ -8486,6 +8772,11 @@
         "path": "src/hooks/rules-injector/index.ts"
       },
       {
+        "id": "src/hooks/rules-injector/matcher.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/rules-injector/matcher.test.ts"
+      },
+      {
         "id": "src/hooks/rules-injector/matcher.ts",
         "kind": "hook",
         "path": "src/hooks/rules-injector/matcher.ts"
@@ -8526,6 +8817,16 @@
         "path": "src/hooks/session-end/__tests__/callbacks.test.ts"
       },
       {
+        "id": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts"
+      },
+      {
+        "id": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/__tests__/check-evidence.test.ts"
+      },
+      {
         "id": "src/hooks/session-end/__tests__/cleanup-manifest.test.ts",
         "kind": "hook",
         "path": "src/hooks/session-end/__tests__/cleanup-manifest.test.ts"
@@ -8534,6 +8835,16 @@
         "id": "src/hooks/session-end/__tests__/duplicate-notifications.test.ts",
         "kind": "hook",
         "path": "src/hooks/session-end/__tests__/duplicate-notifications.test.ts"
+      },
+      {
+        "id": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts"
+      },
+      {
+        "id": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/__tests__/guardrails.test.ts"
       },
       {
         "id": "src/hooks/session-end/__tests__/mode-state-cleanup.test.ts",
@@ -8546,9 +8857,19 @@
         "path": "src/hooks/session-end/__tests__/openclaw-session-end.test.ts"
       },
       {
+        "id": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts"
+      },
+      {
         "id": "src/hooks/session-end/__tests__/python-repl-cleanup.test.ts",
         "kind": "hook",
         "path": "src/hooks/session-end/__tests__/python-repl-cleanup.test.ts"
+      },
+      {
+        "id": "src/hooks/session-end/__tests__/routing.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/__tests__/routing.test.ts"
       },
       {
         "id": "src/hooks/session-end/__tests__/session-duration.test.ts",
@@ -8564,6 +8885,11 @@
         "id": "src/hooks/session-end/__tests__/session-end-timeout.test.ts",
         "kind": "hook",
         "path": "src/hooks/session-end/__tests__/session-end-timeout.test.ts"
+      },
+      {
+        "id": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/__tests__/spawn-next.test.ts"
       },
       {
         "id": "src/hooks/session-end/__tests__/subdirectory-cwd.test.ts",
@@ -8596,6 +8922,16 @@
         "path": "src/hooks/session-end/callbacks.ts"
       },
       {
+        "id": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/chain-enqueuer.ts"
+      },
+      {
+        "id": "src/hooks/session-end/check-evidence.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/check-evidence.ts"
+      },
+      {
         "id": "src/hooks/session-end/cleanup-manifest.ts",
         "kind": "hook",
         "path": "src/hooks/session-end/cleanup-manifest.ts"
@@ -8606,9 +8942,24 @@
         "path": "src/hooks/session-end/foreground-bootstrap.ts"
       },
       {
+        "id": "src/hooks/session-end/guardrails.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/guardrails.ts"
+      },
+      {
         "id": "src/hooks/session-end/index.ts",
         "kind": "hook",
         "path": "src/hooks/session-end/index.ts"
+      },
+      {
+        "id": "src/hooks/session-end/routing.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/routing.ts"
+      },
+      {
+        "id": "src/hooks/session-end/spawn-next.ts",
+        "kind": "hook",
+        "path": "src/hooks/session-end/spawn-next.ts"
       },
       {
         "id": "src/hooks/session-end/worker.ts",
@@ -9206,6 +9557,11 @@
         "path": "src/index.ts"
       },
       {
+        "id": "src/installer/__tests__/bundled-skill-sync.test.ts",
+        "kind": "src",
+        "path": "src/installer/__tests__/bundled-skill-sync.test.ts"
+      },
+      {
         "id": "src/installer/__tests__/claude-md-analysis.test.ts",
         "kind": "src",
         "path": "src/installer/__tests__/claude-md-analysis.test.ts"
@@ -9356,6 +9712,11 @@
         "path": "src/installer/__tests__/standalone-hook-reconcile.test.ts"
       },
       {
+        "id": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "kind": "src",
+        "path": "src/installer/__tests__/standalone-state-lock-bridge.test.ts"
+      },
+      {
         "id": "src/installer/__tests__/statusline-default-dir.test.ts",
         "kind": "src",
         "path": "src/installer/__tests__/statusline-default-dir.test.ts"
@@ -9436,6 +9797,11 @@
         "path": "src/lib/__tests__/atomic-write.test.ts"
       },
       {
+        "id": "src/lib/__tests__/host-load-gate.test.ts",
+        "kind": "lib",
+        "path": "src/lib/__tests__/host-load-gate.test.ts"
+      },
+      {
         "id": "src/lib/__tests__/mode-state-io.test.ts",
         "kind": "lib",
         "path": "src/lib/__tests__/mode-state-io.test.ts"
@@ -9459,6 +9825,11 @@
         "id": "src/lib/__tests__/qoder-cli.test.ts",
         "kind": "lib",
         "path": "src/lib/__tests__/qoder-cli.test.ts"
+      },
+      {
+        "id": "src/lib/__tests__/runs-ledger.test.ts",
+        "kind": "lib",
+        "path": "src/lib/__tests__/runs-ledger.test.ts"
       },
       {
         "id": "src/lib/__tests__/session-id.test.ts",
@@ -9561,6 +9932,11 @@
         "path": "src/lib/file-lock.ts"
       },
       {
+        "id": "src/lib/host-load-gate.ts",
+        "kind": "lib",
+        "path": "src/lib/host-load-gate.ts"
+      },
+      {
         "id": "src/lib/hud-wrapper-template.ts",
         "kind": "lib",
         "path": "src/lib/hud-wrapper-template.ts"
@@ -9609,6 +9985,11 @@
         "id": "src/lib/release-generation.ts",
         "kind": "lib",
         "path": "src/lib/release-generation.ts"
+      },
+      {
+        "id": "src/lib/runs-ledger.ts",
+        "kind": "lib",
+        "path": "src/lib/runs-ledger.ts"
       },
       {
         "id": "src/lib/security-config.ts",
@@ -10599,6 +10980,11 @@
         "id": "src/team/__tests__/stage-router.test.ts",
         "kind": "src",
         "path": "src/team/__tests__/stage-router.test.ts"
+      },
+      {
+        "id": "src/team/__tests__/startup-claim-error.test.ts",
+        "kind": "src",
+        "path": "src/team/__tests__/startup-claim-error.test.ts"
       },
       {
         "id": "src/team/__tests__/state-paths.test.ts",
@@ -11791,6 +12177,11 @@
         "path": "templates/hooks/pre-tool-use.mjs"
       },
       {
+        "id": "templates/hooks/session-end.mjs",
+        "kind": "template-hook",
+        "path": "templates/hooks/session-end.mjs"
+      },
+      {
         "id": "templates/hooks/session-start.mjs",
         "kind": "template-hook",
         "path": "templates/hooks/session-start.mjs"
@@ -11896,6 +12287,11 @@
         "path": "tests/harbor-scenarios.test.ts"
       },
       {
+        "id": "tests/integration/budget-guard.test.ts",
+        "kind": "other",
+        "path": "tests/integration/budget-guard.test.ts"
+      },
+      {
         "id": "tests/integration/concurrent-project-memory.test.ts",
         "kind": "other",
         "path": "tests/integration/concurrent-project-memory.test.ts"
@@ -11911,9 +12307,39 @@
         "path": "tests/integration/epic-3698-closure-verifier.test.ts"
       },
       {
+        "id": "tests/integration/git-guardrails-hook.test.ts",
+        "kind": "other",
+        "path": "tests/integration/git-guardrails-hook.test.ts"
+      },
+      {
         "id": "tests/integration/multirepo-workspace.test.ts",
         "kind": "other",
         "path": "tests/integration/multirepo-workspace.test.ts"
+      },
+      {
+        "id": "tests/integration/runs-reconciler.test.ts",
+        "kind": "other",
+        "path": "tests/integration/runs-reconciler.test.ts"
+      },
+      {
+        "id": "tests/integration/skill-map-references.test.ts",
+        "kind": "other",
+        "path": "tests/integration/skill-map-references.test.ts"
+      },
+      {
+        "id": "tests/integration/stale-run-reporter.test.ts",
+        "kind": "other",
+        "path": "tests/integration/stale-run-reporter.test.ts"
+      },
+      {
+        "id": "tests/integration/state-lock-owner-reclaim.test.ts",
+        "kind": "other",
+        "path": "tests/integration/state-lock-owner-reclaim.test.ts"
+      },
+      {
+        "id": "tests/integration/state-root-fs-probe.test.ts",
+        "kind": "other",
+        "path": "tests/integration/state-root-fs-probe.test.ts"
       },
       {
         "id": "tests/integration/task-list-identity-stop.test.ts",
@@ -11979,6 +12405,26 @@
         "id": "tests/lint/issue-3996-ruby-false-positive.test.ts",
         "kind": "other",
         "path": "tests/lint/issue-3996-ruby-false-positive.test.ts"
+      },
+      {
+        "id": "tests/lint/issue-4147-processStart-encoding.test.ts",
+        "kind": "other",
+        "path": "tests/lint/issue-4147-processStart-encoding.test.ts"
+      },
+      {
+        "id": "tests/lint/issue-4154-windows-claude-invocation.test.ts",
+        "kind": "other",
+        "path": "tests/lint/issue-4154-windows-claude-invocation.test.ts"
+      },
+      {
+        "id": "tests/lint/issue-4156-windows-dev-zero.test.ts",
+        "kind": "other",
+        "path": "tests/lint/issue-4156-windows-dev-zero.test.ts"
+      },
+      {
+        "id": "tests/lint/session-end-forwarder-no-op.test.ts",
+        "kind": "other",
+        "path": "tests/lint/session-end-forwarder-no-op.test.ts"
       },
       {
         "id": "tests/lint/setup-phases-drift.test.ts",
@@ -12064,6 +12510,11 @@
         "id": "unresolved:scripts/demo-team.mjs#9678a8cdaeb2a14b",
         "kind": "unresolved",
         "path": "unresolved:scripts/demo-team.mjs#9678a8cdaeb2a14b"
+      },
+      {
+        "id": "unresolved:scripts/keyword-detector.mjs#242319b2d3e7d2b6",
+        "kind": "unresolved",
+        "path": "unresolved:scripts/keyword-detector.mjs#242319b2d3e7d2b6"
       },
       {
         "id": "unresolved:scripts/keyword-detector.mjs#4a16369c9edc2990",
@@ -12688,6 +13139,31 @@
         "kind": "imports"
       },
       {
+        "from": "scripts/budget-guard.mjs",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/budget-guard.mjs",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/budget-guard.mjs",
+        "to": "scripts/lib/enforcement-log.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/budget-guard.mjs",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/budget-guard.mjs",
+        "to": "scripts/lib/stdin.mjs",
+        "kind": "imports"
+      },
+      {
         "from": "scripts/build-bridge-entry.mjs",
         "to": "external:esbuild",
         "kind": "imports"
@@ -13004,6 +13480,11 @@
       },
       {
         "from": "scripts/code-simplifier.mjs",
+        "to": "scripts/lib/jev-shadow.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/code-simplifier.mjs",
         "to": "scripts/lib/state-root.mjs",
         "kind": "imports"
       },
@@ -13238,6 +13719,21 @@
         "kind": "imports"
       },
       {
+        "from": "scripts/git-guardrails.mjs",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/git-guardrails.mjs",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/git-guardrails.mjs",
+        "to": "scripts/lib/stdin.mjs",
+        "kind": "imports"
+      },
+      {
         "from": "scripts/graph-agent-demo.mjs",
         "to": "external:node:fs/promises",
         "kind": "imports"
@@ -13318,6 +13814,31 @@
         "kind": "imports"
       },
       {
+        "from": "scripts/jev-resolve.mjs",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/jev-resolve.mjs",
+        "to": "external:node:fs/promises",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/jev-resolve.mjs",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/jev-resolve.mjs",
+        "to": "external:node:url",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/jev-resolve.mjs",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
         "from": "scripts/keyword-detector.mjs",
         "to": "external:fs",
         "kind": "imports"
@@ -13349,6 +13870,11 @@
       },
       {
         "from": "scripts/keyword-detector.mjs",
+        "to": "scripts/lib/jev-shadow.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/keyword-detector.mjs",
         "to": "scripts/lib/state-root.mjs",
         "kind": "imports"
       },
@@ -13361,6 +13887,11 @@
         "from": "scripts/keyword-detector.mjs",
         "to": "scripts/lib/workflow-profile-runtime.mjs",
         "kind": "imports"
+      },
+      {
+        "from": "scripts/keyword-detector.mjs",
+        "to": "unresolved:scripts/keyword-detector.mjs#242319b2d3e7d2b6",
+        "kind": "imports-unresolved"
       },
       {
         "from": "scripts/keyword-detector.mjs",
@@ -13493,6 +14024,16 @@
         "kind": "imports"
       },
       {
+        "from": "scripts/lib/enforcement-log.mjs",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/enforcement-log.mjs",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
         "from": "scripts/lib/force-agent-delegation-preflight.mjs",
         "to": "external:fs",
         "kind": "imports"
@@ -13514,6 +14055,31 @@
       },
       {
         "from": "scripts/lib/hud-wrapper-template.mjs",
+        "to": "external:node:url",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/jev-shadow.mjs",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/jev-shadow.mjs",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/jev-shadow.mjs",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/jev-shadow.mjs",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/jev-shadow.mjs",
         "to": "external:node:url",
         "kind": "imports"
       },
@@ -13584,6 +14150,16 @@
       },
       {
         "from": "scripts/lib/read-budget-preflight.mjs",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/run-reaper.mjs",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/lib/run-reaper.mjs",
         "to": "external:path",
         "kind": "imports"
       },
@@ -13863,6 +14439,11 @@
         "kind": "imports"
       },
       {
+        "from": "scripts/persistent-mode.mjs",
+        "to": "scripts/lib/jev-shadow.mjs",
+        "kind": "imports"
+      },
+      {
         "from": "scripts/plugin-setup.mjs",
         "to": "external:better-sqlite3",
         "kind": "imports"
@@ -14054,6 +14635,11 @@
       },
       {
         "from": "scripts/post-tool-verifier.mjs",
+        "to": "scripts/lib/jev-shadow.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/post-tool-verifier.mjs",
         "to": "scripts/lib/state-root.mjs",
         "kind": "imports"
       },
@@ -14130,6 +14716,11 @@
       {
         "from": "scripts/pre-tool-enforcer.mjs",
         "to": "scripts/lib/force-agent-delegation-preflight.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/pre-tool-enforcer.mjs",
+        "to": "scripts/lib/jev-shadow.mjs",
         "kind": "imports"
       },
       {
@@ -14378,6 +14969,26 @@
         "kind": "imports"
       },
       {
+        "from": "scripts/runs-reconciler.mjs",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/runs-reconciler.mjs",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/runs-reconciler.mjs",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/runs-reconciler.mjs",
+        "to": "scripts/lib/stdin.mjs",
+        "kind": "imports"
+      },
+      {
         "from": "scripts/session-end.mjs",
         "to": "external:node:path",
         "kind": "imports"
@@ -14590,6 +15201,21 @@
       {
         "from": "scripts/smoke-multirepo.mjs",
         "to": "external:node:url",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/stale-run-reporter.mjs",
+        "to": "scripts/lib/run-reaper.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/stale-run-reporter.mjs",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "scripts/stale-run-reporter.mjs",
+        "to": "scripts/lib/stdin.mjs",
         "kind": "imports"
       },
       {
@@ -14983,6 +15609,11 @@
         "kind": "registers"
       },
       {
+        "from": "skills/map/SKILL.md",
+        "to": "src/features/builtin-skills/skills.ts",
+        "kind": "registers"
+      },
+      {
         "from": "skills/mcp-setup/SKILL.md",
         "to": "src/features/builtin-skills/skills.ts",
         "kind": "registers"
@@ -15023,6 +15654,11 @@
         "kind": "registers"
       },
       {
+        "from": "skills/pr/SKILL.md",
+        "to": "src/features/builtin-skills/skills.ts",
+        "kind": "registers"
+      },
+      {
         "from": "skills/project-session-manager/SKILL.md",
         "to": "src/features/builtin-skills/skills.ts",
         "kind": "registers"
@@ -15034,6 +15670,11 @@
       },
       {
         "from": "skills/ralplan/SKILL.md",
+        "to": "src/features/builtin-skills/skills.ts",
+        "kind": "registers"
+      },
+      {
+        "from": "skills/refit/SKILL.md",
         "to": "src/features/builtin-skills/skills.ts",
         "kind": "registers"
       },
@@ -15099,6 +15740,11 @@
       },
       {
         "from": "skills/skillify/SKILL.md",
+        "to": "src/features/builtin-skills/skills.ts",
+        "kind": "registers"
+      },
+      {
+        "from": "skills/tdd/SKILL.md",
         "to": "src/features/builtin-skills/skills.ts",
         "kind": "registers"
       },
@@ -15626,6 +16272,46 @@
         "from": "src/__tests__/canonical-identity-provenance.test.ts",
         "to": "external:vitest",
         "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "external:url",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "src/installer/hooks.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "src/installer/index.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/chain-enqueuer-registration.test.ts",
+        "to": "src/installer/index.ts",
+        "kind": "type-imports"
       },
       {
         "from": "src/__tests__/claude-goal-adapter-doc.test.ts",
@@ -16430,6 +17116,36 @@
       {
         "from": "src/__tests__/helpers/prompt-test-helpers.ts",
         "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/hook-bridge-main-module.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/hook-bridge-main-module.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/hook-bridge-main-module.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/hook-bridge-main-module.test.ts",
+        "to": "external:node:url",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/hook-bridge-main-module.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/hook-bridge-main-module.test.ts",
+        "to": "src/hooks/bridge.ts",
         "kind": "imports"
       },
       {
@@ -18078,6 +18794,81 @@
         "kind": "imports"
       },
       {
+        "from": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "to": "external:node:process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "to": "external:node:url",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-plugin-hook-wiring.test.mjs",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "external:node:http",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "external:node:url",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/jev-resolve-script.test.mjs",
+        "to": "scripts/jev-resolve.mjs",
+        "kind": "imports"
+      },
+      {
         "from": "src/__tests__/job-management-sqlite.test.ts",
         "to": "external:fs",
         "kind": "imports"
@@ -19463,6 +20254,36 @@
         "kind": "type-imports"
       },
       {
+        "from": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts",
+        "to": "external:url",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/pre-tool-enforcer-jev-wiring.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
         "from": "src/__tests__/pre-tool-enforcer.test.ts",
         "to": "external:child_process",
         "kind": "imports"
@@ -19500,6 +20321,11 @@
       {
         "from": "src/__tests__/preemptive-compaction-hook.test.ts",
         "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/preemptive-compaction-hook.test.ts",
+        "to": "external:crypto",
         "kind": "imports"
       },
       {
@@ -20583,6 +21409,26 @@
         "kind": "imports"
       },
       {
+        "from": "src/__tests__/run-cjs-worker-skip-guard.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/run-cjs-worker-skip-guard.test.ts",
+        "to": "external:node:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/run-cjs-worker-skip-guard.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/run-cjs-worker-skip-guard.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
         "from": "src/__tests__/runtime-guidance-plan-ralph.test.ts",
         "to": "external:vitest",
         "kind": "imports"
@@ -20655,6 +21501,31 @@
       {
         "from": "src/__tests__/session-end-empty-stdin.test.ts",
         "to": "src/__tests__/helpers/cwd-fixture.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/session-end-forwarder-fallback.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/session-end-forwarder-fallback.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/session-end-forwarder-fallback.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/session-end-forwarder-fallback.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/__tests__/session-end-forwarder-fallback.test.ts",
+        "to": "external:vitest",
         "kind": "imports"
       },
       {
@@ -23398,11 +24269,6 @@
         "kind": "imports"
       },
       {
-        "from": "src/cli/__tests__/autoresearch-setup-session.test.ts",
-        "to": "src/lib/qoder-cli.ts",
-        "kind": "imports"
-      },
-      {
         "from": "src/cli/__tests__/autoresearch.test.ts",
         "to": "external:vitest",
         "kind": "imports"
@@ -23640,6 +24506,41 @@
       {
         "from": "src/cli/__tests__/plugin-dir-capture.test.ts",
         "to": "src/lib/env-vars.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/__tests__/ralph-afk.test.ts",
+        "to": "external:commander",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/__tests__/ralph-afk.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/__tests__/ralph-afk.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/__tests__/ralph-afk.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/__tests__/ralph-afk.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/__tests__/ralph-afk.test.ts",
+        "to": "src/cli/commands/ralph.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/__tests__/ralph-afk.test.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
         "kind": "imports"
       },
       {
@@ -24114,7 +25015,7 @@
       },
       {
         "from": "src/cli/autoresearch-setup-session.ts",
-        "to": "src/lib/qoder-cli.ts",
+        "to": "src/cli/tmux-utils.ts",
         "kind": "imports"
       },
       {
@@ -24200,6 +25101,56 @@
       {
         "from": "src/cli/commands/__tests__/doctor-team-routing.test.ts",
         "to": "src/shared/types.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/factory-init.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/factory-init.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/factory-init.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/factory-init.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/factory-init.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/factory-init.test.ts",
+        "to": "src/cli/commands/factory.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/factory-init.test.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/intake.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/intake.test.ts",
+        "to": "src/cli/commands/intake.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/__tests__/intake.test.ts",
+        "to": "src/cli/commands/intake.ts",
         "kind": "type-imports"
       },
       {
@@ -24460,6 +25411,136 @@
       {
         "from": "src/cli/commands/doctor-team-routing.ts",
         "to": "src/team/cli-detection.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "external:chalk",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "external:commander",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "src/factory/listener.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "src/factory/status.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "src/factory/status.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/cli/commands/factory.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/intake.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/intake.ts",
+        "to": "external:commander",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/intake.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/intake.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/intake.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "external:commander",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "external:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "src/features/builtin-skills/skills.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "src/hooks/ralph/feedback-baseline.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "src/hooks/ralph/feedback-baseline.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "src/hooks/ralph/prd.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/commands/ralph.ts",
+        "to": "src/lib/worktree-paths.ts",
         "kind": "imports"
       },
       {
@@ -24860,6 +25941,21 @@
       {
         "from": "src/cli/index.ts",
         "to": "src/cli/commands/doctor-team-routing.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/index.ts",
+        "to": "src/cli/commands/factory.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/index.ts",
+        "to": "src/cli/commands/intake.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/cli/index.ts",
+        "to": "src/cli/commands/ralph.ts",
         "kind": "imports"
       },
       {
@@ -25386,6 +26482,286 @@
         "from": "src/constants/index.ts",
         "to": "src/constants/names.ts",
         "kind": "type-exports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "external:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "src/factory/listener.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "src/factory/listener.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/check-run.test.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "external:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "src/factory/listener.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "src/factory/listener.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "src/lib/file-lock.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "src/lib/file-lock.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/__tests__/listener.test.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/status.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/status.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/status.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/status.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/status.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/status.test.ts",
+        "to": "src/factory/status.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/__tests__/status.test.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "external:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "external:http",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "external:http",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "src/factory/watchdog.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "src/hooks/session-end/guardrails.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/listener.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/status.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/status.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/status.ts",
+        "to": "src/factory/watchdog.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/status.ts",
+        "to": "src/factory/watchdog.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/status.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "external:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "src/factory/watchdog.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.test.ts",
+        "to": "src/factory/watchdog.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/watchdog.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/factory/watchdog.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/factory/watchdog.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
       },
       {
         "from": "src/features/__tests__/checkpoint.test.ts",
@@ -29824,7 +31200,7 @@
       },
       {
         "from": "src/hooks/bridge.ts",
-        "to": "src/hooks/omc-orchestrator/index.ts",
+        "to": "src/hooks/omq-orchestrator/index.ts",
         "kind": "imports"
       },
       {
@@ -29999,12 +31375,37 @@
       },
       {
         "from": "src/hooks/bridge.ts",
-        "to": "src/utils/omc-cli-rendering.ts",
+        "to": "src/utils/omq-cli-rendering.ts",
         "kind": "imports"
       },
       {
         "from": "src/hooks/bridge.ts",
         "to": "src/workflow/alias-resolver.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/code-simplifier/__tests__/global-config-path.test.ts",
+        "to": "external:vitest",
         "kind": "imports"
       },
       {
@@ -30794,6 +32195,31 @@
       },
       {
         "from": "src/hooks/jev/__tests__/client.test.ts",
+        "to": "src/hooks/jev/types.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/jev/__tests__/points-wire-shape.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/jev/__tests__/points-wire-shape.test.ts",
+        "to": "src/hooks/jev/client.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/jev/__tests__/points-wire-shape.test.ts",
+        "to": "src/hooks/jev/config.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/jev/__tests__/points-wire-shape.test.ts",
+        "to": "src/hooks/jev/points.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/jev/__tests__/points-wire-shape.test.ts",
         "to": "src/hooks/jev/types.ts",
         "kind": "type-imports"
       },
@@ -33683,6 +35109,36 @@
         "kind": "type-imports"
       },
       {
+        "from": "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
+        "to": "src/hooks/ralph/feedback-baseline.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/ralph/__tests__/feedback-baseline.test.ts",
+        "to": "src/hooks/ralph/feedback-baseline.ts",
+        "kind": "type-imports"
+      },
+      {
         "from": "src/hooks/ralph/__tests__/jev-verdict-shadow.test.ts",
         "to": "external:node:fs/promises",
         "kind": "imports"
@@ -33710,6 +35166,16 @@
       {
         "from": "src/hooks/ralph/__tests__/jev-verdict-shadow.test.ts",
         "to": "src/hooks/ralph/jev-shadow.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/ralph/feedback-baseline.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/ralph/feedback-baseline.ts",
+        "to": "external:path",
         "kind": "imports"
       },
       {
@@ -34468,6 +35934,16 @@
         "kind": "type-imports"
       },
       {
+        "from": "src/hooks/rules-injector/matcher.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/rules-injector/matcher.test.ts",
+        "to": "src/hooks/rules-injector/matcher.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/hooks/rules-injector/matcher.ts",
         "to": "external:crypto",
         "kind": "imports"
@@ -34608,6 +36084,81 @@
         "kind": "type-imports"
       },
       {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "src/hooks/session-end/guardrails.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/chain-enqueuer.test.ts",
+        "to": "src/hooks/session-end/guardrails.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/check-evidence.test.ts",
+        "to": "src/hooks/session-end/check-evidence.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/hooks/session-end/__tests__/cleanup-manifest.test.ts",
         "to": "external:node:fs",
         "kind": "imports"
@@ -34676,6 +36227,91 @@
         "from": "src/hooks/session-end/__tests__/duplicate-notifications.test.ts",
         "to": "src/notifications/index.ts",
         "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "src/hooks/session-end/cleanup-manifest.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "src/hooks/session-end/foreground-bootstrap.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/foreground-bootstrap.test.ts",
+        "to": "src/hooks/session-end/worker.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "src/hooks/session-end/guardrails.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "src/hooks/session-end/guardrails.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "src/lib/file-lock.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/guardrails.test.ts",
+        "to": "src/lib/file-lock.ts",
+        "kind": "type-imports"
       },
       {
         "from": "src/hooks/session-end/__tests__/mode-state-cleanup.test.ts",
@@ -34748,6 +36384,36 @@
         "kind": "imports"
       },
       {
+        "from": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
+        "to": "src/hooks/session-end/cleanup-manifest.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/process-session-end-worker-spawn.test.ts",
+        "to": "src/hooks/session-end/index.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/hooks/session-end/__tests__/python-repl-cleanup.test.ts",
         "to": "external:fs",
         "kind": "imports"
@@ -34771,6 +36437,21 @@
         "from": "src/hooks/session-end/__tests__/python-repl-cleanup.test.ts",
         "to": "src/hooks/session-end/index.ts",
         "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/routing.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/routing.test.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/routing.test.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "type-imports"
       },
       {
         "from": "src/hooks/session-end/__tests__/session-duration.test.ts",
@@ -34873,6 +36554,41 @@
         "kind": "imports"
       },
       {
+        "from": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/spawn-next.test.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "type-imports"
+      },
+      {
         "from": "src/hooks/session-end/__tests__/subdirectory-cwd.test.ts",
         "to": "external:fs",
         "kind": "imports"
@@ -34950,6 +36666,11 @@
       {
         "from": "src/hooks/session-end/__tests__/worker.test.ts",
         "to": "src/hooks/session-end/cleanup-manifest.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/__tests__/worker.test.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
         "kind": "imports"
       },
       {
@@ -35068,6 +36789,66 @@
         "kind": "imports"
       },
       {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "src/hooks/session-end/check-evidence.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "src/hooks/session-end/guardrails.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/session-end/chain-enqueuer.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/check-evidence.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/check-evidence.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/check-evidence.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/hooks/session-end/cleanup-manifest.ts",
         "to": "external:crypto",
         "kind": "imports"
@@ -35094,6 +36875,11 @@
       },
       {
         "from": "src/hooks/session-end/foreground-bootstrap.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/foreground-bootstrap.ts",
         "to": "src/hooks/session-end/cleanup-manifest.ts",
         "kind": "imports"
       },
@@ -35104,6 +36890,31 @@
       },
       {
         "from": "src/hooks/session-end/foreground-bootstrap.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/guardrails.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/guardrails.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/guardrails.ts",
+        "to": "src/lib/file-lock.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/guardrails.ts",
+        "to": "src/lib/file-lock.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/session-end/guardrails.ts",
         "to": "src/lib/worktree-paths.ts",
         "kind": "imports"
       },
@@ -35135,6 +36946,11 @@
       {
         "from": "src/hooks/session-end/index.ts",
         "to": "src/hooks/session-end/callbacks.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/index.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
         "kind": "imports"
       },
       {
@@ -35208,6 +37024,51 @@
         "kind": "imports"
       },
       {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "external:child_process",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "external:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "src/cli/tmux-utils.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "src/hooks/session-end/routing.ts",
+        "kind": "type-imports"
+      },
+      {
+        "from": "src/hooks/session-end/spawn-next.ts",
+        "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/hooks/session-end/worker.ts",
         "to": "external:child_process",
         "kind": "imports"
@@ -35234,6 +37095,11 @@
       },
       {
         "from": "src/hooks/session-end/worker.ts",
+        "to": "src/hooks/session-end/chain-enqueuer.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/worker.ts",
         "to": "src/hooks/session-end/cleanup-manifest.ts",
         "kind": "imports"
       },
@@ -35245,6 +37111,11 @@
       {
         "from": "src/hooks/session-end/worker.ts",
         "to": "src/hooks/session-end/index.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/hooks/session-end/worker.ts",
+        "to": "src/hooks/session-end/spawn-next.ts",
         "kind": "imports"
       },
       {
@@ -38053,6 +39924,31 @@
         "kind": "exports"
       },
       {
+        "from": "src/installer/__tests__/bundled-skill-sync.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/bundled-skill-sync.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/bundled-skill-sync.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/bundled-skill-sync.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/bundled-skill-sync.test.ts",
+        "to": "src/installer/index.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/installer/__tests__/claude-md-analysis.test.ts",
         "to": "external:crypto",
         "kind": "imports"
@@ -38623,6 +40519,41 @@
         "kind": "imports"
       },
       {
+        "from": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "to": "external:node:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "to": "external:node:url",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/installer/__tests__/standalone-state-lock-bridge.test.ts",
+        "to": "src/installer/index.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/installer/__tests__/statusline-default-dir.test.ts",
         "to": "external:vitest",
         "kind": "imports"
@@ -39098,6 +41029,21 @@
         "kind": "imports"
       },
       {
+        "from": "src/lib/__tests__/host-load-gate.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/__tests__/host-load-gate.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/__tests__/host-load-gate.test.ts",
+        "to": "src/lib/host-load-gate.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/lib/__tests__/mode-state-io.test.ts",
         "to": "external:child_process",
         "kind": "imports"
@@ -39240,6 +41186,31 @@
       {
         "from": "src/lib/__tests__/qoder-cli.test.ts",
         "to": "src/lib/qoder-cli.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/__tests__/runs-ledger.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/__tests__/runs-ledger.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/__tests__/runs-ledger.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/__tests__/runs-ledger.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/__tests__/runs-ledger.test.ts",
+        "to": "src/lib/runs-ledger.ts",
         "kind": "imports"
       },
       {
@@ -39708,6 +41679,26 @@
         "kind": "imports"
       },
       {
+        "from": "src/lib/host-load-gate.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/host-load-gate.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/host-load-gate.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/host-load-gate.ts",
+        "to": "src/utils/paths.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/lib/hud-wrapper-template.ts",
         "to": "external:node:fs",
         "kind": "imports"
@@ -39779,6 +41770,11 @@
       },
       {
         "from": "src/lib/mode-state-io.ts",
+        "to": "src/lib/runs-ledger.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/mode-state-io.ts",
         "to": "src/lib/worktree-paths.ts",
         "kind": "imports"
       },
@@ -39815,6 +41811,16 @@
       {
         "from": "src/lib/release-generation.ts",
         "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/runs-ledger.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "src/lib/runs-ledger.ts",
+        "to": "external:path",
         "kind": "imports"
       },
       {
@@ -42370,6 +44376,11 @@
       {
         "from": "src/team/__tests__/api-interop.cwd-resolution.test.ts",
         "to": "external:fs/promises",
+        "kind": "imports"
+      },
+      {
+        "from": "src/team/__tests__/api-interop.cwd-resolution.test.ts",
+        "to": "external:node:child_process",
         "kind": "imports"
       },
       {
@@ -45248,6 +47259,16 @@
         "kind": "imports"
       },
       {
+        "from": "src/team/__tests__/startup-claim-error.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "src/team/__tests__/startup-claim-error.test.ts",
+        "to": "src/team/runtime-v2.ts",
+        "kind": "imports"
+      },
+      {
         "from": "src/team/__tests__/state-paths.test.ts",
         "to": "external:vitest",
         "kind": "imports"
@@ -45824,6 +47845,11 @@
       },
       {
         "from": "src/team/__tests__/teardown-invariant.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "src/team/__tests__/teardown-invariant.test.ts",
         "to": "external:node:fs",
         "kind": "imports"
       },
@@ -46093,6 +48119,11 @@
         "kind": "type-imports"
       },
       {
+        "from": "src/team/__tests__/tmux-session.test.ts",
+        "to": "src/team/worker-launch-ack.ts",
+        "kind": "type-imports"
+      },
+      {
         "from": "src/team/__tests__/unified-team.test.ts",
         "to": "external:fs",
         "kind": "imports"
@@ -46356,6 +48387,11 @@
         "from": "src/team/__tests__/worker-launch-ack.test.ts",
         "to": "src/team/worker-launch-ack.ts",
         "kind": "imports"
+      },
+      {
+        "from": "src/team/__tests__/worker-launch-ack.test.ts",
+        "to": "src/team/worker-launch-ack.ts",
+        "kind": "type-imports"
       },
       {
         "from": "src/team/__tests__/worker-launch-posix-transport.test.ts",
@@ -48544,7 +50580,7 @@
       },
       {
         "from": "src/team/runtime-v2.ts",
-        "to": "src/utils/omc-cli-rendering.ts",
+        "to": "src/utils/omq-cli-rendering.ts",
         "kind": "imports"
       },
       {
@@ -49324,6 +51360,11 @@
       },
       {
         "from": "src/team/tmux-session.ts",
+        "to": "src/graph/runtime/native-contained-fs.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/team/tmux-session.ts",
         "to": "src/team/mailbox-notification-guard.ts",
         "kind": "type-imports"
       },
@@ -49524,7 +51565,7 @@
       },
       {
         "from": "src/team/worker-bootstrap.ts",
-        "to": "src/utils/omc-cli-rendering.ts",
+        "to": "src/utils/omq-cli-rendering.ts",
         "kind": "imports"
       },
       {
@@ -49625,6 +51666,11 @@
       {
         "from": "src/team/worker-launch-ack.ts",
         "to": "src/lib/file-lock.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "src/team/worker-launch-ack.ts",
+        "to": "src/lib/host-load-gate.ts",
         "kind": "imports"
       },
       {
@@ -52343,6 +54389,36 @@
         "kind": "imports"
       },
       {
+        "from": "templates/hooks/session-end.mjs",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "templates/hooks/session-end.mjs",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "templates/hooks/session-end.mjs",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "templates/hooks/session-end.mjs",
+        "to": "external:url",
+        "kind": "imports"
+      },
+      {
+        "from": "templates/hooks/session-end.mjs",
+        "to": "hooks/hooks.json",
+        "kind": "projects"
+      },
+      {
+        "from": "templates/hooks/session-end.mjs",
+        "to": "src/hooks/bridge.ts",
+        "kind": "projects"
+      },
+      {
         "from": "templates/hooks/session-start.mjs",
         "to": "external:child_process",
         "kind": "imports"
@@ -52488,6 +54564,31 @@
         "kind": "imports"
       },
       {
+        "from": "tests/integration/budget-guard.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/budget-guard.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/budget-guard.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/budget-guard.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/budget-guard.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
         "from": "tests/integration/concurrent-project-memory.test.ts",
         "to": "external:node:fs",
         "kind": "imports"
@@ -52573,6 +54674,41 @@
         "kind": "imports"
       },
       {
+        "from": "tests/integration/git-guardrails-hook.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/git-guardrails-hook.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/git-guardrails-hook.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/git-guardrails-hook.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/git-guardrails-hook.test.ts",
+        "to": "external:node:perf_hooks",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/git-guardrails-hook.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/git-guardrails-hook.test.ts",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
         "from": "tests/integration/multirepo-workspace.test.ts",
         "to": "external:node:fs",
         "kind": "imports"
@@ -52595,6 +54731,141 @@
       {
         "from": "tests/integration/multirepo-workspace.test.ts",
         "to": "src/lib/worktree-paths.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/runs-reconciler.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/runs-reconciler.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/runs-reconciler.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/runs-reconciler.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/runs-reconciler.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/skill-map-references.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/skill-map-references.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/skill-map-references.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/stale-run-reporter.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/stale-run-reporter.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/stale-run-reporter.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/stale-run-reporter.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/stale-run-reporter.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/stale-run-reporter.test.ts",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-lock-owner-reclaim.test.ts",
+        "to": "external:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-lock-owner-reclaim.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-lock-owner-reclaim.test.ts",
+        "to": "external:os",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-lock-owner-reclaim.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-lock-owner-reclaim.test.ts",
+        "to": "external:url",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-lock-owner-reclaim.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-root-fs-probe.test.ts",
+        "to": "external:node:child_process",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-root-fs-probe.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-root-fs-probe.test.ts",
+        "to": "external:node:os",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-root-fs-probe.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-root-fs-probe.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-root-fs-probe.test.ts",
+        "to": "scripts/lib/state-root.mjs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/integration/state-root-fs-probe.test.ts",
+        "to": "templates/hooks/lib/state-root.mjs",
         "kind": "imports"
       },
       {
@@ -52873,6 +55144,81 @@
         "kind": "imports"
       },
       {
+        "from": "tests/lint/issue-4147-processStart-encoding.test.ts",
+        "to": "external:node:crypto",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4147-processStart-encoding.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4147-processStart-encoding.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4147-processStart-encoding.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4154-windows-claude-invocation.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4154-windows-claude-invocation.test.ts",
+        "to": "external:url",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4154-windows-claude-invocation.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4154-windows-claude-invocation.test.ts",
+        "to": "src/cli/tmux-utils.ts",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4156-windows-dev-zero.test.ts",
+        "to": "external:node:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4156-windows-dev-zero.test.ts",
+        "to": "external:node:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/issue-4156-windows-dev-zero.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/session-end-forwarder-no-op.test.ts",
+        "to": "external:fs",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/session-end-forwarder-no-op.test.ts",
+        "to": "external:path",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/session-end-forwarder-no-op.test.ts",
+        "to": "external:url",
+        "kind": "imports"
+      },
+      {
+        "from": "tests/lint/session-end-forwarder-no-op.test.ts",
+        "to": "external:vitest",
+        "kind": "imports"
+      },
+      {
         "from": "tests/lint/setup-phases-drift.test.ts",
         "to": "external:child_process",
         "kind": "imports"
@@ -53064,12 +55410,12 @@
       }
     ],
     "stats": {
-      "nodeCount": 2138,
-      "edgeCount": 8177,
-      "importEdgeCount": 6731,
-      "registerEdgeCount": 82
+      "nodeCount": 2218,
+      "edgeCount": 8556,
+      "importEdgeCount": 7074,
+      "registerEdgeCount": 86
     }
   },
-  "inventorySha256": "332cc8da9a4ed166fb0beea4b20d21625df2e781d21eeb543258aec06dc5386f",
-  "manifestSha256": "f4dcd55fb692c991b3f04127f83972dabe0f78b0f6db765ba2be27c79ab5ac57"
+  "inventorySha256": "140db16dfc5daff970fa76f13f32476f5785058bbe4c4d99414694cfec75227d",
+  "manifestSha256": "c1a999c8a8d44af548b8737a0691c439b9659bb6bef6b9d59fc3ddcc4457152a"
 }

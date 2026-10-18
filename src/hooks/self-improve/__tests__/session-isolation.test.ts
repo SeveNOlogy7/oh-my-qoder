@@ -104,7 +104,7 @@ describe('self-improve session isolation (Wave B2)', () => {
 
     const paths = readJson('node', [RESOLVER, '--project-root', root, '--slug', slug, '--session-id', sid]);
 
-    const expectedRoot = join(realpathSync(root), '.omc', 'self-improve', 'topics', slug, 'sessions', sid);
+    const expectedRoot = join(realpathSync(root), '.omq', 'self-improve', 'topics', slug, 'sessions', sid);
     expect(paths.root).toBe(expectedRoot);
   });
 

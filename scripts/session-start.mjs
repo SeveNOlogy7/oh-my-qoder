@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * OMC Session Start Hook (Node.js)
+ * OMQ Session Start Hook (Node.js)
  * Restores persistent mode states when session starts
  * Cross-platform: Windows, macOS, Linux
  */
@@ -58,11 +58,11 @@ function readJsonFile(path) {
 
 const WORKFLOW_SLOT_TOMBSTONE_TTL_MS = 24 * 60 * 60 * 1000;
 
-function isWorkflowSlotTombstonedForMode(omcRoot, mode, sessionId) {
+function isWorkflowSlotTombstonedForMode(omqRoot, mode, sessionId) {
   const safeSessionId = typeof sessionId === 'string' && SAFE_SESSION_ID_PATTERN.test(sessionId) ? sessionId : '';
   const ledgerPath = safeSessionId
-    ? join(omcRoot, 'state', 'sessions', safeSessionId, 'skill-active-state.json')
-    : join(omcRoot, 'state', 'skill-active-state.json');
+    ? join(omqRoot, 'state', 'sessions', safeSessionId, 'skill-active-state.json')
+    : join(omqRoot, 'state', 'skill-active-state.json');
   const ledger = readJsonFile(ledgerPath);
   const slot = ledger?.active_skills?.[mode];
   if (!slot || typeof slot !== 'object') return false;
@@ -72,9 +72,9 @@ function isWorkflowSlotTombstonedForMode(omcRoot, mode, sessionId) {
   return Date.now() - completedAt < WORKFLOW_SLOT_TOMBSTONE_TTL_MS;
 }
 
-function shouldRestoreModeState(omcRoot, mode, state, sessionId) {
+function shouldRestoreModeState(omqRoot, mode, state, sessionId) {
   if (!state?.active) return false;
-  if (isWorkflowSlotTombstonedForMode(omcRoot, mode, sessionId)) return false;
+  if (isWorkflowSlotTombstonedForMode(omqRoot, mode, sessionId)) return false;
   return true;
 }
 
@@ -88,21 +88,21 @@ function readLinuxBootId() {
   }
 }
 
-function sessionStateDir(omcRoot, sessionId) {
-  return join(omcRoot, 'state', 'sessions', sessionId);
+function sessionStateDir(omqRoot, sessionId) {
+  return join(omqRoot, 'state', 'sessions', sessionId);
 }
 
-function sessionStartedMarkerPath(omcRoot, sessionId) {
-  return join(sessionStateDir(omcRoot, sessionId), SESSION_STARTED_MARKER_FILE);
+function sessionStartedMarkerPath(omqRoot, sessionId) {
+  return join(sessionStateDir(omqRoot, sessionId), SESSION_STARTED_MARKER_FILE);
 }
 
-function writeSessionStartedMarker(omcRoot, directory, sessionId) {
+function writeSessionStartedMarker(omqRoot, directory, sessionId) {
   if (!sessionId || !SAFE_SESSION_ID_PATTERN.test(sessionId)) return;
   try {
-    const dir = sessionStateDir(omcRoot, sessionId);
+    const dir = sessionStateDir(omqRoot, sessionId);
     mkdirSync(dir, { recursive: true });
     writeFileSync(
-      sessionStartedMarkerPath(omcRoot, sessionId),
+      sessionStartedMarkerPath(omqRoot, sessionId),
       JSON.stringify({
         session_id: sessionId,
         started_at: new Date().toISOString(),
@@ -121,10 +121,10 @@ function writeSessionStartedMarker(omcRoot, directory, sessionId) {
   }
 }
 
-function removeSessionStartedMarker(omcRoot, sessionId) {
+function removeSessionStartedMarker(omqRoot, sessionId) {
   if (!sessionId || !SAFE_SESSION_ID_PATTERN.test(sessionId)) return;
   try {
-    const markerPath = sessionStartedMarkerPath(omcRoot, sessionId);
+    const markerPath = sessionStartedMarkerPath(omqRoot, sessionId);
     if (existsSync(markerPath)) unlinkSync(markerPath);
   } catch {
     // Best-effort only.
@@ -136,7 +136,7 @@ function removeSessionStartedMarker(omcRoot, sessionId) {
  *
  * Claude Code SessionStart input currently provides session metadata such as
  * session_id, transcript_path, cwd, source, model, and agent_type, but no
- * stable owner process for the interactive session. In installed OMC hooks the
+ * stable owner process for the interactive session. In installed OMQ hooks the
  * immediate hook parent belongs to scripts/run.cjs and is intentionally
  * short-lived, so same-boot PID liveness checks are not reliable here. SessionEnd
  * remains the primary same-boot cleanup path; SessionStart only reconciles
@@ -155,8 +155,8 @@ function hasDurableAbandonmentEvidence(marker) {
   return false;
 }
 
-function cleanupSessionModeState(omcRoot, sessionId) {
-  const sessionDir = sessionStateDir(omcRoot, sessionId);
+function cleanupSessionModeState(omqRoot, sessionId) {
+  const sessionDir = sessionStateDir(omqRoot, sessionId);
   for (const file of SESSION_END_MODE_STATE_FILES) {
     try {
       const filePath = join(sessionDir, file);
@@ -170,8 +170,8 @@ function cleanupSessionModeState(omcRoot, sessionId) {
   }
 }
 
-function cleanupMissionStateForSession(omcRoot, sessionId) {
-  const missionStatePath = join(omcRoot, 'state', 'mission-state.json');
+function cleanupMissionStateForSession(omqRoot, sessionId) {
+  const missionStatePath = join(omqRoot, 'state', 'mission-state.json');
   const parsed = readJsonFile(missionStatePath);
   if (!Array.isArray(parsed?.missions)) return;
 
@@ -191,8 +191,8 @@ function cleanupMissionStateForSession(omcRoot, sessionId) {
   }
 }
 
-function reconcileAbandonedSessionStarts(omcRoot, currentSessionId) {
-  const sessionsDir = join(omcRoot, 'state', 'sessions');
+function reconcileAbandonedSessionStarts(omqRoot, currentSessionId) {
+  const sessionsDir = join(omqRoot, 'state', 'sessions');
   if (!existsSync(sessionsDir)) return;
 
   let entries = [];
@@ -205,22 +205,22 @@ function reconcileAbandonedSessionStarts(omcRoot, currentSessionId) {
   for (const sessionId of entries) {
     if (!SAFE_SESSION_ID_PATTERN.test(sessionId) || sessionId === currentSessionId) continue;
 
-    const marker = readJsonFile(sessionStartedMarkerPath(omcRoot, sessionId));
+    const marker = readJsonFile(sessionStartedMarkerPath(omqRoot, sessionId));
     if (!marker || marker.session_id !== sessionId) continue;
 
-    if (existsSync(join(omcRoot, 'sessions', `${sessionId}.json`))) {
-      removeSessionStartedMarker(omcRoot, sessionId);
+    if (existsSync(join(omqRoot, 'sessions', `${sessionId}.json`))) {
+      removeSessionStartedMarker(omqRoot, sessionId);
       continue;
     }
 
     if (!hasDurableAbandonmentEvidence(marker)) continue;
 
-    cleanupSessionModeState(omcRoot, sessionId);
-    cleanupMissionStateForSession(omcRoot, sessionId);
-    removeSessionStartedMarker(omcRoot, sessionId);
+    cleanupSessionModeState(omqRoot, sessionId);
+    cleanupMissionStateForSession(omqRoot, sessionId);
+    removeSessionStartedMarker(omqRoot, sessionId);
 
     try {
-      const sessionDir = sessionStateDir(omcRoot, sessionId);
+      const sessionDir = sessionStateDir(omqRoot, sessionId);
       if (readdirSync(sessionDir).length === 0) {
         rmSync(sessionDir, { recursive: false, force: true });
       }
@@ -436,7 +436,7 @@ import { MODEL_ROUTING_OVERRIDE_MESSAGE } from './lib/model-routing-override-mes
 export { MODEL_ROUTING_OVERRIDE_MESSAGE };
 
 /**
- * Validate that a candidate cwd is a real OMC workspace anchor.
+ * Validate that a candidate cwd is a real OMQ workspace anchor.
  * Returns the candidate unchanged if it is non-empty AND contains a
  * `.omq-workspace` marker OR a `.git` directory.
  * Otherwise emits a one-line warning to stderr and returns null,
@@ -543,11 +543,11 @@ function formatUpdateNoticeForUser(updateInfo, options = {}) {
   const latestVersion = updateInfo?.latestVersion || 'latest';
   const currentVersion = updateInfo?.currentVersion || 'unknown';
   const action = updateInfo?.source === 'marketplace'
-    ? 'To update the plugin channel, run: /plugin marketplace update omc && /omc-setup'
+    ? 'To update the plugin channel, run: /plugin marketplace update omq && /omq-setup'
     : (options.autoUpgradePrompt === false
-      ? 'To update later, run: omc update'
-      : 'Run /update to upgrade now, or use /plugin install oh-my-claudecode');
-  return `[OMC UPDATE AVAILABLE] oh-my-claudecode v${latestVersion} is available (current: v${currentVersion}). ${action}`;
+      ? 'To update later, run: omq update'
+      : 'Run /update to upgrade now, or use /plugin install oh-my-qoder');
+  return `[OMQ UPDATE AVAILABLE] oh-my-qoder v${latestVersion} is available (current: v${currentVersion}). ${action}`;
 }
 
 function buildSessionStartAdditionalContext(messages) {
@@ -596,8 +596,8 @@ function buildSessionStartAdditionalContext(messages) {
   return selected.join('\n');
 }
 
-// Extract OMC version from CLAUDE.md content
-function extractOmcVersion(content) {
+// Extract OMQ version from CLAUDE.md content
+function extractOmqVersion(content) {
   const match = content.match(/<!-- OMQ:VERSION:(\d+\.\d+\.\d+[^\s]*?) -->/);
   return match ? match[1] : null;
 }
@@ -640,12 +640,12 @@ function getLatestPluginCacheVersion() {
 
 function getMarketplaceCloneVersion() {
   try {
-    const marketplaceRoot = join(configDir, 'plugins', 'marketplaces', 'omc');
+    const marketplaceRoot = join(configDir, 'plugins', 'marketplaces', 'omq');
     if (!existsSync(marketplaceRoot)) return null;
 
     const marketplaceManifest = readJsonFile(join(marketplaceRoot, '.claude-plugin', 'marketplace.json'));
     const pluginEntry = Array.isArray(marketplaceManifest?.plugins)
-      ? marketplaceManifest.plugins.find(plugin => plugin?.name === 'oh-my-claudecode')
+      ? marketplaceManifest.plugins.find(plugin => plugin?.name === 'oh-my-qoder')
       : null;
     const version = typeof pluginEntry?.version === 'string' ? pluginEntry.version.trim() : '';
     return parseSemver(version) ? version : null;
@@ -660,7 +660,7 @@ function readUpdateCheckCache() {
 }
 
 // Merge into the existing cache so unrelated fields (e.g. the Claude Code
-// version tracked below) survive an OMC-only refresh.
+// version tracked below) survive an OMQ-only refresh.
 function mergeUpdateCheckCache(fields) {
   const cachePath = getUpdateCheckCachePath();
   const cacheDir = dirname(cachePath);
@@ -751,7 +751,7 @@ function getClaudeMdVersion() {
     const claudeMdPath = join(configDir, 'CLAUDE.md');
     if (!existsSync(claudeMdPath)) return null;  // File doesn't exist
     const content = readFileSync(claudeMdPath, 'utf-8');
-    const version = extractOmcVersion(content);
+    const version = extractOmqVersion(content);
     return version || 'unknown';  // File exists but no marker = 'unknown'
   } catch { return null; }
 }
@@ -771,7 +771,7 @@ function detectVersionDrift() {
   // Managed plugin installs are intentionally governed by the marketplace clone,
   // so a newer npm CLI/cache version is not proof that the plugin channel can act.
   if (!marketplaceChannel.managed && npmVersion && npmVersion !== pluginVersion) {
-    drift.push({ component: 'npm package (omc CLI)', current: npmVersion, expected: pluginVersion });
+    drift.push({ component: 'npm package (omq CLI)', current: npmVersion, expected: pluginVersion });
   }
 
   if (claudeMdVersion === 'unknown') {
@@ -918,8 +918,8 @@ async function runUpdateChecks() {
         if (!pluginVersion) return null;
         const updateInfo = await checkNpmUpdate(pluginVersion);
         if (!updateInfo) return null;
-        const omcConfig = readJsonFile(join(configDir, '.omq-config.json')) || {};
-        return formatUpdateNoticeForUser(updateInfo, { autoUpgradePrompt: omcConfig.autoUpgradePrompt !== false });
+        const omqConfig = readJsonFile(join(configDir, '.omq-config.json')) || {};
+        return formatUpdateNoticeForUser(updateInfo, { autoUpgradePrompt: omqConfig.autoUpgradePrompt !== false });
       } catch { return null; }
     })(),
     checkClaudeCodeUpdate().catch(() => {}),
@@ -960,20 +960,16 @@ async function refreshUpdateCacheAndExit() {
 // Check if HUD is properly installed (with retry for race conditions)
 async function checkHudInstallation(retryCount = 0) {
   const hudDir = join(configDir, 'hud');
-  // Both prefixes are accepted: this fork installs omq-hud.*, and the
-  // ancestor's omc-hud.* stays accepted as legacy so an upgraded install is
-  // never reported as missing.
+  // This fork installs omq-hud.* only.
   const hudScriptCurrent = join(hudDir, 'omq-hud.mjs');
   const hudScriptLegacy = join(hudDir, 'omq-hud.js');
-  const hudScriptAncestor = join(hudDir, 'omc-hud.mjs');
-  const hudScriptAncestorLegacy = join(hudDir, 'omc-hud.js');
   const settingsFile = join(configDir, 'settings.json');
 
   const MAX_RETRIES = 2;
   const RETRY_DELAY_MS = 100;
 
   // Check if HUD script exists (either naming convention)
-  const hudScriptExists = existsSync(hudScriptCurrent) || existsSync(hudScriptLegacy) || existsSync(hudScriptAncestor) || existsSync(hudScriptAncestorLegacy);
+  const hudScriptExists = existsSync(hudScriptCurrent) || existsSync(hudScriptLegacy);
   if (!hudScriptExists) {
     return { installed: false, reason: 'HUD script missing' };
   }
@@ -1007,8 +1003,8 @@ async function checkHudInstallation(retryCount = 0) {
           ? settings.statusLine.command
           : null);
 
-      // If OMC HUD wrapper is configured, ensure at least one plugin cache version is built.
-      if (statusLineCommand?.includes('omq-hud') || statusLineCommand?.includes('omc-hud')) {
+      // If the OMQ HUD wrapper is configured, ensure at least one plugin cache version is built.
+      if (statusLineCommand?.includes('omq-hud')) {
         const pluginCacheBase = resolvePluginCacheBase(configDir);
         if (existsSync(pluginCacheBase)) {
           const versions = readdirSync(pluginCacheBase)
@@ -1064,7 +1060,7 @@ async function main() {
       return;
     }
     const sessionId = data.session_id || data.sessionId || '';
-    const omcRoot = await resolveOmqStateRoot(directory);
+    const omqRoot = await resolveOmqStateRoot(directory);
     let messages = [];
     const userMessages = [];
     let pendingRestore = null;
@@ -1078,7 +1074,7 @@ async function main() {
         const { preparePreCompactCheckpointRestore, claimPreCompactCheckpointRestore } = await import(
           pathToFileURL(join(__dirname, 'lib', 'precompact-restore.mjs')).href
         );
-        const prepared = preparePreCompactCheckpointRestore(omcRoot, sessionId);
+        const prepared = preparePreCompactCheckpointRestore(omqRoot, sessionId);
         if (prepared) {
           pendingRestore = { ...prepared, preparePreCompactCheckpointRestore, claimPreCompactCheckpointRestore };
           pendingRestoreMessage = `<session-restore>\n\n${prepared.text}\n\n</session-restore>\n\n---\n`;
@@ -1105,7 +1101,7 @@ async function main() {
     // Issue #3995: single occupancy resolution per session start; assigned in
     // the plugin-root branch below, consumed by the stale-cache GC scan below.
     let occupancyResolution = null;
-    writeSessionStartedMarker(omcRoot, directory, sessionId);
+    writeSessionStartedMarker(omqRoot, directory, sessionId);
     if (process.env.CLAUDE_PLUGIN_ROOT) {
       // Issue #3995: resolve plugin-cache occupancy ONCE per session start.
       // The win32 batched identity host (the only PowerShell spawn on this
@@ -1117,19 +1113,19 @@ async function main() {
       occupancyResolution = readOccupiedPluginRoots(configDir, { includePids: [ownerPid] });
       publishCacheOccupancy(process.env.CLAUDE_PLUGIN_ROOT, configDir, ownerPid, occupancyResolution.identities.get(ownerPid));
     }
-    reconcileAbandonedSessionStarts(omcRoot, sessionId);
+    reconcileAbandonedSessionStarts(omqRoot, sessionId);
     reconcileSessionEndJobsInBackground(getRuntimeBaseDir(), directory);
 
     // Check for version drift between components
     const driftInfo = detectVersionDrift();
     if (driftInfo && shouldNotifyDrift(driftInfo)) {
-      let driftMsg = `[OMC VERSION DRIFT DETECTED]\n\nPlugin version: ${driftInfo.pluginVersion}\n`;
+      let driftMsg = `[OMQ VERSION DRIFT DETECTED]\n\nPlugin version: ${driftInfo.pluginVersion}\n`;
       for (const d of driftInfo.drift) {
         driftMsg += `${d.component}: ${d.current} (expected ${d.expected})\n`;
       }
       driftMsg += driftInfo.source === 'marketplace'
-        ? `\nRun '/plugin marketplace update omc && /omc-setup' to sync plugin-managed components.`
-        : `\nRun 'omc update' to sync all components.`;
+        ? `\nRun '/plugin marketplace update omq && /omq-setup' to sync plugin-managed components.`
+        : `\nRun 'omq update' to sync all components.`;
 
       messages.push(`<session-restore>\n\n${driftMsg}\n\n</session-restore>\n\n---\n`);
     }
@@ -1141,9 +1137,9 @@ async function main() {
     // Warn if silentAutoUpdate is enabled but running in plugin mode (#1773)
     if (process.env.CLAUDE_PLUGIN_ROOT) {
       try {
-        const omcConfigPath = join(configDir, '.omq-config.json');
-        const omcConfig = readJsonFile(omcConfigPath);
-        if (omcConfig?.silentAutoUpdate) {
+        const omqConfigPath = join(configDir, '.omq-config.json');
+        const omqConfig = readJsonFile(omqConfigPath);
+        if (omqConfig?.silentAutoUpdate) {
           messages.push(`<session-restore>\n\n[OMQ] silentAutoUpdate is enabled in .omq-config.json but has no effect in plugin mode.\nTo update, use: /plugin marketplace update omq && /omq-setup\nOr run manually: omq update\n\n</session-restore>\n\n---\n`);
         }
       } catch {}
@@ -1166,19 +1162,19 @@ async function main() {
     let ralphState = null;
     if (sessionId && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/.test(sessionId)) {
       // Session-scoped ONLY — no legacy fallback
-      ralphState = readJsonFile(join(omcRoot, 'state', 'sessions', sessionId, 'ralph-state.json'));
+      ralphState = readJsonFile(join(omqRoot, 'state', 'sessions', sessionId, 'ralph-state.json'));
       // Validate session identity
       if (ralphState && ralphState.session_id && ralphState.session_id !== sessionId) {
         ralphState = null;
       }
     } else {
       // No session_id — legacy behavior for backward compat
-      ralphState = readJsonFile(join(omcRoot, 'state', 'ralph-state.json'));
+      ralphState = readJsonFile(join(omqRoot, 'state', 'ralph-state.json'));
       if (!ralphState) {
-        ralphState = readJsonFile(join(omcRoot, 'ralph-state.json'));
+        ralphState = readJsonFile(join(omqRoot, 'ralph-state.json'));
       }
     }
-    if (shouldRestoreModeState(omcRoot, 'ralph', ralphState, sessionId)) {
+    if (shouldRestoreModeState(omqRoot, 'ralph', ralphState, sessionId)) {
       messages.push(`<session-restore>
 
 [RALPH LOOP RESTORED]
@@ -1202,7 +1198,7 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
     // That directory accumulates todo files from ALL past sessions across all
     // projects, causing phantom task counts in fresh sessions (see issue #354).
     const localTodoPaths = [
-      join(omcRoot, 'todos.json'),
+      join(omqRoot, 'todos.json'),
       join(directory, '.claude', 'todos.json')
     ];
     let incompleteCount = 0;
@@ -1251,7 +1247,7 @@ ${summary}
     }
 
     // Check for notepad Priority Context
-    const notepadPath = join(omcRoot, 'notepad.md');
+    const notepadPath = join(omqRoot, 'notepad.md');
     if (existsSync(notepadPath)) {
       try {
         const notepadContent = readFileSync(notepadPath, 'utf-8');
@@ -1418,7 +1414,7 @@ ${cleanContent}
         const waitCell = new Int32Array(new SharedArrayBuffer(4));
         for (let attempt = 0; attempt < 100; attempt += 1) {
           const status = pendingRestore.claimPreCompactCheckpointRestore(
-            omcRoot,
+            omqRoot,
             sessionId,
             pendingRestore.path,
             pendingRestore.created_at,
@@ -1431,7 +1427,7 @@ ${cleanContent}
           }
           if (status !== 'contended') break;
           Atomics.wait(waitCell, 0, 0, 10);
-          const refreshed = pendingRestore.preparePreCompactCheckpointRestore(omcRoot, sessionId);
+          const refreshed = pendingRestore.preparePreCompactCheckpointRestore(omqRoot, sessionId);
           if (!refreshed) break;
           const refreshedMessage = `<session-restore>\n\n${refreshed.text}\n\n</session-restore>\n\n---\n`;
           const refreshedMessages = messages.map((message) => (

@@ -49,7 +49,7 @@ const modelContractMocks = vi.hoisted(() => ({
 }));
 
 const FIXTURE_TMUX_SERVER_IDENTITY = {
-  socket_path: '/tmp/omc-test-tmux.sock',
+  socket_path: '/tmp/omq-test-tmux.sock',
   server_pid: 4242,
   process_started_at: process.platform === 'darwin'
     ? 'darwin:1700000000:123456'
@@ -194,7 +194,7 @@ describe('runtime-v2 Gemini preflight routing', () => {
     mocks.deliverStartupInbox.mockImplementation(async (context: {
       attempt: { attempt_id: string; team_name: string; worker_name: string };
     }) => {
-      const workerDir = join(cwd, '.omc', 'state', 'team', context.attempt.team_name, 'workers', context.attempt.worker_name);
+      const workerDir = join(cwd, '.omq', 'state', 'team', context.attempt.team_name, 'workers', context.attempt.worker_name);
       await mkdir(workerDir, { recursive: true });
       await writeFile(join(workerDir, 'status.json'), JSON.stringify({
         state: 'working',
@@ -235,7 +235,7 @@ describe('runtime-v2 Gemini preflight routing', () => {
 
     expect(modelContractMocks.resolveValidatedBinaryPath).not.toHaveBeenCalled();
     expect(mocks.createTeamSession).not.toHaveBeenCalled();
-    await expect(import('node:fs/promises').then(fs => fs.access(join(cwd, '.omc', 'state', 'team', 'invalid-worker-count-team'))))
+    await expect(import('node:fs/promises').then(fs => fs.access(join(cwd, '.omq', 'state', 'team', 'invalid-worker-count-team'))))
       .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
@@ -254,7 +254,7 @@ describe('runtime-v2 Gemini preflight routing', () => {
 
     expect(modelContractMocks.resolveValidatedBinaryPath).not.toHaveBeenCalled();
     expect(mocks.createTeamSession).not.toHaveBeenCalled();
-    await expect(import('node:fs/promises').then(fs => fs.access(join(cwd, '.omc', 'state', 'team', 'invalid-agent-types-team'))))
+    await expect(import('node:fs/promises').then(fs => fs.access(join(cwd, '.omq', 'state', 'team', 'invalid-agent-types-team'))))
       .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
@@ -473,7 +473,7 @@ describe('runtime-v2 Gemini preflight routing', () => {
     expect(mocks.createTeamSession).not.toHaveBeenCalled();
     expect(mocks.spawnOwnedWorkerInPane).not.toHaveBeenCalled();
     expect(modelContractMocks.buildWorkerArgv).not.toHaveBeenCalled();
-    await expect(import('node:fs/promises').then(fs => fs.access(join(cwd, '.omc', 'state', 'team', 'issue2675-team'))))
+    await expect(import('node:fs/promises').then(fs => fs.access(join(cwd, '.omq', 'state', 'team', 'issue2675-team'))))
       .rejects.toMatchObject({ code: 'ENOENT' });
   });
   it('fails a routed-only provider before state or session side effects', async () => {

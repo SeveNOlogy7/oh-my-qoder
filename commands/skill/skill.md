@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Manage local skills - list, add, remove, search, edit, setup wizard"
 ---
 
 # OMQ skill

@@ -105,7 +105,7 @@ describe('team cli', () => {
   let jobsDir: string;
 
   beforeEach(() => {
-    jobsDir = mkdtempSync(join(tmpdir(), 'omc-team-cli-jobs-'));
+    jobsDir = mkdtempSync(join(tmpdir(), 'omq-team-cli-jobs-'));
     process.env.OMQ_JOBS_DIR = jobsDir;
     process.env.OMQ_RUNTIME_CLI_PATH = '/tmp/runtime-cli.cjs';
     mocks.spawn.mockReset();
@@ -161,7 +161,7 @@ describe('team cli', () => {
     });
 
     expect(result.status).toBe('running');
-    expect(result.jobId).toMatch(/^omc-[a-z0-9]{1,16}$/);
+    expect(result.jobId).toMatch(/^omq-[a-z0-9]{1,16}$/);
     expect(result.instanceId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(result.pid).toBe(4242);
 
@@ -212,7 +212,7 @@ describe('team cli', () => {
       teamName: 'child-error-team',
       agentTypes: ['codex'],
       tasks: [{ subject: 'one', description: 'desc' }],
-      cwd: makeProject('omc-team-cli-child-error-'),
+      cwd: makeProject('omq-team-cli-child-error-'),
     });
 
     expect(childErrorHandlers).toHaveLength(1);
@@ -227,7 +227,7 @@ describe('team cli', () => {
   it.each(['replacement', 'removal'] as const)(
     'does not overwrite a durable job %s that changes before synchronous spawn throws',
     async mode => {
-      const cwd = makeProject(`omc-team-cli-sync-spawn-${mode}-`);
+      const cwd = makeProject(`omq-team-cli-sync-spawn-${mode}-`);
       mocks.spawn.mockImplementation(() => {
         const jobPath = join(jobsDir, readdirSync(jobsDir).find(name => name.endsWith('.json'))!);
         if (mode === 'replacement') {
@@ -288,7 +288,7 @@ describe('team cli', () => {
       teamName: 'child-fence-team',
       agentTypes: ['codex'],
       tasks: [{ subject: 'one', description: 'desc' }],
-      cwd: makeProject(`omc-team-cli-child-fence-${_kind}-`),
+      cwd: makeProject(`omq-team-cli-child-fence-${_kind}-`),
     });
     const jobPath = join(jobsDir, `${result.jobId}.json`);
     const initial = JSON.parse(readFileSync(jobPath, 'utf-8')) as Record<string, unknown>;
@@ -319,7 +319,7 @@ describe('team cli', () => {
       teamName: 'stdin-unavailable-team',
       agentTypes: ['codex'],
       tasks: [{ subject: 'one', description: 'desc' }],
-      cwd: makeProject('omc-team-cli-stdin-unavailable-'),
+      cwd: makeProject('omq-team-cli-stdin-unavailable-'),
     })).rejects.toThrow('runtime_cli_stdin_unavailable');
 
     const files = readdirSync(jobsDir).filter(name => name.endsWith('.json'));
@@ -346,7 +346,7 @@ describe('team cli', () => {
       teamName: 'stdin-write-team',
       agentTypes: ['codex'],
       tasks: [{ subject: 'one', description: 'desc' }],
-      cwd: makeProject('omc-team-cli-stdin-write-'),
+      cwd: makeProject('omq-team-cli-stdin-write-'),
     })).rejects.toThrow('write failed');
 
     const files = readdirSync(jobsDir).filter(name => name.endsWith('.json'));
@@ -373,7 +373,7 @@ describe('team cli', () => {
       teamName: 'stdin-end-team',
       agentTypes: ['codex'],
       tasks: [{ subject: 'one', description: 'desc' }],
-      cwd: makeProject('omc-team-cli-stdin-end-'),
+      cwd: makeProject('omq-team-cli-stdin-end-'),
     })).rejects.toThrow('end failed');
 
     const files = readdirSync(jobsDir).filter(name => name.endsWith('.json'));
@@ -405,7 +405,7 @@ describe('team cli', () => {
       teamName: 'stdin-error-team',
       agentTypes: ['codex'],
       tasks: [{ subject: 'one', description: 'desc' }],
-      cwd: makeProject('omc-team-cli-stdin-error-'),
+      cwd: makeProject('omq-team-cli-stdin-error-'),
     });
 
     expect(stdinErrorHandlers).toHaveLength(1);
@@ -446,7 +446,7 @@ describe('team cli', () => {
     const end = vi.fn();
     const unref = vi.fn();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const cwd = makeProject('omc-team-cli-start-json-');
+    const cwd = makeProject('omq-team-cli-start-json-');
 
     mocks.spawn.mockReturnValue({
       pid: 7777,
@@ -481,7 +481,7 @@ describe('team cli', () => {
       status: string;
       pid: number;
     };
-    expect(output.jobId).toMatch(/^omc-[a-z0-9]{1,16}$/);
+    expect(output.jobId).toMatch(/^omq-[a-z0-9]{1,16}$/);
     expect(output.instanceId).toBe(stdinPayload.instanceId);
     expect(output.status).toBe('running');
     expect(output.pid).toBe(7777);
@@ -495,7 +495,7 @@ describe('team cli', () => {
     const end = vi.fn();
     const unref = vi.fn();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const cwd = makeProject('omc-team-cli-new-window-');
+    const cwd = makeProject('omq-team-cli-new-window-');
 
     mocks.spawn.mockReturnValue({
       pid: 8787,
@@ -519,7 +519,7 @@ describe('team cli', () => {
     const end = vi.fn();
     const unref = vi.fn();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const cwd = makeProject('omc-team-cli-count-');
+    const cwd = makeProject('omq-team-cli-count-');
 
     mocks.spawn.mockReturnValue({
       pid: 8888,
@@ -557,7 +557,7 @@ describe('team cli', () => {
     const end = vi.fn();
     const unref = vi.fn();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const cwd = makeProject('omc-team-cli-agy-');
+    const cwd = makeProject('omq-team-cli-agy-');
 
     mocks.spawn.mockReturnValue({
       pid: 9191,
@@ -585,7 +585,7 @@ describe('team cli', () => {
   });
 
   it('teamCommand start rejects an unsupported --agent value', async () => {
-    const cwd = makeProject('omc-team-cli-bad-agent-');
+    const cwd = makeProject('omq-team-cli-bad-agent-');
     const { teamCommand } = await import('../team.js');
     await expect(
       teamCommand([
@@ -597,7 +597,7 @@ describe('team cli', () => {
   });
 
   it('startTeamJob rejects runtime v1 before creating job, state, or child effects', async () => {
-    const cwd = makeProject('omc-team-cli-runtime-v1-rejected-');
+    const cwd = makeProject('omq-team-cli-runtime-v1-rejected-');
     mocks.isRuntimeV2Enabled.mockReturnValue(false);
 
     const { startTeamJob } = await import('../team.js');
@@ -610,7 +610,7 @@ describe('team cli', () => {
 
     expect(mocks.spawn).not.toHaveBeenCalled();
     expect(readdirSync(jobsDir)).toEqual([]);
-    expect(existsSync(join(cwd, '.omc'))).toBe(false);
+    expect(existsSync(join(cwd, '.omq'))).toBe(false);
   });
 
   it('legacy team alias reuses an approved short follow-up launch hint', async () => {
@@ -618,7 +618,7 @@ describe('team cli', () => {
     const end = vi.fn();
     const unref = vi.fn();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const cwd = makeProject('omc-team-cli-approved-followup-');
+    const cwd = makeProject('omq-team-cli-approved-followup-');
     const plansDir = join(cwd, '.omq', 'plans');
     mkdirSync(plansDir, { recursive: true });
     writeFileSync(
@@ -676,7 +676,7 @@ describe('team cli', () => {
   });
 
   it('legacy team alias fails closed for incomplete approved short follow-up hints', async () => {
-    const cwd = makeProject('omc-team-cli-approved-incomplete-');
+    const cwd = makeProject('omq-team-cli-approved-incomplete-');
     const plansDir = join(cwd, '.omq', 'plans');
     mkdirSync(plansDir, { recursive: true });
     writeFileSync(
@@ -704,7 +704,7 @@ describe('team cli', () => {
   });
 
   it('legacy team alias fails closed for ambiguous approved short follow-up hints', async () => {
-    const cwd = makeProject('omc-team-cli-approved-ambiguous-');
+    const cwd = makeProject('omq-team-cli-approved-ambiguous-');
     const plansDir = join(cwd, '.omq', 'plans');
     mkdirSync(plansDir, { recursive: true });
     writeFileSync(
@@ -750,7 +750,7 @@ describe('team cli', () => {
     const end = vi.fn();
     const unref = vi.fn();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const cwd = makeProject('omc-team-cli-start-plain-');
+    const cwd = makeProject('omq-team-cli-start-plain-');
 
     mocks.spawn.mockReturnValue({
       pid: 9999,
@@ -800,7 +800,7 @@ describe('team cli', () => {
 
   it('repairs a failed durable job when a later matching completed artifact arrives', async () => {
     const { getTeamJobStatus } = await import('../team.js');
-    const jobId = 'omc-latecompleted';
+    const jobId = 'omq-latecompleted';
     const resultArtifact = JSON.stringify({
       status: 'completed',
       teamName: 'demo',
@@ -831,7 +831,7 @@ describe('team cli', () => {
 
   it('getTeamJobStatus rejects a terminal result artifact from a stale instance', async () => {
     const { getTeamJobStatus } = await import('../team.js');
-    const jobId = 'omc-staleresult';
+    const jobId = 'omq-staleresult';
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
       status: 'running',
       startedAt: Date.now(),
@@ -859,9 +859,9 @@ describe('team cli', () => {
   it('getTeamJobStatus fails closed for missing and corrupt job authority', async () => {
     const { getTeamJobStatus } = await import('../team.js');
 
-    await expect(getTeamJobStatus('omc-missingjob')).rejects.toThrow('No job found');
-    writeFileSync(join(jobsDir, 'omc-corruptjob.json'), '{not-json', 'utf-8');
-    await expect(getTeamJobStatus('omc-corruptjob')).rejects.toThrow('Corrupt job file');
+    await expect(getTeamJobStatus('omq-missingjob')).rejects.toThrow('No job found');
+    writeFileSync(join(jobsDir, 'omq-corruptjob.json'), '{not-json', 'utf-8');
+    await expect(getTeamJobStatus('omq-corruptjob')).rejects.toThrow('Corrupt job file');
   });
 
   it('waitForTeamJob times out with running status', async () => {
@@ -887,7 +887,7 @@ describe('team cli', () => {
     const { cleanupTeamJob } = await import('../team.js');
 
     const jobId = 'omq-cleanup1';
-    const cwd = makeProject('omc-team-cli-cleanup-');
+    const cwd = makeProject('omq-team-cli-cleanup-');
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
@@ -924,8 +924,8 @@ describe('team cli', () => {
 
   it('merges current result fields after deferred cleanup succeeds', async () => {
     const { cleanupTeamJob } = await import('../team.js');
-    const jobId = 'omc-cleanupdeferred';
-    const cwd = makeProject('omc-team-cli-deferred-status-');
+    const jobId = 'omq-cleanupdeferred';
+    const cwd = makeProject('omq-team-cli-deferred-status-');
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
       status: 'running',
       startedAt: Date.now(),
@@ -984,8 +984,8 @@ describe('team cli', () => {
 
   it('does not regress a newer cleanup blocked reason during deferred failure publication', async () => {
     const { cleanupTeamJob, getTeamJobStatus } = await import('../team.js');
-    const jobId = 'omc-cleanupreason';
-    const cwd = makeProject('omc-team-cli-deferred-reason-');
+    const jobId = 'omq-cleanupreason';
+    const cwd = makeProject('omq-team-cli-deferred-reason-');
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
       status: 'running',
       startedAt: Date.now(),
@@ -1037,8 +1037,8 @@ describe('team cli', () => {
 
   it('does not erase a cleanup marker written by another deferred cleanup', async () => {
     const { cleanupTeamJob } = await import('../team.js');
-    const jobId = 'omc-cleanupcleaned';
-    const cwd = makeProject('omc-team-cli-deferred-cleaned-');
+    const jobId = 'omq-cleanupcleaned';
+    const cwd = makeProject('omq-team-cli-deferred-cleaned-');
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
       status: 'running',
       startedAt: Date.now(),
@@ -1096,8 +1096,8 @@ describe('team cli', () => {
 
   it('cleanupTeamJob does not touch a replacement after the original job is already cleaned', async () => {
     const { cleanupTeamJob } = await import('../team.js');
-    const jobId = 'omc-cleanupretry';
-    const cwd = makeProject('omc-team-cli-cleanup-retry-');
+    const jobId = 'omq-cleanupretry';
+    const cwd = makeProject('omq-team-cli-cleanup-retry-');
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
@@ -1120,8 +1120,8 @@ describe('team cli', () => {
   it('cleanupTeamJob remains v2-bound when the runtime reports a same-name replacement', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanupstale';
-    const cwd = makeProject('omc-team-cli-stale-instance-');
+    const jobId = 'omq-cleanupstale';
+    const cwd = makeProject('omq-team-cli-stale-instance-');
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
@@ -1158,8 +1158,8 @@ describe('team cli', () => {
     const { cleanupTeamJob } = await import('../team.js');
 
     for (const [suffix, panes] of [['missing', undefined], ['corrupt', '{not-json']] as const) {
-      const jobId = `omc-cleanup${suffix}`;
-      const cwd = makeProject(`omc-team-cli-${suffix}-evidence-`);
+      const jobId = `omq-cleanup${suffix}`;
+      const cwd = makeProject(`omq-team-cli-${suffix}-evidence-`);
       const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
       mkdirSync(stateRoot, { recursive: true });
       writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
@@ -1190,8 +1190,8 @@ describe('team cli', () => {
   it('cleanupTeamJob preserves state for a stale result artifact identity', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-staleresult2';
-    const cwd = makeProject('omc-team-cli-stale-result-');
+    const jobId = 'omq-staleresult2';
+    const cwd = makeProject('omq-team-cli-stale-result-');
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
@@ -1221,8 +1221,8 @@ describe('team cli', () => {
 
   it('cleanupTeamJob preserves state when result evidence is corrupt', async () => {
     const { cleanupTeamJob } = await import('../team.js');
-    const jobId = 'omc-corruptresult';
-    const cwd = makeProject('omc-team-cli-corrupt-result-');
+    const jobId = 'omq-corruptresult';
+    const cwd = makeProject('omq-team-cli-corrupt-result-');
     const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
@@ -1248,9 +1248,9 @@ describe('team cli', () => {
   it('cleanupTeamJob propagates failed runtime cleanup without marking the job cleaned', async () => {
     const { cleanupTeamJob } = await import('../team.js');
 
-    const jobId = 'omc-cleanupfailed';
-    const cwd = makeProject('omc-team-cli-failed-cleanup-');
-    const stateRoot = join(cwd, '.omc', 'state', 'team', 'demo-team');
+    const jobId = 'omq-cleanupfailed';
+    const cwd = makeProject('omq-team-cli-failed-cleanup-');
+    const stateRoot = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(stateRoot, { recursive: true });
     writeFileSync(join(jobsDir, `${jobId}.json`), JSON.stringify({
       status: 'running',
@@ -1296,7 +1296,7 @@ describe('team cli', () => {
       monitorPerformance: { listTasksMs: 0, workerScanMs: 0, totalMs: 0 },
     });
 
-    const cwd = makeProject('omc-team-cli-v2-status-');
+    const cwd = makeProject('omq-team-cli-v2-status-');
     const root = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(root, { recursive: true });
     writeFileSync(join(root, 'config.json'), JSON.stringify({
@@ -1346,7 +1346,7 @@ describe('team cli', () => {
       performance: { total_ms: 1, list_tasks_ms: 1, worker_scan_ms: 0, mailbox_delivery_ms: 0, updated_at: new Date().toISOString() },
     });
 
-    const cwd = makeProject('omc-team-cli-v2-status-dedup-');
+    const cwd = makeProject('omq-team-cli-v2-status-dedup-');
     const root = join(cwd, '.omq', 'state', 'team', 'demo-team');
     mkdirSync(root, { recursive: true });
     const duplicateWorkerConfig = canonicalizeTeamConfigWorkers({
@@ -1389,7 +1389,7 @@ describe('team cli', () => {
     mocks.isRuntimeV2Enabled.mockReturnValue(false);
     mocks.resumeTeam.mockResolvedValue({
       teamName: 'demo-team',
-      sessionName: 'omc-team-demo:0',
+      sessionName: 'omq-team-demo:0',
       leaderPaneId: '%0',
       config: { teamName: 'demo-team', workerCount: 1, agentTypes: ['codex'], tasks: [], cwd: '/tmp/demo', instance_id: INSTANCE_ID },
       workerNames: ['worker-1'],
@@ -1423,7 +1423,7 @@ describe('team cli', () => {
 
     mocks.resumeTeam.mockResolvedValue({
       teamName: 'alpha-team',
-      sessionName: 'omc-team-alpha:0',
+      sessionName: 'omq-team-alpha:0',
       leaderPaneId: '%0',
       config: { teamName: 'alpha-team', workerCount: 1, agentTypes: ['codex'], tasks: [], cwd: '/tmp/demo', instance_id: INSTANCE_ID },
       workerNames: ['worker-1'],
@@ -1450,7 +1450,7 @@ describe('team cli', () => {
     mocks.isRuntimeV2Enabled.mockReturnValue(true);
     mocks.shutdownTeamV2.mockResolvedValue({ outcome: 'cleaned' });
 
-    const cwd = makeProject('omc-team-cli-v2-shutdown-');
+    const cwd = makeProject('omq-team-cli-v2-shutdown-');
     const root = join(cwd, '.omq', 'state', 'team', 'beta-team');
     mkdirSync(root, { recursive: true });
     writeFileSync(join(root, 'config.json'), JSON.stringify({
@@ -1494,7 +1494,7 @@ describe('team cli', () => {
     const end = vi.fn();
     const unref = vi.fn();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const cwd = makeProject('omc-team-cli-legacy-');
+    const cwd = makeProject('omq-team-cli-legacy-');
 
     mocks.spawn.mockReturnValue({
       pid: 5151,
@@ -1530,7 +1530,7 @@ describe('team cli', () => {
     const { teamCommand } = await import('../team.js');
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    const cwd = makeProject('omc-team-cli-send-');
+    const cwd = makeProject('omq-team-cli-send-');
     const root = join(cwd, '.omq', 'state', 'team', 'api-team');
     mkdirSync(join(root, 'tasks'), { recursive: true });
     mkdirSync(join(root, 'mailbox'), { recursive: true });
@@ -1583,7 +1583,7 @@ describe('team cli', () => {
     const { teamCommand } = await import('../team.js');
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    const cwd = makeProject('omc-team-cli-notified-');
+    const cwd = makeProject('omq-team-cli-notified-');
     const root = join(cwd, '.omq', 'state', 'team', 'api-team');
     mkdirSync(join(root, 'mailbox'), { recursive: true });
     writeFileSync(join(root, 'config.json'), JSON.stringify({
@@ -1643,7 +1643,7 @@ describe('team cli', () => {
     const { teamCommand } = await import('../team.js');
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    const cwd = makeProject('omc-team-cli-api-');
+    const cwd = makeProject('omq-team-cli-api-');
     const root = join(cwd, '.omq', 'state', 'team', 'api-team');
     mkdirSync(join(root, 'tasks'), { recursive: true });
     writeFileSync(join(root, 'tasks', 'task-1.json'), JSON.stringify({

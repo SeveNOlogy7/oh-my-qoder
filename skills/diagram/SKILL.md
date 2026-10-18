@@ -109,7 +109,7 @@ a state-machine change:
 
 ```ts
 export function isRegistryEnabled(): boolean {
-  const flag = process.env.OMC_WORKFLOW_REGISTRY;
+  const flag = process.env.OMQ_WORKFLOW_REGISTRY;
   return flag !== '0' && flag !== 'false';
 }
 ```

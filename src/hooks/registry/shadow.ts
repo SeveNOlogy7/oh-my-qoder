@@ -151,7 +151,7 @@ export function readShadowLog(): ShadowComparisonRecord[] {
   return [...shadowBuffer];
 }
 
-/** Aggregate counts for omc-doctor/trace style summaries. */
+/** Aggregate counts for omq-doctor/trace style summaries. */
 export function summarizeShadowLog(): Record<ShadowVerdict, number> {
   const summary: Record<ShadowVerdict, number> = {
     equivalent: 0,

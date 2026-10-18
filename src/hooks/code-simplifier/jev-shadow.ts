@@ -46,7 +46,7 @@ export function computeSimplifierTriggerTwin(
 
 /**
  * Record the shadow comparison for one stop event and return the twin
- * decision unchanged. With no TYPESAFE_API_KEY (or OMC_JEV not naming this
+ * decision unchanged. With no TYPESAFE_API_KEY (or OMQ_JEV not naming this
  * point) the resolver short-circuits: zero HTTP calls, no logging, same
  * decision.
  */

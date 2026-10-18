@@ -6,12 +6,12 @@
  *   - warns when non-OMC hooks are present
  *   - only fully replaces when --force-hooks is explicitly set
  *
- * Tests exercise isOmcHook() and the merge logic via unit-level helpers
+ * Tests exercise isOmqHook() and the merge logic via unit-level helpers
  * to avoid filesystem side-effects.
  */
 
 import { describe, it, expect } from 'vitest';
-import { isOmcHook } from '../installer/index.js';
+import { isOmqHook } from '../installer/index.js';
 
 // ---------------------------------------------------------------------------
 // Shared types mirroring installer internals
@@ -38,11 +38,11 @@ function mergeEventHooks(
   const eventType = 'TestEvent';
 
   const nonOmcGroups = existingGroups.filter(group =>
-    group.hooks.some(h => h.type === 'command' && !isOmcHook(h.command))
+    group.hooks.some(h => h.type === 'command' && !isOmqHook(h.command))
   );
   const hasNonOmcHook = nonOmcGroups.length > 0;
   const nonOmcCommand = hasNonOmcHook
-    ? nonOmcGroups[0].hooks.find(h => h.type === 'command' && !isOmcHook(h.command))?.command ?? ''
+    ? nonOmcGroups[0].hooks.find(h => h.type === 'command' && !isOmqHook(h.command))?.command ?? ''
     : '';
 
   let merged: HookGroup[];
@@ -94,65 +94,65 @@ const USER_CMD = '/usr/local/bin/my-custom-hook.sh';
 const NEW_OMQ_CMD = 'node "$HOME/.claude/hooks/session-start.mjs"';
 
 // ---------------------------------------------------------------------------
-// isOmcHook unit tests
+// isOmqHook unit tests
 // ---------------------------------------------------------------------------
-describe('isOmcHook()', () => {
+describe('isOmqHook()', () => {
   it('recognises OMC keyword-detector command', () => {
-    expect(isOmcHook('node "$HOME/.claude/hooks/keyword-detector.mjs"')).toBe(true);
+    expect(isOmqHook('node "$HOME/.claude/hooks/keyword-detector.mjs"')).toBe(true);
   });
 
   it('recognises OMC session-start command', () => {
-    expect(isOmcHook('node "$HOME/.claude/hooks/session-start.mjs"')).toBe(true);
+    expect(isOmqHook('node "$HOME/.claude/hooks/session-start.mjs"')).toBe(true);
   });
 
   it('recognises OMC pre-tool-use command', () => {
-    expect(isOmcHook('node "$HOME/.claude/hooks/pre-tool-use.mjs"')).toBe(true);
+    expect(isOmqHook('node "$HOME/.claude/hooks/pre-tool-use.mjs"')).toBe(true);
   });
 
   it('recognises OMC post-tool-use command', () => {
-    expect(isOmcHook('node "$HOME/.claude/hooks/post-tool-use.mjs"')).toBe(true);
+    expect(isOmqHook('node "$HOME/.claude/hooks/post-tool-use.mjs"')).toBe(true);
   });
 
   it('recognises OMC persistent-mode command', () => {
-    expect(isOmcHook('node "$HOME/.claude/hooks/persistent-mode.mjs"')).toBe(true);
+    expect(isOmqHook('node "$HOME/.claude/hooks/persistent-mode.mjs"')).toBe(true);
   });
 
   it('recognises OMC code-simplifier command', () => {
-    expect(isOmcHook('node "$HOME/.claude/hooks/code-simplifier.mjs"')).toBe(true);
+    expect(isOmqHook('node "$HOME/.claude/hooks/code-simplifier.mjs"')).toBe(true);
   });
 
   it('recognises Windows-style OMC path', () => {
-    expect(isOmcHook('node "%USERPROFILE%\\.claude\\hooks\\keyword-detector.mjs"')).toBe(true);
+    expect(isOmqHook('node "%USERPROFILE%\\.claude\\hooks\\keyword-detector.mjs"')).toBe(true);
   });
 
   it('recognises custom-profile hook paths by known filename', () => {
-    expect(isOmcHook('node "/tmp/custom-claude/hooks/keyword-detector.mjs"')).toBe(true);
+    expect(isOmqHook('node "/tmp/custom-claude/hooks/keyword-detector.mjs"')).toBe(true);
   });
 
   it('recognises QODER_CONFIG_DIR-aware hook commands', () => {
-    expect(isOmcHook('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"')).toBe(true);
-    expect(isOmcHook('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"')).toBe(true);
+    expect(isOmqHook('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/keyword-detector.mjs"')).toBe(true);
+    expect(isOmqHook('node "${QODER_CONFIG_DIR:-$HOME/.claude}/hooks/persistent-mode.mjs"')).toBe(true);
   });
 
   it('recognises oh-my-claudecode in command path', () => {
-    expect(isOmcHook('/path/to/oh-my-claudecode/hook.mjs')).toBe(true);
+    expect(isOmqHook('/path/to/oh-my-claudecode/hook.mjs')).toBe(true);
   });
 
   it('recognises omc as a path segment', () => {
-    expect(isOmcHook('/usr/local/bin/omc-hook.sh')).toBe(true);
+    expect(isOmqHook('/usr/local/bin/omc-hook.sh')).toBe(true);
   });
 
   it('does not recognise a plain user command', () => {
-    expect(isOmcHook('/usr/local/bin/my-custom-hook.sh')).toBe(false);
+    expect(isOmqHook('/usr/local/bin/my-custom-hook.sh')).toBe(false);
   });
 
   it('does not recognise a random shell script', () => {
-    expect(isOmcHook('bash /home/user/scripts/notify.sh')).toBe(false);
+    expect(isOmqHook('bash /home/user/scripts/notify.sh')).toBe(false);
   });
 
   it('does not match "omc" inside an unrelated word', () => {
     // "nomc" or "omcr" should NOT match the omc path-segment pattern
-    expect(isOmcHook('/usr/bin/nomc-thing')).toBe(false);
+    expect(isOmqHook('/usr/bin/nomc-thing')).toBe(false);
   });
 });
 

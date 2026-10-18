@@ -64,7 +64,7 @@ const monitorMocks = vi.hoisted(() => ({
 
 const tmuxSessionMocks = vi.hoisted(() => {
   const tmuxServerIdentity: TmuxServerIdentity = {
-    socket_path: '/tmp/omc-test-tmux.sock',
+    socket_path: '/tmp/omq-test-tmux.sock',
     server_pid: 4242,
     process_started_at: process.platform === 'darwin'
       ? 'darwin:1700000000:123456'
@@ -238,9 +238,9 @@ describe('scaleUp launch config', () => {
   }
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omc-scaling-launch-config-'));
-    previousStateDir = process.env.OMC_STATE_DIR;
-    process.env.OMC_STATE_DIR = join(await realpath(cwd), '.omc-state');
+    cwd = await mkdtemp(join(tmpdir(), 'omq-scaling-launch-config-'));
+    previousStateDir = process.env.OMQ_STATE_DIR;
+    process.env.OMQ_STATE_DIR = join(await realpath(cwd), '.omq-state');
 
     vi.clearAllMocks();
     workerLaunchMocks.retireAndCleanupCurrentWorkerLaunchAttempt.mockImplementation(async (_attempt: unknown, _reason: string, cleanup: () => Promise<boolean>) => cleanup());
@@ -334,8 +334,8 @@ describe('scaleUp launch config', () => {
     if (cwd) {
       await rm(cwd, { recursive: true, force: true });
     }
-    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousStateDir;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
   });
 
   it.each([
@@ -377,7 +377,7 @@ describe('scaleUp launch config', () => {
           OMQ_TEAM_WORKER: 'demo-team/worker-1',
           OMQ_TEAM_NAME: 'demo-team',
           OMQ_WORKER_AGENT_TYPE: agentType,
-          OMC_TEAM_STATE_ROOT: teamStateRoot(cwd, 'demo-team'),
+          OMQ_TEAM_STATE_ROOT: teamStateRoot(cwd, 'demo-team'),
           OMQ_TEAM_LEADER_CWD: resolve(cwd),
         }),
       }),
@@ -642,7 +642,7 @@ describe('scaleUp launch config', () => {
     });
     gitWorktreeMocks.ensureWorkerWorktree.mockReturnValue({
       path: join(resolve(cwd), '.omq', 'team', 'demo-team', 'worktrees', 'worker-1'),
-      branch: 'omc-team/demo-team/worker-1',
+      branch: 'omq-team/demo-team/worker-1',
       workerName: 'worker-1',
       teamName: 'demo-team',
       createdAt: new Date().toISOString(),
@@ -677,7 +677,7 @@ describe('scaleUp launch config', () => {
     });
     gitWorktreeMocks.ensureWorkerWorktree.mockReturnValue({
       path: join(resolve(cwd), '.omq', 'team', 'demo-team', 'worktrees', 'worker-1'),
-      branch: 'omc-team/demo-team/worker-1',
+      branch: 'omq-team/demo-team/worker-1',
       workerName: 'worker-1',
       teamName: 'demo-team',
       createdAt: new Date().toISOString(),

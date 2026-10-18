@@ -109,7 +109,7 @@ const STATE_TOOL_MODES: [string, ...string[]] = [
   ...EXECUTION_MODES,
   ...RETIRED_STATE_MODES,
   'ralplan',
-  'omc-teams',
+  'omq-teams',
   'skill-active',
   'merge-readiness',
   // Runtime guard mode for $ultragoal; not MODE_CONFIGS-backed (#3630).
@@ -119,10 +119,10 @@ const STATE_TOOL_MODES: [string, ...string[]] = [
 const STATE_WRITE_MODES: [string, ...string[]] = [
   ...EXECUTION_MODES,
   'ralplan',
-  'omc-teams',
+  'omq-teams',
   'skill-active'
 ];
-const EXTRA_STATE_ONLY_MODES = ['ralplan', 'omc-teams', 'skill-active', 'ultragoal'] as const;
+const EXTRA_STATE_ONLY_MODES = ['ralplan', 'omq-teams', 'skill-active', 'ultragoal'] as const;
 type StateToolMode = typeof STATE_TOOL_MODES[number];
 const CANCEL_SIGNAL_TTL_MS = 30_000;
 const TEAM_RUNTIME_PRESERVATION_NOTE = 'Native team runtimes and cleanup evidence are not removed by state_clear; use instance-validated team shutdown/job cleanup.';
@@ -286,8 +286,8 @@ function matchesNamedPauseTarget(
     getStateSessionOwner(current) === sessionId &&
     (stateDigest === undefined || createHash('sha256').update(JSON.stringify(current)).digest('hex') === stateDigest);
 }
-function listSessionIdsUnderOmcRoot(omcRoot: string): string[] {
-  const sessionsDir = join(omcRoot, 'state', 'sessions');
+function listSessionIdsUnderOmqRoot(omqRoot: string): string[] {
+  const sessionsDir = join(omqRoot, 'state', 'sessions');
   if (!existsSync(sessionsDir)) {
     return [];
   }
@@ -302,7 +302,7 @@ function listSessionIdsUnderOmcRoot(omcRoot: string): string[] {
   }
 }
 
-function getConvergedOmcRoots(root: string): string[] {
+function getConvergedOmqRoots(root: string): string[] {
   const canonicalRoot = getOmcRoot(root);
   if (process.env.OMQ_STATE_DIR) return [canonicalRoot];
   if (probeGitTopLevel(root).status !== 'ok') return [canonicalRoot];
@@ -325,11 +325,11 @@ function getConvergedStateCandidates(
   const filename = getStateFileName(mode);
   const paths = new Set<string>();
 
-  for (const omcRoot of getConvergedOmcRoots(root)) {
-    const stateDir = join(omcRoot, 'state');
+  for (const omqRoot of getConvergedOmqRoots(root)) {
+    const stateDir = join(omqRoot, 'state');
     if (sessionId) {
       paths.add(join(stateDir, 'sessions', sessionId, filename));
-      for (const sid of listSessionIdsUnderOmcRoot(omcRoot)) {
+      for (const sid of listSessionIdsUnderOmqRoot(omqRoot)) {
         const candidatePath = join(stateDir, 'sessions', sid, filename);
         const raw = readJsonRecord(candidatePath);
         if (raw && getStateSessionOwner(raw) === sessionId) {
@@ -337,13 +337,13 @@ function getConvergedStateCandidates(
         }
       }
     } else {
-      for (const sid of listSessionIdsUnderOmcRoot(omcRoot)) {
+      for (const sid of listSessionIdsUnderOmqRoot(omqRoot)) {
         paths.add(join(stateDir, 'sessions', sid, filename));
       }
     }
 
     paths.add(join(stateDir, filename));
-    paths.add(join(omcRoot, filename));
+    paths.add(join(omqRoot, filename));
   }
 
   return [...paths];
@@ -667,7 +667,7 @@ function isAutopilotRecoveryCandidateForProject(path: string, root: string): boo
   });
 }
 
-function getWorkingDirectoryLocalOmcRoot(root: string): string {
+function getWorkingDirectoryLocalOmqRoot(root: string): string {
   return join(root, OmcPaths.ROOT);
 }
 
@@ -676,19 +676,19 @@ function shouldCheckWorkingDirectoryLocalState(root: string): boolean {
   // `{workingDirectory}/.omq` implicitly; legacy recovery requires an explicit
   // migration path so unrelated directories cannot be swept together.
   if (probeGitTopLevel(root).status !== 'ok') return false;
-  return getWorkingDirectoryLocalOmcRoot(root) !== getOmcRoot(root);
+  return getWorkingDirectoryLocalOmqRoot(root) !== getOmcRoot(root);
 }
 
 function getWorkingDirectoryLocalSessionStatePath(mode: StateToolMode, root: string, sessionId: string): string {
   const normalizedName = mode.endsWith('-state') ? mode : `${mode}-state`;
-  return join(getWorkingDirectoryLocalOmcRoot(root), 'state', 'sessions', sessionId, `${normalizedName}.json`);
+  return join(getWorkingDirectoryLocalOmqRoot(root), 'state', 'sessions', sessionId, `${normalizedName}.json`);
 }
 
 function getWorkingDirectoryLocalLegacyStateFileCandidates(mode: StateToolMode, root: string): string[] {
   const normalizedName = mode.endsWith('-state') ? mode : `${mode}-state`;
   return [
-    join(getWorkingDirectoryLocalOmcRoot(root), 'state', `${normalizedName}.json`),
-    join(getWorkingDirectoryLocalOmcRoot(root), `${normalizedName}.json`),
+    join(getWorkingDirectoryLocalOmqRoot(root), 'state', `${normalizedName}.json`),
+    join(getWorkingDirectoryLocalOmqRoot(root), `${normalizedName}.json`),
   ];
 }
 
@@ -1452,12 +1452,12 @@ export const stateWriteTool: ToolDefinition<{
 
 function getAllRootSessionStatePaths(mode: StateToolMode, root: string): string[] {
   const paths = new Set<string>();
-  const roots = new Set(getConvergedOmcRoots(root));
-  if (shouldCheckWorkingDirectoryLocalState(root)) roots.add(getWorkingDirectoryLocalOmcRoot(root));
+  const roots = new Set(getConvergedOmqRoots(root));
+  if (shouldCheckWorkingDirectoryLocalState(root)) roots.add(getWorkingDirectoryLocalOmqRoot(root));
   roots.add(getOmcRoot(root));
-  for (const omcRoot of roots) {
-    for (const sid of listSessionIdsUnderOmcRoot(omcRoot)) {
-      paths.add(join(omcRoot, 'state', 'sessions', sid, getStateFileName(mode)));
+  for (const omqRoot of roots) {
+    for (const sid of listSessionIdsUnderOmqRoot(omqRoot)) {
+      paths.add(join(omqRoot, 'state', 'sessions', sid, getStateFileName(mode)));
     }
   }
   return [...paths];
@@ -1482,22 +1482,22 @@ function recoverAutopilotEmergencyTransactions(root: string, sessionId?: string)
     ...getConvergedStateCandidates('autopilot', root),
   ]);
   if (shouldCheckWorkingDirectoryLocalState(root)) {
-    const localOmcRoot = getWorkingDirectoryLocalOmcRoot(root);
-    for (const sid of listSessionIdsUnderOmcRoot(localOmcRoot)) {
-      broadPaths.add(join(localOmcRoot, 'state', 'sessions', sid, getStateFileName('autopilot')));
+    const localOmqRoot = getWorkingDirectoryLocalOmqRoot(root);
+    for (const sid of listSessionIdsUnderOmqRoot(localOmqRoot)) {
+      broadPaths.add(join(localOmqRoot, 'state', 'sessions', sid, getStateFileName('autopilot')));
     }
   }
-  for (const omcRoot of getConvergedOmcRoots(root)) {
-    for (const sid of listSessionIdsUnderOmcRoot(omcRoot)) {
-      broadPaths.add(join(omcRoot, 'state', 'sessions', sid, getStateFileName('autopilot')));
+  for (const omqRoot of getConvergedOmqRoots(root)) {
+    for (const sid of listSessionIdsUnderOmqRoot(omqRoot)) {
+      broadPaths.add(join(omqRoot, 'state', 'sessions', sid, getStateFileName('autopilot')));
     }
   }
   const directSessionPaths = new Set<string>();
   if (sessionId) {
     directSessionPaths.add(resolveSessionStatePath('autopilot', sessionId, root));
     if (shouldCheckWorkingDirectoryLocalState(root)) directSessionPaths.add(getWorkingDirectoryLocalSessionStatePath('autopilot', root, sessionId));
-    for (const omcRoot of getConvergedOmcRoots(root)) {
-      directSessionPaths.add(join(omcRoot, 'state', 'sessions', sessionId, getStateFileName('autopilot')));
+    for (const omqRoot of getConvergedOmqRoots(root)) {
+      directSessionPaths.add(join(omqRoot, 'state', 'sessions', sessionId, getStateFileName('autopilot')));
     }
     for (const path of directSessionPaths) broadPaths.add(path);
   }
@@ -2425,18 +2425,18 @@ const stateMigrateNonGitTool: ToolDefinition<any> = {
       // Keep the validated non-Git source as the identity input. Replacing it
       // with HOME would let a Git checkout at HOME change the centralized
       // namespace on the second root-resolution pass.
-      const canonicalOmc = getOmcRoot(sourceRoot);
+      const canonicalOmq = getOmcRoot(sourceRoot);
       const sourceDir = join(sourceRoot, OmcPaths.ROOT, 'state', 'sessions', args.session_id);
-      const destinationDir = join(canonicalOmc, 'state', 'sessions', args.session_id);
+      const destinationDir = join(canonicalOmq, 'state', 'sessions', args.session_id);
       const report = { source: sourceDir, destination: destinationDir, copied: [] as string[], skipped: [] as string[], rejected: [] as string[] };
 
-      const sourceOmc = join(sourceRoot, OmcPaths.ROOT);
-      if (!existsSync(sourceOmc)) {
+      const sourceOmq = join(sourceRoot, OmcPaths.ROOT);
+      if (!existsSync(sourceOmq)) {
         return { content: [{ type: 'text' as const, text: JSON.stringify(report, null, 2) }] };
       }
-      const sourceState = join(sourceOmc, 'state');
+      const sourceState = join(sourceOmq, 'state');
       const sourceSessions = join(sourceState, 'sessions');
-      for (const path of [sourceOmc, sourceState, sourceSessions]) {
+      for (const path of [sourceOmq, sourceState, sourceSessions]) {
         if (!existsSync(path)) {
           return { content: [{ type: 'text' as const, text: JSON.stringify(report, null, 2) }] };
         }
@@ -2445,13 +2445,13 @@ const stateMigrateNonGitTool: ToolDefinition<any> = {
       if (!existsSync(sourceDir)) {
         return { content: [{ type: 'text' as const, text: JSON.stringify(report, null, 2) }] };
       }
-      const destinationState = join(canonicalOmc, 'state');
+      const destinationState = join(canonicalOmq, 'state');
       const destinationSessions = join(destinationState, 'sessions');
-      const migrationRoots = [canonicalOmc, destinationState, destinationSessions, destinationDir];
+      const migrationRoots = [canonicalOmq, destinationState, destinationSessions, destinationDir];
       if (lstatSync(sourceDir).isSymbolicLink() || migrationRoots.some((path) => existsSync(path) && lstatSync(path).isSymbolicLink())) {
         throw new Error('state_migrate_non_git refuses symlinked migration roots');
       }
-      ensureMigrationDirectoryTree(canonicalOmc, destinationDir);
+      ensureMigrationDirectoryTree(canonicalOmq, destinationDir);
       for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
         if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
         const sourcePath = join(sourceDir, entry.name);
@@ -2480,7 +2480,7 @@ const stateMigrateNonGitTool: ToolDefinition<any> = {
           continue;
         }
         const destinationPath = join(destinationDir, entry.name);
-        ensureMigrationDirectoryTree(canonicalOmc, destinationDir);
+        ensureMigrationDirectoryTree(canonicalOmq, destinationDir);
         if (existsSync(destinationPath)) {
           report.skipped.push(entry.name);
           continue;

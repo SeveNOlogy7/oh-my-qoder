@@ -31,7 +31,7 @@ export interface RalphVerdictShadowArgs {
 
 /**
  * Record the shadow comparison for one completion-claim verdict and return
- * the twin verdict unchanged. With no TYPESAFE_API_KEY (or OMC_JEV not
+ * the twin verdict unchanged. With no TYPESAFE_API_KEY (or OMQ_JEV not
  * naming this point) the resolver short-circuits: zero HTTP calls, no
  * logging, same verdict.
  */

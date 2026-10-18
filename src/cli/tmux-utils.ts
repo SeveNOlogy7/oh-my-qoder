@@ -218,10 +218,19 @@ export function isTmuxAvailable(): boolean {
  */
 export function isQoderCliAvailable(): boolean {
   try {
-    execFileSync(qoderCliBinary(), ['--version'], {
-      stdio: 'ignore',
-      shell: process.platform === 'win32',
-    });
+    if (process.platform === 'win32') {
+      const comspec = process.env.COMSPEC || 'cmd.exe';
+      const commandLine = [qoderCliBinary(), '--version'].map(quoteForCmd).join(' ');
+      const result = spawnSync(comspec, ['/d', '/s', '/c', commandLine], {
+        stdio: 'ignore',
+        windowsVerbatimArguments: true,
+      });
+      return result.status === 0;
+    } else {
+      execFileSync(qoderCliBinary(), ['--version'], {
+        stdio: 'ignore',
+      });
+    }
     return true;
   } catch {
     return false;

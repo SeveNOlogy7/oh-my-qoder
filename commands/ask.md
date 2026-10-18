@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Process-first advisor routing for Claude, Codex, Gemini, Grok, or Cursor via `omq ask`, with artifact capture and no raw CLI assembly"
 ---
 
 # OMQ ask

@@ -640,7 +640,7 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
 
       // Reconcile interrupted relinks BEFORE walking normal versions.  Entries
       // arrive in filesystem order, so a squatter at `4.15.6` could otherwise be
-      // relinked first — and that relink clears `4.15.6.omc-stale-<pid>`, the
+      // relinked first — and that relink clears `4.15.6.omq-stale-<pid>`, the
       // only intact backup, before anyone knows the new symlink can be placed.
       const asideEntries: { versionDir: string; originalDir: string; ownerPid: number }[] = [];
       const plainVersions: string[] = [];

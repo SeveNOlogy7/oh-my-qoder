@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * OMC Persistent Mode Hook (Node.js)
- * Minimal continuation enforcer for all OMC modes.
+ * OMQ Persistent Mode Hook (Node.js)
+ * Minimal continuation enforcer for all OMQ modes.
  * Stripped down for reliability — no optional imports, no PRD, no notepad pruning.
  *
  * Supported modes: ralph, ultragoal, autopilot, ultrapilot, swarm, pipeline, team
@@ -25,6 +25,7 @@ import { spawn } from "child_process";
 import { join, dirname, resolve, normalize, sep } from "path";
 import { homedir } from "os";
 import { fileURLToPath, pathToFileURL } from "url";
+import { isJevShadowOptedIn, recordJevShadow } from "./lib/jev-shadow.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,6 +33,54 @@ const __dirname = dirname(__filename);
 const SAFE_CONTINUE = { continue: true, suppressOutput: true };
 const DEFAULT_SAFETY_TIMEOUT_MS = 8500;
 const SAFE_EXIT_FLUSH_TIMEOUT_MS = 100;
+const LOOP_CONTINUATION_NOUL_QUESTIONS = {
+  task_complete: {
+    type: "noul",
+    instructions: "Is the task complete — is there no substantive work left for this mode?",
+    criteria: {},
+  },
+};
+const LEARNER_EXTRACTION_QUESTIONS = {
+  extractable_moment: {
+    type: "noul",
+    instructions: "Does this assistant message contain an extractable memory-worthy moment?",
+    criteria: {
+      true: "Contains a reusable pattern, decision, or correction worth persisting",
+      false: "Routine work with nothing worth extracting",
+    },
+  },
+};
+
+function recordLoopContinuationShadow(state, heuristic) {
+  recordJevShadow({
+    point: "loop-continuation",
+    state,
+    questions: LOOP_CONTINUATION_NOUL_QUESTIONS,
+    heuristic,
+  });
+}
+
+async function recordLearnerExtractionShadow(data) {
+  const assistantMessage = data.last_assistant_message;
+  if (typeof assistantMessage !== "string" || !assistantMessage.trim() || !isJevShadowOptedIn("learner-extraction")) {
+    return;
+  }
+
+  try {
+    const detectorPath = join(__dirname, "..", "dist", "hooks", "learner", "detector.js");
+    if (!existsSync(detectorPath)) return;
+    const { detectExtractableMoment } = await import(pathToFileURL(detectorPath).href);
+    const heuristic = detectExtractableMoment(assistantMessage);
+    recordJevShadow({
+      point: "learner-extraction",
+      state: { assistant_message: assistantMessage, user_message: null },
+      questions: LEARNER_EXTRACTION_QUESTIONS,
+      heuristic,
+    });
+  } catch {
+    // Missing optional detector output or resolver plumbing must not affect Stop.
+  }
+}
 
 
 function getSafetyTimeoutMs() {
@@ -165,7 +214,7 @@ function writeJsonFile(path, data) {
 
 function lockFailureReason(operation) {
   const message = getStateFileLockFailureMessage();
-  return `[OMC] ${operation} failed: ${message} Retry the operation after the lock holder exits.`;
+  return `[OMQ] ${operation} failed: ${message} Retry the operation after the lock holder exits.`;
 }
 
 /**
@@ -565,7 +614,7 @@ function getAutopilotPhase(state) {
 
 function isAutopilotRoutingEchoPrompt(promptText) {
   return /^\[MAGIC KEYWORDS?(?: DETECTED)?:\s*AUTOPILOT\s*\]\s*$/i.test(promptText) ||
-    /^\/(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)?autopilot(?:\s+execute)?\s*$/i.test(promptText);
+    /^\/(?:oh-my-qoder:|omq:|oh-my-qoder:|omc:)?autopilot(?:\s+execute)?\s*$/i.test(promptText);
 }
 
 function isOrphanedAutopilotRoutingEchoState(state) {
@@ -741,7 +790,7 @@ function normalizePhaseValue(value) {
     : "";
 }
 
-function isUltragoalTerminalState(state, omcRoot) {
+function isUltragoalTerminalState(state, omqRoot) {
   if (!state || typeof state !== "object") return false;
   if (state.active === false) return true;
   if (typeof state.completed_at === "string" && state.completed_at.length > 0) return true;
@@ -750,7 +799,7 @@ function isUltragoalTerminalState(state, omcRoot) {
   const phase = normalizePhaseValue(state.current_phase ?? state.phase ?? state.status);
   if (phase && ULTRAGOAL_TERMINAL_PHASES.has(phase)) return true;
 
-  const plan = readJsonFile(join(omcRoot, "ultragoal", "goals.json"));
+  const plan = readJsonFile(join(omqRoot, "ultragoal", "goals.json"));
   if (!plan || typeof plan !== "object") return false;
   if (plan.aggregateCompletion?.status === "complete") return true;
   if (!Array.isArray(plan.goals) || plan.goals.length === 0) return false;
@@ -760,7 +809,7 @@ function isUltragoalTerminalState(state, omcRoot) {
   });
 }
 
-function getUltragoalObjective(state, omcRoot) {
+function getUltragoalObjective(state, omqRoot) {
   const candidates = [
     state?.claude_goal_objective,
     state?.claudeGoalObjective,
@@ -775,7 +824,7 @@ function getUltragoalObjective(state, omcRoot) {
   for (const value of candidates) {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
-  const plan = readJsonFile(join(omcRoot, "ultragoal", "goals.json"));
+  const plan = readJsonFile(join(omqRoot, "ultragoal", "goals.json"));
   if (typeof plan?.claudeObjective === "string" && plan.claudeObjective.trim()) return plan.claudeObjective.trim();
   if (typeof plan?.aggregateCompletion?.objective === "string" && plan.aggregateCompletion.objective.trim()) {
     return plan.aggregateCompletion.objective.trim();
@@ -966,7 +1015,7 @@ function isValidSessionId(sessionId) {
  * Blocking these stops causes a deadlock: can't compact because can't stop,
  * can't continue because context is full.
  *
- * See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
+ * See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/213
  */
 function isContextLimitStop(data) {
   const reasons = [
@@ -1134,17 +1183,21 @@ async function main() {
       return;
     }
 
+    // Stop supplies the assistant response text directly; only load the
+    // existing detector when this advisory point is explicitly enabled.
+    await recordLearnerExtractionShadow(data);
+
     const directory = data.cwd || data.directory || process.cwd();
     const sessionIdRaw = data.sessionId || data.session_id || data.sessionid || "";
     const sessionId = sanitizeSessionId(sessionIdRaw);
     const hasValidSessionId = isValidSessionId(sessionIdRaw);
-    const omcRoot = await resolveOmqStateRoot(directory);
-    const stateDir = join(omcRoot, "state");
+    const omqRoot = await resolveOmqStateRoot(directory);
+    const stateDir = join(omqRoot, "state");
     const globalStateDir = join(homedir(), ".omq", "state");
 
     // CRITICAL: Never block context-limit stops.
     // Blocking these causes a deadlock where Claude Code cannot compact.
-    // See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
+    // See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/213
     if (isContextLimitStop(data)) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
@@ -1219,7 +1272,7 @@ async function main() {
     const omcTeams = readStateFileWithSession(
       stateDir,
       globalStateDir,
-      "omc-teams-state.json",
+      "omq-teams-state.json",
       sessionId,
     );
 
@@ -1280,6 +1333,22 @@ async function main() {
             reason = errorGuidance + reason;
           }
 
+          const heuristic = {
+            mode: "ralph",
+            shouldBlock: true,
+            iteration: ralph.state.iteration,
+            maxIterations: maxIter,
+          };
+          const judgmentState = {
+            mode_name: "ralph",
+            session_id: sessionId || null,
+            iteration: ralph.state.iteration,
+            phase: null,
+            should_block: true,
+            continuation_excerpt: reason,
+          };
+          recordLoopContinuationShadow(judgmentState, heuristic);
+
           console.log(
             JSON.stringify({
               decision: "block",
@@ -1319,6 +1388,19 @@ async function main() {
         writeJsonFile(ralph.path, ralph.state);
 
         const ralphExtendedReason = `[RALPH LOOP - EXTENDED] Max iterations reached; extending to ${ralph.state.max_iterations} and continuing. When FULLY complete (after Architect verification), run /oh-my-qoder:cancel (or --force).`;
+        recordLoopContinuationShadow({
+          mode_name: "ralph",
+          session_id: sessionId || null,
+          iteration: ralph.state.iteration,
+          phase: null,
+          should_block: true,
+          continuation_excerpt: ralphExtendedReason,
+        }, {
+          mode: "ralph",
+          shouldBlock: true,
+          iteration: ralph.state.iteration,
+          maxIterations: ralph.state.max_iterations,
+        });
         console.log(
           JSON.stringify({
             decision: "block",
@@ -1338,7 +1420,7 @@ async function main() {
       const sessionMatches = hasValidSessionId
         ? ultragoal.state.session_id === sessionId
         : !ultragoal.state.session_id || ultragoal.state.session_id === sessionId;
-      if (sessionMatches && !isUltragoalTerminalState(ultragoal.state, omcRoot)) {
+      if (sessionMatches && !isUltragoalTerminalState(ultragoal.state, omqRoot)) {
         const newCount = (ultragoal.state.reinforcement_count || 0) + 1;
         const maxReinforcements = ultragoal.state.max_reinforcements || 50;
 
@@ -1359,7 +1441,7 @@ async function main() {
         writeJsonFile(ultragoal.path, ultragoal.state);
 
         let reason = `[ULTRAGOAL #${newCount}/${maxReinforcements}] Ultragoal mode is active. Continue the durable goal workflow, keep the matching Claude /goal active, and checkpoint .omq/ultragoal/ledger.jsonl before stopping. When all ultragoal stories are complete and the final quality gate passes, run /oh-my-qoder:cancel to cleanly exit.`;
-        const objective = getUltragoalObjective(ultragoal.state, omcRoot);
+        const objective = getUltragoalObjective(ultragoal.state, omqRoot);
         if (objective) reason += `\nClaude /goal objective: ${objective}`;
         if (errorGuidance) {
           reason = errorGuidance + reason;
@@ -1472,6 +1554,20 @@ async function main() {
             if (errorGuidance) {
               reason = errorGuidance + reason;
             }
+
+            recordLoopContinuationShadow({
+              mode_name: "autopilot",
+              session_id: sessionId || null,
+              iteration: newCount,
+              phase,
+              should_block: true,
+              continuation_excerpt: reason,
+            }, {
+              mode: "autopilot",
+              shouldBlock: true,
+              iteration: newCount,
+              phase,
+            });
 
             console.log(
               JSON.stringify({
@@ -1634,7 +1730,7 @@ async function main() {
       }
     }
 
-    // Priority 6.5: OMC Teams (tmux CLI workers — independent of native team state)
+    // Priority 6.5: OMQ Teams (tmux CLI workers — independent of native team state)
     if (
       omcTeams.state?.active &&
       !isStaleState(omcTeams.state) &&
@@ -1655,7 +1751,7 @@ async function main() {
             omcTeams.state.last_checked_at = new Date().toISOString();
             writeJsonFile(omcTeams.path, omcTeams.state);
 
-            let reason = `[OMC TEAMS - Phase: ${phase}] OMC Teams workers active. Continue working. When all workers complete, run /oh-my-qoder:cancel to cleanly exit. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
+            let reason = `[OMQ TEAMS - Phase: ${phase}] OMQ Teams workers active. Continue working. When all workers complete, run /oh-my-qoder:cancel to cleanly exit. If cancel fails, retry with /oh-my-qoder:cancel --force.`;
             if (errorGuidance) {
               reason = errorGuidance + reason;
             }

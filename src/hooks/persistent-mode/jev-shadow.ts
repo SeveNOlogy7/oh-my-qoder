@@ -19,7 +19,7 @@ import type { PersistentModeResult } from './index.js';
 
 /**
  * Iteration metadata only: mode/session/iteration context, tool names, and
- * the continuation-message excerpt (bounded by OMC_JEV_EXCERPT_CHARS in the
+ * the continuation-message excerpt (bounded by OMQ_JEV_EXCERPT_CHARS in the
  * resolver before send/log). Never whole file contents.
  */
 function buildLoopContinuationState(result: PersistentModeResult, sessionId?: string): Record<string, unknown> {
@@ -44,7 +44,7 @@ export interface LoopContinuationShadowArgs {
 
 /**
  * Record the shadow comparison for one loop-continuation decision and return
- * the twin unchanged. With no TYPESAFE_API_KEY (or OMC_JEV=off / grayscale
+ * the twin unchanged. With no TYPESAFE_API_KEY (or OMQ_JEV=off / grayscale
  * exclusion) the resolver short-circuits: zero HTTP calls, no logging, and
  * the result is returned as-is. Jev errors degrade inside the resolver and
  * can never alter the returned decision; the twin returns a captured value

@@ -1,6 +1,6 @@
-# oh-my-claudecode - Intelligent Multi-Agent Orchestration
+# oh-my-qoder - Intelligent Multi-Agent Orchestration
 
-You are running with oh-my-claudecode (OMC), a multi-agent orchestration layer for Claude Code.
+You are running with oh-my-qoder (OMQ), a multi-agent orchestration layer for Claude Code.
 Your role is to coordinate specialized agents, tools, and skills so work is completed accurately and efficiently.
 
 <guidance_schema_contract>
@@ -209,11 +209,14 @@ Workflow Skills:
 - `loft`: Shipyard shape-before-steel discipline — answers a design question prose cannot settle with a throwaway artifact (pure logic module or structurally different UI variants); model-invoked; opt-in
 - `harbor`: Shipyard intake gate — sweeps external issues and PRs, verifies every claim, hands the maintainer a signature docket; agent handles facts, human signs dispositions; opt-in
 - `drydock`: Shipyard harness scaffold — 4-pillar shared environment (Context/Rules/Tools/Standards) across 5 surfaces, with --check drift audit; opt-in
+- `refit`: Cross-session environment retrospective — reads OMQ instrumentation (trace, friction report, logs, plan notepads) and lands user-approved findings on deterministic checks, steering volumes, tooling, or information surfaces; opt-in
+- `pr`: PR body assembly from OMQ's paper trail — smallest-visual summary (credited to show-me), evidence consumed from the verify protocol, reversibility from the ADR test, glossary language
+- `tdd`: Test-first discipline at pre-agreed seams — one test, one implementation, tracer-bullet steps; the test-time sibling of minimal-code-discipline; model-invoked
+- `map`: The yard's skill map — which skill owns which job, in delivery-loop order; routes, never executes
 
 Agent Shortcuts:
 - `analyze` -> debugger: Investigation and root-cause analysis
 - `deepsearch` -> explore: Thorough codebase search
-- `tdd` -> test-engineer: Test-driven development workflow
 - `build-fix` -> debugger: Build error resolution
 - `code-review` -> code-reviewer: Comprehensive code review
 - `security-review` -> security-reviewer: Security audit
@@ -280,7 +283,7 @@ For Claude worker model selection, apply this precedence (highest to lowest):
 1. Explicit `--model` already present in worker launch args
 2. Direct provider model env (`ANTHROPIC_MODEL` / `CLAUDE_MODEL`)
 3. Provider tier envs (`CLAUDE_CODE_BEDROCK_SONNET_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`)
-4. OMC tier env (`OMQ_MODEL_MEDIUM`)
+4. OMQ tier env (`OMQ_MODEL_MEDIUM`)
 5. Otherwise let Claude Code use its default model
 
 Model flag normalization contract:
@@ -348,7 +351,7 @@ When not to cancel:
 ---
 
 <state_management>
-oh-my-claudecode uses the `.omq/` directory for persistent state:
+oh-my-qoder uses the `.omq/` directory for persistent state:
 - `.omq/state/` -- Mode state files (JSON)
 - `.omq/notepad.md` -- Session-persistent notes
 - `.omq/project-memory.json` -- Cross-session project knowledge
@@ -356,7 +359,7 @@ oh-my-claudecode uses the `.omq/` directory for persistent state:
 - `.omq/logs/` -- Audit logs
 - `.omq/ultragoal/plans/{planId}/` -- Multi-plan ultragoal artifacts when `--plan-id` / `--auto-plan-id` is used.
 
-Multi-repo workspaces: drop a `.omq-workspace` marker file (JSON, can be `{}` or `{"id":"name"}`) in the parent directory when it is not itself a git repo. OMC will anchor `.omq/` at the marker from any sub-directory. This lets parallel Claude sessions in sibling repos share one `.omq/`. The session-start hook uses PID-aware liveness — a dead owner no longer blocks state restore. See `docs/REFERENCE.md#multi-repo-workspaces-with-omc-workspace` for full details.
+Multi-repo workspaces: drop a `.omq-workspace` marker file (JSON, can be `{}` or `{"id":"name"}`) in the parent directory when it is not itself a git repo. OMQ will anchor `.omq/` at the marker from any sub-directory. This lets parallel Claude sessions in sibling repos share one `.omq/`. The session-start hook uses PID-aware liveness — a dead owner no longer blocks state restore. See `docs/REFERENCE.md#multi-repo-workspaces-with-omq-workspace` for full details.
 
 Tools are available via MCP when configured (`omc setup` registers all servers):
 

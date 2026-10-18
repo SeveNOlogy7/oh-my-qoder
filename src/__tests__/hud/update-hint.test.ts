@@ -83,7 +83,7 @@ describe('renderUpdateHints', () => {
     }).map(stripAnsi);
 
     expect(line).toBe(
-      '[!] omc 4.2.0 - paste: ! claude plugin marketplace update omc && claude plugin update oh-my-claudecode@omc',
+      '[!] omq 4.2.0 - paste: ! claude plugin marketplace update omq && claude plugin update oh-my-qoder@omq',
     );
     expect(line.length).toBeLessThan(110);
   });
@@ -95,7 +95,7 @@ describe('renderUpdateHints', () => {
       claudeCodeUpdateAvailable: null,
     }).map(stripAnsi);
 
-    expect(line).toBe('[!] omc 4.2.0 - paste: ! npm i -g oh-my-claude-sisyphus@latest');
+    expect(line).toBe('[!] omq 4.2.0 - paste: ! npm i -g oh-my-claude-sisyphus@latest');
   });
 
   it('renders one line per product', () => {

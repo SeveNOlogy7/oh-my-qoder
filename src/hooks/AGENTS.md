@@ -76,7 +76,7 @@ Hooks intercept Claude Code events to enable:
 | Directory | Purpose |
 |-----------|---------|
 | `todo-continuation/` | Enforces task completion |
-| `omc-orchestrator/` | Orchestrator behavior |
+| `omq-orchestrator/` | Orchestrator behavior |
 | `subagent-tracker/` | Tracks spawned sub-agents |
 | `session-end/` | Session termination handling |
 | `background-notification/` | Background task notifications |

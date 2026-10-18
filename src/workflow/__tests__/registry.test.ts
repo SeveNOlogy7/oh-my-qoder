@@ -83,11 +83,15 @@ describe('workflow registry — risk classes and gate policy', () => {
 });
 
 describe('workflow registry — aliases and classification', () => {
-  it('classifies all 43 installed skills and 21 installed commands exactly once', () => {
+  it('classifies all 47 installed skills and 21 installed commands exactly once', () => {
     const skills = WORKFLOW_ENTRIES.filter((e) => e.kind === 'skill' && !e.declaredOnly);
     const commands = WORKFLOW_ENTRIES.filter((e) => e.kind === 'command' && !e.declaredOnly);
     // execute/review/research and graph ship as real skill directories.
-    expect(skills).toHaveLength(43);
+    expect(skills).toHaveLength(47);
+    expect(getEntry('tdd', 'skill')).toMatchObject({ decision: 'keep', riskClass: 'advisory' });
+    for (const name of ['pr', 'refit']) {
+      expect(getEntry(name, 'skill')).toMatchObject({ decision: 'keep', riskClass: 'advisory' });
+    }
     expect(commands).toHaveLength(21);
     const keys = WORKFLOW_ENTRIES.map((e) => `${e.kind}:${e.name}`);
     expect(new Set(keys).size).toBe(keys.length);
@@ -151,9 +155,9 @@ describe('workflow registry — release maintainer boundary', () => {
       expect(release!.riskClass).toBe('release-authority');
       expect(failModeForRisk(release!.riskClass)).toBe('fail-closed');
       expect(release!.decision).toBe('alias-deprecate');
-      expect(resolveCanonical('release', kind)?.name).toBe('omc-release');
+      expect(resolveCanonical('release', kind)?.name).toBe('omq-release');
     }
-    const target = getEntry('omc-release', 'skill');
+    const target = getEntry('omq-release', 'skill');
     expect(target?.maintainerOnly).toBe(true);
     expect(target?.tier).toBeUndefined();
   });
@@ -198,15 +202,15 @@ describe('workflow registry — feature flag and resolver adapter seam', () => {
     // the maintainer-only release boundary; everything else was removed or kept.
     const e = registryAliasLookup('release');
     expect(e).toBeDefined();
-    expect(e!.canonical).toBe('omc-release');
+    expect(e!.canonical).toBe('omq-release');
     expect(e!.isWorkflowAlias).toBe(true);
     expect(e!.owner).toBe(REGISTRY_OWNER);
   });
 
-  it('maps release to maintainer-only omc-release without a Tier-0 role', () => {
+  it('maps release to maintainer-only omq-release without a Tier-0 role', () => {
     const e = registryAliasLookup('release');
     expect(e).toBeDefined();
-    expect(e!.canonical).toBe('omc-release');
+    expect(e!.canonical).toBe('omq-release');
     expect(e!.tier0).toBeUndefined();
   });
 

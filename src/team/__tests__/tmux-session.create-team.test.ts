@@ -5,7 +5,7 @@ type ExecFileCallback = (error: Error | null, stdout: string, stderr: string) =>
 
 const mockedCalls = vi.hoisted(() => ({
   execFileArgs: [] as string[][],
-  identitySocketPath: '/tmp/omc-create-team.sock',
+  identitySocketPath: '/tmp/omq-create-team.sock',
   splitCount: 0,
   newSplitStdouts: [] as string[],
   tmuxSplitStdouts: [] as string[],
@@ -35,7 +35,7 @@ vi.mock('child_process', async (importOriginal) => {
 
     if (tmuxArgs[0] === 'if-shell') {
       const commandText = tmuxArgs.join(' ');
-      const marker = commandText.match(/OMC_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
+      const marker = commandText.match(/OMQ_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
       if (!marker) return { stdout: '', stderr: '' };
       if (commandText.includes('split-window')) {
         mockedCalls.splitCount += 1;
@@ -54,7 +54,7 @@ vi.mock('child_process', async (importOriginal) => {
       }
       if (commandText.includes('new-session')) {
         mockedCalls.freshServerAlive = true;
-        const session = commandText.match(/'-s'\s+'([^']+)'/)?.[1] ?? 'omc-team-race-team-detached';
+        const session = commandText.match(/'-s'\s+'([^']+)'/)?.[1] ?? 'omq-team-race-team-detached';
         mockedCalls.freshSessionInventory = [session];
         return {
           stdout: `${session}:0\t%91\t${socket ?? mockedCalls.identitySocketPath}\t${process.pid}\n${marker}\n`,
@@ -233,6 +233,7 @@ import {
   detectTeamMultiplexerContext,
   splitTeamWorkerPane,
   splitTeamWorkerPaneWithEvidence,
+  strictIdentityUnavailableError,
   TeamSessionCreationError,
 } from '../tmux-session.js';
 
@@ -313,7 +314,7 @@ describe('createTeamSession context resolution', () => {
     expect(detachedCreateCall).toEqual(expect.arrayContaining([
       '-S', keepaliveCall?.[1],
     ]));
-    expect(detachedCreateCall?.find(arg => arg.includes('new-session'))).toContain('OMC_TMUX_GUARD_OK_');
+    expect(detachedCreateCall?.find(arg => arg.includes('new-session'))).toContain('OMQ_TMUX_GUARD_OK_');
     expect(mockedCalls.execFileArgs.some((args) =>
       args.includes('if-shell') && args.join(' ').includes('set-clipboard'),
     )).toBe(true);
@@ -329,7 +330,7 @@ describe('createTeamSession context resolution', () => {
       args.includes('if-shell') && args.join(' ').includes('terminal-features'),
     )).toBe(false);
     expect(session.leaderPaneId).toBe('%91');
-    expect(session.sessionName).toMatch(/^omc-team-race-team-[^-]+:0$/);
+    expect(session.sessionName).toMatch(/^omq-team-race-team-[^-]+:0$/);
     expect(session.workerPaneIds).toEqual([]);
     expect(session.sessionMode).toBe('detached-session');
     expect(session.tmuxServerIdentity).toMatchObject({
@@ -337,6 +338,34 @@ describe('createTeamSession context resolution', () => {
       process_started_at: strictProcessStartedAt,
     });
     expect(session.tmuxServerIdentity?.socket_path).toBe(keepaliveCall?.[1]);
+  });
+
+  it.skipIf(!supportsStrictTmuxFixture)('filters ambient environment from tmux pane shells', async () => {
+    vi.stubEnv('TMUX', '');
+    vi.stubEnv('TMUX_PANE', '');
+    vi.stubEnv('CMUX_SURFACE_ID', '');
+    vi.stubEnv('SHELL', '/bin/bash');
+    vi.stubEnv('ORCA_HOOK_TOKEN', 'issue-4128-secret-sentinel');
+
+    await createTeamSession('race-team', 1, '/tmp');
+
+    const paneCreationCalls = mockedCalls.execFileArgs.filter((args) => {
+      const command = args.join(' ');
+      return args.includes('if-shell')
+        && (command.includes('new-session') || command.includes('split-window'));
+    });
+    expect(paneCreationCalls).toHaveLength(2);
+    for (const args of paneCreationCalls) {
+      const command = args.join(' ');
+      expect(command).toContain('/usr/bin/env -i');
+      expect(command).toContain('PATH=');
+      expect(command).toContain('HOME=');
+      expect(command).toContain('TERM="$TERM"');
+      expect(command).toContain('TMUX="$TMUX"');
+      expect(command).toContain('TMUX_PANE="$TMUX_PANE"');
+      expect(command).not.toContain('ORCA_HOOK_TOKEN');
+      expect(command).not.toContain('issue-4128-secret-sentinel');
+    }
   });
 
   it('uses native cmux splits instead of a detached tmux session when running inside cmux', async () => {
@@ -429,10 +458,11 @@ describe('createTeamSession context resolution', () => {
 
     const newWindowCall = mockedCalls.execFileArgs.find((args) => args.join(' ').includes('new-window'));
     expect(newWindowCall?.join(' ')).toContain('new-window');
+    expect(newWindowCall?.join(' ')).toContain('/usr/bin/env -i');
     expect(newWindowCall).toEqual(expect.arrayContaining(['-S', strictSocketPath]));
     expect(newWindowCall?.join(' ')).toContain('-t');
     expect(newWindowCall?.join(' ')).toContain('omx');
-    expect(newWindowCall?.join(' ')).toContain('omc-race-team');
+    expect(newWindowCall?.join(' ')).toContain('omq-race-team');
     expect(mockedCalls.execFileArgs.some((args) =>
       args.includes('if-shell')
       && args.join(' ').includes('=omx:')
@@ -568,7 +598,7 @@ describe('createTeamSession context resolution', () => {
     vi.stubEnv('TMUX_PANE', '%732');
     vi.stubEnv('CMUX_SURFACE_ID', '');
     mockedCalls.newWindowError = {
-      stdout: 'omx:5\t%99\t/tmp/omc-create-team.sock\t4242\n',
+      stdout: 'omx:5\t%99\t/tmp/omq-create-team.sock\t4242\n',
       stderr: 'transport interrupted',
       message: 'new-window response unavailable',
     };
@@ -793,7 +823,7 @@ describe('splitTeamWorkerPane multiplexer routing (#3267)', () => {
         process_started_at: strictProcessStartedAt,
       },
     });
-    expect(evidence.rawOutput).toMatch(/OMC_TMUX_GUARD_OK_/);
+    expect(evidence.rawOutput).toMatch(/OMQ_TMUX_GUARD_OK_/);
     const guardCall = mockedCalls.execFileArgs.find(args => args.includes('if-shell'));
     expect(guardCall).toBeDefined();
     expect(guardCall).toEqual(expect.arrayContaining(['-S', strictSocketPath]));
@@ -861,5 +891,27 @@ describe('splitTeamWorkerPane multiplexer routing (#3267)', () => {
       stderr: '',
       paneId: null,
     });
+  });
+});
+
+describe('strictIdentityUnavailableError (issue #4192)', () => {
+  it('names the missing darwin contained-fs addon and its build command', () => {
+    const missing = new Error('The contained filesystem backend is unavailable at /pkg/native/contained-fs-darwin-arm64.node. Build it with node scripts/build-contained-fs.mjs (from the installed package directory) before running graph or team commands.');
+    const error = strictIdentityUnavailableError('darwin', () => { throw missing; });
+    expect(error.message).toMatch(/^tmux_server_identity_probe_unavailable: /);
+    expect(error.message).toContain('contained-fs-darwin-arm64.node');
+    expect(error.message).toContain('scripts/build-contained-fs.mjs');
+    expect(error.cause).toBe(missing);
+  });
+
+  it('keeps the bare code when the darwin addon loads but the probe still fails', () => {
+    const error = strictIdentityUnavailableError('darwin', () => ({}));
+    expect(error.message).toBe('tmux_server_identity_probe_unavailable');
+  });
+
+  it('does not consult the addon on other platforms', () => {
+    const loadNative = vi.fn(() => { throw new Error('should not load'); });
+    expect(strictIdentityUnavailableError('win32', loadNative).message).toBe('tmux_server_identity_probe_unavailable');
+    expect(loadNative).not.toHaveBeenCalled();
   });
 });

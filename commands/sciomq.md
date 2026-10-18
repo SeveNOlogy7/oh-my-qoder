@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Orchestrate parallel scientist agents for comprehensive analysis with AUTO mode"
 ---
 
 # OMQ sciomq

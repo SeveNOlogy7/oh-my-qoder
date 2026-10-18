@@ -169,7 +169,7 @@ function spawnTeamLockHolder(lockPath: string, enteredPath: string, releasePath:
     lockPath, enteredPath, releasePath,
   ], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: 'test', OMC_TEST_FLOCK_AVAILABLE: '0' },
+    env: { ...process.env, NODE_ENV: 'test', OMQ_TEST_FLOCK_AVAILABLE: '0' },
     stdio: 'ignore',
   });
   const closed = new Promise<void>((resolve, reject) => {
@@ -213,11 +213,11 @@ async function withTeamLockHolder<T>(
 }
 async function withIsolatedStateDir<T>(fn: (stateRoot: string) => Promise<T>): Promise<T> {
   const previous = process.env.OMQ_STATE_DIR;
-  const stateRoot = mkdtempSync(join(TEST_DIR, 'omc-state-root-'));
-  process.env.OMC_STATE_DIR = stateRoot;
+  const stateRoot = mkdtempSync(join(TEST_DIR, 'omq-state-root-'));
+  process.env.OMQ_STATE_DIR = stateRoot;
   try { return await fn(stateRoot);
   } finally {
-    if (previous === undefined) delete process.env.OMC_STATE_DIR; else process.env.OMC_STATE_DIR = previous;
+    if (previous === undefined) delete process.env.OMQ_STATE_DIR; else process.env.OMQ_STATE_DIR = previous;
     rmSync(stateRoot, { recursive: true, force: true });
   }
 }
@@ -225,22 +225,22 @@ function teamState(sessionId: string, teamName: string, extra: Record<string, un
   return { session_id: sessionId, phase: 'team-exec', team_name: teamName, ...extra };
 }
 function writeTeamRuntime(
-  omcRoot: string,
+  omqRoot: string,
   teamName: string,
   missionTeamNames: string[] = [teamName],
 ): { root: string; taskPath: string; taskBytes: Buffer; missionPath: string } {
-  const root = join(omcRoot, 'state', 'team', teamName);
+  const root = join(omqRoot, 'state', 'team', teamName);
   const taskPath = join(root, 'tasks', 'task-1.json');
   const taskBytes = Buffer.from(JSON.stringify({ id: 'task-1', status: 'in_progress', owner: 'worker-1' }));
   mkdirSync(dirname(taskPath), { recursive: true });
   writeFileSync(taskPath, taskBytes);
-  const missionPath = join(omcRoot, 'state', 'mission-state.json');
+  const missionPath = join(omqRoot, 'state', 'mission-state.json');
   mkdirSync(dirname(missionPath), { recursive: true });
   writeFileSync(missionPath, JSON.stringify({ missions: missionTeamNames.map((name) => ({ source: 'team', teamName: name, status: 'running' })) }));
   return { root, taskPath, taskBytes, missionPath };
 }
-function markSessionCompleted(omcRoot: string, sessionId: string): void {
-  const completionPath = join(omcRoot, 'sessions', `${sessionId}.json`);
+function markSessionCompleted(omqRoot: string, sessionId: string): void {
+  const completionPath = join(omqRoot, 'sessions', `${sessionId}.json`);
   mkdirSync(dirname(completionPath), { recursive: true });
   writeFileSync(completionPath, JSON.stringify({ session_id: sessionId, ended_at: new Date().toISOString() }));
 }
@@ -260,11 +260,11 @@ async function publishTeamState(
 describe('state-tools', () => {
   let previousHome: string | undefined;
   let previousUserProfile: string | undefined;
-  let previousOmcStateDir: string | undefined;
+  let previousOmqStateDir: string | undefined;
 
   beforeEach(() => {
-    previousOmcStateDir = process.env.OMC_STATE_DIR;
-    delete process.env.OMC_STATE_DIR;
+    previousOmqStateDir = process.env.OMQ_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     TEST_DIR = mkdtempSync(join(homedir(), 'state-tools-test-'));
     previousHome = process.env.HOME;
     previousUserProfile = process.env.USERPROFILE;
@@ -279,8 +279,8 @@ describe('state-tools', () => {
     else process.env.HOME = previousHome;
     if (previousUserProfile === undefined) delete process.env.USERPROFILE;
     else process.env.USERPROFILE = previousUserProfile;
-    if (previousOmcStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousOmcStateDir;
+    if (previousOmqStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousOmqStateDir;
     delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH;
     delete process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64;
     delete process.env.OMQ_TEST_FLOCK_AVAILABLE;
@@ -289,7 +289,7 @@ describe('state-tools', () => {
     delete process.env.OMQ_TEST_CONDITIONAL_CREATE_REPLACEMENT_BASE64;
     delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_PATH;
     delete process.env.OMQ_TEST_EMERGENCY_REPLACEMENT_BASE64;
-    delete process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE;
+    delete process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE;
     artifactUnlinkFault.target = undefined;
   });
 
@@ -429,7 +429,7 @@ describe('state-tools', () => {
     });
 
     it('writes through the file-lock fallback when better-sqlite3 cannot load', async () => {
-      process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
+      process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
 
       const result = await stateWriteTool.handler({
         mode: 'ralph',
@@ -442,15 +442,15 @@ describe('state-tools', () => {
       expect(result.content[0].text).toContain('Successfully wrote state');
       expect(result.content[0].text).toContain('better_sqlite3.node');
       expect(result.content[0].text).toContain('npm rebuild better-sqlite3');
-      expect(JSON.parse(readFileSync(join(TEST_DIR, '.omc', 'state', 'ralph-state.json'), 'utf8'))).toMatchObject({
+      expect(JSON.parse(readFileSync(join(TEST_DIR, '.omq', 'state', 'ralph-state.json'), 'utf8'))).toMatchObject({
         active: true,
         iteration: 1,
       });
     });
 
     it('reports native-binding diagnostics separately from fallback lock contention', async () => {
-      process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
-      const statePath = join(TEST_DIR, '.omc', 'state', 'ralph-state.json');
+      process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
+      const statePath = join(TEST_DIR, '.omq', 'state', 'ralph-state.json');
       const lockPath = `${statePath}.mutation.lock`;
       writeFileSync(lockPath, liveLockOwner());
 
@@ -804,8 +804,8 @@ describe('state-tools', () => {
 
       await withIsolatedStateDir(async () => {
         await publishTeamState(sessionId, teamName);
-        const omcRoot = getOmcRoot(TEST_DIR);
-        const runtimeRoot = join(omcRoot, 'state', 'team', teamName);
+        const omqRoot = getOmcRoot(TEST_DIR);
+        const runtimeRoot = join(omqRoot, 'state', 'team', teamName);
         const configPath = join(runtimeRoot, 'config.json');
         const taskPath = join(runtimeRoot, 'tasks', 'task-1.json');
         const workerReceiptPath = join(runtimeRoot, 'workers', 'worker-1', 'launch-attempts', 'attempt-1', 'ack.json');
@@ -849,7 +849,7 @@ describe('state-tools', () => {
         }
         const cleanupReceiptBytes = evidence === 'missing' ? undefined : readFileSync(cleanupReceiptPath);
 
-        const missionPath = join(omcRoot, 'state', 'mission-state.json');
+        const missionPath = join(omqRoot, 'state', 'mission-state.json');
         const missionBytes = Buffer.from(JSON.stringify({
           missions: [{ source: 'team', teamName, instance_id: '11111111-1111-4111-8111-111111111111' }],
         }));
@@ -952,9 +952,9 @@ describe('state-tools', () => {
       await withIsolatedStateDir(async () => {
         await publishTeamState(ownerSessionId, teamName);
         const paths = resolveSessionStatePaths('team', ownerSessionId, TEST_DIR);
-        const omcRoot = getOmcRoot(TEST_DIR);
-        markSessionCompleted(omcRoot, ownerSessionId);
-        const runtime = writeTeamRuntime(omcRoot, teamName);
+        const omqRoot = getOmcRoot(TEST_DIR);
+        markSessionCompleted(omqRoot, ownerSessionId);
+        const runtime = writeTeamRuntime(omqRoot, teamName);
         const primaryBytes = readFileSync(paths.sessionScoped);
 
         await withTeamLockHolder(`${paths.sessionScoped}.team-state.lock`, 'orphan-lock', async (release) => {
@@ -998,12 +998,12 @@ describe('state-tools', () => {
 
         const primaryPaths = resolveSessionStatePaths('team', primarySessionId, TEST_DIR);
         const orphanPaths = resolveSessionStatePaths('team', orphanSessionId, TEST_DIR);
-        const omcRoot = getOmcRoot(TEST_DIR);
+        const omqRoot = getOmcRoot(TEST_DIR);
         const primaryStatePath = scoped ? primaryPaths.sessionScoped : primaryPaths.legacy;
-        markSessionCompleted(omcRoot, orphanSessionId);
+        markSessionCompleted(omqRoot, orphanSessionId);
 
-        const primaryRuntime = writeTeamRuntime(omcRoot, primaryTeamName, [primaryTeamName, orphanTeamName]);
-        const orphanRuntime = writeTeamRuntime(omcRoot, orphanTeamName, [primaryTeamName, orphanTeamName]);
+        const primaryRuntime = writeTeamRuntime(omqRoot, primaryTeamName, [primaryTeamName, orphanTeamName]);
+        const orphanRuntime = writeTeamRuntime(omqRoot, orphanTeamName, [primaryTeamName, orphanTeamName]);
         const primaryBytes = readFileSync(primaryStatePath);
         const missionBytes = readFileSync(primaryRuntime.missionPath);
 
@@ -1110,7 +1110,7 @@ describe('state-tools', () => {
           lockPath, enteredPath, signalPath!, paths.sessionScoped, publishedPath, releasePath, JSON.stringify(payload),
         ], {
           cwd: process.cwd(),
-          env: { ...process.env, NODE_ENV: 'test', OMC_TEST_FLOCK_AVAILABLE: '0' },
+          env: { ...process.env, NODE_ENV: 'test', OMQ_TEST_FLOCK_AVAILABLE: '0' },
           stdio: 'ignore',
         });
         childClosed = new Promise<void>((resolve, reject) => {
@@ -1706,7 +1706,7 @@ describe('state-tools', () => {
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, JSON.stringify({ active: true, session_id: owner, workflowRunId: run, workflow: { profileHash: 'c'.repeat(64) } }));
       }
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
       process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
       expect(emergencyMutateStateFileIf(otherPath, (state) => state.session_id === 'recovery-owner-b', (state) => ({ ...state, active: false }))).toBe(false);
       delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
@@ -1843,7 +1843,7 @@ describe('state-tools', () => {
         writeFileSync(projectBPath, JSON.stringify({ active: true, project_path: otherProject, workflowRunId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', workflow: { profileHash: 'b'.repeat(64) } }));
         writeFileSync(projectBRecoveryPath, JSON.stringify({ active: true, project_path: otherProject, workflowRunId: 'bdbdbdbd-bdbd-4dbd-8dbd-bdbdbdbdbdbd', workflow: { profileHash: 'd'.repeat(64) } }));
         writeFileSync(projectBLegacyPath, JSON.stringify({ active: true, project_path: otherProject, workflowRunId: 'bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc' }));
-        process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+        process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
 
         process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-publication';
         expect(emergencyMutateStateFileIf(projectBPath, (state) => state.project_path === otherProject, (state) => ({ ...state, active: false }))).toBe(false);
@@ -1893,7 +1893,7 @@ describe('state-tools', () => {
       for (const [path, run] of [[canonical, '22222222-2222-4222-8222-222222222222'], [legacy, '33333333-3333-4333-8333-333333333333']] as const) {
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, JSON.stringify({ active: true, session_id: 'broad-journal-owner', workflowRunId: run, workflow: { profileHash: 'b'.repeat(64) } }));
-      process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+      process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
         process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
         expect(emergencyMutateStateFileIf(path, (state) => state.workflowRunId === run, (state) => ({ ...state, active: false }))).toBe(false);
         delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
@@ -1913,7 +1913,7 @@ describe('state-tools', () => {
         const statePath = join(getOmcRoot(TEST_DIR), 'state', 'sessions', 'central-journal-owner', 'autopilot-state.json');
         mkdirSync(dirname(statePath), { recursive: true });
         writeFileSync(statePath, JSON.stringify({ active: true, session_id: 'central-journal-owner', workflowRunId: '66666666-6666-4666-8666-666666666666', workflow: { profileHash: 'd'.repeat(64) } }));
-        process.env.OMC_TEST_FLOCK_AVAILABLE = '0';
+        process.env.OMQ_TEST_FLOCK_AVAILABLE = '0';
         process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE = 'after-rename';
         expect(emergencyMutateStateFileIf(statePath, (state) => state.session_id === 'central-journal-owner', (state) => ({ ...state, active: false }))).toBe(false);
         delete process.env.OMQ_TEST_EMERGENCY_CRASH_PHASE;
@@ -2336,8 +2336,8 @@ describe('state-tools', () => {
       const replacement = { active: true, session_id: 'fallback-foreign-owner' };
       mkdirSync(dirname(statePath), { recursive: true });
       writeFileSync(statePath, JSON.stringify({ active: true, session_id: requester }));
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
-      process.env.OMC_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_PATH = statePath;
+      process.env.OMQ_TEST_CONDITIONAL_CLEAR_REPLACEMENT_BASE64 = Buffer.from(JSON.stringify(replacement)).toString('base64');
 
       const result = await stateClearTool.handler({
         mode: 'ultragoal',
@@ -2376,7 +2376,7 @@ describe('state-tools', () => {
 
     it('does not probe or mutate a symlinked legacy .omq directory', async () => {
       const symlinkTestDir = mkdtempSync(join(tmpdir(), 'state-tools-symlink-'));
-      const realOmcDir = mkdtempSync(join(tmpdir(), 'state-tools-real-omc-'));
+      const realOmcDir = mkdtempSync(join(tmpdir(), 'state-tools-real-omq-'));
       try {
         rmSync(join(symlinkTestDir, '.omq'), { recursive: true, force: true });
         symlinkSync(realOmcDir, join(symlinkTestDir, '.omq'), 'dir');
@@ -2981,11 +2981,11 @@ describe('state-tools', () => {
       const sessionId = 'captured-survivor-autopilot-session';
       const gitRoot = mkdtempSync(join(homedir(), 'state-clear-captured-'));
       execFileSync('git', ['init'], { cwd: gitRoot, stdio: 'pipe' });
-      process.env.OMC_STATE_DIR = join(gitRoot, 'central-state-root');
+      process.env.OMQ_STATE_DIR = join(gitRoot, 'central-state-root');
       try {
         const state = JSON.stringify({ active: true, session_id: sessionId, current_phase: 'execution' });
         const centralPath = join(getOmcRoot(gitRoot), 'state', 'sessions', sessionId, 'autopilot-state.json');
-        const localPath = join(gitRoot, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json');
+        const localPath = join(gitRoot, '.omq', 'state', 'sessions', sessionId, 'autopilot-state.json');
         for (const path of [centralPath, localPath]) {
           mkdirSync(dirname(path), { recursive: true });
           writeFileSync(path, state);
@@ -3013,7 +3013,7 @@ describe('state-tools', () => {
     });
 
     it('clears autopilot state from the centralized OMQ_STATE_DIR root used by stop hooks', async () => {
-      const previous = process.env.OMC_STATE_DIR;
+      const previous = process.env.OMQ_STATE_DIR;
       const sessionId = 'centralized-autopilot-clear-session';
       const centralRoot = join(TEST_DIR, 'central-state-root');
       process.env.OMQ_STATE_DIR = centralRoot;
@@ -3048,7 +3048,7 @@ describe('state-tools', () => {
     });
 
     it('does not probe workingDirectory-local ralph state when centralized state is configured', async () => {
-      const previous = process.env.OMC_STATE_DIR;
+      const previous = process.env.OMQ_STATE_DIR;
       const sessionId = 'worktree-local-ralph-clear-session';
       const centralRoot = join(TEST_DIR, 'central-state-root');
       const localStatePath = join(TEST_DIR, '.omq', 'state', 'sessions', sessionId, 'ralph-state.json');
@@ -3075,9 +3075,9 @@ describe('state-tools', () => {
         expect(existsSync(localStatePath)).toBe(true);
       } finally {
         if (previous === undefined) {
-          delete process.env.OMC_STATE_DIR;
+          delete process.env.OMQ_STATE_DIR;
         } else {
-          process.env.OMC_STATE_DIR = previous;
+          process.env.OMQ_STATE_DIR = previous;
         }
       }
     });

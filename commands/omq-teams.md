@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "CLI-team runtime for claude, codex, or gemini workers in tmux panes when you need process-based parallel execution"
 ---
 
 # OMQ omq-teams

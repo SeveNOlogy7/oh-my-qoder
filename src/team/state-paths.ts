@@ -255,19 +255,19 @@ export const TeamPaths = {
     `.omq/state/team-recovery/lifecycle-locks/${workspaceHash}/${teamName}.lock`,
   /**
    * External team-instance authority.  These paths deliberately live outside
-   * `.omc/state/team/{teamName}` so cleanup can retain authorization after the
+   * `.omq/state/team/{teamName}` so cleanup can retain authorization after the
    * state tree is detached or partially removed.
    */
   teamInstanceAuthorityRoot: (workspaceHash: string, teamName: string) =>
-    `.omc/state/team-recovery/team-instances/${workspaceHash}/${teamName}`,
+    `.omq/state/team-recovery/team-instances/${workspaceHash}/${teamName}`,
   teamInstanceReservation: (workspaceHash: string, teamName: string) =>
-    `.omc/state/team-recovery/team-instances/${workspaceHash}/${teamName}/reservation.json`,
+    `.omq/state/team-recovery/team-instances/${workspaceHash}/${teamName}/reservation.json`,
   teamInstanceCleanupRoot: (workspaceHash: string, teamName: string, instanceId: string) =>
-    `.omc/state/team-recovery/team-instances/${workspaceHash}/${teamName}/${instanceId}`,
+    `.omq/state/team-recovery/team-instances/${workspaceHash}/${teamName}/${instanceId}`,
   teamInstanceCleanupReceipt: (workspaceHash: string, teamName: string, instanceId: string) =>
-    `.omc/state/team-recovery/team-instances/${workspaceHash}/${teamName}/${instanceId}/cleanup.json`,
+    `.omq/state/team-recovery/team-instances/${workspaceHash}/${teamName}/${instanceId}/cleanup.json`,
   teamInstanceDetachedRoot: (workspaceHash: string, teamName: string, instanceId: string) =>
-    `.omc/state/team-recovery/team-instances/${workspaceHash}/${teamName}/${instanceId}/detached`,
+    `.omq/state/team-recovery/team-instances/${workspaceHash}/${teamName}/${instanceId}/detached`,
   recoveryRequestPending: (requestId: string) =>
     `.omq/state/team-recovery/by-request/${requestId}.pending.json`,
   recoveryRequestResult: (requestId: string) =>
@@ -314,8 +314,8 @@ export function canonicalTeamStatePath(cwd: string, relativePath: string): strin
     }
     return target;
   }
-  if (relativePath === '.omc' || relativePath.startsWith('.omc/')) {
-    return join(canonicalTeamOmcRoot(cwd), relativePath.slice('.omc'.length).replace(/^\//, ''));
+  if (relativePath === '.omq' || relativePath.startsWith('.omq/')) {
+    return join(canonicalTeamOmcRoot(cwd), relativePath.slice('.omq'.length).replace(/^\//, ''));
   }
   return join(canonicalTeamCwd(cwd), relativePath);
 }

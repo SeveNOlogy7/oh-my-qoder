@@ -58,7 +58,7 @@ describe('runtime types', () => {
         tasks: [{ subject: 'task', description: 'task' }],
         cwd,
       })).rejects.toThrow('team_start_unsafe_runtime_v1');
-      expect(existsSync(join(cwd, '.omc', 'state', 'team', 'legacy-start'))).toBe(false);
+      expect(existsSync(join(cwd, '.omq', 'state', 'team', 'legacy-start'))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -67,7 +67,7 @@ describe('runtime types', () => {
   it('resumeTeam refuses state without immutable instance ownership', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'team-runtime-v1-resume-'));
     try {
-      const root = join(cwd, '.omc', 'state', 'team', 'legacy-resume');
+      const root = join(cwd, '.omq', 'state', 'team', 'legacy-resume');
       mkdirSync(root, { recursive: true });
       writeFileSync(join(root, 'config.json'), JSON.stringify({
         teamName: 'legacy-resume',

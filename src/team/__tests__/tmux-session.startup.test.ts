@@ -14,7 +14,7 @@ const supportsStrictTmuxFixture = fixtureProcessStartIdentity !== null
   && (process.platform === 'darwin' || process.platform === 'linux');
 const fixtureTmuxServerIdentity: TmuxServerIdentity | undefined = supportsStrictTmuxFixture
   ? {
-      socket_path: '/tmp/omc-tmux-session-startup.sock',
+      socket_path: '/tmp/omq-tmux-session-startup.sock',
       server_pid: process.pid,
       process_started_at: fixtureProcessStartIdentity!,
     }
@@ -196,7 +196,7 @@ vi.mock('../../cli/tmux-utils.js', async importOriginal => {
           tmuxState.args.push(syntheticArgs);
           if (syntheticArgs.includes('-l')) {
             const commandText = syntheticArgs[syntheticArgs.indexOf('-l') + 1] ?? '';
-            const descriptorMatch = commandText.match(/OMC_WORKER_LAUNCH_SPEC_FILE='([^']+)'/);
+            const descriptorMatch = commandText.match(/OMQ_WORKER_LAUNCH_SPEC_FILE='([^']+)'/);
             if (descriptorMatch) {
               const spec = JSON.parse(await readFile(descriptorMatch[1], 'utf8'));
               tmuxState.activeAttempt = {
@@ -256,7 +256,7 @@ vi.mock('../../cli/tmux-utils.js', async importOriginal => {
             tmuxState.activeAttempt = null;
           }
         }
-        const marker = success.match(/OMC_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
+        const marker = success.match(/OMQ_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
         return { stdout: marker ? `${marker}\n` : '', stderr: '' };
       }
       return { stdout: '', stderr: '' };
@@ -547,8 +547,8 @@ describe('worker pane startup safety', () => {
         launchAttempt: attempt,
       });
       expect(builderCommand).toContain('runtime-cli.cjs');
-      expect(builderCommand).toContain('OMC_WORKER_LAUNCH_SPEC_FILE');
-      expect(builderCommand).not.toContain('OMC_WORKER_LAUNCH_SPEC=');
+      expect(builderCommand).toContain('OMQ_WORKER_LAUNCH_SPEC_FILE');
+      expect(builderCommand).not.toContain('OMQ_WORKER_LAUNCH_SPEC=');
       await expect(spawnWorkerInPane('startup:0', '%2', {
         teamName: 'startup-team',
         workerName: 'worker-1',
@@ -570,7 +570,7 @@ describe('worker pane startup safety', () => {
       workerName: 'worker-1',
       tmuxServerIdentity: strictTmuxIdentity(),
       instanceId: attempt.instance_id,
-      envVars: { OMC_TEAM_WORKER: 'startup-team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'startup-team/worker-1' },
       launchBinary: provider === 'codex'
         ? 'C:\\Program Files\\Codex\\codex.exe'
         : 'C:\\Program Files\\Claude\\claude.exe',
@@ -620,7 +620,7 @@ describe('worker pane startup safety', () => {
       workerName: 'worker-1',
       tmuxServerIdentity: strictTmuxIdentity(),
       instanceId: attempt.instance_id,
-      envVars: { OMC_TEAM_WORKER: 'startup-team/worker-1' },
+      envVars: { OMQ_TEAM_WORKER: 'startup-team/worker-1' },
       launchBinary: '/usr/bin/codex',
       launchArgs: ['--full-auto'],
       cwd,
@@ -666,6 +666,35 @@ describe('worker pane startup safety', () => {
     expect(tmuxState.args.findIndex(args => args.at(-1) === '1'))
       .toBeLessThan(tmuxState.args.findIndex(args => args.at(-1) === 'Read inbox.md, execute now.'));
   });
+
+  strictTmuxIt.each([
+    ['Do you trust the files in this folder?', 'Yes, proceed'],
+    ['Quick safety check: Is this a project you created or one you trust?', 'Yes, I trust this folder'],
+  ] as const)(
+    'selects Yes in Claude Code’s new directory trust dialog before delivering the inbox (%s)',
+    async (question, affirmativeChoice) => {
+      const context = await acceptedContext('claude');
+      tmuxState.captures = [
+        `${question}\n❯ No, exit\n  ${affirmativeChoice}\n`,
+        '❯ ready\n',
+      ];
+
+      await expect(deliverStartupInbox(context, 'Read inbox.md, execute now.')).resolves.toEqual({
+        ok: true,
+        kind: 'attempted_unconfirmed',
+      });
+
+      const selectYesIndex = tmuxState.args.findIndex(args => args[0] === 'send-keys' && args.at(-1) === 'Down');
+      const confirmYesIndex = tmuxState.args.findIndex((args, index) =>
+        index > selectYesIndex && args[0] === 'send-keys' && args.at(-1) === 'Enter');
+      const inboxIndex = tmuxState.args.findIndex(args =>
+        args[0] === 'send-keys' && args.includes('-l') && args.at(-1) === 'Read inbox.md, execute now.');
+
+      expect(selectYesIndex).toBeGreaterThanOrEqual(0);
+      expect(confirmYesIndex).toBeGreaterThan(selectYesIndex);
+      expect(inboxIndex).toBeGreaterThan(confirmYesIndex);
+    },
+  );
 
   strictTmuxIt('handles the exact Codex directory and hooks selectors in order before delivery', async () => {
     const context = await acceptedContext('codex');
@@ -888,7 +917,7 @@ describe('worker pane startup safety', () => {
     stderr.mockRestore();
   });
   strictTmuxIt('retires an accepted launch but preserves the pane when provider cleanup is unverified', async () => {
-    cwd = await createFixture('omc-startup-handoff-cleanup-');
+    cwd = await createFixture('omq-startup-handoff-cleanup-');
     process.env.OMQ_TEAM_START_ACK_TIMEOUT_MS = '50';
     processMocks.isProcessIdentityLive.mockResolvedValue('dead');
 
@@ -915,7 +944,7 @@ describe('worker pane startup safety', () => {
   });
 
   it('refuses an owned worker launch without its immutable instance id', async () => {
-    cwd = await createFixture('omc-startup-instance-id-');
+    cwd = await createFixture('omq-startup-instance-id-');
 
     if (!supportsStrictTmuxFixture) {
       await expect(spawnOwnedWorkerInPane('startup:0', ownership(), {

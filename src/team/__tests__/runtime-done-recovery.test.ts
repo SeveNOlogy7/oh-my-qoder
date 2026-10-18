@@ -23,10 +23,10 @@ describe('task completion and recovery ownership boundary', () => {
     cwd = mkdtempSync(join(tmpdir(), 'runtime-task-recovery-boundary-'));
     previousHome = process.env.HOME;
     previousUserProfile = process.env.USERPROFILE;
-    previousStateDir = process.env.OMC_STATE_DIR;
+    previousStateDir = process.env.OMQ_STATE_DIR;
     process.env.HOME = cwd;
     process.env.USERPROFILE = cwd;
-    delete process.env.OMC_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
   });
 
   afterEach(() => {
@@ -34,8 +34,8 @@ describe('task completion and recovery ownership boundary', () => {
     else process.env.HOME = previousHome;
     if (previousUserProfile === undefined) delete process.env.USERPROFILE;
     else process.env.USERPROFILE = previousUserProfile;
-    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousStateDir;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
     rmSync(cwd, { recursive: true, force: true });
   });
 

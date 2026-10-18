@@ -83,13 +83,13 @@ describe('project-memory-posttool skip guards', () => {
 
 describe('project-memory-posttool response contract', () => {
   it('returns a bare continue response when runtime modules are unavailable', () => {
-    const result = runHook({ OMC_DEBUG: '' });
+    const result = runHook({ OMQ_DEBUG: '' });
 
     expect(result.output).toEqual({ continue: true });
   });
 
   it('returns a bare continue response when input parsing fails', () => {
-    const result = runHook({ OMC_DEBUG: '' }, '{');
+    const result = runHook({ OMQ_DEBUG: '' }, '{');
 
     expect(result.output).toEqual({ continue: true });
   });

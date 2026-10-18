@@ -56,19 +56,19 @@ describe('PostToolUse directory-context injector registration (issue #4006)', ()
     expect(runInjector('')).toEqual({ continue: true });
   });
 
-  it('honors DISABLE_OMC and the post-tool-use skip token', () => {
+  it('honors DISABLE_OMQ and the post-tool-use skip token', () => {
     const payload = {
       tool_name: 'Read',
       tool_input: { file_path: join(REPO_ROOT, 'package.json') },
       session_id: 'kill-switch',
       cwd: REPO_ROOT,
     };
-    expect(runInjector(payload, { DISABLE_OMC: '1' })).toEqual({ continue: true });
-    expect(runInjector(payload, { OMC_SKIP_HOOKS: 'post-tool-use' })).toEqual({ continue: true });
+    expect(runInjector(payload, { DISABLE_OMQ: '1' })).toEqual({ continue: true });
+    expect(runInjector(payload, { OMQ_SKIP_HOOKS: 'post-tool-use' })).toEqual({ continue: true });
   });
 
   it.skipIf(!existsSync(DIST_HOOK))('injects a nested AGENTS.md for a tracked tool call', () => {
-    const projectRoot = mkdtempSync(join(tmpdir(), 'omc-injector-e2e-'));
+    const projectRoot = mkdtempSync(join(tmpdir(), 'omq-injector-e2e-'));
     try {
       mkdirSync(join(projectRoot, 'src', 'nested'), { recursive: true });
       writeFileSync(join(projectRoot, 'src', 'nested', 'AGENTS.md'), '# nested\n\nNESTED-AGENTS-TOKEN\n');

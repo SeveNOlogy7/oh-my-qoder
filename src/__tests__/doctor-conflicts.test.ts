@@ -1,7 +1,7 @@
 /**
  * Tests for doctor-conflicts command (issue #606)
  *
- * Verifies that OMC-managed hooks are correctly classified as OMC-owned,
+ * Verifies that OMQ-managed hooks are correctly classified as OMQ-owned,
  * not falsely flagged as "Other".
  */
 
@@ -29,7 +29,7 @@ function resetTestDirs(): void {
   TEST_DIRS.builtinSkillsDir = join(TEST_PROJECT_DIR, 'builtin-skills');
 }
 
-function writeCanonicalOmqReferenceSkill(content = '# Canonical omq-reference skill\n'): string {
+function writeCanonicalOmcReferenceSkill(content = '# Canonical omq-reference skill\n'): string {
   const skillPath = join(TEST_DIRS.builtinSkillsDir, 'omq-reference', 'SKILL.md');
   mkdirSync(join(TEST_DIRS.builtinSkillsDir, 'omq-reference'), { recursive: true });
   writeFileSync(skillPath, content);
@@ -43,10 +43,8 @@ function writePluginRoot(root: string, content: string): void {
   writeFileSync(join(root, 'skills', 'omq-reference', 'SKILL.md'), content);
 }
 
-// Mock the config-dir getters before importing the module under test
-vi.mock('../utils/config-dir.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../utils/config-dir.js')>()),
-  getQoderConfigDir: () => TEST_DIRS.claudeDir,
+// Mock getClaudeConfigDir before importing the module under test
+vi.mock('../utils/config-dir.js', () => ({
   getClaudeConfigDir: () => TEST_DIRS.claudeDir,
 }));
 
@@ -145,7 +143,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
     writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify(settings));
     const conflicts = checkHookConflicts();
 
-    // All hooks should be classified as OMC-owned
+    // All hooks should be classified as OMQ-owned
     expect(conflicts.length).toBeGreaterThan(0);
     for (const hook of conflicts) {
       expect(hook.isOmq).toBe(true);
@@ -240,7 +238,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
       mkdirSync(join(TEST_CLAUDE_DIR, 'plugins'), { recursive: true });
       writeFileSync(join(TEST_CLAUDE_DIR, 'plugins', 'installed_plugins.json'), JSON.stringify({
         plugins: {
-          'oh-my-claudecode': [{ installPath: pluginRoot }],
+          'oh-my-qoder': [{ installPath: pluginRoot }],
         },
       }));
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
@@ -308,7 +306,7 @@ describe('doctor-conflicts: hook ownership classification', () => {
     expect(conflicts[0].isOmq).toBe(false);
   });
 
-  it('correctly distinguishes OMQ and non-OMC hooks in mixed config', () => {
+  it('correctly distinguishes OMQ and non-OMQ hooks in mixed config', () => {
     const settings = {
       hooks: {
         PreToolUse: [{
@@ -407,8 +405,8 @@ describe('doctor-conflicts: hook ownership classification', () => {
   });
 
   it('reports hasConflicts only when non-OMQ hooks exist', () => {
-    // All-OMC config: no conflicts
-    const omqOnlySettings = {
+    // All-OMQ config: no conflicts
+    const omcOnlySettings = {
       hooks: {
         PreToolUse: [{
           hooks: [{
@@ -419,11 +417,11 @@ describe('doctor-conflicts: hook ownership classification', () => {
       },
     };
 
-    writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify(omqOnlySettings));
-    const omqReport = runConflictCheck();
-    // hasConflicts should be false when all hooks are OMC-owned
-    expect(omqReport.hookConflicts.every(h => h.isOmq)).toBe(true);
-    expect(omqReport.hookConflicts.some(h => !h.isOmq)).toBe(false);
+    writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify(omcOnlySettings));
+    const omcReport = runConflictCheck();
+    // hasConflicts should be false when all hooks are OMQ-owned
+    expect(omcReport.hookConflicts.every(h => h.isOmq)).toBe(true);
+    expect(omcReport.hookConflicts.some(h => !h.isOmq)).toBe(false);
   });
 
   it('detects hooks from project-level settings.json (issue #669)', () => {
@@ -790,7 +788,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
   });
 
   it('does NOT flag setup-installed omq-reference fallback when it matches the bundled skill (issue #2992)', () => {
-    const canonicalContent = writeCanonicalOmqReferenceSkill();
+    const canonicalContent = writeCanonicalOmcReferenceSkill();
     process.env.OMQ_MCP_REGISTRY_PATH = join(TEST_PROJECT_DIR, 'no-mcp-registry.json');
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
@@ -800,10 +798,25 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     expect(collisions).toHaveLength(0);
   });
 
+  it('does not flag an exact setup-installed wiki fallback while the plugin is active (issue #4118)', () => {
+    const canonicalContent = '# Canonical wiki skill\n';
+    const canonicalPath = join(TEST_DIRS.builtinSkillsDir, 'wiki', 'SKILL.md');
+    mkdirSync(join(TEST_DIRS.builtinSkillsDir, 'wiki'), { recursive: true });
+    writeFileSync(canonicalPath, canonicalContent);
+    writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify({
+      enabledPlugins: { 'oh-my-qoder@omc': true },
+    }));
+    const installedPath = join(TEST_CLAUDE_DIR, 'skills', 'wiki');
+    mkdirSync(installedPath, { recursive: true });
+    writeFileSync(join(installedPath, 'SKILL.md'), canonicalContent);
+
+    expect(checkLegacySkills()).toEqual([]);
+  });
+
   it('does NOT flag setup-installed omq-reference fallback when setup resolved a newer active cache root (issue #2992)', () => {
     const oldContent = '# Old omq-reference skill\n';
     const newerContent = '# Newer setup-installed omq-reference skill\n';
-    const cacheBase = join(TEST_PROJECT_DIR, 'plugin-cache', 'oh-my-claudecode');
+    const cacheBase = join(TEST_PROJECT_DIR, 'plugin-cache', 'oh-my-qoder');
     const oldPluginRoot = join(cacheBase, '4.8.2');
     const newerPluginRoot = join(cacheBase, '4.9.0');
     TEST_DIRS.builtinSkillsDir = join(oldPluginRoot, 'skills');
@@ -811,7 +824,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     writePluginRoot(newerPluginRoot, newerContent);
     mkdirSync(join(TEST_CLAUDE_DIR, 'plugins'), { recursive: true });
     writeFileSync(join(TEST_CLAUDE_DIR, 'plugins', 'installed_plugins.json'), JSON.stringify({
-      'oh-my-claudecode@omc': [{ installPath: oldPluginRoot, version: '4.8.2' }],
+      'oh-my-qoder@omc': [{ installPath: oldPluginRoot, version: '4.8.2' }],
     }));
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
@@ -821,35 +834,45 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     expect(collisions).toHaveLength(0);
   });
 
-  it('flags setup-installed omq-reference fallback when an active plugin root is present', () => {
+  it('does not flag an exact setup-installed omq-reference fallback when a plugin is active', () => {
     const currentContent = '# Current omq-reference skill\n';
     const sessionContent = '# Session root omq-reference skill\n';
     const sessionPluginRoot = join(TEST_PROJECT_DIR, 'session-plugin-root');
-    writeCanonicalOmqReferenceSkill(currentContent);
+    writeCanonicalOmcReferenceSkill(currentContent);
     writePluginRoot(sessionPluginRoot, sessionContent);
     process.env.CLAUDE_PLUGIN_ROOT = sessionPluginRoot;
+    writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify({
+      enabledPlugins: { 'oh-my-qoder@omc': true },
+    }));
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
     const installedPath = join(skillsDir, 'omq-reference');
     writeFileSync(join(installedPath, 'SKILL.md'), sessionContent);
 
     const collisions = checkLegacySkills();
+    expect(collisions).toEqual([]);
+  });
+
+  it('flags user-modified omq-reference fallback content with an active plugin (issue #2992)', () => {
+    const canonicalContent = '# Canonical omq-reference skill\n';
+    const sessionPluginRoot = join(TEST_PROJECT_DIR, 'session-plugin-root');
+    writeCanonicalOmcReferenceSkill(canonicalContent);
+    writePluginRoot(sessionPluginRoot, canonicalContent);
+    process.env.CLAUDE_PLUGIN_ROOT = sessionPluginRoot;
+    writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify({
+      enabledPlugins: { 'oh-my-qoder@omc': true },
+    }));
+    const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
+    mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
+    const installedPath = join(skillsDir, 'omq-reference');
+    writeFileSync(join(installedPath, 'SKILL.md'), '# Modified omq-reference skill\n');
+
+    const collisions = checkLegacySkills();
     expect(collisions).toEqual([{ name: 'omq-reference', path: installedPath }]);
   });
 
-  it('flags user-modified omq-reference fallback content as a real collision (issue #2992)', () => {
-    writeCanonicalOmqReferenceSkill('# Canonical omq-reference skill\n');
-    const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
-    mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
-    writeFileSync(join(skillsDir, 'omq-reference', 'SKILL.md'), '# Modified omq-reference skill\n');
-
-    const collisions = checkLegacySkills();
-    expect(collisions).toHaveLength(1);
-    expect(collisions[0].name).toBe('omq-reference');
-  });
-
   it('still flags non-contract omq-reference.md legacy files (issue #2992)', () => {
-    writeCanonicalOmqReferenceSkill();
+    writeCanonicalOmcReferenceSkill();
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(skillsDir, { recursive: true });
     writeFileSync(join(skillsDir, 'omq-reference.md'), '# Legacy omq-reference markdown file\n');
@@ -860,7 +883,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
   });
 
   it('reports no conflicts for the setup-installed omq-reference fallback (issue #2992)', () => {
-    const canonicalContent = writeCanonicalOmqReferenceSkill();
+    const canonicalContent = writeCanonicalOmcReferenceSkill();
     const skillsDir = join(TEST_CLAUDE_DIR, 'skills');
     mkdirSync(join(skillsDir, 'omq-reference'), { recursive: true });
     writeFileSync(join(skillsDir, 'omq-reference', 'SKILL.md'), canonicalContent);
@@ -878,7 +901,7 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     const installedDir = join(TEST_CLAUDE_DIR, 'skills', 'autopilot');
     mkdirSync(installedDir, { recursive: true });
     writeFileSync(join(installedDir, 'SKILL.md'), canonicalContent);
-    writeFileSync(join(installedDir, '.omq-managed'), 'omc-managed\n');
+    writeFileSync(join(installedDir, '.omq-managed'), 'omq-managed\n');
     expect(checkLegacySkills()).toEqual([]);
   });
 
@@ -889,19 +912,19 @@ describe('doctor-conflicts: legacy skills collision check (issue #1101)', () => 
     const installedDir = join(TEST_CLAUDE_DIR, 'skills', 'autopilot');
     mkdirSync(installedDir, { recursive: true });
     writeFileSync(join(installedDir, 'SKILL.md'), `${canonicalContent}user edit\n`);
-    writeFileSync(join(installedDir, '.omq-managed'), 'omc-managed\n');
+    writeFileSync(join(installedDir, '.omq-managed'), 'omq-managed\n');
     expect(checkLegacySkills()).toEqual([{ name: 'autopilot', path: installedDir }]);
   });
 
-  it('keeps marker-owned skills visible when an OMC plugin is active', () => {
+  it('keeps marker-owned skills visible when an OMQ plugin is active', () => {
     const canonicalContent = '# Canonical autopilot skill\n';
     mkdirSync(join(TEST_DIRS.builtinSkillsDir, 'autopilot'), { recursive: true });
     writeFileSync(join(TEST_DIRS.builtinSkillsDir, 'autopilot', 'SKILL.md'), canonicalContent);
     const installedDir = join(TEST_CLAUDE_DIR, 'skills', 'autopilot');
     mkdirSync(installedDir, { recursive: true });
     writeFileSync(join(installedDir, 'SKILL.md'), canonicalContent);
-    writeFileSync(join(installedDir, '.omq-managed'), 'omc-managed\n');
-    writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify({ enabledPlugins: ['oh-my-claudecode@omc'] }));
+    writeFileSync(join(installedDir, '.omq-managed'), 'omq-managed\n');
+    writeFileSync(join(TEST_CLAUDE_DIR, 'settings.json'), JSON.stringify({ enabledPlugins: ['oh-my-qoder@omc'] }));
     expect(checkLegacySkills()).toEqual([{ name: 'autopilot', path: installedDir }]);
   });
 
@@ -1009,7 +1032,7 @@ describe('doctor-conflicts: config known fields (issue #1499)', () => {
 
 describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
-  let savedOmqStateDir: string | undefined;
+  let savedOmcStateDir: string | undefined;
   let tempDir: string;
 
   beforeEach(() => {
@@ -1023,7 +1046,7 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
     process.env.CLAUDE_CONFIG_DIR = TEST_CLAUDE_DIR;
     process.env.CLAUDE_MCP_CONFIG_PATH = join(TEST_CLAUDE_DIR, '..', '.claude.json');
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(TEST_PROJECT_DIR);
-    savedOmqStateDir = process.env.OMQ_STATE_DIR;
+    savedOmcStateDir = process.env.OMQ_STATE_DIR;
     delete process.env.OMQ_STATE_DIR;
     tempDir = mkdtempSync(join(tmpdir(), 'omq-ws-marker-test-'));
   });
@@ -1032,10 +1055,10 @@ describe('doctor-conflicts: workspace marker check (Wave F.2)', () => {
     cwdSpy?.mockRestore();
     delete process.env.CLAUDE_CONFIG_DIR;
     delete process.env.CLAUDE_MCP_CONFIG_PATH;
-    if (savedOmqStateDir === undefined) {
+    if (savedOmcStateDir === undefined) {
       delete process.env.OMQ_STATE_DIR;
     } else {
-      process.env.OMQ_STATE_DIR = savedOmqStateDir;
+      process.env.OMQ_STATE_DIR = savedOmcStateDir;
     }
     for (const dir of [TEST_CLAUDE_DIR, TEST_PROJECT_DIR]) {
       if (dir && existsSync(dir)) {

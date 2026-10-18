@@ -54,10 +54,10 @@ function extractFilePath(toolInput) {
 async function main() {
   // Honor the documented kill switches (issues #838, #3253) with the same
   // `post-tool-use` event token as the other PostToolUse hooks.
-  const skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map((s) => s.trim());
+  const skipHooks = (process.env.OMQ_SKIP_HOOKS || '').split(',').map((s) => s.trim());
   if (
-    process.env.DISABLE_OMC === '1' ||
-    process.env.DISABLE_OMC === 'true' ||
+    process.env.DISABLE_OMQ === '1' ||
+    process.env.DISABLE_OMQ === 'true' ||
     skipHooks.includes('post-tool-use')
   ) {
     console.log(JSON.stringify({ continue: true }));

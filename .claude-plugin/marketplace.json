@@ -8,16 +8,16 @@
   },
   "plugins": [
     {
-      "name": "oh-my-claudecode",
+      "name": "oh-my-qoder",
       "description": "Claude Code native multi-agent orchestration with intelligent model routing across agents and skills. Zero learning curve. Maximum power.",
-      "version": "5.5.0",
+      "version": "5.6.0",
       "author": {
         "name": "Yeachan Heo",
         "email": "hurrc04@gmail.com"
       },
       "source": "./",
       "category": "productivity",
-      "homepage": "https://github.com/Yeachan-Heo/oh-my-claudecode",
+      "homepage": "https://github.com/Yeachan-Heo/oh-my-qoder",
       "tags": [
         "multi-agent",
         "orchestration",
@@ -27,5 +27,5 @@
       ]
     }
   ],
-  "version": "5.5.0"
+  "version": "5.6.0"
 }

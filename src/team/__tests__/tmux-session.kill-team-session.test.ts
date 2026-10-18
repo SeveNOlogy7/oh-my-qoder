@@ -21,7 +21,7 @@ const supportsStrictTmuxFixture = (process.platform === 'darwin' || process.plat
   && Boolean(strictProcessStartedAt);
 const tmuxServerIdentity: TmuxServerIdentity | undefined = supportsStrictTmuxFixture
   ? {
-      socket_path: '/tmp/omc-kill-team-session.sock',
+      socket_path: '/tmp/omq-kill-team-session.sock',
       server_pid: process.pid,
       process_started_at: strictProcessStartedAt!,
     }
@@ -44,13 +44,13 @@ vi.mock('child_process', async (importOriginal) => {
 
     if (command === 'if-shell') {
       const commandText = tmuxArgs.join(' ');
-      const marker = commandText.match(/OMC_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
+      const marker = commandText.match(/OMQ_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
       if (!marker) return { stdout: '', stderr: '' };
       if (commandText.includes('kill-window') && mocked.killWindowThrows) {
-        return { stdout: `OMC_TMUX_GUARD_FAIL_${marker}\n`, stderr: '' };
+        return { stdout: `OMQ_TMUX_GUARD_FAIL_${marker}\n`, stderr: '' };
       }
       if (commandText.includes('kill-session') && mocked.killSessionThrows) {
-        return { stdout: `OMC_TMUX_GUARD_FAIL_${marker}\n`, stderr: '' };
+        return { stdout: `OMQ_TMUX_GUARD_FAIL_${marker}\n`, stderr: '' };
       }
       if (commandText.includes('kill-pane')) {
         const paneId = commandText.match(/%\d+/)?.[0];
@@ -302,7 +302,7 @@ describe('killTeamSession safeguards', () => {
     const rawGuard = guardCall?.find(arg => arg.includes('kill-window')) ?? '';
     expect(rawGuard).toContain('kill-window');
     expect(rawGuard).toContain('@3');
-    expect(rawGuard).toContain('OMC_TMUX_GUARD_OK_');
+    expect(rawGuard).toContain('OMQ_TMUX_GUARD_OK_');
   });
 
   it.skipIf(!supportsStrictTmuxFixture)('handles a failed session guard without deleting by name', async () => {
@@ -316,7 +316,7 @@ describe('killTeamSession safeguards', () => {
     const rawGuard = guardCall?.find(arg => arg.includes('kill-session')) ?? '';
     expect(rawGuard).toContain('kill-session');
     expect(rawGuard).toContain('$2');
-    expect(rawGuard).toContain('OMC_TMUX_GUARD_OK_');
+    expect(rawGuard).toContain('OMQ_TMUX_GUARD_OK_');
   });
 
   it.skipIf(!supportsStrictTmuxFixture)('rejects dedicated window cleanup when list-windows command fails', async () => {

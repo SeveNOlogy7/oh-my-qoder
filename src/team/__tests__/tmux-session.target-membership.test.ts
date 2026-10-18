@@ -19,7 +19,7 @@ function strictTmuxIdentity(): TmuxServerIdentity {
 const tmuxUtilsMocks = vi.hoisted(() => ({
   tmuxExecAsync: vi.fn(async () => ({ stdout: '%9\n', stderr: '' })),
   tmuxCmdAsync: vi.fn(async (args: string[]) => {
-    const marker = args.join(' ').match(/OMC_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
+    const marker = args.join(' ').match(/OMQ_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
     return {
       stdout: marker ? `${marker}\n` : '4242\n',
       stderr: '',

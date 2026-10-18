@@ -20,7 +20,7 @@ When worktree mode is active, OMQ uses this stable layout:
 | Worker coordination | `OMQ_TEAM_STATE_ROOT` points back to the team-specific leader-owned coordination root |
 | Worker instructions | Worktree-root `AGENTS.md` is installed with backup/restore safeguards |
 
-Workers must keep using `omc team api ...` lifecycle and mailbox operations against the team-specific coordination root. They must not create or mutate a separate local `.omc/state` inside their worker worktree when `OMC_TEAM_STATE_ROOT` is available; for worktree-backed workers it should point at `<repo>/.omc/state/team/<team-name>`.
+Workers must keep using `omc team api ...` lifecycle and mailbox operations against the team-specific coordination root. They must not create or mutate a separate local `.omq/state` inside their worker worktree when `OMQ_TEAM_STATE_ROOT` is available; for worktree-backed workers it should point at `<repo>/.omq/state/team/<team-name>`.
 
 ## Persisted fields
 
@@ -46,6 +46,8 @@ Config, manifest, worker identity, and status surfaces should expose the same lo
 - Branch/path mismatches should fail instead of reusing the wrong workspace.
 - Rollback may remove newly created clean worktrees and runtime-created branches when safe; reused worktrees are preserved.
 - `orphan-cleanup` requires the same instance, provider, pane, and worktree cleanup evidence as normal shutdown. Neither force nor `acknowledge_lost_worktree_recovery` permits deleting unknown ownership records or worktree recovery backups.
+
+`omc team shutdown --force` skips the task-status gate and graceful waits. It does not bypass instance ownership checks or worker/provider cleanup verification. If cleanup cannot be verified, shutdown returns a non-cleaned result and preserves the worktrees and team state. CLI errors include the outcome and reason/detail; preserved outcomes include affected worker names. Some failures also emit details on stderr. Resolve the worker/provider state and retry shutdown, or have an operator or janitor inspect and clean up the retained paths.
 
 ## CLI and status expectations
 

@@ -18,6 +18,7 @@ import { resolveOmqStateRoot } from './lib/state-root.mjs';
 import { readStdin } from './lib/stdin.mjs';
 import { resolveContextPercent } from './lib/context-usage.mjs';
 import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
+import { recordJevShadow } from './lib/jev-shadow.mjs';
 
 const SKIP_HOOKS = (process.env.OMQ_SKIP_HOOKS || '').split(',').map(s => s.trim());
 const HOOK_DISABLED =
@@ -25,11 +26,48 @@ const HOOK_DISABLED =
   process.env.DISABLE_OMQ === 'true' ||
   SKIP_HOOKS.includes('post-tool-use');
 
-const AGENT_OUTPUT_ANALYSIS_LIMIT = parseInt(process.env.OMQ_AGENT_OUTPUT_ANALYSIS_LIMIT || '12000', 10);
-const AGENT_OUTPUT_SUMMARY_LIMIT = parseInt(process.env.OMQ_AGENT_OUTPUT_SUMMARY_LIMIT || '360', 10);
+const DEFAULT_AGENT_OUTPUT_ANALYSIS_LIMIT = 12_000;
+const DEFAULT_AGENT_OUTPUT_SUMMARY_LIMIT = 360;
+const DEFAULT_PREEMPTIVE_COOLDOWN_MS = 60_000;
+
+const CONTEXT_PRUNING_QUESTIONS = {
+  staleness: {
+    type: 'score',
+    instructions: 'How stale is this context candidate?',
+    criteria: {
+      fresh: 'Fresh — keep',
+      recent: 'Recent',
+      aging: 'Aging',
+      stale: 'Stale — prune candidate',
+    },
+  },
+};
+
+function readPositiveIntegerEnv(name, fallback) {
+  const raw = process.env[name];
+  if (typeof raw !== 'string' || !/^[1-9]\d*$/.test(raw)) return fallback;
+
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) ? parsed : fallback;
+}
+
+const AGENT_OUTPUT_ANALYSIS_LIMIT = readPositiveIntegerEnv(
+  'OMQ_AGENT_OUTPUT_ANALYSIS_LIMIT',
+  DEFAULT_AGENT_OUTPUT_ANALYSIS_LIMIT,
+);
+const AGENT_OUTPUT_SUMMARY_LIMIT = readPositiveIntegerEnv(
+  'OMQ_AGENT_OUTPUT_SUMMARY_LIMIT',
+  DEFAULT_AGENT_OUTPUT_SUMMARY_LIMIT,
+);
 const PREEMPTIVE_WARNING_THRESHOLD_PERCENT = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_WARNING_PERCENT || '70', 10);
 const PREEMPTIVE_CRITICAL_THRESHOLD_PERCENT = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_CRITICAL_PERCENT || '90', 10);
-const PREEMPTIVE_COOLDOWN_MS = parseInt(process.env.OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS || '60000', 10);
+// Unlike the two percent thresholds above, this value has no clamp downstream:
+// `now - lastWarningTime >= NaN` is false, so a malformed override made the
+// cooldown never expire and suppressed preemptive warnings for the session.
+const PREEMPTIVE_COOLDOWN_MS = readPositiveIntegerEnv(
+  'OMQ_PREEMPTIVE_COMPACTION_COOLDOWN_MS',
+  DEFAULT_PREEMPTIVE_COOLDOWN_MS,
+);
 const PREEMPTIVE_LARGE_OUTPUT_TOOLS = new Set(['read', 'grep', 'glob', 'bash', 'webfetch', 'task', 'taskcreate', 'taskupdate', 'taskoutput']);
 const QUIET_LEVEL = getQuietLevel();
 const SESSION_ID_ALLOWLIST = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;
@@ -55,13 +93,13 @@ function getQuietLevel() {
  * @param {string} startDir - Directory to resolve from (usually cwd from hook payload)
  * @returns {string} Absolute path to the .omq root directory
  */
-function resolveOmcRoot(startDir) {
+function resolveOmqRoot(startDir) {
   const dir = startDir || process.cwd();
 
   // 1) OMQ_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
   if (process.env.OMQ_STATE_DIR) {
     process.stderr.write(
-      '[omc] OMQ_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
+      '[omq] OMQ_STATE_DIR is set; resolveOmqRoot() falling through to workspace-marker ' +
       'resolution. Use resolveOmqStateRoot() for full OMQ_STATE_DIR support.\n'
     );
   }
@@ -134,7 +172,7 @@ if (!HOOK_DISABLED) {
 
 // Debug logging helper - gated behind OMQ_DEBUG env var
 const debugLog = (...args) => {
-  if (process.env.OMQ_DEBUG) console.error('[omc:debug:post-tool-verifier]', ...args);
+  if (process.env.OMQ_DEBUG) console.error('[omq:debug:post-tool-verifier]', ...args);
 };
 
 // State file for session tracking
@@ -451,7 +489,7 @@ function getPreemptiveCooldownFilePath(directory, sessionId) {
       ? `${directory || process.cwd()}::${sessionId}`
       : directory || process.cwd();
   const hash = createHash('sha1').update(cooldownScope).digest('hex');
-  const cooldownDir = join(tmpdir(), 'omc-preemptive-compaction');
+  const cooldownDir = join(tmpdir(), 'omq-preemptive-compaction');
   mkdirSync(cooldownDir, { recursive: true });
   return join(cooldownDir, `${hash}.json`);
 }
@@ -489,10 +527,10 @@ function shouldSuppressPreemptiveWarning(directory, sessionId, severity, now) {
 
 function buildPreemptiveContextMessage(percentUsed, severity) {
   if (severity === 'critical') {
-    return `[OMC CRITICAL] Context at ${percentUsed}% (critical threshold: ${getPreemptiveCriticalThreshold()}%). Run /compact now before continuing with more tools or agent fan-out.`;
+    return `[OMQ CRITICAL] Context at ${percentUsed}% (critical threshold: ${getPreemptiveCriticalThreshold()}%). Run /compact now before continuing with more tools or agent fan-out.`;
   }
 
-  return `[OMC WARNING] Context at ${percentUsed}% (warning threshold: ${getPreemptiveWarningThreshold()}%). Plan a /compact soon to preserve room for the next large tool output.`;
+  return `[OMQ WARNING] Context at ${percentUsed}% (warning threshold: ${getPreemptiveWarningThreshold()}%). Plan a /compact soon to preserve room for the next large tool output.`;
 }
 
 async function maybeBuildPreemptiveCompactionMessage(toolName, data, directory) {
@@ -512,6 +550,26 @@ async function maybeBuildPreemptiveCompactionMessage(toolName, data, directory) 
   if (percentUsed === null || percentUsed < warningThreshold) {
     return '';
   }
+
+  const action = percentUsed >= criticalThreshold ? 'compact' : 'warn';
+  const rawResponse = data.tool_response || data.toolOutput || '';
+  const toolResponse = typeof rawResponse === 'string' ? rawResponse : JSON.stringify(rawResponse);
+  const firstLine = toolResponse.split(/\r?\n/, 1)[0] || '';
+  recordJevShadow({
+    point: 'context-pruning',
+    state: {
+      action,
+      context_percent: percentUsed,
+      candidateCount: 1,
+      candidates: [{
+        tool: String(toolName || '').toLowerCase(),
+        tokens: Math.ceil(toolResponse.length / 4),
+        excerpt: firstLine,
+      }],
+    },
+    questions: CONTEXT_PRUNING_QUESTIONS,
+    heuristic: action,
+  });
 
   const severity = percentUsed >= criticalThreshold ? 'critical' : 'warning';
   const now = Date.now();
@@ -563,7 +621,7 @@ function isConsensusPlanningSkillInvocation(skillName, toolInput) {
 }
 
 function getSkillActiveStatePaths(directory, sessionId) {
-  const stateDir = join(resolveOmcRoot(directory), 'state');
+  const stateDir = join(resolveOmqRoot(directory), 'state');
   const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
   return [
     safeSessionId ? join(stateDir, 'sessions', safeSessionId, 'skill-active-state.json') : null,
@@ -595,7 +653,7 @@ function clearSkillActiveState(directory, sessionId) {
 }
 
 function getRalplanStatePaths(directory, sessionId) {
-  const stateDir = join(resolveOmcRoot(directory), 'state');
+  const stateDir = join(resolveOmqRoot(directory), 'state');
   const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
   return [
     safeSessionId ? join(stateDir, 'sessions', safeSessionId, 'ralplan-state.json') : null,
@@ -666,7 +724,7 @@ function clipToolOutputForAnalysis(toolName, output) {
   }
 
   return {
-    clipped: `${output.slice(0, AGENT_OUTPUT_ANALYSIS_LIMIT)}\n...[agent output truncated by OMC context guard]`,
+    clipped: `${output.slice(0, AGENT_OUTPUT_ANALYSIS_LIMIT)}\n...[agent output truncated by OMQ context guard]`,
     wasTruncated: true,
   };
 }
@@ -887,7 +945,7 @@ function hasStructuredWriteFailure(rawResponse) {
 // Checks session-scoped path first (Wave A migration), falls back to legacy path.
 // sessionId is extracted from the hook payload; when absent only the legacy path is tried.
 function getAgentCompletionSummary(directory, quietLevel = QUIET_LEVEL, sessionId = '') {
-  const stateDir = join(resolveOmcRoot(directory), 'state');
+  const stateDir = join(resolveOmqRoot(directory), 'state');
   const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
 
   // Build candidate paths: session-scoped first, then legacy fallback
@@ -909,7 +967,7 @@ function getAgentCompletionSummary(directory, quietLevel = QUIET_LEVEL, sessionI
 
       const parts = [];
       if (quietLevel < 2 && running.length > 0) {
-        parts.push(`Running: ${running.length} [${running.map(a => a.agent_type.replace('oh-my-claudecode:', '')).join(', ')}]`);
+        parts.push(`Running: ${running.length} [${running.map(a => a.agent_type.replace('oh-my-qoder:', '')).join(', ')}]`);
       }
       if (quietLevel < 2 && completed > 0) parts.push(`Completed: ${completed}`);
       if (failed > 0) parts.push(`Failed: ${failed}`);

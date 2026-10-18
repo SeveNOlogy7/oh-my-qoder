@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Compatibility alias for /oh-my-qoder:project-session-manager — worktree-first dev environment manager for issues, PRs, and features with optional tmux sessions"
 ---
 
 # OMQ psm

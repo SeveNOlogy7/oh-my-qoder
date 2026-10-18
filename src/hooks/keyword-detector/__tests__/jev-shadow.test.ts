@@ -9,12 +9,12 @@ import type { JevAnswer, JevResponse } from '../../jev/index.js';
 
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_MAX_REQUESTS',
-  'OMC_JEV_EXCERPT_CHARS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_MAX_REQUESTS',
+  'OMQ_JEV_EXCERPT_CHARS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
 ] as const;
 
 const PROMPT = 'ralph fix the auth bug in src/auth/login.ts';
@@ -30,7 +30,7 @@ beforeEach(async () => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OMC_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV_LOG_DIR = logDir;
 });
 
 afterEach(async () => {
@@ -44,7 +44,7 @@ afterEach(async () => {
 function stubFetch(answer: Partial<JevAnswer>): { fetchFn: typeof fetch; calls: unknown[] } {
   const calls: unknown[] = [];
   const body = JSON.stringify({
-    answers: { answer: { type: answer.noul !== undefined ? 'Noul' : 'Choice', ...answer } },
+    answers: { answer: { type: answer.noul !== undefined ? 'noul' : 'choice', ...answer } },
   } satisfies JevResponse);
   const fetchFn = (async (_url: unknown, init?: unknown) => {
     calls.push(init);
@@ -71,7 +71,7 @@ async function waitForLogLines(count: number): Promise<string[]> {
 describe('keyword-detector shadow judgment points', () => {
   it('with a key set, a fixture prompt produces two shadow log lines with both twin and jev answers', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'skill-trigger,intent';
+    process.env.OMQ_JEV = 'skill-trigger,intent';
     const trigger = stubFetch({ choice: 'autopilot', confidence: 0.8 });
     const intent = stubFetch({ noul: false, confidence: 0.7 });
 
@@ -89,19 +89,19 @@ describe('keyword-detector shadow judgment points', () => {
       mode: 'shadow',
       state: { prompt: PROMPT, source: 'user-prompt-submit' },
       heuristic: ['ralph'],
-      jev: { type: 'Choice', choice: 'autopilot', confidence: 0.8 },
+      jev: { type: 'choice', choice: 'autopilot', confidence: 0.8 },
     });
     expect(byPoint.get('intent')).toMatchObject({
       mode: 'shadow',
       state: { prompt: INTENT_PROMPT, mode_name: 'intent' },
       heuristic: true,
-      jev: { type: 'Noul', noul: false, confidence: 0.7 },
+      jev: { type: 'noul', noul: false, confidence: 0.7 },
     });
   });
 
   it('without a key, zero fetch calls and the twin answer is unchanged', async () => {
     delete process.env.TYPESAFE_API_KEY;
-    process.env.OMC_JEV = 'skill-trigger,intent';
+    process.env.OMQ_JEV = 'skill-trigger,intent';
     const trigger = stubFetch({ choice: 'cancel' });
     const intent = stubFetch({ noul: true });
 
@@ -115,9 +115,9 @@ describe('keyword-detector shadow judgment points', () => {
     await expect(readFile(join(logDir, 'shadow.jsonl'), 'utf8')).rejects.toThrow();
   });
 
-  it('with OMC_JEV=off, zero fetch calls even with a key', async () => {
+  it('with OMQ_JEV=off, zero fetch calls even with a key', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'off';
+    process.env.OMQ_JEV = 'off';
     const trigger = stubFetch({ choice: 'cancel' });
     const intent = stubFetch({ noul: true });
 
@@ -132,7 +132,7 @@ describe('keyword-detector shadow judgment points', () => {
 
   it('shadow answers never change the detector emissions regardless of what Jev answers', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'skill-trigger,intent';
+    process.env.OMQ_JEV = 'skill-trigger,intent';
     // Stub answers deliberately contradict the twin for these prompts.
     const trigger = stubFetch({ choice: 'none' });
     const intent = stubFetch({ noul: true });

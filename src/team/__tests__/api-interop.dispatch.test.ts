@@ -37,7 +37,7 @@ function mockOwnedTmuxPanes(...paneIds: string[]): void {
     return { stdout: '', stderr: '' };
   });
   tmuxUtilsMocks.tmuxCmdAsync.mockImplementation(async (args: string[]) => {
-    const marker = args.join(' ').match(/OMC_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
+    const marker = args.join(' ').match(/OMQ_TMUX_GUARD_OK_[A-Za-z0-9_]+/)?.[0];
     if (marker) return { stdout: `${marker}\n`, stderr: '' };
     return { stdout: `${process.pid}\n`, stderr: '' };
   });
@@ -51,16 +51,16 @@ describe('team api dispatch-aware messaging', () => {
   let cwd: string;
   let previousHome: string | undefined;
   let previousUserProfile: string | undefined;
-  let previousOmcStateDir: string | undefined;
+  let previousOmqStateDir: string | undefined;
   const teamName = 'dispatch-team';
 
   beforeEach(async () => {
     tmuxUtilsMocks.tmuxExecAsync.mockReset().mockResolvedValue({ stdout: '', stderr: '' });
     tmuxUtilsMocks.tmuxCmdAsync.mockReset().mockResolvedValue({ stdout: `${process.pid}\n`, stderr: '' });
-    cwd = await mkdtemp(join(tmpdir(), 'omc-team-api-dispatch-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omq-team-api-dispatch-'));
     previousHome = process.env.HOME;
     previousUserProfile = process.env.USERPROFILE;
-    previousOmcStateDir = process.env.OMQ_STATE_DIR;
+    previousOmqStateDir = process.env.OMQ_STATE_DIR;
     process.env.HOME = cwd;
     process.env.USERPROFILE = cwd;
     delete process.env.OMQ_STATE_DIR;
@@ -95,8 +95,8 @@ describe('team api dispatch-aware messaging', () => {
     else process.env.HOME = previousHome;
     if (previousUserProfile === undefined) delete process.env.USERPROFILE;
     else process.env.USERPROFILE = previousUserProfile;
-    if (previousOmcStateDir === undefined) delete process.env.OMQ_STATE_DIR;
-    else process.env.OMQ_STATE_DIR = previousOmcStateDir;
+    if (previousOmqStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousOmqStateDir;
     await rm(cwd, { recursive: true, force: true });
   });
 

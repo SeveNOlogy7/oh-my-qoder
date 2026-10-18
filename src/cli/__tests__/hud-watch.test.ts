@@ -7,12 +7,12 @@ import {
 } from '../hud-watch.js';
 import type { RegisterStandaloneShutdownHandlersOptions } from '../../mcp/standalone-shutdown.js';
 
-const originalSkipParse = process.env.OMC_CLI_SKIP_PARSE;
-process.env.OMC_CLI_SKIP_PARSE = '1';
+const originalSkipParse = process.env.OMQ_CLI_SKIP_PARSE;
+process.env.OMQ_CLI_SKIP_PARSE = '1';
 
 afterAll(() => {
-  if (originalSkipParse === undefined) delete process.env.OMC_CLI_SKIP_PARSE;
-  else process.env.OMC_CLI_SKIP_PARSE = originalSkipParse;
+  if (originalSkipParse === undefined) delete process.env.OMQ_CLI_SKIP_PARSE;
+  else process.env.OMQ_CLI_SKIP_PARSE = originalSkipParse;
 });
 
 describe('parseHudWatchInterval', () => {
@@ -62,7 +62,7 @@ describe('HUD interval Commander integration', () => {
     hudCommand?.exitOverride();
 
     await expect(
-      program.parseAsync(['node', 'omc', 'hud', '--interval', '0'], { from: 'node' }),
+      program.parseAsync(['node', 'omq', 'hud', '--interval', '0'], { from: 'node' }),
     ).rejects.toMatchObject({
       code: 'commander.invalidArgument',
       exitCode: 1,

@@ -3,7 +3,7 @@
  * Launches Claude Code with tmux session management
  */
 
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import {
   chmodSync,
   cpSync,
@@ -1279,8 +1279,8 @@ function buildTmuxClaudeLaunch(
         ? transport.prefix
         : `${buildEnvExportPrefix(forwardedEnvNames)}${transport.prefix}`;
     const missingBinaryGuard = nativeWindows
-      ? `where \${qoderCliBinary()} >nul 2>nul || (echo [omq] Error: \${qoderCliBinary()} not found in PATH. 1>&2 & exit /b 1) && `
-      : `command -v \${qoderCliBinary()} >/dev/null 2>&1 || { echo '[omq] Error: \${qoderCliBinary()} not found in PATH.' >&2; exit 127; }; `;
+      ? '(where claude >nul 2>nul || (echo [omq] Error: qoder CLI not found in PATH. 1>&2 & exit /b 1)) && '
+      : "command -v claude >/dev/null 2>&1 || { echo '[omq] Error: qoder CLI not found in PATH.' >&2; exit 127; }; ";
     const command = wrapWithLoginShell(
       `${envPrefix}${options.preflight}${missingBinaryGuard}${options.useExec ? 'exec ' : ''}${rawClaudeCmd}`,
     );
@@ -1377,11 +1377,30 @@ function runClaudeOutsideTmux(
  */
 function runClaudeDirect(cwd: string, args: string[]): void {
   try {
-    execFileSync(qoderCliBinary(), args, {
-      cwd,
-      stdio: 'inherit',
-      shell: process.platform === 'win32',
-    });
+    if (process.platform === 'win32') {
+      const comspec = process.env.COMSPEC || 'cmd.exe';
+      const commandLine = [qoderCliBinary(), ...args].map(quoteForCmd).join(' ');
+      const result = spawnSync(comspec, ['/d', '/s', '/c', commandLine], {
+        cwd,
+        stdio: 'inherit',
+        windowsVerbatimArguments: true,
+      });
+      // Handle cmd.exe not found (ENOENT) or command not recognized (exit 9009)
+      const spawnError = result.error as NodeJS.ErrnoException | undefined;
+      if (spawnError?.code === 'ENOENT' || result.status === 9009) {
+        console.error('[omq] Error: qoder CLI not found in PATH.');
+        process.exit(1);
+      }
+      // Propagate Claude's exit code so omc does not swallow failures
+      if (result.status !== 0) {
+        process.exit(result.status ?? 1);
+      }
+    } else {
+      execFileSync(qoderCliBinary(), args, {
+        cwd,
+        stdio: 'inherit',
+      });
+    }
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { status?: number | null };
     if (err.code === 'ENOENT') {
@@ -1442,13 +1461,13 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env[OMQ_PLUGIN_ROOT_ENV] = pluginDir;
   }
 
-  // Extract OMC-specific --notify flag before passing remaining args to Claude CLI
+  // Extract OMQ-specific --notify flag before passing remaining args to Claude CLI
   const { notifyEnabled, remainingArgs } = extractNotifyFlag(args);
   if (!notifyEnabled) {
     process.env.OMQ_NOTIFY = '0';
   }
 
-  // Extract OMC-specific --openclaw flag (presence-based, no value consumption)
+  // Extract OMQ-specific --openclaw flag (presence-based, no value consumption)
   const { openclawEnabled, remainingArgs: argsAfterOpenclaw } = extractOpenClawFlag(remainingArgs);
   if (openclawEnabled === true) {
     process.env.OMQ_OPENCLAW = '1';
@@ -1456,7 +1475,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_OPENCLAW = '0';
   }
 
-  // Extract OMC-specific --telegram flag (presence-based)
+  // Extract OMQ-specific --telegram flag (presence-based)
   const { telegramEnabled, remainingArgs: argsAfterTelegram } = extractTelegramFlag(argsAfterOpenclaw);
   if (telegramEnabled === true) {
     process.env.OMQ_TELEGRAM = '1';
@@ -1464,7 +1483,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_TELEGRAM = '0';
   }
 
-  // Extract OMC-specific --discord flag (presence-based)
+  // Extract OMQ-specific --discord flag (presence-based)
   const { discordEnabled, remainingArgs: argsAfterDiscord } = extractDiscordFlag(argsAfterTelegram);
   if (discordEnabled === true) {
     process.env.OMQ_DISCORD = '1';
@@ -1472,7 +1491,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_DISCORD = '0';
   }
 
-  // Extract OMC-specific --slack flag (presence-based)
+  // Extract OMQ-specific --slack flag (presence-based)
   const { slackEnabled, remainingArgs: argsAfterSlack } = extractSlackFlag(argsAfterDiscord);
   if (slackEnabled === true) {
     process.env.OMQ_SLACK = '1';
@@ -1480,7 +1499,7 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMQ_SLACK = '0';
   }
 
-  // Extract OMC-specific --webhook flag (presence-based)
+  // Extract OMQ-specific --webhook flag (presence-based)
   const { webhookEnabled, remainingArgs: argsAfterWebhook } = extractWebhookFlag(argsAfterSlack);
   if (webhookEnabled === true) {
     process.env.OMQ_WEBHOOK = '1';

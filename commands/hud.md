@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Configure HUD display options (layout, presets, display elements)"
 ---
 
 # OMQ hud

@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "LLM Wiki — persistent markdown knowledge base that compounds across sessions (Karpathy model)"
 ---
 
 # OMQ wiki

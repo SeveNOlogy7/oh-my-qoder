@@ -121,7 +121,7 @@ export async function startTeam(_config: TeamConfig): Promise<TeamRuntime> {
   // touching state, panes, providers, or worktrees rather than retaining an
   // alternate unsafe creation route.
   throw new Error(
-    'team_start_unsafe_runtime_v1: instance-bound provider cleanup requires runtime v2; set OMC_RUNTIME_V2=1',
+    'team_start_unsafe_runtime_v1: instance-bound provider cleanup requires runtime v2; set OMQ_RUNTIME_V2=1',
   );
 }
 

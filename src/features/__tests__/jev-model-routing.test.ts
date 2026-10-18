@@ -3,7 +3,7 @@
  *
  * External behavior only: given a stubbed HTTP transport, the shadow wiring
  * records the pinned tier beside Jev's Choice when the key is set, and makes
- * zero HTTP calls with no key or with OMC_JEV=off. The enforcement result is
+ * zero HTTP calls with no key or with OMQ_JEV=off. The enforcement result is
  * byte-identical either way — Jev never overrides the enforcer in shadow.
  */
 
@@ -17,7 +17,7 @@ import { processPreToolUse, type AgentInput, type EnforcementResult } from '../d
 import { resetJevResolverState } from '../../hooks/jev/index.js';
 
 const TEST_KEY = 'test-key-123';
-const JEV_ENV_KEYS = ['TYPESAFE_API_KEY', 'OMC_JEV', 'OMC_JEV_LOG_DIR', 'OMC_JEV_ENDPOINT'] as const;
+const JEV_ENV_KEYS = ['TYPESAFE_API_KEY', 'OMQ_JEV', 'OMQ_JEV_LOG_DIR', 'OMQ_JEV_ENDPOINT'] as const;
 // Provider-detection env vars that forceInherit keys off (issue #1201) —
 // cleared so the enforcement-identity test runs in a standard Claude
 // environment regardless of the host shell (mirrors delegation-enforcer.test.ts).
@@ -25,7 +25,7 @@ const PROVIDER_ENV_KEYS = [
   'ANTHROPIC_BASE_URL',
   'CLAUDE_MODEL',
   'ANTHROPIC_MODEL',
-  'OMC_ROUTING_FORCE_INHERIT',
+  'OMQ_ROUTING_FORCE_INHERIT',
   'CLAUDE_CODE_USE_BEDROCK',
   'CLAUDE_CODE_USE_VERTEX',
 ] as const;
@@ -34,7 +34,7 @@ function makePinned(model = 'sonnet'): EnforcementResult {
   const originalInput: AgentInput = {
     description: 'Test task',
     prompt: 'Fix the flaky auth test in src/auth',
-    subagent_type: 'oh-my-claudecode:executor',
+    subagent_type: 'oh-my-qoder:executor',
   };
   return {
     originalInput,
@@ -90,10 +90,10 @@ describe('jev-model-routing shadow wiring', () => {
       savedEnv[key] = process.env[key];
       delete process.env[key];
     }
-    process.env.OMC_JEV_LOG_DIR = logDir;
+    process.env.OMQ_JEV_LOG_DIR = logDir;
     // Unroutable endpoint so any accidental real network attempt fails fast
     // and degrades instead of reaching an external host from tests.
-    process.env.OMC_JEV_ENDPOINT = 'http://127.0.0.1:1/v1/systemone';
+    process.env.OMQ_JEV_ENDPOINT = 'http://127.0.0.1:1/v1/systemone';
   });
 
   afterEach(() => {
@@ -109,7 +109,7 @@ describe('jev-model-routing shadow wiring', () => {
 
   it('records a shadow line with the pinned tier and Jev Choice when the key is set', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'model-routing';
+    process.env.OMQ_JEV = 'model-routing';
     const fetchFn = makeJevFetchStub('opus');
     const pinned = makePinned('sonnet');
 
@@ -125,7 +125,7 @@ describe('jev-model-routing shadow wiring', () => {
       state: Record<string, unknown>;
     };
     expect(body.state.tool_name).toBe('Task');
-    expect(body.state.subagent_type).toBe('oh-my-claudecode:executor');
+    expect(body.state.subagent_type).toBe('oh-my-qoder:executor');
     expect(body.state.task).toBe('Fix the flaky auth test in src/auth');
 
     const log = await waitForShadowLog(logDir);
@@ -142,10 +142,10 @@ describe('jev-model-routing shadow wiring', () => {
     expect(entry.jev?.choice).toBe('opus');
   });
 
-  it('bounds the task excerpt sent to Jev to OMC_JEV_EXCERPT_CHARS', async () => {
+  it('bounds the task excerpt sent to Jev to OMQ_JEV_EXCERPT_CHARS', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'model-routing';
-    process.env.OMC_JEV_EXCERPT_CHARS = '50';
+    process.env.OMQ_JEV = 'model-routing';
+    process.env.OMQ_JEV_EXCERPT_CHARS = '50';
     const fetchFn = makeJevFetchStub();
     const pinned = makePinned();
     pinned.originalInput.prompt = 'x'.repeat(500);
@@ -160,7 +160,7 @@ describe('jev-model-routing shadow wiring', () => {
 
   it('makes zero fetch calls and no log line when no key is set', async () => {
     delete process.env.TYPESAFE_API_KEY;
-    process.env.OMC_JEV = 'model-routing';
+    process.env.OMQ_JEV = 'model-routing';
     const fetchFn = makeJevFetchStub();
     const pinned = makePinned();
 
@@ -172,9 +172,9 @@ describe('jev-model-routing shadow wiring', () => {
     expect(await waitForShadowLog(logDir, 100)).toBeNull();
   });
 
-  it('makes zero fetch calls when OMC_JEV=off even with a key', async () => {
+  it('makes zero fetch calls when OMQ_JEV=off even with a key', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'off';
+    process.env.OMQ_JEV = 'off';
     const fetchFn = makeJevFetchStub();
 
     const result = await recordModelRoutingShadow('Task', makePinned(), fetchFn as unknown as typeof fetch);
@@ -188,7 +188,7 @@ describe('jev-model-routing shadow wiring', () => {
     const toolInput: AgentInput = {
       description: 'Test task',
       prompt: 'Do something',
-      subagent_type: 'oh-my-claudecode:executor',
+      subagent_type: 'oh-my-qoder:executor',
       model: 'haiku',
     };
 
@@ -199,7 +199,7 @@ describe('jev-model-routing shadow wiring', () => {
     // call inside processPreToolUse degrades fast against the unroutable
     // endpoint and must not change the enforcement output.
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'model-routing';
+    process.env.OMQ_JEV = 'model-routing';
     const withJev = processPreToolUse('Task', toolInput);
 
     expect(withJev).toEqual(withoutJev);

@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Claude-Codex-Gemini tri-model orchestration via /ask codex + /ask gemini, then Claude synthesizes results"
 ---
 
 # OMQ ccg

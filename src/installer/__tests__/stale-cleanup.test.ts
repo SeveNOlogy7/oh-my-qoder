@@ -54,7 +54,7 @@ function createUserSkillDir(dir: string, skillName: string): void {
 }
 
 function createManagedSkillMarker(dir: string, skillName: string): void {
-  writeFileSync(join(dir, skillName, '.omq-managed'), 'omc-managed\n');
+  writeFileSync(join(dir, skillName, '.omq-managed'), 'omq-managed\n');
 }
 
 function historicalAgent(filename: string, fixturePath = filename): Buffer {
@@ -76,7 +76,7 @@ function createPluginRoot(dir: string, agentContents: Record<string, Buffer>): v
     'bridge/claude-md-coordinator.cjs',
     'bridge/cli.cjs',
     'hooks/hooks.json',
-    'commands/omc-setup.md',
+    'commands/omq-setup.md',
     'commands/test.md',
     'skills/test/SKILL.md',
   ]) {
@@ -86,7 +86,7 @@ function createPluginRoot(dir: string, agentContents: Record<string, Buffer>): v
   }
   mkdirSync(join(dir, '.claude-plugin'), { recursive: true });
   writeFileSync(join(dir, '.claude-plugin', 'plugin.json'), JSON.stringify({
-    name: 'oh-my-claudecode',
+    name: 'oh-my-qoder',
     commands: 'commands',
     skills: ['skills/test'],
   }));
@@ -104,7 +104,7 @@ describe('cleanupStaleAgents', () => {
   const log = vi.fn();
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omc-stale-agents-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'omq-stale-agents-'));
     originalConfigDir = process.env.QODER_CONFIG_DIR;
     process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
@@ -177,14 +177,14 @@ describe('cleanupStaleAgents', () => {
   });
 
   it('fails closed when explicit OMC and Claude plugin roots conflict', async () => {
-    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
+    const originalOmqRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
-      const omcRoot = join(tempDir, 'omc-plugin-root');
+      const omqRoot = join(tempDir, 'omq-plugin-root');
       const claudeRoot = join(tempDir, 'claude-plugin-root');
-      createPluginRoot(omcRoot, { 'architect.md': historicalAgent('architect.md') });
+      createPluginRoot(omqRoot, { 'architect.md': historicalAgent('architect.md') });
       createPluginRoot(claudeRoot, { 'architect.md': Buffer.from('conflicting active architect\n') });
-      process.env.OMQ_PLUGIN_ROOT = omcRoot;
+      process.env.OMQ_PLUGIN_ROOT = omqRoot;
       process.env.CLAUDE_PLUGIN_ROOT = claudeRoot;
 
       vi.resetModules();
@@ -204,15 +204,15 @@ describe('cleanupStaleAgents', () => {
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
-      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmqRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmqRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('uses a valid explicit OMC plugin root to preserve active historical basenames', async () => {
-    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
+    const originalOmqRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'active-plugin-root');
@@ -228,15 +228,15 @@ describe('cleanupStaleAgents', () => {
       expect(cleanup(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
-      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmqRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmqRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('preserves a current-package basename when the explicit plugin witness omits it', async () => {
-    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
+    const originalOmqRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'partial-active-plugin-root');
@@ -252,15 +252,15 @@ describe('cleanupStaleAgents', () => {
       expect(cleanup(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
-      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmqRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmqRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('preserves both destructive-pass candidates when explicit OMQ_PLUGIN_ROOT is missing', async () => {
-    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
+    const originalOmqRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       process.env.OMQ_PLUGIN_ROOT = join(tempDir, 'missing-plugin-root');
@@ -277,21 +277,21 @@ describe('cleanupStaleAgents', () => {
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
-      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmqRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmqRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('preserves when a structurally complete explicit root has a lookalike manifest name', async () => {
-    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
+    const originalOmqRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'lookalike-plugin-root');
       createPluginRoot(pluginRoot, { 'architect.md': historicalAgent('architect.md') });
       writeFileSync(join(pluginRoot, '.claude-plugin', 'plugin.json'), JSON.stringify({
-        name: 'oh-my-claudecode-lookalike', commands: 'commands', skills: ['skills/test'],
+        name: 'oh-my-qoder-lookalike', commands: 'commands', skills: ['skills/test'],
       }));
       process.env.OMQ_PLUGIN_ROOT = pluginRoot;
       delete process.env.CLAUDE_PLUGIN_ROOT;
@@ -304,22 +304,22 @@ describe('cleanupStaleAgents', () => {
       expect(prune(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'architect.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
-      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmqRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmqRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
   });
 
   it('preserves when the installed registry has a structurally complete lookalike ID', async () => {
-    const originalOmcRoot = process.env.OMQ_PLUGIN_ROOT;
+    const originalOmqRoot = process.env.OMQ_PLUGIN_ROOT;
     const originalClaudeRoot = process.env.CLAUDE_PLUGIN_ROOT;
     try {
       const pluginRoot = join(tempDir, 'registry-lookalike-root');
       createPluginRoot(pluginRoot, { 'build-fixer.md': historicalAgent('build-fixer.md') });
       mkdirSync(join(tempDir, 'plugins'), { recursive: true });
       writeFileSync(join(tempDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
-        plugins: { 'oh-my-claudecode-lookalike@omc': [{ installPath: pluginRoot }] },
+        plugins: { 'oh-my-qoder-lookalike@omc': [{ installPath: pluginRoot }] },
       }));
       delete process.env.OMQ_PLUGIN_ROOT;
       delete process.env.CLAUDE_PLUGIN_ROOT;
@@ -332,8 +332,8 @@ describe('cleanupStaleAgents', () => {
       expect(cleanup(log)).toEqual([]);
       expect(existsSync(join(agentsDir, 'build-fixer.md'))).toBe(true);
     } finally {
-      if (originalOmcRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
-      else process.env.OMQ_PLUGIN_ROOT = originalOmcRoot;
+      if (originalOmqRoot === undefined) delete process.env.OMQ_PLUGIN_ROOT;
+      else process.env.OMQ_PLUGIN_ROOT = originalOmqRoot;
       if (originalClaudeRoot === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
       else process.env.CLAUDE_PLUGIN_ROOT = originalClaudeRoot;
     }
@@ -461,7 +461,7 @@ describe('cleanupStaleSkills', () => {
   const log = vi.fn();
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omc-stale-skills-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'omq-stale-skills-'));
     originalConfigDir = process.env.QODER_CONFIG_DIR;
     process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
@@ -577,7 +577,7 @@ describe('cleanupStaleSkills', () => {
 
     mkdirSync(skillsDir, { recursive: true });
 
-    const externalRoot = mkdtempSync(join(tmpdir(), 'omc-third-party-skill-'));
+    const externalRoot = mkdtempSync(join(tmpdir(), 'omq-third-party-skill-'));
     const externalSkillDir = join(externalRoot, 'linked-skill');
     mkdirSync(externalSkillDir, { recursive: true });
     writeFileSync(join(externalSkillDir, 'SKILL.md'), '---\nname: linked-skill\ndescription: external\n---\n\n# linked-skill\n');
@@ -592,19 +592,19 @@ describe('cleanupStaleSkills', () => {
     }
   });
 
-  it('preserves omc-learned directory (user-created skills)', async () => {
+  it('preserves omq-learned directory (user-created skills)', async () => {
     vi.resetModules();
     const { cleanupStaleSkills: cleanup, SKILLS_DIR: skillsDir } = await import('../index.js');
 
     mkdirSync(skillsDir, { recursive: true });
 
-    // omc-learned is the user skills directory — must never be removed
-    createSkillDir(skillsDir, 'omc-learned', 'omc-learned');
+    // omq-learned is the user skills directory — must never be removed
+    createSkillDir(skillsDir, 'omq-learned', 'omq-learned');
 
     const removed = cleanup(log);
 
-    expect(removed).not.toContain('omc-learned');
-    expect(existsSync(join(skillsDir, 'omc-learned'))).toBe(true);
+    expect(removed).not.toContain('omq-learned');
+    expect(existsSync(join(skillsDir, 'omq-learned'))).toBe(true);
   });
 
   it('returns empty array when skills directory does not exist', () => {
@@ -638,7 +638,7 @@ describe('prunePluginDuplicateSkills', () => {
   const log = vi.fn();
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omc-prune-dupes-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'omq-prune-dupes-'));
     originalConfigDir = process.env.QODER_CONFIG_DIR;
     process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
@@ -686,7 +686,7 @@ describe('prunePluginDuplicateSkills', () => {
   });
 
   it('preserves user skills with standard frontmatter that have different content from plugin version (issue #2573)', async () => {
-    // Regression: the old `isOmcCreated` heuristic treated any skill with
+    // Regression: the old OMC-created heuristic treated any skill with
     // `---\nname:` frontmatter as OMC-owned and deleted it during update,
     // even when the content differed from the plugin's copy.
     vi.resetModules();
@@ -745,17 +745,17 @@ describe('prunePluginDuplicateSkills', () => {
     expect(existsSync(aliasSkillDir)).toBe(true);
   });
 
-  it('preserves omc-learned directory', async () => {
+  it('preserves omq-learned directory', async () => {
     vi.resetModules();
     const { prunePluginDuplicateSkills: prune, SKILLS_DIR: skillsDir } = await import('../index.js');
 
     mkdirSync(skillsDir, { recursive: true });
-    createSkillDir(skillsDir, 'omc-learned', 'omc-learned');
+    createSkillDir(skillsDir, 'omq-learned', 'omq-learned');
 
     const removed = prune(log);
 
-    expect(removed).not.toContain('omc-learned');
-    expect(existsSync(join(skillsDir, 'omc-learned'))).toBe(true);
+    expect(removed).not.toContain('omq-learned');
+    expect(existsSync(join(skillsDir, 'omq-learned'))).toBe(true);
   });
 
   it('does not remove skills whose name does not match any plugin skill', async () => {
@@ -800,7 +800,7 @@ describe('prunePluginDuplicateAgents', () => {
   const log = vi.fn();
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'omc-prune-agent-dupes-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'omq-prune-agent-dupes-'));
     originalConfigDir = process.env.QODER_CONFIG_DIR;
     process.env.QODER_CONFIG_DIR = tempDir;
     log.mockClear();
@@ -865,7 +865,7 @@ describe('prunePluginDuplicateAgents', () => {
       mkdirSync(join(tempDir, 'plugins'), { recursive: true });
       writeFileSync(join(tempDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
         plugins: {
-          'oh-my-claudecode': [{ installPath: firstRoot }, { installPath: secondRoot }],
+          'oh-my-qoder': [{ installPath: firstRoot }, { installPath: secondRoot }],
         },
       }));
 

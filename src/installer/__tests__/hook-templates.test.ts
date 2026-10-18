@@ -16,7 +16,7 @@ function provisionedTemplatePath(scriptPath: string): string {
   if (!scriptPath.split('\\').join('/').includes('/templates/hooks/')) return scriptPath;
   const existing = provisionedTemplatePaths.get(scriptPath);
   if (existing) return existing;
-  const root = mkdtempSync(join(tmpdir(), 'omc-template-fixture-'));
+  const root = mkdtempSync(join(tmpdir(), 'omq-template-fixture-'));
   const hooksDir = join(root, 'hooks');
   cpSync(dirname(scriptPath), hooksDir, { recursive: true });
   provisionStandaloneStateLockBridge(packageRoot, join(hooksDir, 'lib', 'state-lock.mjs'));
@@ -26,7 +26,7 @@ function provisionedTemplatePath(scriptPath: string): string {
 }
 function provisionedTemplateLibPath(helperPath: string): string {
   if (!helperPath.split('\\').join('/').includes('/templates/hooks/')) return helperPath;
-  const root = mkdtempSync(join(tmpdir(), 'omc-template-lib-fixture-'));
+  const root = mkdtempSync(join(tmpdir(), 'omq-template-lib-fixture-'));
   const hooksDir = join(root, 'hooks');
   cpSync(dirname(dirname(helperPath)), hooksDir, { recursive: true });
   provisionStandaloneStateLockBridge(packageRoot, join(hooksDir, 'lib', 'state-lock.mjs'));
@@ -366,7 +366,7 @@ OMC Ultrawork = "특수부대 작전 반"
     const projectDir = mkdtempSync(join(tmpdir(), 'keyword-hook-ralph-loop-project-'));
     const configDir = join(fakeHome, '.claude');
     const officialRoot = join(configDir, 'plugins', 'cache', 'claude-plugins-official', 'ralph-loop', '1.0.0');
-    const omcRoot = join(configDir, 'plugins', 'cache', 'omc', 'oh-my-claudecode', '4.15.4');
+    const omqRoot = join(configDir, 'plugins', 'cache', 'omq', 'oh-my-qoder', '4.15.4');
     const registryPath = join(configDir, 'plugins', 'installed_plugins.json');
     const settingsPath = join(configDir, 'settings.json');
     const runWithEnv = (scriptPath: string, sessionId: string, prompt: string, env: Record<string, string | undefined>) => JSON.parse(
@@ -406,14 +406,14 @@ OMC Ultrawork = "특수부대 작전 반"
     try {
       mkdirSync(join(officialRoot, 'commands'), { recursive: true });
       writeFileSync(join(officialRoot, 'commands', 'ralph-loop.md'), '# official ralph-loop\n');
-      mkdirSync(join(omcRoot, 'skills', 'ralph'), { recursive: true });
-      writeFileSync(join(omcRoot, 'skills', 'ralph', 'SKILL.md'), '---\nname: ralph\n---\nOMC ralph\n');
+      mkdirSync(join(omqRoot, 'skills', 'ralph'), { recursive: true });
+      writeFileSync(join(omqRoot, 'skills', 'ralph', 'SKILL.md'), '---\nname: ralph\n---\nOMQ ralph\n');
 
       // A. Installed AND enabled via canonical settings.enabledPlugins map -> notice fires.
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         const context = contextOf(runIn(scriptPath, `ralph-both-${basename(scriptPath)}`));
@@ -432,7 +432,7 @@ OMC Ultrawork = "특수부대 작전 반"
       // B. Official plugin absent from registry (even though settings enables it) -> silent.
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-absent-${basename(scriptPath)}`))).not.toContain('ralph-loop');
@@ -443,7 +443,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': false } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-disabled-${basename(scriptPath)}`))).not.toContain('ralph-loop');
@@ -453,7 +453,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ env: {}, model: 'opus' });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-noenable-${basename(scriptPath)}`))).not.toContain('ralph-loop');
@@ -464,7 +464,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': [{ installPath: join(officialRoot, '..', '9.9.9'), version: '9.9.9', enabled: true }],
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-missing-${basename(scriptPath)}`))).not.toContain('ralph-loop');
@@ -475,7 +475,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'my-ralph-loop@community': true } });
       writeRegistry({
         'my-ralph-loop@community': [{ installPath: officialRoot, version: '1.0.0', enabled: true }],
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-lookalike-${basename(scriptPath)}`))).not.toContain('ralph-loop');
@@ -492,7 +492,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         const result = JSON.parse(
@@ -506,7 +506,7 @@ OMC Ultrawork = "특수부대 작전 반"
         expect(result.hookSpecificOutput?.additionalContext ?? '').not.toContain('ralph-loop');
       }
 
-      // H. The official `/ralph-loop` command never routes to OMC's ralph and never
+      // H. The official `/ralph-loop` command never routes to OMQ's ralph and never
       //    carries the notice (it is the other plugin's surface, not an alias).
       for (const scriptPath of [templatePath, pluginPath]) {
         const result = JSON.parse(
@@ -520,10 +520,10 @@ OMC Ultrawork = "특수부대 작전 반"
         expect(result).toEqual({ continue: true, suppressOutput: true });
       }
 
-      // I. An omc-aliased `/omc-ralph` invocation still routes to OMC's ralph and
+      // I. An omq-aliased `/omq-ralph` invocation still routes to OMQ's ralph and
       //    carries the notice when the official plugin is installed+enabled.
       for (const scriptPath of [templatePath, pluginPath]) {
-        const context = contextOf(runIn(scriptPath, `omcralph-${basename(scriptPath)}`, '/omc-ralph fix the parser'));
+        const context = contextOf(runIn(scriptPath, `omqralph-${basename(scriptPath)}`, '/omq-ralph fix the parser'));
         expect(context).toContain('[MAGIC KEYWORD: RALPH]');
         expect(context).toContain('official Anthropic `ralph-loop` plugin is also installed');
       }
@@ -534,7 +534,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(false),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-regflag-${basename(scriptPath)}`))).toContain('ralph-loop');
@@ -545,7 +545,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       rmSync(settingsPath, { recursive: true, force: true });
       for (const scriptPath of [templatePath, pluginPath]) {
@@ -556,7 +556,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ plugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-legacy-${basename(scriptPath)}`))).toContain('ralph-loop');
@@ -567,7 +567,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeFileSync(settingsPath, '{ this is not valid json');
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-malformed-${basename(scriptPath)}`))).not.toContain('ralph-loop');
@@ -578,7 +578,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         const result = runWithEnv(scriptPath, `ralph-homeroot-${basename(scriptPath)}`, '/ralph fix the parser', {
@@ -600,7 +600,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
         'ralph-loop@community': [{ installPath: officialRoot, version: '2.0.0', enabled: true }],
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         expect(contextOf(runIn(scriptPath, `ralph-community-same-name-${basename(scriptPath)}`))).not.toContain('ralph-loop');
@@ -633,7 +633,7 @@ OMC Ultrawork = "특수부대 작전 반"
       writeSettings({ enabledPlugins: { 'ralph-loop@claude-plugins-official': true } });
       writeRegistry({
         'ralph-loop@claude-plugins-official': officialEntry(true),
-        'oh-my-claudecode@omc': [{ installPath: omcRoot, version: '4.15.4', enabled: true }],
+        'oh-my-qoder@omq': [{ installPath: omqRoot, version: '4.15.4', enabled: true }],
       });
       for (const scriptPath of [templatePath, pluginPath]) {
         const context = contextOf(runIn(scriptPath, `ralph-multi-${basename(scriptPath)}`, '/ralph deep interview fix the parser'));

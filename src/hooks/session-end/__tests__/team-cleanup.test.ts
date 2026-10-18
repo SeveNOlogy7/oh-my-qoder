@@ -90,7 +90,7 @@ describe('processSessionEnd team cleanup (#1632)', () => {
 
   it('records missing team config as preserved instead of deleting ownership evidence', async () => {
     const sessionId = 'pid-1632-missing-config';
-    const teamSessionDir = path.join(tmpDir, '.omc', 'state', 'sessions', sessionId);
+    const teamSessionDir = path.join(tmpDir, '.omq', 'state', 'sessions', sessionId);
     fs.mkdirSync(teamSessionDir, { recursive: true });
     fs.writeFileSync(path.join(teamSessionDir, 'team-state.json'), JSON.stringify({
       active: true, session_id: sessionId, team_name: 'missing-config-team', current_phase: 'team-exec',
@@ -212,7 +212,7 @@ describe('processSessionEnd team cleanup (#1632)', () => {
     const sessionId = 'pid-1632-captured-instance';
     const teamName = 'replacement-team';
     const teamSessionDir = path.join(tmpDir, '.omq', 'state', 'sessions', sessionId);
-    const configPath = path.join(tmpDir, '.omc', 'state', 'team', teamName, 'config.json');
+    const configPath = path.join(tmpDir, '.omq', 'state', 'team', teamName, 'config.json');
     fs.mkdirSync(teamSessionDir, { recursive: true });
     fs.writeFileSync(path.join(teamSessionDir, 'team-state.json'), JSON.stringify({
       active: true, session_id: sessionId, team_name: teamName, current_phase: 'team-exec',
@@ -263,7 +263,7 @@ describe('processSessionEnd team cleanup (#1632)', () => {
 
   it('preserves a legacy runtime team referenced by the ending session', async () => {
     const sessionId = 'pid-1632-legacy';
-    const teamSessionDir = path.join(tmpDir, '.omc', 'state', 'sessions', sessionId);
+    const teamSessionDir = path.join(tmpDir, '.omq', 'state', 'sessions', sessionId);
     fs.mkdirSync(teamSessionDir, { recursive: true });
     fs.writeFileSync(
       path.join(teamSessionDir, 'team-state.json'),
@@ -288,7 +288,7 @@ describe('processSessionEnd team cleanup (#1632)', () => {
 
   it('preserves a legacy runtime team even when the old shutdown path would report success', async () => {
     const sessionId = 'pid-1632-legacy-failed';
-    const teamSessionDir = path.join(tmpDir, '.omc', 'state', 'sessions', sessionId);
+    const teamSessionDir = path.join(tmpDir, '.omq', 'state', 'sessions', sessionId);
     fs.mkdirSync(teamSessionDir, { recursive: true });
     fs.writeFileSync(path.join(teamSessionDir, 'team-state.json'), JSON.stringify({
       active: true, session_id: sessionId, team_name: 'legacy-failed-team', current_phase: 'team-exec',
@@ -375,7 +375,7 @@ describe('processSessionEnd team cleanup (#1632)', () => {
 
   it('authorizes cleanup from config.leader_session_id even when the manifest still stores a tmux target', async () => {
     const sessionId = 'pid-1632-claude-owner';
-    const teamSessionDir = path.join(tmpDir, '.omc', 'state', 'sessions', sessionId);
+    const teamSessionDir = path.join(tmpDir, '.omq', 'state', 'sessions', sessionId);
     fs.mkdirSync(teamSessionDir, { recursive: true });
     fs.writeFileSync(
       path.join(teamSessionDir, 'team-state.json'),
@@ -409,7 +409,7 @@ describe('processSessionEnd team cleanup (#1632)', () => {
 
   it('does not treat a tmux session name as Claude-session ownership', async () => {
     const sessionId = 'pid-1632-tmux-is-not-owner';
-    const teamSessionDir = path.join(tmpDir, '.omc', 'state', 'sessions', sessionId);
+    const teamSessionDir = path.join(tmpDir, '.omq', 'state', 'sessions', sessionId);
     fs.mkdirSync(teamSessionDir, { recursive: true });
     fs.writeFileSync(
       path.join(teamSessionDir, 'team-state.json'),

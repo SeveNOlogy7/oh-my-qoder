@@ -104,7 +104,7 @@ function normalizePath(pathValue) {
   return String(pathValue).replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
-function rewriteOmcRegistryEntries(installedPluginsPath, latestRoot) {
+function rewriteOmqRegistryEntries(installedPluginsPath, latestRoot) {
   const raw = readJson(installedPluginsPath);
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { updated: false, entries: 0, stalePaths: [] };
@@ -184,7 +184,7 @@ export function repairPluginCacheReferences() {
 
   const installedPluginsPath = join(configDir, 'plugins', 'installed_plugins.json');
   try {
-    const registry = rewriteOmcRegistryEntries(installedPluginsPath, latestRoot);
+    const registry = rewriteOmqRegistryEntries(installedPluginsPath, latestRoot);
     result.registryUpdated = registry.updated;
     for (const stalePath of registry.stalePaths) {
       const staleParent = normalizePath(dirname(stalePath));

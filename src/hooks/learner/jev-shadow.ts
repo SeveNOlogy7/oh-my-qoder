@@ -17,7 +17,7 @@ import type { ResolveResult } from '../jev/index.js';
 
 /**
  * Record the shadow comparison for one assistant message and return the
- * twin detection unchanged. With no TYPESAFE_API_KEY (or OMC_JEV not
+ * twin detection unchanged. With no TYPESAFE_API_KEY (or OMQ_JEV not
  * naming this point) the resolver short-circuits: zero HTTP calls, no
  * logging, same detection.
  */

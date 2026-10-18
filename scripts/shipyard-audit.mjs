@@ -33,7 +33,7 @@ const SURFACES = [
   'docs/standards/',
   'docs/business/',
   'design-system/',
-  '.omc/skills/',
+  '.omq/skills/',
   '.mcp.json',
   'scripts/',
 ];
@@ -138,7 +138,7 @@ function checkClaudeMdDeadPaths(root) {
   const content = stripFencedBlocks(readFileSync(claudePath, 'utf-8'));
   const findings = [];
   const seen = new Set();
-  const pathPattern = /\b((?:docs|design-system|scripts|\.omc)\/[\w./-]+)/g;
+  const pathPattern = /\b((?:docs|design-system|scripts|\.omq)\/[\w./-]+)/g;
   for (const m of content.matchAll(pathPattern)) {
     const p = m[1];
     if (seen.has(p)) continue;
@@ -177,7 +177,7 @@ function triggersAreNonEmpty(frontmatterBody) {
 
 async function checkProjectSkillTriggers(root) {
   // The state-root directory name comes from the canonical resolver instead of a raw
-  // '.omc' join. The audit is scoped to the yard it was pointed at, so when the resolver
+  // '.omq' join. The audit is scoped to the yard it was pointed at, so when the resolver
   // escapes `root` (no workspace or git root under a bare directory, which falls back to
   // the home state root) the same directory name is re-anchored at `root` rather than
   // scanning skills that do not belong to the audited yard.

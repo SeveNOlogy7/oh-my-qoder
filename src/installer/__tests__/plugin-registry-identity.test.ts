@@ -1,13 +1,14 @@
 /**
  * Registry identity for this fork's marketplace install.
  *
- * The official-plugin machinery (OMQ_PLUGIN_IDS / isOfficialOmcPluginId /
- * isOmcPluginLookalike) is ancestor-new -- b37141e has no equivalent -- so it
+ * The official-plugin machinery (OMQ_PLUGIN_IDS / isOfficialOmqPluginId /
+ * isOmqPluginLookalike) is ancestor-new -- b37141e has no equivalent -- so it
  * shipped with the ancestor's package slug. A Qoder marketplace install registers
- * as `oh-my-qoder@omq` under `plugins/cache/omq/oh-my-qoder/<version>`, which the
- * id set does not contain and the lookalike marker does not even flag, so the
- * entry is skipped in silence: getInstalledOmcPluginRoots() returns nothing and
- * every caller that needs the installed root degrades to legacy mode.
+ * as `oh-my-qoder@omq` under `plugins/cache/omq/oh-my-qoder/<version>`, and an
+ * install carried over from the ancestor keeps the `@omc` channel, so the id set
+ * must enumerate both slugs: a slug the set omits is skipped in silence --
+ * getInstalledOmcPluginRoots() returns nothing and every caller that needs the
+ * installed root degrades to legacy mode.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -109,9 +110,9 @@ describe('installed plugin registry identity', () => {
 
   it('still resolves an ancestor-shaped install left behind by an upgrade', async () => {
     const pluginsDir = pluginsDirOf();
-    const installed = cacheRoot(pluginsDir, 'omc', 'oh-my-claudecode', '4.14.4');
+    const installed = cacheRoot(pluginsDir, 'omc', 'oh-my-qoder', '4.14.4');
     writeRegistry(pluginsDir, {
-      'oh-my-claudecode@omc': [{ installPath: installed, version: '4.14.4' }],
+      'oh-my-qoder@omc': [{ installPath: installed, version: '4.14.4' }],
     });
 
     const installer = await freshInstaller();

@@ -69,10 +69,10 @@ describe('Builtin Skills', () => {
   });
 
   describe('createBuiltinSkills()', () => {
-    it('should return correct number of skills (42 canonical + 2 aliases)', () => {
+    it('should return correct number of skills (47 canonical + 2 aliases)', () => {
       const skills = createBuiltinSkills();
-      // 45 entries: 43 canonical skills + 2 aliases (cancel-ralph, psm)
-      expect(skills).toHaveLength(45);
+      // 49 entries: 47 canonical skills + 2 aliases (cancel-ralph, psm)
+      expect(skills).toHaveLength(49);
     });
 
     it('should return an array of BuiltinSkill objects', () => {
@@ -148,22 +148,26 @@ describe('Builtin Skills', () => {
         'minimal-prose-discipline',
         'launch',
         'loft',
+        'map',
         'drydock',
         'omq-doctor',
         'omq-plan',
         'omq-review',
         'omq-setup',
+        'pr',
         'project-session-manager',
         'psm',
         'ralph',
         'ralplan',
         'release',
+        'refit',
         'remember',
         'research',
         'self-improve',
         'skill',
         'skillify',
         'team',
+        'tdd',
         'trace',
         'ultragoal',
         'verify',
@@ -257,6 +261,13 @@ describe('Builtin Skills', () => {
       expect(skill?.template).toContain('verification-methodology defect');
     });
 
+    it('should retrieve tdd as a canonical skill', () => {
+      const skill = getBuiltinSkill('tdd');
+      expect(skill).toBeDefined();
+      expect(skill?.name).toBe('tdd');
+      expect(skill?.aliasOf).toBeUndefined();
+    });
+
 
 
     it('should expose approval-gated pipeline metadata for deep-interview handoff into omq-plan', () => {
@@ -322,8 +333,8 @@ describe('Builtin Skills', () => {
     });
 
     it('loads deep-interview ambiguityThreshold source before state init and updates the first-line marker', () => {
-      const profileDir = mkdtempSync(join(tmpdir(), 'omc-skill-profile-'));
-      const projectDir = mkdtempSync(join(tmpdir(), 'omc-skill-project-'));
+      const profileDir = mkdtempSync(join(tmpdir(), 'omq-skill-profile-'));
+      const projectDir = mkdtempSync(join(tmpdir(), 'omq-skill-project-'));
       tempDirs.push(profileDir, projectDir);
 
       process.env.CLAUDE_CONFIG_DIR = profileDir;
@@ -357,7 +368,7 @@ describe('Builtin Skills', () => {
     });
 
     it('refreshes cached deep-interview output when the configured threshold changes without requiring manual cache clearing', () => {
-      const projectDir = mkdtempSync(join(tmpdir(), 'omc-skill-cache-refresh-'));
+      const projectDir = mkdtempSync(join(tmpdir(), 'omq-skill-cache-refresh-'));
       tempDirs.push(projectDir);
 
       mkdirSync(join(projectDir, '.claude'), { recursive: true });
@@ -387,7 +398,7 @@ describe('Builtin Skills', () => {
     });
 
     it('replaces all hardcoded 20%/0.2 threshold references in deep-interview template (issue #2545)', () => {
-      const profileDir = mkdtempSync(join(tmpdir(), 'omc-skill-2545-'));
+      const profileDir = mkdtempSync(join(tmpdir(), 'omq-skill-2545-'));
       tempDirs.push(profileDir);
 
       process.env.CLAUDE_CONFIG_DIR = profileDir;
@@ -447,7 +458,7 @@ describe('Builtin Skills', () => {
       expect(raw).toContain('prompt-safe initial-context summary');
       expect(raw).toContain('Wait until the summary exists before ambiguity scoring');
       expect(raw).toContain('Do not ask the next `AskUserQuestion`, score ambiguity, or hand off to execution from an over-budget raw transcript.');
-      expect(raw).toContain('Preserve the AskUserQuestion path for OMC-native interaction');
+      expect(raw).toContain('Preserve the AskUserQuestion path for OMQ-native interaction');
       expect(raw).toContain('Consult accumulated local planning knowledge');
       expect(raw).toContain('glob `.omq/specs/deep-*.md` and `.omq/plans/*.md`');
       expect(raw).toContain('before designing Round 1 questions');
@@ -484,7 +495,7 @@ describe('Builtin Skills', () => {
     });
 
     it('applies deep-interview runtime settings for plugin-qualified rendered skill names (issue #3030)', () => {
-      const profileDir = mkdtempSync(join(tmpdir(), 'omc-skill-3030-'));
+      const profileDir = mkdtempSync(join(tmpdir(), 'omq-skill-3030-'));
       tempDirs.push(profileDir);
 
       process.env.CLAUDE_CONFIG_DIR = profileDir;
@@ -529,7 +540,7 @@ describe('Builtin Skills', () => {
       expect(t).toContain('prompt-safe initial-context summary');
       expect(t).toContain('Wait until the summary exists before ambiguity scoring');
       expect(t).toContain('Do not ask the next `AskUserQuestion`, score ambiguity, or hand off to execution from an over-budget raw transcript.');
-      expect(t).toContain('Preserve the AskUserQuestion path for OMC-native interaction');
+      expect(t).toContain('Preserve the AskUserQuestion path for OMQ-native interaction');
       expect(t).toContain('Initial Context Summarized: {yes|no}');
       expect(t).not.toContain('omx question');
     });
@@ -679,7 +690,7 @@ describe('Builtin Skills', () => {
     it('should return canonical skill names by default', () => {
       const names = listBuiltinSkillNames();
 
-      expect(names).toHaveLength(43);
+      expect(names).toHaveLength(47);
       expect(names).toContain('ai-slop-cleaner');
       expect(names).toContain('minimal-code-discipline');
       expect(names).toContain('launch');
@@ -701,6 +712,7 @@ describe('Builtin Skills', () => {
       expect(names).toContain('omq-doctor');
       expect(names).toContain('hud');
       expect(names).toContain('omq-setup');
+      expect(names).toContain('tdd');
       expect(names).toContain('trace');
       expect(names).toContain('visual-verdict');
       expect(names).toContain('wiki');
@@ -719,10 +731,11 @@ describe('Builtin Skills', () => {
       const names = listBuiltinSkillNames({ includeAliases: true });
 
       // swarm alias removed in #1131; learner retired in 5.0.0; cancel-ralph and psm remain
-      expect(names).toHaveLength(45);
+      expect(names).toHaveLength(49);
       expect(names).toContain('ai-slop-cleaner');
       expect(names).toContain('autoresearch');
       expect(names).toContain('self-improve');
+      expect(names).toContain('tdd');
       expect(names).toContain('trace');
       expect(names).toContain('ultragoal');
       expect(names).toContain('visual-verdict');

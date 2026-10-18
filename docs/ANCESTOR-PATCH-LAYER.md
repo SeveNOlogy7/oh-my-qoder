@@ -1,8 +1,29 @@
 # Patch-Layer Collisions
 
-Paths that **OMQ's own commits** change *and* the ancestor hop `v4.15.1` -> `v5.5.0` also changes.
+Paths that **OMQ's own commits** change *and* the ancestor hop `v5.5.0` -> `v5.6.0` also changes.
 Losing one of these during adoption is a silent regression, which is why this table is generated
 from `git log 9ba1359c8f8cab5d72d7ffc543d3e35f676a4709..HEAD` intersected with the two cached ancestor trees -- not written by hand.
+
+> **v5.6.0 round re-measurement (2026-10-15).** The counts below were recomputed for the
+> `v5.5.0` -> `v5.6.0` hop. Method (unchanged, deterministic):
+>   - OMQ patch-layer side = `git diff --name-only 9ba1359c8f8cab5d72d7ffc543d3e35f676a4709 HEAD` (1411 paths)
+>   - ancestor hop side = added (73) ∪ modified (144) ∪ removed (1) from
+>     `.omq/cache/ancestor-v5.5.0-tree.json` vs `.omq/cache/ancestor-v5.6.0-tree.json` (218 paths)
+>   - collision = intersection = **214 paths**
+> The full path list is in `.omq/align-v5.6.0/w10-patchlayer-collision.json`.
+> The previous measurement (993 rows) anchored the `v4.15.1` -> `v5.5.0` hop and is retained
+> below it for provenance.
+
+## v5.6.0 hop (`v5.5.0` -> `v5.6.0`)
+
+| | |
+|---|---|
+| Colliding paths | 214 |
+| Assertable / structural | 202 / 12 |
+| Hop modified / added / deleted | 140 / 73 / 1 |
+| Assertable rows with a named observation | see `docs/ANCESTOR-PARITY.md` (the v5.6.0 disposition table) |
+
+## Prior hop (`v4.15.1` -> `v5.5.0`) — retained for provenance
 
 | | |
 |---|---|

@@ -1,10 +1,10 @@
 English | [한국어](README.ko.md) | [中文](README.zh.md) | [日本語](README.ja.md) | [Español](README.es.md) | [Tiếng Việt](README.vi.md) | [Português](README.pt.md)
 
-# oh-my-claudecode
+# oh-my-qoder
 
 [![npm version](https://img.shields.io/npm/v/oh-my-claude-sisyphus?color=cb3837)](https://www.npmjs.com/package/oh-my-claude-sisyphus)
 [![npm downloads](https://img.shields.io/npm/dm/oh-my-claude-sisyphus?color=blue)](https://www.npmjs.com/package/oh-my-claude-sisyphus)
-[![GitHub stars](https://img.shields.io/github/stars/Yeachan-Heo/oh-my-claudecode?style=flat&color=yellow)](https://github.com/Yeachan-Heo/oh-my-claudecode/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/Yeachan-Heo/oh-my-qoder?style=flat&color=yellow)](https://github.com/Yeachan-Heo/oh-my-qoder/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Sponsor](https://img.shields.io/badge/Sponsor-❤️-red?style=flat&logo=github)](https://github.com/sponsors/Yeachan-Heo)
 [![Discord](https://img.shields.io/discord/1452487457085063218?color=5865F2&logo=discord&logoColor=white&label=Discord)](https://discord.gg/wSyUQYfhAw)
@@ -16,9 +16,9 @@ English | [한국어](README.ko.md) | [中文](README.zh.md) | [日本語](READM
 
 **Multi-agent orchestration for Claude Code. Zero learning curve.**
 
-_Don't learn Claude Code. Just use OMC._
+_Don't learn Claude Code. Just use OMQ._
 
-[Get Started](#quick-start) • [Documentation](https://yeachan-heo.github.io/oh-my-claudecode-website) • [CLI Reference](https://yeachan-heo.github.io/oh-my-claudecode-website/docs/#cli-reference) • [Workflows](https://yeachan-heo.github.io/oh-my-claudecode-website/docs/#workflows) • [Migration Guide](docs/MIGRATION.md) • [Discord](https://discord.gg/wSyUQYfhAw)
+[Get Started](#quick-start) • [Documentation](https://yeachan-heo.github.io/oh-my-qoder-website) • [CLI Reference](https://yeachan-heo.github.io/oh-my-qoder-website/docs/#cli-reference) • [Workflows](https://yeachan-heo.github.io/oh-my-qoder-website/docs/#workflows) • [Migration Guide](docs/MIGRATION.md) • [Discord](https://discord.gg/wSyUQYfhAw)
 
 ---
 
@@ -58,13 +58,13 @@ Marketplace/plugin install (recommended for most Claude Code users).
 These are Claude Code slash commands — enter them **one at a time** (pasting both lines at once will fail):
 
 ```bash
-/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode
+/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-qoder
 ```
 
 Then:
 
 ```bash
-/plugin install oh-my-claudecode
+/plugin install oh-my-qoder
 ```
 
 If you prefer the npm CLI/runtime path instead of the marketplace flow:
@@ -77,25 +77,25 @@ npm i -g oh-my-claude-sisyphus@latest
 > This currently comes from the upstream `better-sqlite3` native-addon dependency
 > (`better-sqlite3 -> prebuild-install`); `prebuild-install@7.1.3` is still the latest
 > published version, so there is no safe repo-side dependency bump or override to remove
-> the warning yet. The warning is tracked in [#2913](https://github.com/Yeachan-Heo/oh-my-claudecode/issues/2913)
-> and does not by itself mean the OMC CLI install failed.
+> the warning yet. The warning is tracked in [#2913](https://github.com/Yeachan-Heo/oh-my-qoder/issues/2913)
+> and does not by itself mean the OMQ CLI install failed.
 
 **Step 2: Setup**
 
 ```bash
-# Inside a Claude Code / OMC session
-/omc-setup
+# Inside a Claude Code / OMQ session
+/omq-setup
 
 # From your terminal
 omc setup
 ```
 
-If you run OMC via `omc --plugin-dir <path>` or `claude --plugin-dir <path>`, add `--plugin-dir-mode` to `omc setup` (or export `OMQ_PLUGIN_ROOT` before running it) so the installer doesn't duplicate skills/agents that the plugin already provides at runtime. See the [Plugin directory flags section in REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) for a complete decision matrix and all available flags.
+If you run OMQ via `omc --plugin-dir <path>` or `claude --plugin-dir <path>`, add `--plugin-dir-mode` to `omc setup` (or export `OMQ_PLUGIN_ROOT` before running it) so the installer doesn't duplicate skills/agents that the plugin already provides at runtime. See the [Plugin directory flags section in REFERENCE.md](./docs/REFERENCE.md#plugin-directory-flags) for a complete decision matrix and all available flags.
 
 **Step 3: Build something**
 
 ```bash
-# Inside a Claude Code / OMC session
+# Inside a Claude Code / OMQ session
 /autopilot "build a REST API for managing tasks"
 
 # Natural-language in-session shortcut
@@ -136,24 +136,24 @@ That's it. Everything else is automatic.
 
 ### CLI Commands vs In-Session Skills
 
-OMC exposes two different surfaces:
+OMQ exposes two different surfaces:
 
 - **Terminal CLI commands**: run `omc ...` from your shell after installing the npm/runtime path (`npm i -g oh-my-claude-sisyphus@latest`) or from a local checkout.
 - **In-session skills**: run `/...` inside a Claude Code session after installing the plugin/setup flow.
 
 | Feature                                        | Terminal CLI                                  | In-session skill                                                        | Notes                                                                                                                                |
 | ---------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Setup                                          | `omc setup`                                   | `/omc-setup`                                                            | Both are real entrypoints.                                                                                                            |
+| Setup                                          | `omc setup`                                   | `/omq-setup`                                                            | Both are real entrypoints.                                                                                                            |
 | Ask providers                                  | `omc ask codex "review this patch"`           | `/ask codex "review this patch"`                                        | Both route through the same advisor flow. Providers: `claude`, `codex`, `gemini`, `antigravity`, `grok`, `cursor`.                                            |
 | Team orchestration                             | `omc team 2:codex "review auth flow"`         | `/team 3:executor "fix all TypeScript errors"`                          | Both exist, but they are different runtimes: `omc team` launches tmux CLI workers; `/team` runs the in-session native team workflow. |
 | Pre-flight danger scan                         | `omq lookout scan --brief "..." [--json] [--strict]` | —                                                                | Advisory only: scans the task briefing and workspace before an unattended run and reports danger findings (findings/severity contract). Exit codes: 0 for successful non-strict scans (and strict scans without high-risk signals), 1 `--strict` with high-risk signals, 2 usage/scan error. |
 | Autopilot / Ralph / Execute / Deep Interview   | —                                             | `/autopilot ...`, `/ralph ...`, `/execute ...`, `/deep-interview ...`   | These are in-session skills. There is no `omc autopilot` / `omc ralph` / `omc execute` CLI subcommand in this repo.                  |
-| Autoresearch                                   | `omc autoresearch` (**hard-deprecated shim**) | `/deep-interview --autoresearch ...` + `/oh-my-claudecode:autoresearch` | Setup stays in deep-interview; execution now belongs to the stateful skill.                                                          |
+| Autoresearch                                   | `omc autoresearch` (**hard-deprecated shim**) | `/deep-interview --autoresearch ...` + `/oh-my-qoder:autoresearch` | Setup stays in deep-interview; execution now belongs to the stateful skill.                                                          |
 
 ### VS Code, Agent SDK, and automation scope
 
-- **VS Code / IDE extension**: OMC does not ship a VS Code extension and does not document extension-specific install or automation flows. Use the Claude Code plugin or terminal CLI surfaces above; IDE integrations are only an optional way to access Claude Code itself.
-- **Agent SDK / programmatic usage**: the npm package exports TypeScript helpers such as `createOmcSession()` and prompt expansion utilities for local Node.js programs using `@anthropic-ai/claude-agent-sdk`. This is a library surface, not a replacement for the Claude Code plugin UI.
+- **VS Code / IDE extension**: OMQ does not ship a VS Code extension and does not document extension-specific install or automation flows. Use the Claude Code plugin or terminal CLI surfaces above; IDE integrations are only an optional way to access Claude Code itself.
+- **Agent SDK / programmatic usage**: the npm package exports TypeScript helpers such as `createOmqSession()` and prompt expansion utilities for local Node.js programs using `@anthropic-ai/claude-agent-sdk`. This is a library surface, not a replacement for the Claude Code plugin UI.
 - **CI/CD and headless automation**: prefer deterministic terminal commands (`omc setup`, `omc ask`, `omc session search`, repository scripts such as `npm run sync-metadata:verify`) and set `ANTHROPIC_API_KEY` or provider-specific CLI auth in the runner environment. Do not rely on interactive slash commands (`/autopilot`, `/ralph`, `/execute`, `/team`) in CI; they require an active Claude Code session.
 
 ### Not Sure Where to Start?
@@ -168,7 +168,7 @@ The deep interview uses Socratic questioning to clarify your thinking before any
 
 ## Team Mode (Recommended)
 
-Starting in **v4.1.7**, **Team** is the canonical orchestration surface in OMC. The legacy `swarm` keyword/skill has been removed; use `team` directly.
+Starting in **v4.1.7**, **Team** is the canonical orchestration surface in OMQ. The legacy `swarm` keyword/skill has been removed; use `team` directly.
 
 ```bash
 /team 3:executor "fix all TypeScript errors"
@@ -190,7 +190,7 @@ Enable Claude Code native teams in `~/.claude/settings.json`:
 }
 ```
 
-> If teams are disabled, OMC will warn you and fall back to non-team execution where possible.
+> If teams are disabled, OMQ will warn you and fall back to non-team execution where possible.
 
 ### tmux CLI Workers — Codex, Gemini & Antigravity (v4.4.0+)
 
@@ -242,26 +242,26 @@ Pin a Cursor model with the `OMQ_EXTERNAL_MODELS_DEFAULT_CURSOR_MODEL` environme
 
 Native team worker worktrees are being added behind an opt-in/config gate. See [Native Team Worktree Mode](docs/TEAM-WORKTREE-MODE.md) for the workspace contract, canonical state-root rules, dirty-worktree preservation policy, and verification checklist.
 
-> **Note: Package naming** — The project is branded as **oh-my-claudecode** (repo, plugin, commands), but the npm package is published as [`oh-my-claude-sisyphus`](https://www.npmjs.com/package/oh-my-claude-sisyphus). If you install or upgrade the CLI tools via npm/bun, use `npm i -g oh-my-claude-sisyphus@latest`; the package installs both `oh-my-claudecode` and the short `omc` command aliases.
+> **Note: Package naming** — The project is branded as **oh-my-qoder** (repo, plugin, commands), but the npm package is published as [`oh-my-claude-sisyphus`](https://www.npmjs.com/package/oh-my-claude-sisyphus). If you install or upgrade the CLI tools via npm/bun, use `npm i -g oh-my-claude-sisyphus@latest`; the package installs both `oh-my-qoder` and the short `omc` command aliases.
 
 ### Updating
 
-If you installed OMC via npm, upgrade with the published package name:
+If you installed OMQ via npm, upgrade with the published package name:
 
 ```bash
 npm i -g oh-my-claude-sisyphus@latest
 ```
 
-> **Package naming note:** the repo, plugin, and commands are branded **oh-my-claudecode**, but the published npm package name remains `oh-my-claude-sisyphus`. npm installs expose both `oh-my-claudecode` and `omc`; examples prefer `omc` for brevity.
+> **Package naming note:** the repo, plugin, and commands are branded **oh-my-qoder**, but the published npm package name remains `oh-my-claude-sisyphus`. npm installs expose both `oh-my-qoder` and `omc`; examples prefer `omc` for brevity.
 
-If you installed OMC via the Claude Code marketplace/plugin flow, update with:
+If you installed OMQ via the Claude Code marketplace/plugin flow, update with:
 
 ```bash
 # 1. Update the marketplace clone
 /plugin marketplace update omc
 
 # 2. Re-run setup to refresh configuration
-/omc-setup
+/omq-setup
 ```
 
 If you are developing from a local checkout or git worktree, update the checkout first, then re-run setup from that worktree so the active runtime matches the code you are testing.
@@ -271,18 +271,18 @@ If you are developing from a local checkout or git worktree, update the checkout
 If you experience issues after updating, clear the old plugin cache:
 
 ```bash
-/omc-doctor
+/omq-doctor
 ```
 
 <h1 align="center">Your Claude Just Have been Steroided.</h1>
 
 <p align="center">
-  <img src="assets/omc-character.jpg" alt="oh-my-claudecode" width="400" />
+  <img src="assets/omq-character.jpg" alt="oh-my-qoder" width="400" />
 </p>
 
 ---
 
-## Why oh-my-claudecode?
+## Why oh-my-qoder?
 
 - **Zero configuration required** - Works out of the box with intelligent defaults
 - **Team-first orchestration** - Team is the canonical multi-agent surface
@@ -299,7 +299,7 @@ If you experience issues after updating, clear the old plugin cache:
 
 ### Orchestration Modes
 
-Multiple strategies for different use cases — from Team-backed orchestration to token-efficient refactoring. [Learn more →](https://yeachan-heo.github.io/oh-my-claudecode-website/docs/#execution-modes)
+Multiple strategies for different use cases — from Team-backed orchestration to token-efficient refactoring. [Learn more →](https://yeachan-heo.github.io/oh-my-qoder-website/docs/#execution-modes)
 
 | Mode                        | What it is                                                                              | Use For                                                                 |
 | --------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -309,7 +309,7 @@ Multiple strategies for different use cases — from Team-backed orchestration t
 | **Autopilot**               | Autonomous execution (single lead agent)                                                | End-to-end feature work with minimal ceremony                           |
 | **Execute**                 | Persistent execution with verify/fix loops, from plan to working code                   | Tasks that must complete fully (no silent partials)                     |
 | **Verify**                  | Evidence-based completion checks until tests/build/lint/typecheck goals pass            | Quality gates that need repeat diagnose/fix cycles                      |
-| **Claude Code `/goal`**     | Native Claude Code cross-turn goal loop                                                 | One measurable session completion condition; not an OMC evidence ledger |
+| **Claude Code `/goal`**     | Native Claude Code cross-turn goal loop                                                 | One measurable session completion condition; not an OMQ evidence ledger |
 | **Artifact-only Ultragoal** | Durable goal/checkpoint/evidence artifacts without starting a loop                      | Handoffs, audits, or unavailable/conflicting loop runtimes              |
 
 ### Goal Workflow Guidance
@@ -335,11 +335,11 @@ For `/goal` behavior, rely on Claude Code/Anthropic sources: the [Claude Code `/
 
 ### Contributing
 
-Want to contribute to OMC? See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full developer guide, including how to fork, set up a local checkout, link it as your active plugin, run tests, and submit PRs.
+Want to contribute to OMQ? See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full developer guide, including how to fork, set up a local checkout, link it as your active plugin, run tests, and submit PRs.
 
 ### Custom Skills
 
-Learn once, reuse forever. OMC extracts hard-won debugging knowledge into portable skill files that auto-inject when relevant.
+Learn once, reuse forever. OMQ extracts hard-won debugging knowledge into portable skill files that auto-inject when relevant.
 
 |                 | Project Scope                                            | User Scope        |
 | --------------- | -------------------------------------------------------- | ----------------- |
@@ -362,15 +362,15 @@ Wrap handler at server.py:42 in try/except ClientDisconnectedError...
 **Skillify:** `/skillify` extracts reusable patterns with strict quality gates
 **Auto-inject:** Matching skills load into context automatically — no manual recall needed
 
-Project-scoped OMC-authored skills are stored in `.omq/skills/` and are intended to be committed when you want them shared. During slash/skill execution OMC also reads Claude Code workspace skills from `.claude/skills/` and compatibility skills from `.agents/skills/`, so existing workspace-local `SKILL.md` packages remain callable without copying them into user-global skills. If you create project-local skills inside a linked git worktree and do not commit them, they disappear when that worktree is removed.
+Project-scoped OMQ-authored skills are stored in `.omq/skills/` and are intended to be committed when you want them shared. During slash/skill execution OMQ also reads Claude Code workspace skills from `.claude/skills/` and compatibility skills from `.agents/skills/`, so existing workspace-local `SKILL.md` packages remain callable without copying them into user-global skills. If you create project-local skills inside a linked git worktree and do not commit them, they disappear when that worktree is removed.
 
 ### `.omq/` state and git
 
-OMC writes runtime state, session data, plans, logs, handoffs, research notes, and local artifacts under `.omq/` by default. The repository `.gitignore` keeps that runtime data local with one intentional exception: `.omq/skills/**` remains committable for project-scoped skills you want to share with the team. Treat everything else under `.omq/` as local operational state that may contain prompts, transcripts, or machine-specific paths.
+OMQ writes runtime state, session data, plans, logs, handoffs, research notes, and local artifacts under `.omq/` by default. The repository `.gitignore` keeps that runtime data local with one intentional exception: `.omq/skills/**` remains committable for project-scoped skills you want to share with the team. Treat everything else under `.omq/` as local operational state that may contain prompts, transcripts, or machine-specific paths.
 
-For linked git worktrees, the default `.omq/` directory lives inside that worktree, so deleting the worktree deletes its local OMC state. Set `OMQ_STATE_DIR` if you want state to survive worktree deletion, or add a `.omq-workspace` marker when several independent repos should share one parent-level state root. See [OMC state, gitignore, worktree, and workspace contract](docs/REFERENCE.md#omc-state-gitignore-worktree-and-workspace-contract).
+For linked git worktrees, the default `.omq/` directory lives inside that worktree, so deleting the worktree deletes its local OMQ state. Set `OMQ_STATE_DIR` if you want state to survive worktree deletion, or add a `.omq-workspace` marker when several independent repos should share one parent-level state root. See [OMQ state, gitignore, worktree, and workspace contract](docs/REFERENCE.md#omq-state-gitignore-worktree-and-workspace-contract).
 
-Outside a git repository, OMC uses one canonical safe state root at `~/.omq/` (or `$OMQ_STATE_DIR/non-git` when centralized state is configured); it does not create a new state root for every cwd or write state into sensitive directories such as `~/.ssh`, `~/Downloads`, or descendants of the system temp root. Legacy cwd-local state is untouched until explicitly migrated with `state_migrate_non_git`. State MCP tools honor an explicit `workingDirectory` while retaining repository-boundary checks for git-backed sessions.
+Outside a git repository, OMQ uses one canonical safe state root at `~/.omq/` (or `$OMQ_STATE_DIR/non-git` when centralized state is configured); it does not create a new state root for every cwd or write state into sensitive directories such as `~/.ssh`, `~/Downloads`, or descendants of the system temp root. Legacy cwd-local state is untouched until explicitly migrated with `state_migrate_non_git`. State MCP tools honor an explicit `workingDirectory` while retaining repository-boundary checks for git-backed sessions.
 
 [Full feature list →](docs/REFERENCE.md)
 
@@ -387,13 +387,13 @@ cd repo-A && omc ultragoal create-goals --auto-plan-id --brief "..."
 cd ../repo-B && omc ultragoal create-goals --auto-plan-id --brief "..."
 ```
 
-See [Multi-repo workspaces in REFERENCE.md](docs/REFERENCE.md#multi-repo-workspaces-with-omc-workspace) for resolution order, `OMQ_STATE_DIR`, and workspace identifier options.
+See [Multi-repo workspaces in REFERENCE.md](docs/REFERENCE.md#multi-repo-workspaces-with-omq-workspace) for resolution order, `OMQ_STATE_DIR`, and workspace identifier options.
 
 ---
 
 ## In-session shortcuts
 
-These shortcuts run **inside a Claude Code / OMC session**, not as terminal CLI commands. For shell commands, use the `omc ...` forms shown above. Team mode is explicit: use `/team ...` in-session or `omc team ...` from your shell rather than expecting a bare `team` keyword trigger.
+These shortcuts run **inside a Claude Code / OMQ session**, not as terminal CLI commands. For shell commands, use the `omc ...` forms shown above. Team mode is explicit: use `/team ...` in-session or `omc team ...` from your shell rather than expecting a bare `team` keyword trigger.
 
 | In-session form            | Kind                   | Effect                                 | Example                                        |
 | -------------------------- | ---------------------- | -------------------------------------- | ---------------------------------------------- |
@@ -405,13 +405,13 @@ These shortcuts run **inside a Claude Code / OMC session**, not as terminal CLI 
 | `/deep-interview`          | Slash skill            | Socratic requirements clarification    | `/deep-interview "vague idea"`                 |
 | `deepsearch`               | Prompt trigger         | Codebase-focused search routing        | `deepsearch for auth middleware`               |
 | `ultrathink`               | Prompt trigger         | Deep reasoning mode                    | `ultrathink about this architecture`           |
-| `cancelomc`, `stopomc`     | Prompt trigger         | Stop active OMC modes                  | `stopomc`                                      |
+| `cancelomc`, `stopomc`     | Prompt trigger         | Stop active OMQ modes                  | `stopomc`                                      |
 
 **Notes:**
 
 - **Parallel work uses Team or executor delegation**: choose `/team` for coordinated lanes or delegate implementation tasks to executors; use Ralph when persistence until verified completion is the priority.
 - `swarm` compatibility alias has been removed; migrate existing prompts to `/team` syntax.
-- `plan this` / `plan the` keyword triggers were removed; use `ralplan` or explicit `/oh-my-claudecode:plan`.
+- `plan this` / `plan the` keyword triggers were removed; use `ralplan` or explicit `/oh-my-qoder:plan`.
 
 ## Utilities
 
@@ -429,7 +429,7 @@ omc ask grok --prompt "cross-check this code review"
 omc ask cursor --prompt "apply this implementation plan"
 omc ask claude --agent-prompt executor --prompt "draft implementation steps"
 
-# Inside a Claude Code / OMC session
+# Inside a Claude Code / OMQ session
 /ask claude "review this migration plan"
 /ask codex "identify architecture risks"
 /ask antigravity "propose UI polish ideas"
@@ -449,7 +449,7 @@ Phase-1 aliases `OMX_ASK_ADVISOR_SCRIPT` and `OMX_ASK_ORIGINAL_TASK` are accepte
 
 ```bash
 /deep-interview --autoresearch improve startup performance
-/oh-my-claudecode:autoresearch
+/oh-my-qoder:autoresearch
 ```
 
 - `deep-interview --autoresearch` generates/sets up the mission and evaluator
@@ -474,11 +474,22 @@ omc wait --stop   # Disable daemon
 
 Use the HUD for live observability and the current session/replay artifacts for post-session inspection:
 
-- HUD preset: `/oh-my-claudecode:hud setup` then use a supported preset such as `"omcHud": { "preset": "focused" }`
+- HUD preset: `/oh-my-qoder:hud setup` then use a supported preset such as `"omcHud": { "preset": "focused" }`
 - Session summaries: `.omq/sessions/*.json`
 - Replay logs: `.omq/state/agent-replay-*.jsonl`
 - Live HUD rendering: `omc hud`
 - Local friction reports: `omc session friction report --since 24h` summarizes context-bloat and operator-friction signals from local session artifacts without printing raw prompts or tool output; add `--json` for automation.
+
+### Jev Judgment Configuration
+
+**Jev** brings calibrated decision-making to OMQ's orchestration. Enable it with one environment variable:
+
+```bash
+export TYPESAFE_API_KEY="sk-..."
+export OMQ_JEV="all:active"  # All judgment points active
+```
+
+Jev decides skill triggering, model routing, loop continuation, and more. Defaults to zero egress: without configuration, nothing is sent to the API. See **[Jev Judgment Points](docs/HOOKS.md#jev-judgment-points)** in HOOKS.md for the full configuration reference and point registry.
 
 ### Notification Tags (Telegram/Discord/Slack)
 
@@ -510,7 +521,7 @@ Forward Claude Code session events to an [OpenClaw](https://openclaw.ai/) gatewa
 **Quick setup (recommended):**
 
 ```bash
-/oh-my-claudecode:configure-notifications
+/oh-my-qoder:configure-notifications
 # → When prompted, type "openclaw" → choose "OpenClaw Gateway"
 ```
 
@@ -576,11 +587,11 @@ See `scripts/openclaw-gateway-demo.mjs` for a reference gateway that relays Open
 ## Documentation
 
 - **[Full Reference](docs/REFERENCE.md)** - Complete feature documentation
-- **[CLI Reference](https://yeachan-heo.github.io/oh-my-claudecode-website/docs/#cli-reference)** - All `omc` commands, flags, and tools
-- **[Notifications Guide](https://yeachan-heo.github.io/oh-my-claudecode-website/docs/#notifications)** - Discord, Telegram, Slack, and webhook setup
-- **[Recommended Workflows](https://yeachan-heo.github.io/oh-my-claudecode-website/docs/#workflows)** - Battle-tested skill chains for common tasks
-- **[Release Notes](https://yeachan-heo.github.io/oh-my-claudecode-website/docs/#release-notes)** - What's new in each version
-- **[Website](https://yeachan-heo.github.io/oh-my-claudecode-website)** - Interactive guides and examples
+- **[CLI Reference](https://yeachan-heo.github.io/oh-my-qoder-website/docs/#cli-reference)** - All `omc` commands, flags, and tools
+- **[Notifications Guide](https://yeachan-heo.github.io/oh-my-qoder-website/docs/#notifications)** - Discord, Telegram, Slack, and webhook setup
+- **[Recommended Workflows](https://yeachan-heo.github.io/oh-my-qoder-website/docs/#workflows)** - Battle-tested skill chains for common tasks
+- **[Release Notes](https://yeachan-heo.github.io/oh-my-qoder-website/docs/#release-notes)** - What's new in each version
+- **[Website](https://yeachan-heo.github.io/oh-my-qoder-website)** - Interactive guides and examples
 - **[Migration Guide](docs/MIGRATION.md)** - Upgrade from v2.x
 - **[Architecture](docs/ARCHITECTURE.md)** - How it works under the hood
 - **[Performance Monitoring](docs/PERFORMANCE-MONITORING.md)** - Agent tracking, debugging, and optimization
@@ -596,7 +607,7 @@ See `scripts/openclaw-gateway-demo.mjs` for a reference gateway that relays Open
 
 ### Platform & tmux
 
-OMC features like `omc team` and rate-limit detection require **tmux**:
+OMQ features like `omc team` and rate-limit detection require **tmux**:
 
 | Platform       | tmux provider                                         | Install                 |
 | -------------- | ----------------------------------------------------- | ----------------------- |
@@ -611,7 +622,7 @@ OMC features like `omc team` and rate-limit detection require **tmux**:
 
 ### Optional: Multi-AI Orchestration
 
-OMC can optionally orchestrate external AI providers for cross-validation and design consistency. These are **not required** — OMC works fully without them.
+OMQ can optionally orchestrate external AI providers for cross-validation and design consistency. These are **not required** — OMQ works fully without them.
 
 | Provider                                                                | Install                                                      | What it enables                                                           |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
@@ -640,34 +651,34 @@ MIT
 
 </div>
 
-<!-- OMC:FEATURED-CONTRIBUTORS:START -->
+<!-- OMQ:FEATURED-CONTRIBUTORS:START -->
 ## Featured by OmC Contributors
 
-Top personal non-fork, non-archived repos from all-time OMC contributors (100+ GitHub stars).
+Top personal non-fork, non-archived repos from all-time OMQ contributors (100+ GitHub stars).
 
-- [@Yeachan-Heo](https://github.com/Yeachan-Heo) — [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) (⭐ 39k)
-- [@junhoyeo](https://github.com/junhoyeo) — [tokscale](https://github.com/junhoyeo/tokscale) (⭐ 5.5k)
-- [@psmux](https://github.com/psmux) — [psmux](https://github.com/psmux/psmux) (⭐ 3.5k)
-- [@MeroZemory](https://github.com/MeroZemory) — [ida-multi-mcp](https://github.com/MeroZemory/ida-multi-mcp) (⭐ 434)
-- [@devswha](https://github.com/devswha) — [patina](https://github.com/devswha/patina) (⭐ 358)
-- [@GeiserX](https://github.com/GeiserX) — [awesome-spain](https://github.com/GeiserX/awesome-spain) (⭐ 345)
-- [@BowTiedSwan](https://github.com/BowTiedSwan) — [buildflow](https://github.com/BowTiedSwan/buildflow) (⭐ 299)
-- [@J-Pster](https://github.com/J-Pster) — [Psters_AI_Workflow](https://github.com/J-Pster/Psters_AI_Workflow) (⭐ 289)
-- [@alohays](https://github.com/alohays) — [awesome-visual-representation-learning-with-transformers](https://github.com/alohays/awesome-visual-representation-learning-with-transformers) (⭐ 271)
+- [@Yeachan-Heo](https://github.com/Yeachan-Heo) — [oh-my-qoder](https://github.com/Yeachan-Heo/oh-my-qoder) (⭐ 39k)
+- [@junhoyeo](https://github.com/junhoyeo) — [tokscale](https://github.com/junhoyeo/tokscale) (⭐ 5.6k)
+- [@psmux](https://github.com/psmux) — [psmux](https://github.com/psmux/psmux) (⭐ 3.6k)
+- [@MeroZemory](https://github.com/MeroZemory) — [ida-multi-mcp](https://github.com/MeroZemory/ida-multi-mcp) (⭐ 443)
+- [@devswha](https://github.com/devswha) — [patina](https://github.com/devswha/patina) (⭐ 359)
+- [@GeiserX](https://github.com/GeiserX) — [awesome-spain](https://github.com/GeiserX/awesome-spain) (⭐ 353)
+- [@BowTiedSwan](https://github.com/BowTiedSwan) — [buildflow](https://github.com/BowTiedSwan/buildflow) (⭐ 297)
+- [@J-Pster](https://github.com/J-Pster) — [Psters_AI_Workflow](https://github.com/J-Pster/Psters_AI_Workflow) (⭐ 290)
+- [@alohays](https://github.com/alohays) — [awesome-visual-representation-learning-with-transformers](https://github.com/alohays/awesome-visual-representation-learning-with-transformers) (⭐ 272)
 - [@jcwleo](https://github.com/jcwleo) — [random-network-distillation-pytorch](https://github.com/jcwleo/random-network-distillation-pytorch) (⭐ 264)
-- [@HaD0Yun](https://github.com/HaD0Yun) — [Doyunha-Gopeak](https://github.com/HaD0Yun/Doyunha-Gopeak) (⭐ 259)
+- [@HaD0Yun](https://github.com/HaD0Yun) — [Doyunha-Gopeak](https://github.com/HaD0Yun/Doyunha-Gopeak) (⭐ 262)
+- [@changeroa](https://github.com/changeroa) — [StyleGallery](https://github.com/changeroa/StyleGallery) (⭐ 256)
 - [@HwangTaehyun](https://github.com/HwangTaehyun) — [github-repository-contribution-stats](https://github.com/HwangTaehyun/github-repository-contribution-stats) (⭐ 241)
 - [@shaun0927](https://github.com/shaun0927) — [openchrome](https://github.com/shaun0927/openchrome) (⭐ 237)
-- [@changeroa](https://github.com/changeroa) — [StyleGallery](https://github.com/changeroa/StyleGallery) (⭐ 235)
 - [@emgeee](https://github.com/emgeee) — [mean-tutorial](https://github.com/emgeee/mean-tutorial) (⭐ 199)
-- [@anduinnn](https://github.com/anduinnn) — [HiFiNi-Auto-CheckIn](https://github.com/anduinnn/HiFiNi-Auto-CheckIn) (⭐ 172)
+- [@anduinnn](https://github.com/anduinnn) — [HiFiNi-Auto-CheckIn](https://github.com/anduinnn/HiFiNi-Auto-CheckIn) (⭐ 173)
 - [@Znuff](https://github.com/Znuff) — [consolas-powerline](https://github.com/Znuff/consolas-powerline) (⭐ 145)
 
-<!-- OMC:FEATURED-CONTRIBUTORS:END -->
+<!-- OMQ:FEATURED-CONTRIBUTORS:END -->
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Yeachan-Heo/oh-my-claudecode&type=date&legend=top-left)](https://www.star-history.com/#Yeachan-Heo/oh-my-claudecode&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=Yeachan-Heo/oh-my-qoder&type=date&legend=top-left)](https://www.star-history.com/#Yeachan-Heo/oh-my-qoder&type=date&legend=top-left)
 
 ## 💖 Support This Project
 
@@ -693,5 +704,5 @@ If Oh-My-ClaudeCode helps your workflow, consider sponsoring:
 
 OmC includes a [`geobench`](https://github.com/NomaDamas/geobench) product spec for measuring LLM hit rate, MRR, share of voice, and citations.
 
-- Spec: [`geobench/oh-my-claudecode.yaml`](geobench/oh-my-claudecode.yaml)
+- Spec: [`geobench/oh-my-qoder.yaml`](geobench/oh-my-qoder.yaml)
 - Runbook: [`docs/geobench.md`](docs/geobench.md)

@@ -6,7 +6,7 @@ import { tmpdir } from 'os';
 import { TEAM_TASK_STATUSES } from '../team/contracts.js';
 import { parseSkillFile } from '../hooks/learner/parser.js';
 import { loadAllSkills } from '../hooks/learner/loader.js';
-import { getOmcRoot } from '../lib/worktree-paths.js';
+import { getOmqRoot } from '../lib/worktree-paths.js';
 import { executeTeamApiOperation } from '../team/api-interop.js';
 
 const ROOT = join(__dirname, '..', '..');
@@ -355,7 +355,7 @@ describe('shipyard skills — behavior & packaging contract', () => {
       process.env.HOME = cwd;
       process.env.USERPROFILE = cwd;
       delete process.env.OMQ_STATE_DIR;
-      const teamRoot = join(getOmcRoot(cwd), 'state', 'team', teamName);
+      const teamRoot = join(getOmqRoot(cwd), 'state', 'team', teamName);
       mkdirSync(join(teamRoot, 'tasks'), { recursive: true });
       mkdirSync(join(teamRoot, 'events'), { recursive: true });
       writeFileSync(join(teamRoot, 'config.json'), JSON.stringify({
@@ -572,7 +572,7 @@ describe('shipyard skills — behavior & packaging contract', () => {
       '| ruled-out directions (concept + why rejected) | `docs/adr/` (a rejection is a decision too; the why is the load-bearing part) |',
       '| business rules / background | `docs/business/` |',
       '| UI patterns / component contracts | `design-system/` |',
-      '| reusable craft | `.omc/skills/` (through the skillify gate) |',
+      '| reusable craft | `.omq/skills/` (through the skillify gate) |',
       '| repeatedly needed automation / integrations | `scripts/` or `.mcp.json` |',
       '| no slot fits | decline explicitly with the reason |',
     ]) {
@@ -708,8 +708,8 @@ describe('shipyard skills — behavior & packaging contract', () => {
       for (const name of USER_INVOKED) {
         expect(lower).not.toContain(`skill tool with "${name}"`);
         expect(lower).not.toContain(`skill tool with \`${name}\``);
-        expect(lower).not.toContain(`skill("oh-my-claudecode:${name}")`);
-        expect(lower).not.toContain(`skill(skill="oh-my-claudecode:${name}")`);
+        expect(lower).not.toContain(`skill("oh-my-qoder:${name}")`);
+        expect(lower).not.toContain(`skill(skill="oh-my-qoder:${name}")`);
       }
     }
     expect(SHIPYARD_DOC.toLowerCase()).toContain('the invocation contract');
@@ -759,8 +759,8 @@ describe('shipyard skills — behavior & packaging contract', () => {
     expect(ref).toContain(`[Skills (${dirCount} Total)](#skills-${dirCount}-total)`);
     expect(ref).toContain('/oh-my-qoder:drydock [--check]');
     expect(ref).toContain('/oh-my-qoder:launch <brief\\|spec-path> [--serial]');
-    expect(ref).toContain('/oh-my-claudecode:ask-navigator <idea\\|map>');
-    expect(ref).toContain('/oh-my-claudecode:harbor [sweep\\|look at #N\\|what\'s ready?]');
+    expect(ref).toContain('/oh-my-qoder:ask-navigator <idea\\|map>');
+    expect(ref).toContain('/oh-my-qoder:harbor [sweep\\|look at #N\\|what\'s ready?]');
     for (const name of ['launch', 'drydock', 'ask-navigator', 'loft', 'harbor', 'architecture-survey']) {
       expect(ref).toContain(`\`${name}\``);
     }
@@ -784,7 +784,7 @@ describe('shipyard audit script — mechanical check classes', () => {
     const root = mkdtempSync(join(tmpdir(), 'shipyard-audit-'));
     writeFileSync(join(root, 'CLAUDE.md'), '# Project\n');
     writeFileSync(join(root, 'CONTEXT.md'), '---\ndocumentLanguage: en\n---\n\n# Glossary\n');
-    for (const dir of ['docs/adr', 'docs/standards', 'docs/business', 'design-system', '.omc/skills', 'scripts']) {
+    for (const dir of ['docs/adr', 'docs/standards', 'docs/business', 'design-system', '.omq/skills', 'scripts']) {
       mkdirSync(join(root, dir), { recursive: true });
     }
     writeFileSync(join(root, '.mcp.json'), '{"mcpServers": {}}');
@@ -806,7 +806,7 @@ describe('shipyard audit script — mechanical check classes', () => {
     const root = makeCleanRepo();
     try {
       writeFileSync(
-        join(root, '.omc/skills/no-triggers.md'),
+        join(root, '.omq/skills/no-triggers.md'),
         '---\nid: no-triggers\nname: no-triggers\ndescription: A skill that will never load\n---\n\nbody\n',
       );
       const { status, stdout } = runAudit(root);
@@ -822,11 +822,11 @@ describe('shipyard audit script — mechanical check classes', () => {
     const root = makeCleanRepo();
     try {
       writeFileSync(
-        join(root, '.omc/skills/block-triggers.md'),
+        join(root, '.omq/skills/block-triggers.md'),
         '---\nid: block-triggers\nname: block-triggers\ndescription: Block-list triggers\ntriggers:\n  - "project release check"\n---\n\nbody\n',
       );
       writeFileSync(
-        join(root, '.omc/skills/inline-triggers.md'),
+        join(root, '.omq/skills/inline-triggers.md'),
         '---\nid: inline-triggers\nname: inline-triggers\ndescription: Inline triggers\ntriggers: ["project release check"]\n---\n\nbody\n',
       );
       const { status } = runAudit(root);

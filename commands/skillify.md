@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Turn a repeatable workflow from the current session into a reusable OMC skill draft"
 ---
 
 # OMQ skillify

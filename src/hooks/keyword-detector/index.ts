@@ -66,7 +66,7 @@ const KEYWORD_PATTERNS: Record<KeywordType, RegExp> = {
  * Matches the upstream Ouroboros CLI invocation form at the start of the
  * prompt: `ouroboros <sub>`, `ooo <sub>`, or `/ouroboros:<sub>`. Used as a
  * skip predicate for the deep-interview trigger so direct CLI calls are
- * not rerouted into the OMC skill.
+ * not rerouted into the OMQ skill.
  */
 const OUROBOROS_BRAND_AT_START = /^\s*\/?(?:ouroboros|ooo)\b/i;
 
@@ -148,7 +148,7 @@ const WORKFLOW_SLASH_PATTERN = new RegExp(
 );
 
 export interface ExplicitWorkflowSlashInvocation {
-  /** Canonical workflow skill name (lowercase, no `oh-my-claudecode:` prefix). */
+  /** Canonical workflow skill name (lowercase, no `oh-my-qoder:` prefix). */
   skill: CanonicalWorkflowSlashSkill;
   /** Trailing arguments after the slash command. */
   args: string;

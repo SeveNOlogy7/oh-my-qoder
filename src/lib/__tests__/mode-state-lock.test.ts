@@ -49,14 +49,14 @@ afterEach(() => {
   fsControl.racePath = undefined;
   fsControl.replacement = undefined;
   fsControl.injected = false;
-  delete process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE;
+  delete process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE;
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
 describe('state mutation lock fallback', () => {
   it('does not delete a replacement owner observed during stale reclamation', () => {
     process.env.NODE_ENV = 'test';
-    process.env.OMC_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
+    process.env.OMQ_TEST_BETTER_SQLITE3_LOAD_FAILURE = '1';
     const directory = mkdtempSync(join(tmpdir(), 'mode-state-lock-race-'));
     directories.push(directory);
     const statePath = join(directory, 'state.json');

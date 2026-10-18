@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Verify that a change really works before you claim completion"
 ---
 
 # OMQ verify

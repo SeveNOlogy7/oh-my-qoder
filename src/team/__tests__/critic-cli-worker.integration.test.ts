@@ -41,13 +41,13 @@ const SHOULD_RUN = codexAvailable();
 
 describe.skipIf(!SHOULD_RUN)('critic CLI worker integration (AC-7)', () => {
   it('verdict.json from codex critic worker drives task to completed', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'omc-critic-integration-'));
+    const cwd = mkdtempSync(join(tmpdir(), 'omq-critic-integration-'));
     const previousHome = process.env.HOME;
     const previousUserProfile = process.env.USERPROFILE;
     const previousStateDir = process.env.OMQ_STATE_DIR;
     process.env.HOME = cwd;
     process.env.USERPROFILE = cwd;
-    process.env.OMC_STATE_DIR = join(cwd, 'omc-state');
+    process.env.OMQ_STATE_DIR = join(cwd, 'omq-state');
     try {
       const teamName = 'critic-int';
       const instance = createTeamInstanceBinding({ teamName, cwd });

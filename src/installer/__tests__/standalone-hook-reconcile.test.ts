@@ -31,7 +31,7 @@ function writeCompletePluginPayload(root: string): void {
   writePluginFile(join(root, 'skills', 'plan', 'SKILL.md'), '# plan\n');
   writePluginFile(join(root, 'commands', 'omq-setup.md'), 'Read skills/omq-setup/SKILL.md and pass $ARGUMENTS.\n');
   writePluginFile(join(root, '.qoder-plugin', 'plugin.json'), JSON.stringify({
-    name: 'oh-my-claudecode',
+    name: 'oh-my-qoder',
     commands: './commands/',
     skills: ['./skills/plan/'],
   }, null, 2));
@@ -65,8 +65,8 @@ function listTemplateHookLibPayload(): string[] {
 
 describe('install() standalone hook reconciliation', () => {
   beforeEach(() => {
-    testClaudeDir = mkdtempSync(join(tmpdir(), 'omc-standalone-hooks-'));
-    testHomeDir = mkdtempSync(join(tmpdir(), 'omc-home-'));
+    testClaudeDir = mkdtempSync(join(tmpdir(), 'omq-standalone-hooks-'));
+    testHomeDir = mkdtempSync(join(tmpdir(), 'omq-home-'));
     mkdirSync(testHomeDir, { recursive: true });
     writeFileSync(join(testHomeDir, 'CLAUDE.md'), '# test home claude');
     process.env.QODER_CONFIG_DIR = testClaudeDir;
@@ -94,7 +94,7 @@ describe('install() standalone hook reconciliation', () => {
     }
   });
 
-  it('restores OMC settings hooks for standalone installs during forced reconciliation', async () => {
+  it('restores OMQ settings hooks for standalone installs during forced reconciliation', async () => {
     const settingsPath = join(testClaudeDir, 'settings.json');
     mkdirSync(testClaudeDir, { recursive: true });
     writeFileSync(settingsPath, JSON.stringify({ hooks: {} }, null, 2));
@@ -118,11 +118,11 @@ describe('install() standalone hook reconciliation', () => {
       `node "${join(testClaudeDir, 'hooks', 'session-start.mjs').replace(/\\/g, '/')}"`,
     );
     expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain(
-      `${join(testClaudeDir, 'hud', 'omc-hud.mjs').replace(/\\/g, '/')}`,
+      `${join(testClaudeDir, 'hud', 'omq-hud.mjs').replace(/\\/g, '/')}`,
     );
-    expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain('omc-hud-cache.sh');
-    expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud-cache.sh'), 'utf-8')).toContain('HUD cached statusLine launcher');
-    expect(readFileSync(join(testClaudeDir, 'hud', 'omc-hud.mjs'), 'utf-8')).toContain(
+    expect((writtenSettings as { statusLine?: { command?: string } }).statusLine?.command).toContain('omq-hud-cache.sh');
+    expect(readFileSync(join(testClaudeDir, 'hud', 'omq-hud-cache.sh'), 'utf-8')).toContain('HUD cached statusLine launcher');
+    expect(readFileSync(join(testClaudeDir, 'hud', 'omq-hud.mjs'), 'utf-8')).toContain(
       'const { getClaudeConfigDir } = await import(pathToFileURL(join(__dirname, "lib", "config-dir.mjs")).href);',
     );
     expect(readFileSync(join(testClaudeDir, 'hud', 'lib', 'config-dir.mjs'), 'utf-8')).toContain(
@@ -181,7 +181,7 @@ describe('install() standalone hook reconciliation', () => {
   });
 
   it('installs standalone hooks with all runtime helper imports', async () => {
-    const projectDir = mkdtempSync(join(tmpdir(), 'omc-standalone-hook-project-'));
+    const projectDir = mkdtempSync(join(tmpdir(), 'omq-standalone-hook-project-'));
     try {
       mkdirSync(join(projectDir, '.git'), { recursive: true });
 
@@ -197,7 +197,7 @@ describe('install() standalone hook reconciliation', () => {
       expect(existsSync(join(testClaudeDir, 'hooks', 'lib', 'state-lock.mjs'))).toBe(true);
       const bridge = readFileSync(join(testClaudeDir, 'hooks', 'lib', 'state-lock.mjs'), 'utf-8');
       expect(bridge).toContain('EXPECTED_PACKAGE_NAME');
-      expect(bridge).toContain('scripts/lib/state-lock.mjs');
+      expect(bridge).toContain("join(PACKAGE_ROOT, 'scripts', 'lib', 'state-lock.mjs')");
 
       const hookInputs: Array<{ file: string; input: Record<string, unknown> }> = [
         {
@@ -251,7 +251,7 @@ describe('install() standalone hook reconciliation', () => {
     }
   });
 
-  it('preserves non-OMC ~/.claude/hooks commands while adding standalone OMC hooks', async () => {
+  it('preserves non-OMQ ~/.claude/hooks commands while adding standalone OMQ hooks', async () => {
     const settingsPath = join(testClaudeDir, 'settings.json');
     mkdirSync(testClaudeDir, { recursive: true });
     writeFileSync(settingsPath, JSON.stringify({
@@ -287,14 +287,14 @@ describe('install() standalone hook reconciliation', () => {
     );
   });
 
-  it('removes legacy OMC settings hooks in plugin mode without re-injecting them', async () => {
+  it('removes legacy OMQ settings hooks in plugin mode without re-injecting them', async () => {
     const settingsPath = join(testClaudeDir, 'settings.json');
     const pluginRoot = join(
       testClaudeDir,
       'plugins',
       'cache',
       'omc',
-      'oh-my-claudecode',
+      'oh-my-qoder',
       '4.1.5',
     );
 
@@ -343,7 +343,7 @@ describe('install() standalone hook reconciliation', () => {
       `node "${join(testClaudeDir, 'hooks', 'keyword-detector.mjs').replace(/\\/g, '/')}"`,
     );
     expect(writtenSettings.statusLine?.command).toContain(
-      `${join(testClaudeDir, 'hud', 'omc-hud.mjs').replace(/\\/g, '/')}`,
+      `${join(testClaudeDir, 'hud', 'omq-hud.mjs').replace(/\\/g, '/')}`,
     );
   });
   it('reconciles the workflow profile runtime helper before persistent-mode is used', async () => {
@@ -367,8 +367,8 @@ describe('install() standalone hook reconciliation', () => {
 
   it('rejects symlinked package manifests during bridge provisioning', async () => {
     const { provisionStandaloneStateLockBridge } = await loadInstaller();
-    const external = mkdtempSync(join(tmpdir(), 'omc-external-package-'));
-    const packageDir = mkdtempSync(join(tmpdir(), 'omc-package-root-'));
+    const external = mkdtempSync(join(tmpdir(), 'omq-external-package-'));
+    const packageDir = mkdtempSync(join(tmpdir(), 'omq-package-root-'));
     const target = join(testClaudeDir, 'hooks', 'lib', 'state-lock.mjs');
     try {
       writeFileSync(join(external, 'package.json'), JSON.stringify({ name: 'oh-my-claude-sisyphus', version: '5.3.0' }));
@@ -392,8 +392,8 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
   let fakePluginRoot: string;
 
   beforeEach(() => {
-    testClaudeDir = mkdtempSync(join(tmpdir(), 'omc-hook-dedup-'));
-    testHomeDir = mkdtempSync(join(tmpdir(), 'omc-home-dedup-'));
+    testClaudeDir = mkdtempSync(join(tmpdir(), 'omq-hook-dedup-'));
+    testHomeDir = mkdtempSync(join(tmpdir(), 'omq-home-dedup-'));
     mkdirSync(testHomeDir, { recursive: true });
     writeFileSync(join(testHomeDir, 'CLAUDE.md'), '# test home claude');
     process.env.QODER_CONFIG_DIR = testClaudeDir;
@@ -427,20 +427,20 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
   function setupPluginWithHooks() {
     // Create a fake plugin root with the complete runtime payload required
     // before installer code may trust plugin-provided hooks.
-    fakePluginRoot = mkdtempSync(join(tmpdir(), 'omc-fake-plugin-'));
+    fakePluginRoot = mkdtempSync(join(tmpdir(), 'omq-fake-plugin-'));
     writeCompletePluginPayload(fakePluginRoot);
 
     // Register plugin in installed_plugins.json
     const pluginsDir = join(testClaudeDir, 'plugins');
     mkdirSync(pluginsDir, { recursive: true });
     writeFileSync(join(pluginsDir, 'installed_plugins.json'), JSON.stringify({
-      'oh-my-claudecode': [{ installPath: fakePluginRoot }],
+      'oh-my-qoder': [{ installPath: fakePluginRoot }],
     }));
 
     // Mark plugin as enabled in settings.json
     mkdirSync(testClaudeDir, { recursive: true });
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
     }, null, 2));
   }
 
@@ -467,7 +467,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     expect(existsSync(join(testClaudeDir, 'hooks', 'session-start.mjs'))).toBe(false);
   });
 
-  it('does not write OMC hook entries to settings.json when plugin provides hooks', async () => {
+  it('does not write OMQ hook entries to settings.json when plugin provides hooks', async () => {
     setupPluginWithHooks();
 
     const { install } = await loadInstaller();
@@ -478,15 +478,15 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     ) as { hooks?: Record<string, unknown> };
 
     expect(result.success).toBe(true);
-    // OMC hooks should NOT be in settings.json — plugin handles them via hooks.json
+    // OMQ hooks should NOT be in settings.json — plugin handles them via hooks.json
     expect(writtenSettings.hooks).toBeUndefined();
   });
 
-  it('removes stale OMC hook entries from settings.json when plugin provides hooks', async () => {
-    // Pre-populate settings.json with stale OMC hook entries (simulating prior standalone install)
+  it('removes stale OMQ hook entries from settings.json when plugin provides hooks', async () => {
+    // Pre-populate settings.json with stale OMQ hook entries (simulating prior standalone install)
     mkdirSync(testClaudeDir, { recursive: true });
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         UserPromptSubmit: [
           {
@@ -517,12 +517,12 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     ) as { hooks?: Record<string, unknown> };
 
     expect(result.success).toBe(true);
-    // Stale OMC hook entries should be cleaned up by legacy cleanup,
+    // Stale OMQ hook entries should be cleaned up by legacy cleanup,
     // and NOT re-added because plugin provides hooks
     expect(writtenSettings.hooks).toBeUndefined();
   });
 
-  it('prunes legacy standalone OMC hook files when plugin handles hooks', async () => {
+  it('prunes legacy standalone OMQ hook files when plugin handles hooks', async () => {
     setupPluginWithHooks();
 
     const hooksDir = join(testClaudeDir, 'hooks');
@@ -567,7 +567,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     expect(readFileSync(join(hooksDir, 'attention', 'notify.mjs'), 'utf-8')).toBe('user nested hook');
   });
 
-  it('preserves helpers when a default-format standalone OMC hook remains active in plugin mode', async () => {
+  it('preserves helpers when a default-format standalone OMQ hook remains active in plugin mode', async () => {
     setupPluginWithHooks();
 
     const hooksDir = join(testClaudeDir, 'hooks');
@@ -582,7 +582,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     }
 
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         Stop: [
           {
@@ -619,7 +619,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     expect(existsSync(join(hooksLibDir, 'model-routing-override-message.mjs'))).toBe(true);
   });
 
-  it('removes default-format standalone OMC hook entries before plugin stale helper pruning', async () => {
+  it('removes default-format standalone OMQ hook entries before plugin stale helper pruning', async () => {
     setupPluginWithHooks();
 
     const hooksLibDir = join(testClaudeDir, 'hooks', 'lib');
@@ -628,7 +628,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     writeFileSync(join(hooksLibDir, 'state-root.mjs'), shippedStandaloneHookPayload('state-root.mjs', 'hooks/lib'));
 
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         UserPromptSubmit: [
           {
@@ -662,7 +662,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     expect(existsSync(join(hooksLibDir, 'state-root.mjs'))).toBe(false);
   });
 
-  it('preserves same-basename non-OMC hook files while pruning shipped OMC payloads', async () => {
+  it('preserves same-basename non-OMQ hook files while pruning shipped OMQ payloads', async () => {
     setupPluginWithHooks();
 
     const hooksDir = join(testClaudeDir, 'hooks');
@@ -696,13 +696,13 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     expect(readFileSync(join(hooksDir, 'keyword-detector.mjs'), 'utf-8')).toContain('Ralph keywords');
   });
 
-  it('preserves non-OMC hooks in settings.json when pruning plugin duplicates', async () => {
+  it('preserves non-OMQ hooks in settings.json when pruning plugin duplicates', async () => {
     // Set up plugin first (creates settings.json with enabledPlugins)
     setupPluginWithHooks();
 
-    // Then overwrite settings.json with mixed OMC + non-OMC hooks
+    // Then overwrite settings.json with mixed OMQ + non-OMQ hooks
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         UserPromptSubmit: [
           {
@@ -728,10 +728,10 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8'),
     ) as { hooks?: Record<string, Array<{ hooks: Array<{ command: string }> }>> };
 
-    // Non-OMC hook should be preserved
+    // Non-OMQ hook should be preserved
     const commands = writtenSettings.hooks?.UserPromptSubmit?.map(g => g.hooks[0]?.command) ?? [];
     expect(commands).toContain('node $HOME/.claude/hooks/other-plugin.mjs');
-    // OMC hook should NOT be re-added
+    // OMQ hook should NOT be re-added
     expect(commands).not.toContain('node "$HOME/.claude/hooks/keyword-detector.mjs"');
   });
 
@@ -748,7 +748,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       },
     }, null, 2));
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         SessionStart: [{
           matcher: '*',
@@ -786,7 +786,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     expect(readFileSync(join(testClaudeDir, 'settings.json'), 'utf-8')).toBe(firstWrittenSettings);
   });
 
-  it('reaches a fixed point when a plugin duplicate shares a group with a standalone OMC hook (#3638)', async () => {
+  it('reaches a fixed point when a plugin duplicate shares a group with a standalone OMQ hook (#3638)', async () => {
     setupPluginWithHooks();
 
     const pluginCommand = 'node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/session-start.mjs';
@@ -794,7 +794,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }] },
     }));
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         SessionStart: [{ hooks: [
           { type: 'command', command: pluginCommand },
@@ -822,7 +822,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }] },
     }));
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }] },
     }, null, 2));
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -852,11 +852,11 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }] },
     }));
     writeFileSync(join(testClaudeDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
-      'oh-my-claudecode': [{ installPath: fakePluginRoot }],
-      'oh-my-claudecode-lookalike': [],
+      'oh-my-qoder': [{ installPath: fakePluginRoot }],
+      'oh-my-qoder-lookalike': [],
     }));
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }] },
     }, null, 2));
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -895,13 +895,13 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     writeCompletePluginPayload(secondPluginRoot);
     writeFileSync(join(secondPluginRoot, 'hooks', 'hooks.json'), manifest);
     writeFileSync(join(testClaudeDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
-      'oh-my-claudecode': [
+      'oh-my-qoder': [
         { installPath: fakePluginRoot },
         { installPath: secondPluginRoot },
       ],
     }));
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: { SessionStart: [{ matcher: 'custom', hooks: [{ type: 'command', command: pluginCommand }] }] },
     }, null, 2));
 
@@ -923,7 +923,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }] },
     }));
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }] },
     }, null, 2));
 
@@ -944,7 +944,7 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
     const pluginCommand = 'node "$CLAUDE_PLUGIN_ROOT"/scripts/run.cjs "$CLAUDE_PLUGIN_ROOT"/scripts/session-start.mjs';
     writeFileSync(join(fakePluginRoot, 'hooks', 'hooks.json'), '{');
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }],
       },
@@ -973,13 +973,13 @@ describe('install() plugin-provided hook deduplication (#2252)', () => {
       hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'node different-plugin-hook.mjs' }] }] },
     }));
     writeFileSync(join(testClaudeDir, 'plugins', 'installed_plugins.json'), JSON.stringify({
-      'oh-my-claudecode': [
+      'oh-my-qoder': [
         { installPath: fakePluginRoot },
         { installPath: secondPluginRoot },
       ],
     }));
     writeFileSync(join(testClaudeDir, 'settings.json'), JSON.stringify({
-      enabledPlugins: { 'oh-my-claudecode': true },
+      enabledPlugins: { 'oh-my-qoder': true },
       hooks: {
         SessionStart: [{ hooks: [{ type: 'command', command: pluginCommand }] }],
       },

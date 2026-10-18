@@ -229,7 +229,7 @@ export {
 /**
  * Options for creating a OMC session
  */
-export interface OmcOptions {
+export interface OmqOptions {
   /** Custom configuration (merged with loaded config) */
   config?: Partial<PluginConfig>;
   /** Working directory (default: process.cwd()) */
@@ -247,7 +247,7 @@ export interface OmcOptions {
 /**
  * Result of creating a OMC session
  */
-export interface OmcSession {
+export interface OmqSession {
   /** The query options to pass to Claude Agent SDK */
   queryOptions: {
     options: {
@@ -281,10 +281,10 @@ export interface OmcSession {
  *
  * @example
  * ```typescript
- * import { createOmcSession } from 'oh-my-claudecode';
+ * import { createOmqSession } from 'oh-my-qoder';
  * import { query } from '@anthropic-ai/claude-agent-sdk';
  *
- * const session = createOmcSession();
+ * const session = createOmqSession();
  *
  * // Use with Claude Agent SDK
  * for await (const message of query({
@@ -295,7 +295,7 @@ export interface OmcSession {
  * }
  * ```
  */
-export function createOmcSession(options?: OmcOptions): OmcSession {
+export function createOmqSession(options?: OmqOptions): OmqSession {
   // Load configuration
   const loadedConfig = options?.skipConfigLoad ? {} : loadConfig();
   const config: PluginConfig = {

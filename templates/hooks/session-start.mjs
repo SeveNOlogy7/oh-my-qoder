@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// OMC Session Start Hook (Node.js)
+// OMQ Session Start Hook (Node.js)
 // Restores persistent mode states when session starts
 // Cross-platform: Windows, macOS, Linux
 
@@ -85,12 +85,12 @@ async function shouldRestoreModeState(directory, mode, state, sessionId) {
   return true;
 }
 
-// Read version from OMC's own package.json, not the project's (fixes #516)
+// Read version from OMQ's own package.json, not the project's (fixes #516)
 function resolveOmqVersion() {
   for (let i = 1; i <= 4; i++) {
     const candidate = join(__dirname, ...Array(i).fill('..'), 'package.json');
     const pkg = readJsonFile(candidate);
-    if ((pkg?.name === 'oh-my-claude-sisyphus' || pkg?.name === 'oh-my-claudecode') && pkg?.version) {
+    if (pkg?.name === 'oh-my-qoder' && pkg?.version) {
       return pkg.version;
     }
   }
@@ -111,7 +111,7 @@ function readUpdateCheckCache() {
 }
 
 // Merge into the existing cache so unrelated fields (e.g. the Claude Code
-// version tracked below) survive an OMC-only refresh. Refresh children from
+// version tracked below) survive an OMQ-only refresh. Refresh children from
 // concurrent sessions share this file, so serialize the read/modify/write and
 // publish a complete JSON document with a same-directory rename.
 function mergeUpdateCheckCache(fields) {
@@ -334,10 +334,10 @@ function isVertexSession() {
 }
 
 async function readRoutingForceInheritFromConfig(directory) {
-  const omcRoot = await resolveOmqStateRoot(directory);
+  const omqRoot = await resolveOmqStateRoot(directory);
   const configPaths = [
     join(configDir, '.omq-config.json'),
-    join(omcRoot, 'config.json'),
+    join(omqRoot, 'config.json'),
   ];
 
   for (const configPath of configPaths) {
@@ -372,19 +372,19 @@ function compactBudgetedText(text, maxChars) {
   return `${text.slice(0, maxChars - notice.length).trimEnd()}${notice}`;
 }
 
-function looksLikeOmcGuidance(content) {
+function looksLikeOmqGuidance(content) {
   return (
     typeof content === 'string' &&
     content.includes('<guidance_schema_contract>') &&
-    /oh-my-(claudecode|codex)/i.test(content) &&
+    /oh-my-(qoder|codex)/i.test(content) &&
     OMQ_STARTUP_COMPACTABLE_SECTIONS.some(
       section => content.includes(`<${section}>`) && content.includes(`</${section}>`),
     )
   );
 }
 
-function compactOmcStartupGuidance(content) {
-  if (!looksLikeOmcGuidance(content)) return content;
+function compactOmqStartupGuidance(content) {
+  if (!looksLikeOmqGuidance(content)) return content;
 
   let compacted = content;
   let removedAny = false;
@@ -405,7 +405,7 @@ function compactOmcStartupGuidance(content) {
     return removedAny ? normalized : content;
   }
 
-  const notice = '\n\n[OMC startup guidance truncated to preserve an 8000-character budget. Read the source file directly for the full document.]';
+  const notice = '\n\n[OMQ startup guidance truncated to preserve an 8000-character budget. Read the source file directly for the full document.]';
   return `${normalized.slice(0, OMQ_STARTUP_GUIDANCE_MAX_CHARS - notice.length).trimEnd()}${notice}`;
 }
 
@@ -413,9 +413,9 @@ function formatUpdateNoticeForUser(updateInfo, options = {}) {
   const latestVersion = updateInfo?.latestVersion || 'latest';
   const currentVersion = updateInfo?.currentVersion || 'unknown';
   const action = options.autoUpgradePrompt === false
-    ? 'To update later, run: omc update'
-    : 'Run /update to upgrade now, or use /plugin install oh-my-claudecode';
-  return `[OMQ UPDATE AVAILABLE] oh-my-claudecode v${latestVersion} is available (current: v${currentVersion}). ${action}`;
+    ? 'To update later, run: omq update'
+    : 'Run /update to upgrade now, or use /plugin install oh-my-qoder';
+  return `[OMQ UPDATE AVAILABLE] oh-my-qoder v${latestVersion} is available (current: v${currentVersion}). ${action}`;
 }
 
 function buildSessionStartAdditionalContext(messages) {
@@ -475,8 +475,8 @@ const WORKING_MEMORY_HEADER = '## Working Memory';
  * Get notepad path in .omq directory
  */
 async function getNotepadPath(directory) {
-  const omcRoot = await resolveOmqStateRoot(directory);
-  return join(omcRoot, NOTEPAD_FILENAME);
+  const omqRoot = await resolveOmqStateRoot(directory);
+  return join(omqRoot, NOTEPAD_FILENAME);
 }
 
 /**
@@ -540,7 +540,7 @@ ${priorityContext}
 }
 
 /**
- * Validate that a candidate cwd is a real OMC workspace anchor.
+ * Validate that a candidate cwd is a real OMQ workspace anchor.
  * Returns the candidate unchanged if it is non-empty AND contains a
  * `.omq-workspace` marker OR a `.git` directory.
  * Otherwise emits a one-line warning to stderr and returns null,
@@ -644,14 +644,14 @@ async function main() {
     // Template-version drift check: warn once per session if installed templates differ from plugin
     if (currentVersion) {
       try {
-        const omcRoot = await resolveOmqStateRoot(directory);
-        const stampPath = join(omcRoot, 'template-version.json');
-        const driftMarkerPath = join(omcRoot, 'state', `drift-warned-${sessionId || 'nosession'}.json`);
+        const omqRoot = await resolveOmqStateRoot(directory);
+        const stampPath = join(omqRoot, 'template-version.json');
+        const driftMarkerPath = join(omqRoot, 'state', `drift-warned-${sessionId || 'nosession'}.json`);
         if (existsSync(stampPath) && !existsSync(driftMarkerPath)) {
           const stamp = readJsonFile(stampPath);
           if (stamp?.version && stamp.version !== currentVersion) {
             process.stderr.write(
-              `[omc] template version drift: installed=${stamp.version}, plugin=${currentVersion} — run /oh-my-qoder:omc-setup to refresh\n`
+              `[omq] template version drift: installed=${stamp.version}, plugin=${currentVersion} — run /oh-my-qoder:omq-setup to refresh\n`
             );
             mkdirSync(join(driftMarkerPath, '..'), { recursive: true });
             writeFileSync(driftMarkerPath, JSON.stringify({ warnedAt: new Date().toISOString() }));
@@ -663,9 +663,9 @@ async function main() {
     const updateInfo = await runUpdateChecks();
     if (updateInfo) {
       const configPath = join(getClaudeConfigDir(), '.omq-config.json');
-      const omcConfig = readJsonFile(configPath) || {};
+      const omqConfig = readJsonFile(configPath) || {};
       userMessages.push(formatUpdateNoticeForUser(updateInfo, {
-        autoUpgradePrompt: omcConfig.autoUpgradePrompt !== false,
+        autoUpgradePrompt: omqConfig.autoUpgradePrompt !== false,
       }));
     }
 
@@ -679,9 +679,9 @@ async function main() {
     // [$CLAUDE_CONFIG_DIR|~/.claude]/todos/ directory.
     // That directory accumulates todo files from ALL past sessions across all
     // projects, causing phantom task counts in fresh sessions (see issue #354).
-    const omcRootForTodos = await resolveOmqStateRoot(directory);
+    const omqRootForTodos = await resolveOmqStateRoot(directory);
     const localTodoPaths = [
-      join(omcRootForTodos, 'todos.json'),
+      join(omqRootForTodos, 'todos.json'),
       join(directory, '.claude', 'todos.json')
     ];
     let incompleteCount = 0;
@@ -729,7 +729,7 @@ ${notepadContext}
     const agentsMdPath = join(directory, 'AGENTS.md');
     if (existsSync(agentsMdPath)) {
       try {
-        const agentsContent = compactOmcStartupGuidance(readFileSync(agentsMdPath, 'utf-8').trim());
+        const agentsContent = compactOmqStartupGuidance(readFileSync(agentsMdPath, 'utf-8').trim());
         if (agentsContent) {
           messages.push(`<session-restore>
 

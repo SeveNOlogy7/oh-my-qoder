@@ -9,12 +9,12 @@ import type { JevAnswer, JevResponse } from '../../jev/index.js';
 
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_MAX_REQUESTS',
-  'OMC_JEV_EXCERPT_CHARS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_MAX_REQUESTS',
+  'OMQ_JEV_EXCERPT_CHARS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
 ] as const;
 
 const PROMPT =
@@ -30,7 +30,7 @@ beforeEach(async () => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OMC_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV_LOG_DIR = logDir;
 });
 
 afterEach(async () => {
@@ -45,7 +45,7 @@ function stubFetch(answer: Partial<JevAnswer>): { fetchFn: typeof fetch; calls: 
   const calls: unknown[] = [];
   const body = JSON.stringify({
     answers: {
-      answer: { type: answer.choice !== undefined ? 'Choice' : 'Noul', ...answer },
+      answer: { type: answer.choice !== undefined ? 'choice' : 'noul', ...answer },
     },
   } satisfies JevResponse);
   const fetchFn = (async (_url: unknown, init?: unknown) => {
@@ -73,7 +73,7 @@ async function waitForLogLines(count: number): Promise<string[]> {
 describe('task-size-detector shadow judgment point', () => {
   it('with config, records a shadow log line with the twin classification and Jev Choice', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'task-size';
+    process.env.OMQ_JEV = 'task-size';
     const { fetchFn, calls } = stubFetch({ choice: 'medium', confidence: 0.6 });
 
     const result = await recordTaskSizeShadow(PROMPT, fetchFn);
@@ -88,14 +88,14 @@ describe('task-size-detector shadow judgment point', () => {
       mode: 'shadow',
       state: { prompt: PROMPT, source: 'user-prompt-submit' },
       heuristic: classifyTaskSize(PROMPT),
-      jev: { type: 'Choice', choice: 'medium', confidence: 0.6 },
+      jev: { type: 'choice', choice: 'medium', confidence: 0.6 },
     });
     expect(calls).toHaveLength(1);
   });
 
   it('without a key, zero fetch calls and the classification is unchanged', async () => {
     delete process.env.TYPESAFE_API_KEY;
-    process.env.OMC_JEV = 'task-size';
+    process.env.OMQ_JEV = 'task-size';
     const { fetchFn, calls } = stubFetch({ choice: 'small' });
 
     const result = await recordTaskSizeShadow(PROMPT, fetchFn);
@@ -110,9 +110,9 @@ describe('task-size-detector shadow judgment point', () => {
     await expect(readFile(join(logDir, 'shadow.jsonl'), 'utf8')).rejects.toThrow();
   });
 
-  it('with OMC_JEV=off, zero fetch calls even with a key', async () => {
+  it('with OMQ_JEV=off, zero fetch calls even with a key', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'off';
+    process.env.OMQ_JEV = 'off';
     const { fetchFn, calls } = stubFetch({ choice: 'small' });
 
     const result = await recordTaskSizeShadow(PROMPT, fetchFn);
@@ -123,8 +123,8 @@ describe('task-size-detector shadow judgment point', () => {
 
   it('bounds the prompt excerpt in the logged state', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'task-size';
-    process.env.OMC_JEV_EXCERPT_CHARS = '40';
+    process.env.OMQ_JEV = 'task-size';
+    process.env.OMQ_JEV_EXCERPT_CHARS = '40';
     const { fetchFn } = stubFetch({ choice: 'medium' });
 
     await recordTaskSizeShadow(PROMPT, fetchFn);

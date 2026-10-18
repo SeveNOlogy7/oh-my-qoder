@@ -17,7 +17,7 @@ resolve_active_plugin_root() {
   is_valid_plugin_root() {
     local candidate="$1"
     # The skill probe is a canary that the checkout carries real skill content
-    # rather than an empty/partial tree. omc-reference was retired in 5.0.0, so
+    # rather than an empty/partial tree. omq-reference was retired in 5.0.0, so
     # this now probes wiki, its canonical replacement.
     [ -d "$candidate" ] \
       && [ -f "${candidate}/scripts/setup-claude-md.sh" ] \
@@ -85,7 +85,7 @@ resolve_active_plugin_root() {
   done | select_latest_semver)
 
   if [ -f "$installed_plugins" ] && command -v jq >/dev/null 2>&1; then
-    active_path=$(jq -r '(.plugins // .) | to_entries[] | select(.key | startswith("oh-my-claudecode")) | .value[0].installPath // empty' "$installed_plugins" 2>/dev/null || true)
+    active_path=$(jq -r '(.plugins // .) | to_entries[] | select(.key | startswith("oh-my-qoder")) | .value[0].installPath // empty' "$installed_plugins" 2>/dev/null || true)
     if [ -n "$active_path" ] && is_valid_plugin_root "$active_path"; then
       newest=$(printf '%s\n%s\n' "$(basename "$active_path")" "$latest" | select_latest_semver)
       if [ -n "$latest" ] && [ "$newest" = "$latest" ]; then
@@ -109,31 +109,31 @@ resolve_active_plugin_root() {
 ensure_local_omc_git_exclude() {
   local exclude_path
   if ! exclude_path=$(git rev-parse --git-path info/exclude 2>/dev/null); then
-    echo "Skipped OMC git exclude setup (not a git repository)"
+    echo "Skipped OMQ git exclude setup (not a git repository)"
     return 0
   fi
   mkdir -p "$(dirname "$exclude_path")"
-  if [ -f "$exclude_path" ] && grep -Fq '# BEGIN OMC local artifacts' "$exclude_path"; then
+  if [ -f "$exclude_path" ] && grep -Fq '# BEGIN OMQ local artifacts' "$exclude_path"; then
     if grep -Fxq '.omx/' "$exclude_path"; then
-      echo "OMC git exclude already configured"
+      echo "OMQ git exclude already configured"
       return 0
     fi
     [ ! -s "$exclude_path" ] || printf '\n' >> "$exclude_path"
     printf '.omx/\n' >> "$exclude_path"
-    echo "Updated OMC git exclude for local OMX artifacts"
+    echo "Updated OMQ git exclude for local OMX artifacts"
     return 0
   fi
   [ ! -f "$exclude_path" ] || [ ! -s "$exclude_path" ] || printf '\n' >> "$exclude_path"
   cat >> "$exclude_path" <<'EOF'
-# BEGIN OMC local artifacts
+# BEGIN OMQ local artifacts
 !.omq/
 .omq/*
 !.omq/skills/
 !.omq/skills/**
 .omx/
-# END OMC local artifacts
+# END OMQ local artifacts
 EOF
-  echo "Configured git exclude for local OMC/OMX artifacts (preserving .omq/skills/)"
+  echo "Configured git exclude for local OMQ/OMX artifacts (preserving .omq/skills/)"
 }
 
 install_reference_skill() {
@@ -143,6 +143,31 @@ install_reference_skill() {
   cp "$source" "$SKILL_TARGET_PATH"
   echo "Installed wiki skill to $SKILL_TARGET_PATH"
 }
+
+plugin_is_active() {
+  local settings_path="${CONFIG_DIR}/settings.json"
+  [ -f "$settings_path" ] || return 1
+  node - "$settings_path" <<'NODE'
+const fs = require('node:fs');
+const [settingsPath] = process.argv.slice(2);
+let settings;
+try {
+  settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+} catch {
+  process.exit(1);
+}
+if (!settings || typeof settings !== 'object' || Array.isArray(settings)) process.exit(1);
+const active = [settings.enabledPlugins, settings.plugins].some(candidate => {
+  if (Array.isArray(candidate)) {
+    return candidate.some(id => typeof id === 'string' && id.toLowerCase().includes('oh-my-qoder'));
+  }
+  return candidate && typeof candidate === 'object'
+    && Object.entries(candidate).some(([id, value]) => id.toLowerCase().includes('oh-my-qoder') && value !== false);
+});
+process.exit(active ? 0 : 1);
+NODE
+}
+
 # Issue #3743: installed_plugins.json can record Windows-style installPath
 # values that never string-match POSIX/MSYS roots, which made the re-exec guard
 # exec the same script forever. Canonicalize both sides physically; equal roots
@@ -280,7 +305,11 @@ if [ "$VALIDATOR_STATUS" -ne 0 ]; then
   exit "$VALIDATOR_STATUS"
 fi
 
-install_reference_skill "$CANONICAL_REFERENCE_SKILL"
+if plugin_is_active; then
+  echo "Skipped wiki skill install (OMQ plugin is active)"
+else
+  install_reference_skill "$CANONICAL_REFERENCE_SKILL"
+fi
 if [ "$MODE" = "local" ]; then ensure_local_omc_git_exclude; fi
 
 if [ "$MODE" = "global" ]; then
@@ -292,12 +321,12 @@ if [ "$MODE" = "global" ]; then
   done
   SETTINGS_FILE="$CONFIG_DIR/settings.json"
   if [ -f "$SETTINGS_FILE" ] && jq -e 'any(.. | objects | .command? | strings; test("(^|[^[:alnum:]_-])(keyword-detector|stop-continuation|persistent-mode|session-start)(\\.(sh|mjs|cjs|js))?([^[:alnum:]_-]|$)"))' "$SETTINGS_FILE" >/dev/null 2>&1; then
-    echo "NOTE: Found legacy OMC hook entries in settings.json. Remove only the legacy OMC hook entries from $SETTINGS_FILE; third-party hook entries can remain."
+    echo "NOTE: Found legacy OMQ hook entries in settings.json. Remove only the legacy OMQ hook entries from $SETTINGS_FILE; third-party hook entries can remain."
   fi
 fi
 
-if [ -f "$CONFIG_DIR/settings.json" ] && grep -q 'oh-my-claudecode' "$CONFIG_DIR/settings.json"; then
+if plugin_is_active; then
   echo "Plugin verified"
 else
-  echo "Plugin NOT found - run: claude /install-plugin oh-my-claudecode"
+  echo "Plugin NOT found - run: claude /install-plugin oh-my-qoder"
 fi

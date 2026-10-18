@@ -10,11 +10,11 @@ import { resetJevResolverState } from '../../jev/index.js';
 const TEST_KEY = 'test-key-123';
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
-  'OMC_HOME',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
+  'OMQ_HOME',
 ] as const;
 
 let logDir = '';
@@ -50,9 +50,9 @@ beforeEach(() => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OMC_HOME = homeDir;
-  process.env.OMC_JEV_LOG_DIR = logDir;
-  process.env.OMC_JEV_ENDPOINT = 'http://127.0.0.1:1/v1/systemone';
+  process.env.OMQ_HOME = homeDir;
+  process.env.OMQ_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV_ENDPOINT = 'http://127.0.0.1:1/v1/systemone';
 });
 
 afterEach(() => {
@@ -75,7 +75,7 @@ function stubFetch(): { fetchFn: typeof fetch; calls: Array<{ body: string }> } 
       status: 200,
       json: async () => ({
         answers: {
-          simplification_worthy: { type: 'Noul', noul: true, confidence: 0.8 },
+          simplification_worthy: { type: 'noul', noul: true, confidence: 0.8 },
         },
       }),
     } as unknown as Response;
@@ -99,7 +99,7 @@ async function waitForLogLines(count: number): Promise<string[]> {
 describe('simplifier-trigger shadow judgment point', () => {
   it('with config, records a shadow line with the fire-once twin and the Jev Noul', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'simplifier-trigger';
+    process.env.OMQ_JEV = 'simplifier-trigger';
     const { fetchFn, calls } = stubFetch();
     const files = ['src/a.ts', 'src/b.ts'];
 
@@ -124,7 +124,7 @@ describe('simplifier-trigger shadow judgment point', () => {
     expect(entry.point).toBe('simplifier-trigger');
     expect(entry.mode).toBe('shadow');
     expect(entry.heuristic).toBe(true);
-    expect(entry.jev?.type).toBe('Noul');
+    expect(entry.jev?.type).toBe('noul');
     expect(entry.state).toMatchObject({ cwd: repoDir, files, source: 'code-simplifier-stop' });
     expect(calls).toHaveLength(1);
   });
@@ -156,7 +156,7 @@ describe('simplifier-trigger shadow judgment point', () => {
     expect(existsSync(join(logDir, 'shadow.jsonl'))).toBe(false);
   });
 
-  it('without OMC_JEV opt-in, a key alone triggers zero fetch calls (strict per-point opt-in)', async () => {
+  it('without OMQ_JEV opt-in, a key alone triggers zero fetch calls (strict per-point opt-in)', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
     const { fetchFn, calls } = stubFetch();
 
@@ -177,8 +177,8 @@ describe('simplifier-trigger shadow judgment point', () => {
     const withoutJev = processCodeSimplifier(repoDir, stateDir);
 
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'simplifier-trigger';
-    process.env.OMC_JEV_TIMEOUT_MS = '20';
+    process.env.OMQ_JEV = 'simplifier-trigger';
+    process.env.OMQ_JEV_TIMEOUT_MS = '20';
 
     // Clear the fire-once marker written by the first call so the second call
     // takes the same fresh path (the marker write is the only host-side state).
@@ -192,8 +192,8 @@ describe('simplifier-trigger shadow judgment point', () => {
 
   it('on never-resolving Jev fetch, the twin is unchanged and a degraded line is logged', async () => {
     process.env.TYPESAFE_API_KEY = TEST_KEY;
-    process.env.OMC_JEV = 'simplifier-trigger';
-    process.env.OMC_JEV_TIMEOUT_MS = '20';
+    process.env.OMQ_JEV = 'simplifier-trigger';
+    process.env.OMQ_JEV_TIMEOUT_MS = '20';
     const fetchFn = vi.fn(async () => new Promise<Response>(() => {})) as unknown as typeof fetch;
 
     const result = await recordSimplifierTriggerShadow({

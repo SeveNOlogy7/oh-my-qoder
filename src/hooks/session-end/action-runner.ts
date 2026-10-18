@@ -28,10 +28,24 @@ function openClawRoutingEnvironment(payload: Record<string, unknown>): NodeJS.Pr
 }
 
 function runnerEnvironment(context: ActionRunContext): NodeJS.ProcessEnv {
-  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'QODER_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
+  // APPDATA/LOCALAPPDATA are required for gh keyring-free auth lookup on Windows
+  // (hosts.yml lives in %AppData%\GitHub CLI); spawn-next runners issue gh
+  // tracker commands, so without them every tracker update fails auth.
+  const baseKeys = ['PATH', 'HOME', 'USERPROFILE', ...(process.platform === 'win32' ? ['APPDATA', 'LOCALAPPDATA'] : []), 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL', 'NODE_ENV', 'CLAUDE_CONFIG_DIR', 'OMQ_STATE_DIR', 'OMQ_HOOK_CONFIG', 'OMQ_CONFIG_PATH', 'OMQ_HOOK_BRIDGE', 'OMQ_NOTIFY', 'OMQ_NOTIFY_PROFILE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE'];
   const notificationKeys = ['OMQ_TELEGRAM', 'OMQ_DISCORD', 'OMQ_SLACK', 'OMQ_WEBHOOK', 'OMQ_DISCORD_MENTION', 'OMQ_DISCORD_NOTIFIER_BOT_TOKEN', 'OMQ_DISCORD_NOTIFIER_CHANNEL', 'OMQ_DISCORD_WEBHOOK_URL', 'OMQ_TELEGRAM_BOT_TOKEN', 'OMQ_TELEGRAM_NOTIFIER_BOT_TOKEN', 'OMQ_TELEGRAM_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_CHAT_ID', 'OMQ_TELEGRAM_NOTIFIER_UID', 'OMQ_SLACK_WEBHOOK_URL', 'OMQ_SLACK_MENTION', 'OMQ_SLACK_BOT_TOKEN', 'OMQ_SLACK_APP_TOKEN', 'OMQ_SLACK_BOT_CHANNEL'];
   const keys = context.actionName === 'callback' || context.actionName === 'notification' ? [...baseKeys, ...notificationKeys] : baseKeys;
-  const exact = Object.fromEntries(keys.flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]]]));
+  // ANTHROPIC_* carries model provider auth/routing (API key, base URL, token);
+  // the spawn-next runner launches claude chain links as its children, and
+  // without the passthrough every factory link exits "Not logged in"
+  // (dogfood: the chain's first real AFK spawn died exactly there while
+  // workerEnvironment() had already been fixed). Mirrors workerEnvironment().
+  // Scoped to spawn-next: callback/openclaw/cleanup children never need model
+  // credentials, so they must not inherit them (same least-privilege rule as
+  // notificationKeys above).
+  const authPassthrough = context.actionName === 'spawn-next'
+    ? Object.entries(process.env).filter(([key]) => key.startsWith('ANTHROPIC_'))
+    : [];
+  const exact = Object.fromEntries([...keys.flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]]]), ...authPassthrough]);
   if (context.actionName !== 'openclaw') return exact;
   const enabled = context.action.payload.openClawEnabled === true ? { OMQ_OPENCLAW: '1' } : {};
   return { ...exact, ...enabled, ...openClawRoutingEnvironment(context.action.payload) };

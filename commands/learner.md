@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Extract a learned skill from the current conversation"
 ---
 
 # OMQ learner

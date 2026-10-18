@@ -15,12 +15,12 @@ const environmentIsolation = await vi.hoisted(async () => {
   const previous = {
     home: process.env.HOME,
     userProfile: process.env.USERPROFILE,
-    stateDir: process.env.OMC_STATE_DIR,
+    stateDir: process.env.OMQ_STATE_DIR,
   };
-  const root = mkdtempSync(pathJoin(osTmpdir(), 'omc-task-storage-integrity-import-'));
+  const root = mkdtempSync(pathJoin(osTmpdir(), 'omq-task-storage-integrity-import-'));
   process.env.HOME = root;
   process.env.USERPROFILE = root;
-  process.env.OMC_STATE_DIR = pathJoin(root, 'state');
+  process.env.OMQ_STATE_DIR = pathJoin(root, 'state');
   return { previous, root };
 });
 
@@ -127,12 +127,12 @@ function runSeparateProcessTransition(cwd: string, taskId: string): Promise<unkn
   const script = `
     const { teamTransitionTaskStatus } = await import(${JSON.stringify(teamOpsPath)});
     const result = await teamTransitionTaskStatus(
-      process.env.OMC_TEST_TEAM,
-      process.env.OMC_TEST_TASK,
+      process.env.OMQ_TEST_TEAM,
+      process.env.OMQ_TEST_TASK,
       'in_progress',
       'completed',
-      process.env.OMC_TEST_TOKEN,
-      process.env.OMC_TEST_CWD,
+      process.env.OMQ_TEST_TOKEN,
+      process.env.OMQ_TEST_CWD,
       { result: 'separate process completion' },
     );
     process.stdout.write(JSON.stringify(result));
@@ -144,10 +144,10 @@ function runSeparateProcessTransition(cwd: string, taskId: string): Promise<unkn
         ...process.env,
         HOME: cwd,
         USERPROFILE: cwd,
-        OMC_TEST_TEAM: teamName,
-        OMC_TEST_TASK: taskId,
-        OMC_TEST_TOKEN: `token-${taskId}`,
-        OMC_TEST_CWD: cwd,
+        OMQ_TEST_TEAM: teamName,
+        OMQ_TEST_TASK: taskId,
+        OMQ_TEST_TOKEN: `token-${taskId}`,
+        OMQ_TEST_CWD: cwd,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -177,13 +177,13 @@ describe('team task storage integrity', () => {
   let previousStateDir: string | undefined;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'omc-task-storage-integrity-'));
+    cwd = await mkdtemp(join(tmpdir(), 'omq-task-storage-integrity-'));
     previousHome = process.env.HOME;
     previousUserProfile = process.env.USERPROFILE;
-    previousStateDir = process.env.OMC_STATE_DIR;
+    previousStateDir = process.env.OMQ_STATE_DIR;
     process.env.HOME = cwd;
     process.env.USERPROFILE = cwd;
-    delete process.env.OMC_STATE_DIR;
+    delete process.env.OMQ_STATE_DIR;
     await mkdir(join(teamRoot(cwd), 'tasks'), { recursive: true });
   });
 
@@ -192,8 +192,8 @@ describe('team task storage integrity', () => {
     else process.env.HOME = previousHome;
     if (previousUserProfile === undefined) delete process.env.USERPROFILE;
     else process.env.USERPROFILE = previousUserProfile;
-    if (previousStateDir === undefined) delete process.env.OMC_STATE_DIR;
-    else process.env.OMC_STATE_DIR = previousStateDir;
+    if (previousStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+    else process.env.OMQ_STATE_DIR = previousStateDir;
     await rm(cwd, { recursive: true, force: true });
   });
 
@@ -671,7 +671,7 @@ afterAll(async () => {
   else process.env.HOME = previous.home;
   if (previous.userProfile === undefined) delete process.env.USERPROFILE;
   else process.env.USERPROFILE = previous.userProfile;
-  if (previous.stateDir === undefined) delete process.env.OMC_STATE_DIR;
-  else process.env.OMC_STATE_DIR = previous.stateDir;
+  if (previous.stateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = previous.stateDir;
   await rm(root, { recursive: true, force: true });
 });

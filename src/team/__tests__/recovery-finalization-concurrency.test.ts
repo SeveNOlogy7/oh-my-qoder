@@ -19,11 +19,11 @@ let cwd: string;
 const TEAM_INSTANCE_ID = '55555555-5555-4555-8555-555555555555';
 let previousHome: string | undefined;
 let previousUserProfile: string | undefined;
-let previousOmcStateDir: string | undefined;
+let previousOmqStateDir: string | undefined;
 beforeEach(() => {
   previousHome = process.env.HOME;
   previousUserProfile = process.env.USERPROFILE;
-  previousOmcStateDir = process.env.OMC_STATE_DIR;
+  previousOmqStateDir = process.env.OMQ_STATE_DIR;
 });
 afterEach(() => {
   if (cwd) rmSync(cwd, { recursive: true, force: true });
@@ -31,8 +31,8 @@ afterEach(() => {
   else process.env.HOME = previousHome;
   if (previousUserProfile === undefined) delete process.env.USERPROFILE;
   else process.env.USERPROFILE = previousUserProfile;
-  if (previousOmcStateDir === undefined) delete process.env.OMC_STATE_DIR;
-  else process.env.OMC_STATE_DIR = previousOmcStateDir;
+  if (previousOmqStateDir === undefined) delete process.env.OMQ_STATE_DIR;
+  else process.env.OMQ_STATE_DIR = previousOmqStateDir;
   cwd = '';
 });
 
@@ -40,7 +40,7 @@ function fixtureTmuxServerIdentity(): { socket_path: string; server_pid: number;
   const processStartedAt = currentStrictProcessStartIdentity();
   if (!processStartedAt) throw new Error('fixture tmux process identity unavailable');
   return {
-    socket_path: join(cwd, '.omc-fixture-tmux.sock'),
+    socket_path: join(cwd, '.omq-fixture-tmux.sock'),
     server_pid: process.pid,
     process_started_at: processStartedAt,
   };
@@ -51,7 +51,7 @@ describe('recovery terminal publication revision fence', () => {
     cwd = mkdtempSync(join(tmpdir(), 'recovery-final-revision-race-'));
     process.env.HOME = cwd;
     process.env.USERPROFILE = cwd;
-    process.env.OMC_STATE_DIR = join(cwd, 'omc-state');
+    process.env.OMQ_STATE_DIR = join(cwd, 'omq-state');
     const teamName = 'recovery-team';
     const tmuxServerIdentity = fixtureTmuxServerIdentity();
     const instance = createTeamInstanceBinding({ teamName, cwd, instanceId: TEAM_INSTANCE_ID });

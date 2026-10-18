@@ -46,7 +46,7 @@ function expectBlock(result: GuardResult) {
 }
 
 function makeRepo() {
-  const dir = mkdtempSync(join(tmpdir(), 'omc-workflow-drift-'));
+  const dir = mkdtempSync(join(tmpdir(), 'omq-workflow-drift-'));
   execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: dir });
@@ -86,7 +86,7 @@ describe('workflow-drift-guard Stop hook', () => {
   });
 
   it('uses canonical current-message evidence and preserves aliases', () => {
-    const fixture = join(mkdtempSync(join(tmpdir(), 'omc-workflow-drift-transcript-')), 'transcript.txt');
+    const fixture = join(mkdtempSync(join(tmpdir(), 'omq-workflow-drift-transcript-')), 'transcript.txt');
     writeFileSync(fixture, 'I found two viable paths. Which approach should I take?\n');
     expectPass(runGuard(guardInput('Should I proceed?', { transcript_path: fixture })));
 
@@ -320,6 +320,36 @@ describe('workflow-drift-guard Stop hook', () => {
     expect(result.decision).toBe('block');
     expect(result.reason).toContain('skipped test');
     expect(result.reason).toContain('index.test.ts');
+  });
+
+  it('blocks unconditional skips: no argument, template title, and a wrapped argument list', () => {
+    for (const body of [
+      "test('a', () => {\n  test.skip();\n});\n",
+      "it.skip(`covers ${'edge'}`, () => {});\n",
+      "describe.skip(\n  'wrapped title',\n  () => {},\n);\n",
+    ]) {
+      const cwd = makeRepo();
+      writeFileSync(join(cwd, 'index.test.ts'), body);
+      const result = runGuard({ hook_event_name: 'Stop', last_assistant_message: 'Implemented and complete.', cwd });
+      expect(result.decision).toBe('block');
+      expect(result.reason).toContain('skipped test');
+    }
+  });
+
+  it('allows runtime-conditional skips (issue #4189)', () => {
+    const cwd = makeRepo();
+    writeFileSync(join(cwd, 'screens.spec.ts'), [
+      "import { test } from '@playwright/test';",
+      "const ENABLED = process.env.E2E_SCREENSHOTS === '1';",
+      "test('screenshots', async ({ page }) => {",
+      "  test.skip(!ENABLED, 'set E2E_SCREENSHOTS=1 to run');",
+      "  test.skip(process.env.CI === 'true', 'local only');",
+      "});",
+      "test.skip(({ browserName }) => browserName === 'webkit', 'no webkit');",
+      '',
+    ].join('\n'));
+
+    expectPass(runGuard({ hook_event_name: 'Stop', last_assistant_message: 'Implemented and complete.', cwd }));
   });
 
   it('allows ready-to-continue wording while work is not being claimed complete', () => {

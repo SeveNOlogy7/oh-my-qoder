@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PreToolUse Hook: OMC Reminder Enforcer (Node.js)
+ * PreToolUse Hook: OMQ Reminder Enforcer (Node.js)
  * Injects contextual reminders before every tool execution
  * Cross-platform: Windows, macOS, Linux
  */
@@ -22,6 +22,7 @@ import { readStdin } from './lib/stdin.mjs';
 import { resolveConfiguredAgentModel } from './lib/agent-model-config.mjs';
 import { BOUNDED_GIT_TIMEOUT_MS } from './lib/bounded-git-timeout.mjs';
 import { isSkillVisibleToUser } from './lib/skill-entitlements.mjs';
+import { isJevShadowOptedIn, recordJevShadow } from './lib/jev-shadow.mjs';
 
 // Inlined from src/config/models.ts — avoids a dist/ import so the hook works
 // before a build and stays consistent with the TypeScript source.
@@ -92,7 +93,7 @@ function isTierAlias(modelId) {
 // Order mirrors src/config/models.ts:TIER_ENV_KEYS with OMQ_SUBAGENT_MODEL as top-priority override.
 // OMQ_SUBAGENT_MODEL at position 0 wins for ALL tiers — tier-specific vars are only
 // reached when it is unset or fails isSubagentSafeModelId validation.
-// OMQ_MODEL_* is intentionally excluded: those are OMC-internal vars that the OMC bridge
+// OMQ_MODEL_* is intentionally excluded: those are OMQ-internal vars that the OMQ bridge
 // reads for its own routing, but CC itself does not read them when resolving tier aliases
 // (sonnet/haiku/opus). Allowing OMQ_MODEL_* as proof would let the hook pass while CC
 // still fails to route the alias, reintroducing the downstream deadlock this gate prevents.
@@ -109,7 +110,7 @@ function resolveTierAliasToSafeModel(tierAlias) {
     const value = (process.env[key] || '').trim();
     // CC-native vars (ANTHROPIC_DEFAULT_* and CLAUDE_CODE_BEDROCK_*) are read by CC's own
     // model resolution, which handles [1m] suffixes correctly for explicit model= calls.
-    // OMC-internal vars (OMQ_SUBAGENT_MODEL, OMQ_MODEL_*) are not read by CC, so a [1m]
+    // OMQ-internal vars (OMQ_SUBAGENT_MODEL, OMQ_MODEL_*) are not read by CC, so a [1m]
     // value there is not a valid routing proof — keep the stricter isSubagentSafeModelId check.
     const isAnthropicDefaultTierVar = key.startsWith('ANTHROPIC_DEFAULT_');
     const isNativeCcVar = isAnthropicDefaultTierVar || key.startsWith('CLAUDE_CODE_BEDROCK_');
@@ -129,7 +130,7 @@ function normalizeToCcAlias(model) {
   return null;
 }
 /**
- * Read the `model:` field from an OMC agent definition's YAML frontmatter.
+ * Read the `model:` field from an OMQ agent definition's YAML frontmatter.
  * Returns the raw model string (e.g. "claude-opus-4-6") or null if not found.
  */
 function readAgentDefinitionModel(subagentType) {
@@ -178,7 +179,7 @@ function readAgentDefinitionModel(subagentType) {
 // identifier, and forbids closest-match substitution.
 // ---------------------------------------------------------------------------
 
-const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-qoder:', 'omq:', 'oh-my-claudecode:', 'omc:'];
+const SKILL_AGENT_NAMESPACE_PREFIXES = ['oh-my-qoder:', 'omq:', 'omc:'];
 const SKILL_IDENTIFIER_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 function splitAgentNamespace(subagentType) {
@@ -205,7 +206,7 @@ function getPluginSkillsDirs() {
 
 /**
  * Whether an agent definition resolves for the given identifier.
- * Namespaced identifiers (oh-my-claudecode:X / omc:X) resolve only against
+ * Namespaced identifiers (oh-my-qoder:X / omc:X) resolve only against
  * plugin agents; bare identifiers resolve through the full native chain
  * (plugin, project .claude/agents, user config agents). A real agent always
  * wins over a bundled skill with the same name (collision rule).
@@ -266,7 +267,7 @@ const CC_NATIVE_SKILL_COMMANDS = new Set([
 
 function toSafeSkillName(name) {
   const normalized = name.trim();
-  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omc-${normalized}` : normalized;
+  return CC_NATIVE_SKILL_COMMANDS.has(normalized.toLowerCase()) ? `omq-${normalized}` : normalized;
 }
 /**
  * Whether a bundled skill directory is visible to the current user, mirroring
@@ -343,8 +344,8 @@ function buildCanonicalSkillRegistry() {
  * agents are not visible to file-based plugin/project/user agent discovery,
  * yet `skills/plan` exists (registering `omq-plan`). Bare names therefore
  * never consult the directory shortcut; explicitly namespaced identifiers
- * (`oh-my-claudecode:` / `omc:`) are pinned to the OMC plugin namespace and
- * keep the full canonical + shortcut resolution (e.g. `oh-my-claudecode:plan`
+ * (`oh-my-qoder:` / `omc:`) are pinned to the OMQ plugin namespace and
+ * keep the full canonical + shortcut resolution (e.g. `oh-my-qoder:plan`
  * -> `omq-plan`).
  */
 function resolveBundledSkill(subagentType, directory) {
@@ -553,6 +554,80 @@ function shouldWarnForSlopFallbackLanguage(data, toolName, inspectedText) {
   return hasSlopFallbackActionShape(inspectedText);
 }
 
+// --- Jev script-side shadow points ---
+
+const SLOP_WARNING_QUESTIONS = {
+  slop_advisory: {
+    type: 'noul',
+    instructions: 'Does this tool input contain fallback/workaround language worth an advisory warning?',
+    criteria: {
+      'true': 'Contains fallback/workaround phrasing outside doc or self-referential context',
+      'false': 'No advisory-worthy language',
+    },
+  },
+};
+
+const MODEL_ROUTING_QUESTIONS = {
+  'model-tier': {
+    type: 'choice',
+    instructions: 'Which model tier should this delegated task use?',
+    criteria: {
+      haiku: 'Quick lookups and lightweight, mechanical work',
+      sonnet: 'Standard coding and orchestration work',
+      opus: 'Complex architecture and deep analysis',
+    },
+  },
+};
+
+function recordSlopWarningShadow(toolName, toolInput, warned) {
+  recordJevShadow({
+    point: 'slop-warning',
+    state: { toolName, toolInput },
+    questions: SLOP_WARNING_QUESTIONS,
+    heuristic: warned,
+  });
+}
+
+const MODEL_ROUTING_METADATA_MAX_CHARS = 500;
+
+function boundModelRoutingInput(toolInput) {
+  const bounded = {};
+  for (const key of ['description', 'prompt', 'subagent_type', 'model', 'resume']) {
+    if (typeof toolInput[key] === 'string') {
+      bounded[key] = toolInput[key].slice(0, MODEL_ROUTING_METADATA_MAX_CHARS);
+    }
+  }
+  if (typeof toolInput.run_in_background === 'boolean') {
+    bounded.run_in_background = toolInput.run_in_background;
+  }
+  return bounded;
+}
+
+function recordModelRoutingShadow(toolName, toolInput, updatedToolInput) {
+  if (!isJevShadowOptedIn('model-routing')) return;
+
+  const originalInput = boundModelRoutingInput(toolInput);
+  const modifiedInput = boundModelRoutingInput(updatedToolInput || toolInput);
+  const selectedModel = modifiedInput.model || readAgentDefinitionModel(originalInput.subagent_type);
+  const model = isTierAlias(selectedModel) ? selectedModel.toLowerCase() : normalizeToCcAlias(selectedModel);
+  if (!['haiku', 'sonnet', 'opus'].includes(model)) return;
+  recordJevShadow({
+    point: 'model-routing',
+    state: {
+      tool_name: toolName,
+      subagent_type: originalInput.subagent_type || '',
+      task: originalInput.prompt || '',
+    },
+    questions: MODEL_ROUTING_QUESTIONS,
+    heuristic: {
+      originalInput,
+      modifiedInput,
+      injected: Boolean(updatedToolInput),
+      model,
+    },
+  });
+}
+
 function generateSlopWarning(data, toolName) {
   const toolInput = data.toolInput || data.tool_input || {};
   const promptLikeFields = {
@@ -564,7 +639,9 @@ function generateSlopWarning(data, toolName) {
   const inspectedText = collectStringValues(toolInput)
     .concat(collectStringValues(promptLikeFields))
     .join('\n');
-  if (!shouldWarnForSlopFallbackLanguage(data, toolName, inspectedText)) return '';
+  const warned = shouldWarnForSlopFallbackLanguage(data, toolName, inspectedText);
+  recordSlopWarningShadow(toolName, data.toolInput || data.tool_input || {}, warned);
+  if (!warned) return '';
 
   return '[SLOP WARNING] Detected fallback/workaround language in this tool input. ' +
     'Do not make potential slop: avoid ad-hoc fallback layers, workaround shims, or environment-specific patches unless explicitly justified. ' +
@@ -674,7 +751,7 @@ const MODE_STATE_FILES = [
   'ultragoal-state.json',
   'pipeline-state.json',
   'team-state.json',
-  'omc-teams-state.json',
+  'omq-teams-state.json',
 ];
 const QUIET_LEVEL = getQuietLevel();
 const BUILT_IN_TASK_LIST_TOOL_NAMES = new Set([
@@ -707,13 +784,13 @@ function getQuietLevel() {
  * @param {string} startDir - Directory to resolve from (usually cwd from hook payload)
  * @returns {string} Absolute path to the .omq root directory
  */
-function resolveOmcRoot(startDir) {
+function resolveOmqRoot(startDir) {
   const dir = startDir || process.cwd();
 
   // 1) OMQ_STATE_DIR: full project-id derivation is TS-only; warn and fall through.
   if (process.env.OMQ_STATE_DIR) {
     process.stderr.write(
-      '[omc] OMQ_STATE_DIR is set; resolveOmcRoot() falling through to workspace-marker ' +
+      '[omq] OMQ_STATE_DIR is set; resolveOmqRoot() falling through to workspace-marker ' +
       'resolution. Use resolveOmqStateRoot() for full OMQ_STATE_DIR support.\n'
     );
   }
@@ -893,9 +970,9 @@ async function getTodoStatus(directory) {
   let inProgress = 0;
 
   // Check project-local todos
-  const omcRoot = await resolveOmqStateRoot(directory);
+  const omqRoot = await resolveOmqStateRoot(directory);
   const localPaths = [
-    join(omcRoot, 'todos.json'),
+    join(omqRoot, 'todos.json'),
     join(directory, '.claude', 'todos.json')
   ];
 
@@ -1178,7 +1255,7 @@ function extractClaudeGoalSnapshot(data, sessionId, cwd) {
 
 // A bootstrap/exit bypass must apply to one indivisible command only. Reject shell
 // chaining/expansion so a recognized token cannot smuggle other commands past the guard
-// (e.g. `omc ultragoal checkpoint ... && npm test`). See PR review on #3465.
+// (e.g. `omq ultragoal checkpoint ... && npm test`). See PR review on #3465.
 function isSingleShellCommand(command) {
   return typeof command === 'string'
     && command.trim().length > 0
@@ -1207,10 +1284,10 @@ function isCancelSkillBootstrapTool(toolName, toolInput) {
   const command = typeof toolInput.command === 'string' ? toolInput.command : '';
   if (!isSingleShellCommand(command)) return false;
   // Bare CLI names (PATH installs) or trusted plugin entrypoint via node/nodejs.
-  // Basename is constrained to oh-my-claudecode.js; arbitrary node scripts stay denied.
+  // Basename is constrained to oh-my-qoder.js; arbitrary node scripts stay denied.
   // isSingleShellCommand above rejects chaining/expansion so a recognized token cannot
   // smuggle other commands past the guard (e.g. `... cancel && npm test`).
-  return /^(?:(?:node|nodejs)\s+(?:"[^"\n]*[/\\]oh-my-claudecode\.js"|'[^'\n]*[/\\]oh-my-claudecode\.js'|[^\s;|&`]*[/\\]oh-my-claudecode\.js)\s+|(?:omc|oh-my-claudecode|gjc)\s+)(?:state\s+(?:clear|read|write|list-active|get-status)|cancel)\b/.test(command.trim());
+  return /^(?:(?:node|nodejs)\s+(?:"[^"\n]*[/\\]oh-my-qoder\.js"|'[^'\n]*[/\\]oh-my-qoder\.js'|[^\s;|&`]*[/\\]oh-my-qoder\.js)\s+|(?:omq|oh-my-qoder|gjc)\s+)(?:state\s+(?:clear|read|write|list-active|get-status)|cancel)\b/.test(command.trim());
 }
 
 function isUltragoalBootstrapTool(toolName, toolInput) {
@@ -1218,7 +1295,7 @@ function isUltragoalBootstrapTool(toolName, toolInput) {
   if (toolName !== 'Bash') return false;
   const command = typeof toolInput.command === 'string' ? toolInput.command : '';
   if (!isSingleShellCommand(command)) return false;
-  return /^(?:omc|oh-my-claudecode)\s+ultragoal\s+(?:create(?:-goals)?|complete(?:-goals)?|next|start-next|status|checkpoint|record-review-blockers)\b/.test(command.trim());
+  return /^(?:omq|oh-my-qoder)\s+ultragoal\s+(?:create(?:-goals)?|complete(?:-goals)?|next|start-next|status|checkpoint|record-review-blockers)\b/.test(command.trim());
 }
 
 function evaluateUltragoalPreToolEnforcement(stateDir, directory, sessionId, data) {
@@ -1413,7 +1490,7 @@ async function generateAgentSpawnMessage(toolInput, stateDir, directory, todoSta
   const tracking = await getAgentTrackingInfo(stateDir, directory, sessionId);
 
   // Team-routing guidance:
-  // Claude Code 2.1.178+ removed TeamCreate/TeamDelete. When OMC team state is
+  // Claude Code 2.1.178+ removed TeamCreate/TeamDelete. When OMQ team state is
   // active, teammates should be spawned into the session's implicit agent team by
   // giving each Agent/Task call a distinct name. team_name is ignored by native
   // Claude Code and should only be treated as legacy metadata.
@@ -1475,23 +1552,23 @@ const SKILL_PROTECTION_CONFIGS = {
 const SKILL_PROTECTION_MAP = {
   // === Already have mode state → no additional protection ===
   autopilot: 'none', ralph: 'none', ultragoal: 'none', ultrawork: 'none', team: 'none',
-  'omc-teams': 'none', cancel: 'none',
+  'omq-teams': 'none', cancel: 'none',
 
   // === Instant / read-only → no protection needed ===
-  trace: 'none', hud: 'none', 'omc-doctor': 'none', 'omc-help': 'none',
-  'learn-about-omc': 'none', note: 'none',
+  trace: 'none', hud: 'none', 'omq-doctor': 'none', 'omq-help': 'none',
+  'learn-about-omq': 'none', 'learn-about-omc': 'none', note: 'none',
 
   // === Light protection (simple shortcuts, 3 reinforcements) ===
   skill: 'light', ask: 'light', 'configure-notifications': 'light',
 
   // === Medium protection (review/planning, 5 reinforcements) ===
-  'omq-plan': 'medium', 'omc-plan': 'medium', plan: 'medium',
+  'omq-plan': 'medium', plan: 'medium',
   ralplan: 'none',  // Has first-class checkRalplan() enforcement; no skill-active needed
   'deep-interview': 'heavy',
   review: 'medium', 'external-context': 'medium',
   'ai-slop-cleaner': 'medium',
-  sciomc: 'medium', learner: 'medium', 'omq-setup': 'medium', 'omc-setup': 'medium',
-  setup: 'medium',        // alias for omc-setup
+  sciomc: 'medium', learner: 'medium', 'omq-setup': 'medium',
+  setup: 'medium',        // alias for omq-setup
   'mcp-setup': 'medium', 'project-session-manager': 'medium',
   psm: 'medium',          // alias for project-session-manager
   'writer-memory': 'medium', 'ralph-init': 'medium',
@@ -1502,9 +1579,9 @@ const SKILL_PROTECTION_MAP = {
 };
 
 function getSkillProtectionLevel(skillName, rawSkillName) {
-  // When rawSkillName is provided, only apply protection to OMC-prefixed skills.
+  // When rawSkillName is provided, only apply protection to OMQ-prefixed skills.
   // Non-prefixed skills are project custom skills or other plugins — no protection.
-  // See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/1581
+  // See: https://github.com/Yeachan-Heo/oh-my-qoder/issues/1581
   if (rawSkillName != null && typeof rawSkillName === 'string' &&
       !rawSkillName.toLowerCase().startsWith('oh-my-qoder:')) {
     return 'none';
@@ -1513,7 +1590,7 @@ function getSkillProtectionLevel(skillName, rawSkillName) {
   return SKILL_PROTECTION_MAP[normalized] || 'none';
 }
 
-// Load OMC config to check forceInherit setting (issues #1135, #1201)
+// Load OMQ config to check forceInherit setting (issues #1135, #1201)
 function loadOmcConfig() {
   const configPaths = [
     join(getClaudeConfigDir(), '.omq-config.json'),
@@ -1558,7 +1635,7 @@ function writeSkillActiveState(stateDir, skillName, sessionId, rawSkillName) {
     : stateDir;
   const targetPath = join(targetDir, 'skill-active-state.json');
 
-  // Nesting guard: when a skill (e.g. omc-setup) invokes a child skill
+  // Nesting guard: when a skill (e.g. omq-setup) invokes a child skill
   // (e.g. mcp-setup), the child must not overwrite the parent's active state.
   // If a DIFFERENT skill is already active in this session, skip writing —
   // the parent's stop-hook protection already covers the session.
@@ -1681,8 +1758,8 @@ async function main() {
     // Resolve the .omq state root once, honoring OMQ_STATE_DIR.
     // All helpers receive stateDir so they stay in sync with the centralized
     // resolver used by session-start.mjs and persistent-mode (issue #2518, PR #2532).
-    const omcRoot = await resolveOmqStateRoot(directory);
-    const stateDir = join(omcRoot, 'state');
+    const omqRoot = await resolveOmqStateRoot(directory);
+    const stateDir = join(omqRoot, 'state');
 
     // Record Skill invocations to flow trace
     let data = {};
@@ -1698,7 +1775,7 @@ async function main() {
       if (skillName) {
         const sid = typeof data.session_id === 'string' ? data.session_id
           : typeof data.sessionId === 'string' ? data.sessionId : '';
-        // Pass rawSkillName to distinguish OMC skills from project custom skills (issue #1581)
+        // Pass rawSkillName to distinguish OMQ skills from project custom skills (issue #1581)
         const rawSkill = toolInput.skill || toolInput.skill_name || toolInput.skillName || toolInput.command || '';
         const rawSkillName = typeof rawSkill === 'string' && rawSkill.trim() ? rawSkill.trim() : undefined;
         writeSkillActiveState(stateDir, skillName, sid, rawSkillName);
@@ -1855,6 +1932,11 @@ async function main() {
       }
     }
 
+    if (toolName === 'Task' || toolName === 'Agent') {
+      const toolInput = data.toolInput || data.tool_input || {};
+      recordModelRoutingShadow(toolName, toolInput, updatedToolInput);
+    }
+
     // Send notification when AskUserQuestion is about to execute (user input needed)
     // Fires in PreToolUse so users get notified BEFORE the tool blocks for input (#597)
     if (toolName === 'AskUserQuestion') {
@@ -1910,7 +1992,7 @@ async function main() {
     // Read budget (issue #4054): enforce the <Context_Budget> rule that has only
     // existed as prose in agents/explore.md. A full-file Read of an oversized file
     // is warned once and denied afterwards; targeted reads, small files,
-    // allowlisted paths, and OMC_READ_BUDGET=off pass through.
+    // allowlisted paths, and OMQ_READ_BUDGET=off pass through.
     const readBudget = evaluateReadBudget({
       toolName,
       toolInput: data.toolInput || data.tool_input || {},

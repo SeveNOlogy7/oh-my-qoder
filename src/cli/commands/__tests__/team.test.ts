@@ -39,7 +39,12 @@ async function initTeamState(teamName: string, wd: string): Promise<void> {
 describe('teamCommand help output', () => {
   it('prints team help for --help', async () => {
     const logs = await captureLog(() => teamCommand(['--help']));
-    expect(logs[0]).toContain('omq team api <operation>');
+    expect(logs[0]).toContain('omc team api <operation>');
+    expect(logs[0]).toContain('--force skips the task-status gate and graceful waits');
+    expect(logs[0]).toContain('Unverified worker/provider cleanup preserves worktrees and team state');
+    expect(logs[0]).toContain('Errors report the outcome and reason/detail');
+    expect(logs[0]).toContain('preserved outcomes name affected workers');
+    expect(logs[0]).toContain('Some failures also write details to stderr');
   });
 
   it('prints team help for help alias', async () => {
@@ -109,7 +114,7 @@ describe('teamCommand api operations', () => {
   });
 
   it('executes send-message with stable JSON envelope', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omc-team-cli-'));
+    wd = await mkdtemp(join(tmpdir(), 'omq-team-cli-'));
     isolateFixtureHome(wd);
     previousCwd = process.cwd();
     process.chdir(wd);
@@ -136,7 +141,7 @@ describe('teamCommand api operations', () => {
   });
 
   it('supports claim-safe lifecycle: create -> claim -> transition', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omc-team-lifecycle-'));
+    wd = await mkdtemp(join(tmpdir(), 'omq-team-lifecycle-'));
     isolateFixtureHome(wd);
     previousCwd = process.cwd();
     process.chdir(wd);
@@ -216,7 +221,7 @@ describe('teamCommand api operations', () => {
   });
 
   it('rejects the legacy runtime before creating native team state', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omc-team-cli-v1-rejected-'));
+    wd = await mkdtemp(join(tmpdir(), 'omq-team-cli-v1-rejected-'));
     isolateFixtureHome(wd);
     previousCwd = process.cwd();
     process.chdir(wd);
@@ -230,8 +235,8 @@ describe('teamCommand api operations', () => {
       await teamCommand(['1:codex', 'do work']);
 
       expect(errors.join('\n')).toContain('team_start_unsafe_runtime_v1');
-      expect(errors.join('\n')).toContain('OMC_RUNTIME_V2=1');
-      expect(existsSync(join(wd, '.omc', 'state', 'team'))).toBe(false);
+      expect(errors.join('\n')).toContain('OMQ_RUNTIME_V2=1');
+      expect(existsSync(join(wd, '.omq', 'state', 'team'))).toBe(false);
       expect(process.exitCode).toBe(1);
     } finally {
       console.error = originalError;
@@ -258,7 +263,7 @@ describe('teamCommand api operations', () => {
 
 
   it('ignores stale team state without a live tmux session when enforcing leader spawn gate', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omc-team-stale-gate-'));
+    wd = await mkdtemp(join(tmpdir(), 'omq-team-stale-gate-'));
     isolateFixtureHome(wd);
     const stale = join(wd, '.omq', 'state', 'team', 'stale-team');
     await mkdir(stale, { recursive: true });
@@ -279,7 +284,7 @@ describe('teamCommand api operations', () => {
   });
 
   it('allows nested team spawn only when parent governance enables it', async () => {
-    wd = await mkdtemp(join(tmpdir(), 'omc-team-governance-'));
+    wd = await mkdtemp(join(tmpdir(), 'omq-team-governance-'));
     isolateFixtureHome(wd);
     previousCwd = process.cwd();
     process.chdir(wd);
@@ -326,6 +331,36 @@ describe('teamCommand api operations', () => {
     } finally {
       process.env.OMQ_TEAM_WORKER = previousWorker;
     }
+  });
+});
+
+describe('parseTeamArgs explicit task syntax', () => {
+  it('accepts a quoted positional task with the configured default workers', () => {
+    const parsed = parseTeamArgs(['review auth flow']);
+
+    expect(parsed.task).toBe('review auth flow');
+    expect(parsed.workerCount).toBe(3);
+    expect(parsed.explicitWorkerSpec).toBe(false);
+  });
+
+  it('accepts --task for a single-word task without a worker spec', () => {
+    const parsed = parseTeamArgs(['--task', 'list']);
+
+    expect(parsed.task).toBe('list');
+    expect(parsed.workerCount).toBe(3);
+    expect(parsed.explicitWorkerSpec).toBe(false);
+  });
+
+  it('rejects a single bare word without --task or an explicit worker spec', () => {
+    expect(() => parseTeamArgs(['unknown-word'])).toThrow(/Usage: omc team/);
+  });
+
+  it('joins an unquoted multi-token task without a worker spec', () => {
+    const parsed = parseTeamArgs(['fix', 'the', 'login', 'bug']);
+
+    expect(parsed.task).toBe('fix the login bug');
+    expect(parsed.workerCount).toBe(3);
+    expect(parsed.explicitWorkerSpec).toBe(false);
   });
 });
 
@@ -487,10 +522,10 @@ describe('parseTeamArgs comma-separated multi-type specs', () => {
   });
 
   it('trims slugs after length clipping and suffixes stale launch state', async () => {
-    const parsed = parseTeamArgs(['abcdefghijklmnopqrstuvwxyz abc', 'task body']);
+    const parsed = parseTeamArgs(['--task', 'abcdefghijklmnopqrstuvwxyz abc task body']);
     expect(parsed.teamName.endsWith('-')).toBe(false);
 
-    const slugWd = await mkdtemp(join(tmpdir(), 'omc-team-slug-'));
+    const slugWd = await mkdtemp(join(tmpdir(), 'omq-team-slug-'));
     const originalHome = process.env.HOME;
     const originalUserProfile = process.env.USERPROFILE;
     process.env.HOME = slugWd;

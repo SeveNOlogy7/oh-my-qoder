@@ -8,12 +8,12 @@ import type { PersistentModeResult } from '../index.js';
 
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_MAX_REQUESTS',
-  'OMC_JEV_EXCERPT_CHARS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_MAX_REQUESTS',
+  'OMQ_JEV_EXCERPT_CHARS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
 ] as const;
 
 const TWIN: PersistentModeResult = {
@@ -33,7 +33,7 @@ beforeEach(async () => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OMC_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV_LOG_DIR = logDir;
 });
 
 afterEach(async () => {
@@ -46,8 +46,8 @@ afterEach(async () => {
 
 function jevResponse(questionName: string): Response {
   const answers: Record<string, unknown> = questionName === 'iteration_progress'
-    ? { iteration_progress: { type: 'Score', score: 2, confidence: 0.7 } }
-    : { task_complete: { type: 'Noul', noul: false, confidence: 0.8 } };
+    ? { iteration_progress: { type: 'score', score: 2, confidence: 0.7 } }
+    : { task_complete: { type: 'noul', noul: false, confidence: 0.8 } };
   return { ok: true, status: 200, json: async () => ({ answers }) } as unknown as Response;
 }
 
@@ -77,7 +77,7 @@ function stubFetch(): { fetchFn: typeof fetch; calls: Array<{ url: string; body:
 describe('applyLoopContinuationShadow', () => {
   it('with a key, one decision records shadow lines containing the twin decision and the Jev Noul/Score', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'loop-continuation';
+    process.env.OMQ_JEV = 'loop-continuation';
     const { fetchFn, calls } = stubFetch();
     const result = await applyLoopContinuationShadow({ result: TWIN, sessionId: 'sess-1', fetchFn });
 
@@ -94,7 +94,7 @@ describe('applyLoopContinuationShadow', () => {
       expect(typeof body.state.continuation_excerpt).toBe('string');
       expect(String(body.state.continuation_excerpt).length).toBeLessThanOrEqual(200);
     }
-    expect(bodies.map((b) => Object.values(b.questions)[0].type).sort()).toEqual(['Noul', 'Score']);
+    expect(bodies.map((b) => Object.values(b.questions)[0].type).sort()).toEqual(['noul', 'score']);
 
     const lines = await readLogLines();
     expect(lines).toHaveLength(2);
@@ -109,7 +109,7 @@ describe('applyLoopContinuationShadow', () => {
       expect(entry.mode).toBe('shadow');
       expect(entry.heuristic).toEqual(TWIN);
     }
-    expect(parsed.map((entry) => entry.jev?.type).sort()).toEqual(['Noul', 'Score']);
+    expect(parsed.map((entry) => entry.jev?.type).sort()).toEqual(['noul', 'score']);
   });
 
   it('without a key, zero fetch calls and the twin result is returned unchanged', async () => {
@@ -123,8 +123,8 @@ describe('applyLoopContinuationShadow', () => {
 
   it('on Jev timeout the twin decision is returned unchanged (degraded path)', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'loop-continuation';
-    process.env.OMC_JEV_TIMEOUT_MS = '20';
+    process.env.OMQ_JEV = 'loop-continuation';
+    process.env.OMQ_JEV_TIMEOUT_MS = '20';
     const fetchFn = (async () => new Promise<Response>(() => {})) as unknown as typeof fetch;
     const result = await applyLoopContinuationShadow({ result: TWIN, sessionId: 'sess-1', fetchFn });
 
@@ -141,7 +141,7 @@ describe('applyLoopContinuationShadow', () => {
 
   it('skips the judgment entirely when no persistent mode is active', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key-123';
-    process.env.OMC_JEV = 'loop-continuation';
+    process.env.OMQ_JEV = 'loop-continuation';
     const { fetchFn, calls } = stubFetch();
     const none: PersistentModeResult = { shouldBlock: false, message: '', mode: 'none' };
     const result = await applyLoopContinuationShadow({ result: none, sessionId: 'sess-1', fetchFn });

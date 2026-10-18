@@ -28,11 +28,11 @@ describe('session-start.mjs update check', () => {
     mkdirSync(pluginRoot, { recursive: true });
     writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ version: '1.0.0' }));
 
-    const marketplaceDir = join(fakeHome, '.claude', 'plugins', 'marketplaces', 'omc', '.claude-plugin');
+    const marketplaceDir = join(fakeHome, '.claude', 'plugins', 'marketplaces', 'omq', '.claude-plugin');
     mkdirSync(marketplaceDir, { recursive: true });
     writeFileSync(
       join(marketplaceDir, 'marketplace.json'),
-      JSON.stringify({ plugins: [{ name: 'oh-my-claudecode', version: '9.9.9' }] }),
+      JSON.stringify({ plugins: [{ name: 'oh-my-qoder', version: '9.9.9' }] }),
     );
 
     // Fresh Claude Code entry so the registry fetch is skipped.

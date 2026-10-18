@@ -43,8 +43,8 @@ describe('registry projections — canonical JSON and digest', () => {
 describe('registry projections — drift check against installed surfaces', () => {
   it('matches the repository skills/ and commands/ surface exactly', () => {
     const installed = enumerateInstalledSurfaces(process.cwd());
-    // The installed tree currently contains 43 skill directories.
-    expect(installed.skills.length).toBe(43);
+    // The installed tree currently contains 47 skill directories.
+    expect(installed.skills.length).toBe(47);
     expect(installed.commands.length).toBe(21);
     const drift = checkProjectionDrift(installed);
     expect(drift.unregistered).toEqual([]);
@@ -75,8 +75,8 @@ describe('registry projections — drift check against installed surfaces', () =
   it('exempts declaredOnly entries from the installed-file requirement', () => {
     const installed = enumerateInstalledSurfaces(process.cwd());
     // execute/review/research now ship as real skill directories; the remaining
-    // declaredOnly entries (omc-release/ultrapilot/swarm/pipeline) have no files.
-    for (const name of ['omc-release', 'ultrapilot', 'swarm', 'pipeline']) {
+    // declaredOnly entries (omq-release/ultrapilot/swarm/pipeline) have no files.
+    for (const name of ['omq-release', 'ultrapilot', 'swarm', 'pipeline']) {
       expect(installed.skills).not.toContain(name);
     }
     for (const name of ['execute', 'review', 'research']) {

@@ -1357,7 +1357,7 @@ export function getOmcRoot(worktreeRoot?: string): string {
  * @returns Absolute path
  * @throws Error if path would escape omc boundary
  */
-export function resolveOmcPath(relativePath: string, worktreeRoot?: string): string {
+export function resolveOmqPath(relativePath: string, worktreeRoot?: string): string {
   validatePath(relativePath);
 
   const omcDir = getOmcRoot(worktreeRoot);
@@ -1386,7 +1386,7 @@ export function resolveOmcPath(relativePath: string, worktreeRoot?: string): str
 export function resolveStatePath(stateName: string, worktreeRoot?: string): string {
   // Normalize: ensure -state suffix is present, then add .json
   const normalizedName = stateName.endsWith('-state') ? stateName : `${stateName}-state`;
-  return resolveOmcPath(`state/${normalizedName}.json`, worktreeRoot);
+  return resolveOmqPath(`state/${normalizedName}.json`, worktreeRoot);
 }
 
 /**
@@ -1398,7 +1398,7 @@ export function resolveStatePath(stateName: string, worktreeRoot?: string): stri
  * @returns Absolute path to the created directory
  */
 export function ensureOmcDir(relativePath: string, worktreeRoot?: string): string {
-  const fullPath = resolveOmcPath(relativePath, worktreeRoot);
+  const fullPath = resolveOmqPath(relativePath, worktreeRoot);
 
   if (!existsSync(fullPath)) {
     try {
@@ -1633,7 +1633,7 @@ export function resolveSessionStatePath(stateName: string, sessionId: string, wo
   validateSessionId(sessionId);
 
   const normalizedName = stateName.endsWith('-state') ? stateName : `${stateName}-state`;
-  return resolveOmcPath(`state/sessions/${sessionId}/${normalizedName}.json`, worktreeRoot);
+  return resolveOmqPath(`state/sessions/${sessionId}/${normalizedName}.json`, worktreeRoot);
 }
 
 // ============================================================================
@@ -1718,7 +1718,7 @@ export function resolveSessionStatePaths(
     };
   }
   validateSessionId(sessionId);
-  const sessionScoped = resolveOmcPath(`state/sessions/${sessionId}/${normalizedName}.json`, worktreeRoot);
+  const sessionScoped = resolveOmqPath(`state/sessions/${sessionId}/${normalizedName}.json`, worktreeRoot);
   // effectiveRead probes session-scoped first; fall back to legacy when the
   // session-scoped file does not yet exist (first-read back-compat).
   const effectiveRead = (existsSync(sessionScoped) ? sessionScoped : legacy) as ReadPath;
@@ -2406,5 +2406,4 @@ export {
   ensureOmcDir as ensureOmqDir,
   getOmcRoot as getOmqRoot,
   isPathUnderOmc as isPathUnderOmq,
-  resolveOmcPath as resolveOmqPath,
 };

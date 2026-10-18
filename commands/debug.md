@@ -1,5 +1,5 @@
 ---
-description: ""
+description: "Diagnose the current OMQ session or repo state using logs, traces, state, and focused reproduction"
 ---
 
 # OMQ debug

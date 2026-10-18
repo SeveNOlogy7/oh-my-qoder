@@ -21,7 +21,7 @@ import type { EnforcementResult } from './delegation-enforcer.js';
  *
  * `pinned` is the enforcer's already-computed tier resolution; it is wrapped
  * as the twin (never recomputed, never overridden). With no TYPESAFE_API_KEY
- * or OMC_JEV=off the resolver answers "off" with zero HTTP calls and no log.
+ * or OMQ_JEV=off the resolver answers "off" with zero HTTP calls and no log.
  * The returned promise resolves once the twin answer is available; the Jev
  * comparison log line settles asynchronously afterwards. Never rejects on the
  * Jev path.

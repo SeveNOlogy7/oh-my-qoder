@@ -1,22 +1,22 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetJevResolverState, resolveJudgment } from '../resolver.js';
 import type { JevAnswer, JevQuestions } from '../types.js';
 
 const ENV_KEYS = [
   'TYPESAFE_API_KEY',
-  'OMC_JEV',
-  'OMC_JEV_TIMEOUT_MS',
-  'OMC_JEV_MAX_REQUESTS',
-  'OMC_JEV_EXCERPT_CHARS',
-  'OMC_JEV_LOG_DIR',
-  'OMC_JEV_ENDPOINT',
+  'OMQ_JEV',
+  'OMQ_JEV_TIMEOUT_MS',
+  'OMQ_JEV_MAX_REQUESTS',
+  'OMQ_JEV_EXCERPT_CHARS',
+  'OMQ_JEV_LOG_DIR',
+  'OMQ_JEV_ENDPOINT',
 ] as const;
 
 const QUESTIONS: JevQuestions = {
-  route: { type: 'Choice', criteria: { haiku: 'simple', sonnet: 'standard', opus: 'complex' } },
+  route: { type: 'choice', criteria: { haiku: 'simple', sonnet: 'standard', opus: 'complex' } },
 };
 
 const TWIN = { tier: 'sonnet' };
@@ -33,8 +33,8 @@ beforeEach(async () => {
   }
   // Strict opt-in (owner review of #4058): a key alone enables nothing;
   // tests that need a point opt in explicitly. Default here = all five.
-  process.env.OMC_JEV = 'intent,skill-trigger,loop-continuation,model-routing,context-pruning';
-  process.env.OMC_JEV_LOG_DIR = logDir;
+  process.env.OMQ_JEV = 'intent,skill-trigger,loop-continuation,model-routing,context-pruning';
+  process.env.OMQ_JEV_LOG_DIR = logDir;
 });
 
 afterEach(async () => {
@@ -46,7 +46,7 @@ afterEach(async () => {
 });
 
 function jevOk(answer: Partial<JevAnswer>): Response {
-  return { ok: true, status: 200, json: async () => ({ answers: { route: { type: 'Choice', ...answer } } }) } as unknown as Response;
+  return { ok: true, status: 200, json: async () => ({ answers: { route: { type: 'choice', ...answer } } }) } as unknown as Response;
 }
 
 function httpErrorResponse(): Response {
@@ -103,7 +103,7 @@ describe('resolveJudgment', () => {
       point: 'model-routing',
       mode: 'shadow',
       heuristic: TWIN,
-      jev: { type: 'Choice', choice: 'opus', confidence: 0.9 },
+      jev: { type: 'choice', choice: 'opus', confidence: 0.9 },
       confidence: 0.9,
     });
     expect(typeof line.ts).toBe('string');
@@ -126,9 +126,9 @@ describe('resolveJudgment', () => {
     expect(line.heuristic).toEqual(TWIN);
   });
 
-  it('OMC_JEV=off disables even with a key, and beats a forced mode override', async () => {
+  it('OMQ_JEV=off disables even with a key, and beats a forced mode override', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key';
-    process.env.OMC_JEV = 'off';
+    process.env.OMQ_JEV = 'off';
     const { fetchFn, calls } = captureFetch(() => jevOk({ choice: 'x' }));
     const result = await call({ point: 'model-routing', mode: 'active', fetchFn });
     expect(result).toEqual({ answer: TWIN, source: 'twin', mode: 'off' });
@@ -136,10 +136,10 @@ describe('resolveJudgment', () => {
     await expect(readLog()).rejects.toThrow();
   });
 
-  it('strict opt-in: a key with OMC_JEV unset sends nothing anywhere', async () => {
+  it('strict opt-in: a key with OMQ_JEV unset sends nothing anywhere', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key';
-    // OMC_JEV deliberately unset (beforeEach default removed).
-    delete process.env.OMC_JEV;
+    // OMQ_JEV deliberately unset (beforeEach default removed).
+    delete process.env.OMQ_JEV;
     const { fetchFn, calls } = captureFetch(() => jevOk({ choice: 'x' }));
     const result = await call({ point: 'model-routing', fetchFn });
     expect(result).toEqual({ answer: TWIN, source: 'twin', mode: 'off' });
@@ -147,9 +147,9 @@ describe('resolveJudgment', () => {
     await expect(readLog()).rejects.toThrow();
   });
 
-  it('OMC_JEV=<points> opt-in enables only listed points', async () => {
+  it('OMQ_JEV=<points> opt-in enables only listed points', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key';
-    process.env.OMC_JEV = 'intent';
+    process.env.OMQ_JEV = 'intent';
     const { fetchFn, calls } = captureFetch(() => jevOk({ choice: 'x' }));
     const enabled = await call({ point: 'intent', fetchFn });
     expect(enabled.mode).toBe('shadow');
@@ -160,7 +160,7 @@ describe('resolveJudgment', () => {
 
   it('degrades to the twin on timeout and logs a degraded comparison', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key';
-    process.env.OMC_JEV_TIMEOUT_MS = '20';
+    process.env.OMQ_JEV_TIMEOUT_MS = '20';
     const fetchFn = (async () => new Promise<Response>(() => {})) as unknown as typeof fetch;
     const result = await call({ point: 'model-routing', fetchFn });
     expect(result).toEqual({ answer: TWIN, source: 'twin', mode: 'degraded' });
@@ -188,9 +188,9 @@ describe('resolveJudgment', () => {
     expect(result.mode).toBe('degraded');
   });
 
-  it('OMC_JEV_MAX_REQUESTS caps requests for the process', async () => {
+  it('OMQ_JEV_MAX_REQUESTS caps requests for the process', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key';
-    process.env.OMC_JEV_MAX_REQUESTS = '1';
+    process.env.OMQ_JEV_MAX_REQUESTS = '1';
     const { fetchFn, calls } = captureFetch(() => jevOk({ choice: 'x' }));
     const first = await call({ point: 'model-routing', fetchFn });
     expect(first.mode).toBe('shadow');
@@ -229,9 +229,9 @@ describe('resolveJudgment', () => {
     expect(calls).toHaveLength(4);
   });
 
-  it('bounds state excerpts to OMC_JEV_EXCERPT_CHARS before sending and logging', async () => {
+  it('bounds state excerpts to OMQ_JEV_EXCERPT_CHARS before sending and logging', async () => {
     process.env.TYPESAFE_API_KEY = 'test-key';
-    process.env.OMC_JEV_EXCERPT_CHARS = '50';
+    process.env.OMQ_JEV_EXCERPT_CHARS = '50';
     const long = 'a'.repeat(500);
     const { fetchFn, calls } = captureFetch(() => jevOk({ choice: 'x' }));
     await call({ point: 'intent', state: { prompt: long, nested: { deep: long }, list: [long] }, fetchFn });
@@ -273,6 +273,105 @@ describe('resolveJudgment', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     const line = JSON.parse(await readLog());
     expect(line.mode).toBe('shadow');
-    expect(line.jev).toEqual({ type: 'Choice', choice: 'opus' });
+    expect(line.jev).toEqual({ type: 'choice', choice: 'opus' });
+  });
+
+  it('OMQ_JEV=all opts every point into shadow', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    process.env.OMQ_JEV = 'all';
+    const { fetchFn, calls } = captureFetch(() => jevOk({ choice: 'x' }));
+    const a = await call({ point: 'model-routing', fetchFn });
+    const b = await call({ point: 'task-size', fetchFn });
+    expect(a.mode).toBe('shadow');
+    expect(b.mode).toBe('shadow');
+    expect(calls).toHaveLength(2);
+  });
+
+  it('OMQ_JEV=all:active makes Jev decide at every point (source jev, log mode active)', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    process.env.OMQ_JEV = 'all:active';
+    const { fetchFn, calls } = captureFetch(() => jevOk({ choice: 'opus', confidence: 0.9 }));
+    const result = await call({
+      point: 'model-routing',
+      fetchFn,
+      mapAnswer: (a) => ({ tier: a.choice ?? '' }),
+    });
+    expect(result).toEqual({ answer: { tier: 'opus' }, source: 'jev', mode: 'active' });
+    expect(calls).toHaveLength(1);
+    const line = JSON.parse(await readLog());
+    expect(line.mode).toBe('active');
+  });
+
+  it('OMQ_JEV=point:active activates that point only; other opted-in point stays shadow', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    process.env.OMQ_JEV = 'model-routing:active,intent';
+    const { fetchFn } = captureFetch(() => jevOk({ choice: 'opus' }));
+    const active = await call({ point: 'model-routing', fetchFn, mapAnswer: (a) => ({ tier: a.choice ?? '' }) });
+    const shadow = await call({ point: 'intent', fetchFn });
+    expect(active).toEqual({ answer: { tier: 'opus' }, source: 'jev', mode: 'active' });
+    expect(shadow.mode).toBe('shadow');
+  });
+
+  it('degrade path intact under env activation: active-by-env + failing transport returns twin', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    process.env.OMQ_JEV = 'model-routing:active';
+    const { fetchFn } = captureFetch(httpErrorResponse);
+    const result = await call({ point: 'model-routing', fetchFn });
+    expect(result).toEqual({ answer: TWIN, source: 'twin', mode: 'degraded' });
+    const line = JSON.parse(await readLog());
+    expect(line.mode).toBe('degraded');
+  });
+
+  it('warns once per point when env activation makes Jev decide', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    process.env.OMQ_JEV = 'model-routing:active';
+    const { fetchFn } = captureFetch(() => jevOk({ choice: 'opus' }));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await call({ point: 'model-routing', fetchFn });
+      await call({ point: 'model-routing', fetchFn });
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][0]).toContain('ACTIVE via env');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('records Jev token usage in the shadow log when the response carries it', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    const { fetchFn } = captureFetch(() => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ answers: { route: { type: 'choice', choice: 'opus' } }, usage: { input_tokens: 120, output_tokens: 30 } }),
+    }) as unknown as Response);
+    await call({ point: 'model-routing', fetchFn });
+    const line = JSON.parse(await readLog());
+    expect(line.usage).toEqual({ input_tokens: 120, output_tokens: 30 });
+  });
+
+  it('drops malformed Jev usage instead of logging it verbatim', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    const { fetchFn } = captureFetch(() => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ answers: { route: { type: 'choice', choice: 'opus' } }, usage: { input_tokens: '120', output_tokens: 30, extra: 'x'.repeat(10_000) } }),
+    }) as unknown as Response);
+    await call({ point: 'model-routing', fetchFn });
+    const line = JSON.parse(await readLog());
+    expect(line).not.toHaveProperty('usage');
+  });
+
+  it('OMQ_JEV_QUIET=1 silences the env-activation warning', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    process.env.OMQ_JEV = 'model-routing:active';
+    process.env.OMQ_JEV_QUIET = '1';
+    const { fetchFn } = captureFetch(() => jevOk({ choice: 'opus' }));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await call({ point: 'model-routing', fetchFn });
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });
