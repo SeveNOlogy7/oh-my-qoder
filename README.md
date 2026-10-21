@@ -482,14 +482,20 @@ Use the HUD for live observability and the current session/replay artifacts for 
 
 ### Jev Judgment Configuration
 
-**Jev** brings calibrated decision-making to OMQ's orchestration. Enable it with one environment variable:
+**Jev** brings calibrated decision-making to OMQ's orchestration. Enable it with environment variables:
 
 ```bash
-export TYPESAFE_API_KEY="sk-..."
-export OMQ_JEV="all:active"  # All judgment points active
+export TYPESAFE_API_KEY="sk-..."              # Jev API key (required)
+export OMQ_JEV="all:active"                    # All judgment points active
+export OMQ_JEV_TIMEOUT_MS="2000"               # Per-call timeout (default: 2000ms)
 ```
 
-Jev decides skill triggering, model routing, loop continuation, and more. Defaults to zero egress: without configuration, nothing is sent to the API. See **[Jev Judgment Points](docs/HOOKS.md#jev-judgment-points)** in HOOKS.md for the full configuration reference and point registry.
+**Modes:**
+- `shadow` (default): Jev is queried but heuristics decide; answers logged for analysis
+- `active`: Jev's answer overrides the heuristic; adds latency (bounded by `OMQ_JEV_TIMEOUT_MS`)
+- `off`: No Jev queries sent (zero egress)
+
+Jev decides skill triggering, model routing, loop continuation, context pruning, task sizing, and completion verdicts. On timeout, HTTP error, or parse failure, active mode degrades to the heuristic without blocking. Defaults to zero egress: without configuration, nothing is sent to the API. See **[Jev Judgment Points](docs/HOOKS.md#jev-judgment-points)** in HOOKS.md for the full configuration reference and point registry.
 
 ### Notification Tags (Telegram/Discord/Slack)
 
@@ -656,20 +662,20 @@ MIT
 
 Top personal non-fork, non-archived repos from all-time OMQ contributors (100+ GitHub stars).
 
-- [@Yeachan-Heo](https://github.com/Yeachan-Heo) — [oh-my-qoder](https://github.com/Yeachan-Heo/oh-my-qoder) (⭐ 39k)
-- [@junhoyeo](https://github.com/junhoyeo) — [tokscale](https://github.com/junhoyeo/tokscale) (⭐ 5.6k)
+- [@Yeachan-Heo](https://github.com/Yeachan-Heo) — [oh-my-qoder](https://github.com/Yeachan-Heo/oh-my-claudecode) (⭐ 40k)
+- [@junhoyeo](https://github.com/junhoyeo) — [tokscale](https://github.com/junhoyeo/tokscale) (⭐ 5.7k)
 - [@psmux](https://github.com/psmux) — [psmux](https://github.com/psmux/psmux) (⭐ 3.6k)
-- [@MeroZemory](https://github.com/MeroZemory) — [ida-multi-mcp](https://github.com/MeroZemory/ida-multi-mcp) (⭐ 443)
-- [@devswha](https://github.com/devswha) — [patina](https://github.com/devswha/patina) (⭐ 359)
-- [@GeiserX](https://github.com/GeiserX) — [awesome-spain](https://github.com/GeiserX/awesome-spain) (⭐ 353)
-- [@BowTiedSwan](https://github.com/BowTiedSwan) — [buildflow](https://github.com/BowTiedSwan/buildflow) (⭐ 297)
-- [@J-Pster](https://github.com/J-Pster) — [Psters_AI_Workflow](https://github.com/J-Pster/Psters_AI_Workflow) (⭐ 290)
+- [@devswha](https://github.com/devswha) — [herdr-web-ui](https://github.com/devswha/herdr-web-ui) (⭐ 827)
+- [@MeroZemory](https://github.com/MeroZemory) — [ida-multi-mcp](https://github.com/MeroZemory/ida-multi-mcp) (⭐ 451)
+- [@GeiserX](https://github.com/GeiserX) — [awesome-spain](https://github.com/GeiserX/awesome-spain) (⭐ 357)
+- [@BowTiedSwan](https://github.com/BowTiedSwan) — [buildflow](https://github.com/BowTiedSwan/buildflow) (⭐ 296)
+- [@J-Pster](https://github.com/J-Pster) — [Psters_AI_Workflow](https://github.com/J-Pster/Psters_AI_Workflow) (⭐ 289)
 - [@alohays](https://github.com/alohays) — [awesome-visual-representation-learning-with-transformers](https://github.com/alohays/awesome-visual-representation-learning-with-transformers) (⭐ 272)
+- [@HaD0Yun](https://github.com/HaD0Yun) — [Doyunha-Gopeak](https://github.com/HaD0Yun/Doyunha-Gopeak) (⭐ 267)
 - [@jcwleo](https://github.com/jcwleo) — [random-network-distillation-pytorch](https://github.com/jcwleo/random-network-distillation-pytorch) (⭐ 264)
-- [@HaD0Yun](https://github.com/HaD0Yun) — [Doyunha-Gopeak](https://github.com/HaD0Yun/Doyunha-Gopeak) (⭐ 262)
-- [@changeroa](https://github.com/changeroa) — [StyleGallery](https://github.com/changeroa/StyleGallery) (⭐ 256)
+- [@changeroa](https://github.com/changeroa) — [StyleGallery](https://github.com/changeroa/StyleGallery) (⭐ 260)
 - [@HwangTaehyun](https://github.com/HwangTaehyun) — [github-repository-contribution-stats](https://github.com/HwangTaehyun/github-repository-contribution-stats) (⭐ 241)
-- [@shaun0927](https://github.com/shaun0927) — [openchrome](https://github.com/shaun0927/openchrome) (⭐ 237)
+- [@shaun0927](https://github.com/shaun0927) — [openchrome](https://github.com/shaun0927/openchrome) (⭐ 238)
 - [@emgeee](https://github.com/emgeee) — [mean-tutorial](https://github.com/emgeee/mean-tutorial) (⭐ 199)
 - [@anduinnn](https://github.com/anduinnn) — [HiFiNi-Auto-CheckIn](https://github.com/anduinnn/HiFiNi-Auto-CheckIn) (⭐ 173)
 - [@Znuff](https://github.com/Znuff) — [consolas-powerline](https://github.com/Znuff/consolas-powerline) (⭐ 145)

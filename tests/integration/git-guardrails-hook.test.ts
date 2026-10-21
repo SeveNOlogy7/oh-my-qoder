@@ -475,4 +475,102 @@ describe('git-guardrails hook', () => {
       expect(result.stderr).toBe('');
     });
   });
+
+  describe('skip paths keep blocking semantics (#4221)', () => {
+    it('quote- and escape-split git spellings are still blocked', async () => {
+      for (const command of ['g\\it push origin main', '"g"it push origin main', 'git pu""sh origin main']) {
+        const result = await runHook(command, {
+          OMQ_GIT_GUARDRAILS: '1',
+        });
+        expect(result.code, command).toBe(2);
+        expect(result.stderr, command).toContain('Git guardrail: blocked "git push"');
+      }
+    });
+
+    it('non-git commands exit quickly without state checks', async () => {
+      const result = await runHook('npm install', {});
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe('');
+    });
+
+    it('OMQ_GIT_GUARDRAILS=0 exits without blocking', async () => {
+      const result = await runHook('git push origin main', {
+        OMQ_GIT_GUARDRAILS: '0',
+      });
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe('');
+    });
+
+    it('guards remain active: destructive git still blocked', async () => {
+      const result = await runHook('git push origin main', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('Git guardrail: blocked "git push"');
+    });
+
+    it('non-git commands with guard enabled still pass through', async () => {
+      const result = await runHook('find . -type f', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe('');
+    });
+
+    it('uppercase GIT command is still blocked', async () => {
+      const result = await runHook('GIT push origin main', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('Git guardrail');
+    });
+
+    it('safe git commands pass through', async () => {
+      const result = await runHook('git status', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe('');
+    });
+
+    it('git reset --hard is blocked', async () => {
+      const result = await runHook('git reset --hard HEAD~1', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('git reset --hard');
+    });
+
+    it('git clean -f is blocked', async () => {
+      const result = await runHook('git clean -f', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('git clean -f');
+    });
+
+    it('git checkout . is blocked', async () => {
+      const result = await runHook('git checkout .', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('checkout');
+    });
+
+    it('git restore . is blocked', async () => {
+      const result = await runHook('git restore .', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('restore');
+    });
+
+    it('git branch -D is blocked', async () => {
+      const result = await runHook('git branch -D feature', {
+        OMQ_GIT_GUARDRAILS: '1',
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('git branch -D');
+    });
+  });
 });

@@ -108,6 +108,16 @@ function setupMocks(fsModule: ReturnType<typeof createFsMock>['fsModule'], httpS
   }));
 }
 
+async function loadUsageApiWithCredentialBoundCache(fsModule: ReturnType<typeof createFsMock>['fsModule']) {
+  const usageApi = await import('../../hud/usage-api.js');
+  const credentialIdentity = usageApi.getUsageCredentialIdentity();
+  if (!credentialIdentity) throw new Error('expected z.ai test credentials');
+
+  const cache = JSON.parse(fsModule.readFileSync(CACHE_PATH));
+  fsModule.writeFileSync(CACHE_PATH, JSON.stringify({ ...cache, credentialIdentity }));
+  return usageApi;
+}
+
 describe('usage API stale data handling', () => {
   const originalEnv = { ...process.env };
 
@@ -141,7 +151,7 @@ describe('usage API stale data handling', () => {
     const { fsModule } = createFsMock({ [CACHE_PATH]: expiredCache });
     setupMocks(fsModule, 429, '');
 
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     const result = await getUsage();
 
     expect(result.rateLimits).toBeDefined();
@@ -166,7 +176,7 @@ describe('usage API stale data handling', () => {
       },
     }));
 
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     const result = await getUsage();
 
     expect(result.rateLimits).toBeDefined();
@@ -186,7 +196,7 @@ describe('usage API stale data handling', () => {
     const { files, fsModule } = createFsMock({ [CACHE_PATH]: expiredCache });
     setupMocks(fsModule, 429, '');
 
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     await getUsage();
 
     // Cache should preserve the original lastSuccessAt
@@ -211,7 +221,7 @@ describe('usage API stale data handling', () => {
     }));
 
     const now = Date.now();
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     await getUsage();
 
     const written = JSON.parse(files.get(CACHE_PATH)!);
@@ -243,7 +253,7 @@ describe('usage API stale data handling', () => {
     }));
     vi.doMock('fs', () => fsModule);
 
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     const result = await getUsage();
 
     // Should discard the data and show error
@@ -266,7 +276,7 @@ describe('usage API stale data handling', () => {
     const { files, fsModule } = createFsMock({ [CACHE_PATH]: expiredCache });
     setupMocks(fsModule, 500, '');
 
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     const result = await getUsage();
 
     expect(result).toEqual({
@@ -303,7 +313,7 @@ describe('usage API stale data handling', () => {
     const { files, fsModule } = createFsMock({ [CACHE_PATH]: expiredCache });
     setupMocks(fsModule, 500, '');
 
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     const result = await getUsage();
 
     expect(result).toEqual({
@@ -335,7 +345,7 @@ describe('usage API stale data handling', () => {
     setupMocks(fsModule, 500, '');
 
     const httpsModule = await import('https') as unknown as { default: { request: ReturnType<typeof vi.fn> } };
-    const { getUsage } = await import('../../hud/usage-api.js');
+    const { getUsage } = await loadUsageApiWithCredentialBoundCache(fsModule);
     const result = await getUsage();
 
     expect(result.rateLimits?.fiveHourPercent).toBe(11);

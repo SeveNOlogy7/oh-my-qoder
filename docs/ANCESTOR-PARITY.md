@@ -1,8 +1,8 @@
 # Ancestor Parity
 
 > Ancestor: [`Yeachan-Heo/oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
-> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.5.0** | Current ancestor latest: **v5.6.2**
-> Status: v5.0.0 through v5.5.0 adopted; M2 subsystem migration in progress (one minor per round)
+> OMQ snapshot: ancestor **v4.15.1** | Latest adopted: **v5.7.0** | Current ancestor latest: **v5.7.0**
+> Status: v5.0.0 through v5.7.0 adopted; M2 subsystem migration in progress (one minor per round)
 
 ## Identity
 
@@ -26,7 +26,8 @@
 | v5.5.0 | 2026-09-22 | **adopted** | this round: pin `11b237f`, adoption `5c933c8` (7005/7005 blob-verified), see below |
 | v5.6.0 | 2026-10-01 | **adopted** | this round: pin `c56fc5e`, adoption `78b03e9` (7077/7077 blobs measured via the GitHub API — see the caveat below), see below |
 | v5.6.1 | not measured | not measured | — |
-| v5.6.2 | 2026-10-06 | not measured | latest ancestor tag at this round's time of writing |
+| v5.6.2 | 2026-10-06 | not measured | superseded by v5.7.0 |
+| v5.7.0 | 2026-10-12 | **adopted** | this round: pin `8262f9f` (tag object `e48c8ac2`, tree `b057380a`), adoption `fba421a` (7682/7682 blobs blob-verified against the GitHub API tree), see below |
 
 ## Blob-tree diff v4.15.1 to v5.0.0
 
@@ -259,13 +260,57 @@ protocol and no authoritative **treeSha** was measured. Do not cite a treeSha fo
 | 73 new non-`dist` files | `scripts/{budget-guard,git-guardrails,jev-resolve,runs-reconciler,stale-run-reporter}.mjs`, `scripts/lib/{enforcement-log,jev-shadow,run-reaper}.mjs`, four skills (`map`, `pr`, `refit`, `tdd`), `GLOSSARY.md`, `docs/design/*`, `docs/factory/t6-acceptance`, `src/factory/**`, `src/cli/commands/{factory,intake,ralph}.ts`, `src/lib/{host-load-gate,runs-ledger}.ts`, `src/hooks/session-end/{chain-enqueuer,check-evidence,guardrails,routing,spawn-next}.ts`, `templates/hooks/session-end.mjs`, ~40 new tests | adopted verbatim; the naming/identity repair restored fork spellings inside them |
 | `inventory/inventory-graph.json` declared `generated.distFiles: 5066` | that figure was inherited from the ancestor when v5.4/v5.5 adoption copied the artifact across, and the fork generator had never re-run to correct it | **stale value corrected** (`726969b`): `--write` regenerates it to `distFiles: 0`. Verified deterministic, not data loss — `listTrackedGenerated` has existed since the v5.0.0 alignment, `dist/` was never tracked (`git log --diff-filter=A -- 'dist/*'` is empty), and `.gitignore` ignored `dist/` from the initial commit |
 
+## Blob-tree diff v5.6.0 to v5.7.0
+
+v5.7.0 is `8262f9f790eed35e6cbd66572b36c2acba18f679`, annotated tag object `e48c8ac2`, tree
+`b057380a96553770724a94db14623f7df860a29d`, 7682 blobs (v5.6.0: 7077). Note the shape: the tag
+points at a **merge commit** (parents `8c48967f`, `677f9715`), so the tree is a join of two lines of
+work rather than one linear tip — nothing in the fork consumes `parentSha`, and the adoption reads
+the tree, so this is recorded rather than handled.
+
+GitHub tree diff v5.6.0 → v5.7.0: **605 added, 565 modified, 0 deleted** (of 7682). Adoption face
+after exclusions (`.github/`, `dist/`, `bridge/` except the keeper, `.omq/`, `.gitignore`,
+`.qoder-credits`, `bun.lock`): **281 paths**, staged into `ancestor-src/` with every file
+blob-verified against the API tree before landing.
+
+Three-way reconciliation (`base` = ancestor v5.6.0, `ours` = fork@`7f973ec`, `theirs` = ancestor
+v5.7.0, `git merge-file --diff3`, unresolved hunks taken from the ancestor): `merged=232`,
+`upstreamNew=47`, `forkDeleted=2`, `conflictedFiles=60`, `hunksToTheirs=148`. Completeness verified
+by specifier-set comparison in both directions: `upstreamAdditionsCarried=232`,
+`upstreamAdditionsBroken=0`. Typecheck after the whole wave: `TSC_EXIT=0 ERROR_LINES=0`.
+
+The round's real finding is in the instruments, not the ancestor. Measured drift over the fork
+corpus rose **+468** ancestor-spelling occurrences, traced to two defects: pair derivation used
+`split('\n')` against a CRLF fork corpus (masks never matched → the rename pass no-oped on those
+files, `src/utils/paths.ts` among them), and the rename block was gated on the file having a fork
+side, so all 47 ancestor-new files landed in the raw ancestor naming face. Both fixed; a dry
+re-merge with the fixed instruments reports `renames=842` and `forkResidueLines=129` (was 516).
+The residual drift sweep (`w10-universal-rename.mjs`) then took **+468 → +145**, refusing to touch
+any spelling the fork corpus itself uses. Full reasoning in
+`.omq/align-v5.7.0/w10-residue-disposition.md`.
+
+## v5.7.0 changes that touched OMQ surfaces
+
+| Ancestor v5.7.0 position | Effect on the fork | Disposition |
+|--------------------------|--------------------|-------------|
+| `process.env.OMC_HOME` / `OMC_STATE_DIR` / `OMC_HUD_CACHE_DIR` in adopted and new files | the fork reads `OMQ_*`; `paths.ts` ended up reading `OMC_HOME` while its own test sets `OMQ_HOME` — the override silently did nothing | swept to the fork spelling, but only for tokens with **zero** whole-word occurrences in the fork corpus, so genuine compat reads stay |
+| `.omc-stale-` aside suffix for stale plugin versions | impl and its tests both landed on the ancestor suffix | renamed as a set to `.omq-stale-`; three fixtures written `4.15.6.omc-stale-…` survived the token boundary and were fixed at the site, because a half-renamed suffix drives the relink path with a pattern the impl no longer recognises |
+| `OMC_HUD_MIN_REFRESH_SECONDS` | the same script already reads `OMQ_HUD_CACHE_DIR` / `OMQ_HUD_SYNC_REFRESH`, so the new knob would be unsettable alongside its siblings | renamed with its two test carriers |
+| `DEFAULT_REPO_URL = Yeachan-Heo/oh-my-claudecode` in `src/lib/release-generation.ts` | the fork's release generator would open pull requests against the ancestor; the fork authored `qoder-plugins/oh-my-qoder` (this repo's actual `origin`) | **restored to the fork value.** `release-generation.test.ts:144` asserts the clone line `qoder-plugins/oh-my-qoder` — the test was red while the impl carried the ancestor URL |
+| ancestor's two-way `/autopilot` namespace match | the fork matched four namespaces; `omq:` was silently dropped, so `/omq:autopilot` stopped triggering | restored to `(?:oh-my-qoder:|omq:|oh-my-claudecode:|omc:)` in `.mjs` and `.cjs`, using the fork's own `.cjs` as the evidence for the intended union. No other file lost an `omq:` occurrence |
+| `buildLaunchArgs(model?, extraFlags = [])` for the fork-only `qwen` contract | an effort string passed positionally lands in `extraFlags` and spreads into single characters | **fork signature kept**: widened to `(model?, reasoningEffort?, extraFlags = [])` |
+| ancestor `execSync` string-built `git describe` | shell interpolation of a tag/ref | **upstream change kept** — it was replaced by `execFileSync` with array args in the same file |
+| `purge-stale-cache.test.ts` without a `cache-occupancy` mock | `paths.ts:512` calls `readOccupiedPluginRoots(configDir)` while the test mocks `fs` wholesale, so the call resolves through unconfigured `vi.fn()` stubs | **fork mock restored** |
+| `skills/omc-doctor/` resurrected by adoption | the fork renamed that directory to `skills/omq-doctor/`; `skills.test.ts` read the ancestor path and would ENOENT | directory deleted (2 paths), and the two `omc-doctor` reads in `skills.test.ts` pointed at the shipped name. `src/hooks/skill-state/index.ts` keeps `'omc-doctor'` as a deliberate legacy-spelling tolerance key |
+| 47 ancestor-new files | no fork side to exempt them, so they landed in the raw ancestor naming face | instrument defect above; naming now restored from the pooled vocabulary |
+
 ## Migration milestones
 
 | Milestone | Scope | State | Evidence |
 |-----------|-------|-------|----------|
 | M0 Provenance & baseline | ANCESTOR_BASELINE.json, attribution, lineage docs | done (re-pinned to v5.6.0) | pin `c56fc5e` |
-| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated | 993 collision rows in `docs/ANCESTOR-PATCH-LAYER.md`; carriage lanes measured |
-| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132`; v5.4.0 round: `83c3fab` (pin), `b9aaa2d` (adoption), `32be4ea` (identity), repair lanes through `37607c7`; v5.5.0 round: `11b237f` (pin), `5c933c8` (adoption), `e595087` (identity), repair lanes through `ddd7e88`; v5.6.0 round: `c56fc5e` (pin), `78b03e9` (adoption), repair lanes through `726969b` |
+| M1 Conflict ledger | named conflicts + negative-control carriers | done, re-generated this round | 281 collision rows in `docs/ANCESTOR-PATCH-LAYER.md` (hop modified/added/deleted 234/47/0; assertable/test-surface/structural 128/126/27; carriers VALID 7, missing 121). The count fell from v5.6.0's 993 because the collision set is `fork-touched ∩ hop-touched` and this round's own commits touch exactly the hop's 281 paths |
+| M2 Subsystem migration | installer+paths -> bridge+scripts -> hooks+skills -> hud -> artefacts | in progress | v5.0.0 round: `344176f`..`a8aae62`; v5.1.0 round: `ebf06c7` (pin), `3acd654` (adoption), `a5efd6b` (identity), repair lanes through `a870635`; v5.2.0 round: `acf7948` (pin), `9ed5686` (adoption), `30757a4` (identity), repair lanes through `99f9b33`; v5.3.0 round: `5174b8a` (pin), `35f99d2` (adoption), `ab2abcb` (identity), repair lanes through `2be8132`; v5.4.0 round: `83c3fab` (pin), `b9aaa2d` (adoption), `32be4ea` (identity), repair lanes through `37607c7`; v5.5.0 round: `11b237f` (pin), `5c933c8` (adoption), `e595087` (identity), repair lanes through `ddd7e88`; v5.6.0 round: `c56fc5e` (pin), `78b03e9` (adoption), repair lanes through `726969b`; v5.7.0 round: `8262f9f` (pin), `fba421a` (adoption), `2c0c500` (identity), reconcile `a86112e` + `d40d283`, W10 drift sweep (wave commits squashed at close) |
 | M3 Upstream contributions | 2-4 named PRs to shrink rename surface | not started | not measured |
 | M4 Pipeline gate | Triggered only if backport demand > 10/quarter | not started | not measured |
 

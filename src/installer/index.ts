@@ -16,11 +16,11 @@ import { homedir } from 'os';
 import { execSync } from 'child_process';
 import {
   isWindows,
-  MIN_NODE_VERSION,
   getHooksSettingsConfig,
 } from './hooks.js';
 import { getRuntimePackageVersion } from '../lib/version.js';
-import { getQoderConfigDir, getDefaultConfigDirShellPath, isDefaultQoderConfigDir } from '../utils/config-dir.js';
+import { getQoderConfigDir, isDefaultQoderConfigDir, getDefaultConfigDirShellPath } from '../utils/config-dir.js';
+import { MIN_NODE_VERSION } from '../utils/node-version.js';
 import { resolveNodeBinary } from '../utils/resolve-node.js';
 import { parseFrontmatter } from '../utils/frontmatter.js';
 import { isSkininthegamebrosUser } from '../utils/skininthegamebros-user.js';
@@ -911,10 +911,12 @@ function readStandalonePackageIdentity(packageDir: string): { root: string; name
   }
   let manifest: unknown;
   try { manifest = JSON.parse(readFileSync(packagePath, 'utf8')); } catch { throw new Error('Standalone state-lock provisioning requires a valid package.json'); }
-  if (!manifest || typeof manifest !== 'object' || (manifest as Record<string, unknown>).name !== 'oh-my-qoder' || (manifest as Record<string, unknown>).version !== VERSION) {
-    throw new Error(`Standalone state-lock provisioning requires package oh-my-qoder version ${VERSION}`);
+  // The name must match package.json's npm name, which stays ancestor-side (no npm publication for
+  // the fork); renaming this literal strands every standalone-lock provisioning behind a throw.
+  if (!manifest || typeof manifest !== 'object' || (manifest as Record<string, unknown>).name !== 'oh-my-claude-sisyphus' || (manifest as Record<string, unknown>).version !== VERSION) {
+    throw new Error(`Standalone state-lock provisioning requires package oh-my-claude-sisyphus version ${VERSION}`);
   }
-  return { root, name: 'oh-my-qoder', version: VERSION, helperPath };
+  return { root, name: 'oh-my-claude-sisyphus', version: VERSION, helperPath };
 }
 
 function standaloneStateLockBridge(packageDir: string): string {
@@ -947,9 +949,12 @@ export const isStateFileLockingSupported = canonical.isStateFileLockingSupported
 export const isExclusiveStateLockingAvailable = canonical.isExclusiveStateLockingAvailable;
 export const getStateFileLockDiagnostic = canonical.getStateFileLockDiagnostic;
 export const getStateFileLockFailureMessage = canonical.getStateFileLockFailureMessage;
+export const getStateFileLockFailureKind = canonical.getStateFileLockFailureKind;
 export const acquireStateFileLockSync = canonical.acquireStateFileLockSync;
+export const acquireStateFileLockAtPathSync = canonical.acquireStateFileLockAtPathSync;
 export const releaseStateFileLockSync = canonical.releaseStateFileLockSync;
 export const withStateFileLockSync = canonical.withStateFileLockSync;
+export const withStateFileLockAtPathSync = canonical.withStateFileLockAtPathSync;
 export const acquireRecoveryClaim = canonical.acquireRecoveryClaim;
 export const readRecoveryClaim = canonical.readRecoveryClaim;
 export const releaseRecoveryClaim = canonical.releaseRecoveryClaim;

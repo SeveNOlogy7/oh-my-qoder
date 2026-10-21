@@ -43,8 +43,11 @@ export function getQoderConfigDir(env = process.env, home = homedir()) {
   return stripTrailingSep(normalize(configured));
 }
 
-/** Hook templates spell the config root getter getClaudeConfigDir; keep it exported next to the canonical name. */
-export const getClaudeConfigDir = getQoderConfigDir;
+/** Hook templates spell the config root getter getClaudeConfigDir; keep the ancestor name as a
+ *  function declaration, which is the payload shape the reconciliation contract pins. */
+export function getClaudeConfigDir() {
+  return getQoderConfigDir();
+}
 
 export function getOmqConfigDir() {
   return join(getQoderConfigDir(), '.omq');

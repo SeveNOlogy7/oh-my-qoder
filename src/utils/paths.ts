@@ -1,3 +1,4 @@
+import { OMQ_PLUGIN_MARKETPLACE_SLUG, OMQ_PLUGIN_PACKAGE_NAME } from '../lib/paths.js';
 /**
  * Cross-Platform Path Utilities
  *
@@ -7,11 +8,18 @@
  */
 
 import { join, dirname } from 'path';
-import { existsSync, readFileSync, readdirSync, statSync, lstatSync, unlinkSync, rmSync, renameSync, symlinkSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync, lstatSync, realpathSync, unlinkSync, rmSync, renameSync, symlinkSync } from 'fs';
 import { homedir } from 'os';
 import { getClaudeConfigDir, getQoderConfigDir } from './config-dir.js';
-import { OMQ_PLUGIN_MARKETPLACE_SLUG, OMQ_PLUGIN_PACKAGE_NAME } from '../lib/paths.js';
 import { pathIdentity, readOccupiedPluginRoots } from './cache-occupancy.js';
+import {
+  firstChildBelowDirectoryIdentity,
+  hasAncestorWithIdentity,
+  isOmcPluginCacheIdentity,
+  isUsableGenericPluginTarget,
+  isUsableVersionPath,
+  sameFileSystemIdentity,
+} from './plugin-cache-validation.js';
 
 /**
  * Convert a path to use forward slashes (for JSON/config files)
@@ -67,12 +75,6 @@ export function getStateDir(): string {
   return process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state');
 }
 
-/**
- * XDG-aware roots place us under ~/.config/omq and ~/.local/state/omq on
- * Linux/Unix. The directory names are the fork's (`omq`) even though the exported
- * helper names below still say Omc: b37141e shipped these values, and a user's
- * state on disk follows the values, not the symbol names.
- */
 function prefersXdgOmcDirs(): boolean {
   return process.platform !== 'win32' && process.platform !== 'darwin';
 }
@@ -183,73 +185,13 @@ export function getGlobalOmcStateCandidates(...segments: string[]): string[] {
  * The marketplace segment is not fixed: a marketplace install lands in `omq`
  * while `qoderclicn plugins install <dir>` lands in `local`, so the tree is
  * scanned instead of assuming one slug. Ties go to the canonical `omq` slug.
+ * Restored from authority ref 7f973ec -- the v5.7.0 hop re-landed upstream's
+ * fixed-segment version, which cannot resolve a CN local-dir install (the shape
+ * this host actually has), and hud-windows.test.ts pins the scan.
  */
 export function getPluginCacheBase(): string {
   return resolvePluginCacheBase(getQoderConfigDir());
 }
-
-const CACHE_VERSION_DIR = /^\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.-]+)?$/;
-
-function compareCacheVersions(a: string, b: string): number {
-  const [coreA, preA] = a.split(/[-+]/);
-  const [coreB, preB] = b.split(/[-+]/);
-  const partsA = coreA.split('.').map(Number);
-  const partsB = coreB.split('.').map(Number);
-  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  // A release outranks its own pre-release, matching semver precedence.
-  if (preA && !preB) return -1;
-  if (!preA && preB) return 1;
-  return 0;
-}
-
-export function resolvePluginCacheBase(configDir: string): string {
-  const cacheParent = join(configDir, 'plugins', 'cache');
-  const fallback = join(cacheParent, OMQ_PLUGIN_MARKETPLACE_SLUG, OMQ_PLUGIN_PACKAGE_NAME);
-
-  let slugs: string[];
-  try {
-    slugs = readdirSync(cacheParent).sort();
-  } catch {
-    return fallback;
-  }
-
-  let best: { base: string; version: string; canonical: boolean } | undefined;
-  for (const slug of slugs) {
-    const base = join(cacheParent, slug, OMQ_PLUGIN_PACKAGE_NAME);
-    let versions: string[];
-    try {
-      versions = readdirSync(base).filter(name => {
-        if (!CACHE_VERSION_DIR.test(name)) return false;
-        try {
-          return statSync(join(base, name)).isDirectory();
-        } catch {
-          return false;
-        }
-      });
-    } catch {
-      continue;
-    }
-    if (versions.length === 0) continue;
-
-    const latest = versions.sort(compareCacheVersions)[versions.length - 1];
-    const canonical = slug === OMQ_PLUGIN_MARKETPLACE_SLUG;
-    if (
-      !best
-      || compareCacheVersions(latest, best.version) > 0
-      || (compareCacheVersions(latest, best.version) === 0 && canonical && !best.canonical)
-    ) {
-      best = { base, version: latest, canonical };
-    }
-  }
-
-  return best?.base ?? fallback;
-}
-
-/**
- * Safely delete a file, ignoring ENOENT errors.
 
 /**
  * Safely delete a file, ignoring ENOENT errors.
@@ -295,52 +237,6 @@ const ASIDE_SUFFIX = '.omq-stale-';
  * repaired instead of being mistaken for a plugin version. Group 1 is the pid
  * of the purge that created it. */
 const ASIDE_SUFFIX_RE = /\.omq-stale-(\d+)$/;
-
-/**
- * What a plugin root has to expose for a pinned session to keep working.
- *
- * This mirrors `isPluginRoot()` in `scripts/run.cjs` — the hook runner's own
- * check — and must stay in step with it. The runner requires all of these, so a
- * root missing any one cannot run hooks no matter what else it holds. Note that
- * `.claude-plugin/plugin.json` is deliberately absent: the runner does not
- * consult it, so a manifest-only directory is not a usable root.
- */
-const PLUGIN_ROOT_REQUIREMENTS = [
-  join('hooks', 'hooks.json'),
-  join('scripts', 'run.cjs'),
-  'scripts',
-];
-
-/**
- * True when `path` can serve as a plugin root: a live redirect symlink, or a
- * directory that actually carries plugin payload.
- *
- * Presence is not enough, and neither is "holds a non-dotfile", and neither is
- * "holds one of the entry points". A directory left by a lost relink window can
- * hold `.DS_Store` (Finder writes it the moment it walks the path),
- * `desktop.ini`/`Thumbs.db` on Windows, a half-extracted `scripts/`, or a
- * partially copied root with only the manifest or only `hooks/hooks.json` — none
- * of which the hook runner will load. Treating any of those as usable is what
- * makes a recovery discard the only intact copy.
- *
- * A dangling symlink is not usable either: `existsSync` follows the link, so a
- * redirect whose target has since been removed is correctly rejected.
- */
-function isUsableVersionPath(path: string): boolean {
-  let stats;
-  try {
-    stats = lstatSync(path);
-  } catch {
-    return false;
-  }
-  // A plain file at a version path is never a root; anything else gets the same
-  // payload check.  `existsSync` follows symlinks, so one expression covers a
-  // real directory, a redirect to a real root (usable), a redirect to some other
-  // directory (not usable — the runner validates the resolved root), and a
-  // dangling redirect (not usable).
-  if (!stats.isDirectory() && !stats.isSymbolicLink()) return false;
-  return PLUGIN_ROOT_REQUIREMENTS.every(required => existsSync(join(path, required)));
-}
 
 /**
  * True when the purge that created an aside directory is still running, i.e.
@@ -452,14 +348,14 @@ function describeError(err: unknown): string {
  *
  * `rename()` cannot swap a directory for a symlink (POSIX requires both sides to
  * be the same type), so the stale directory is moved aside first and only
- * discarded once the symlink is in place. If the symlink cannot be created —
- * something re-created the path inside the window — the stale directory is moved
- * back, keeping `CLAUDE_PLUGIN_ROOT`-pinned sessions alive.
+ * discarded once the symlink is in place and its target remains usable. If the
+ * target breaks through the stale path during the move, the stale directory is
+ * moved back, keeping `CLAUDE_PLUGIN_ROOT`-pinned sessions alive.
  *
  * Invariant: on return the path is either the redirect symlink or the original
  * directory. It is never an empty directory and never absent.
  */
-function relinkStaleVersionDir(versionDir: string, target: string): void {
+function relinkStaleVersionDir(versionDir: string, target: string, isTargetUsable: () => boolean): void {
   const symlinkType = process.platform === 'win32' ? 'junction' : 'dir';
   const asideDir = `${versionDir}${ASIDE_SUFFIX}${process.pid}`;
   const pluginDir = dirname(versionDir);
@@ -478,12 +374,16 @@ function relinkStaleVersionDir(versionDir: string, target: string): void {
   try {
     const placed = placeClearingSquatters(versionDir, () => symlinkSync(target, versionDir, symlinkType), pluginDir);
     if (placed.ok) {
-      safeRmSync(asideDir);
-      return;
+      if (isTargetUsable()) {
+        safeRmSync(asideDir);
+        return;
+      }
+      failure = new Error('registered active plugin target became unusable during relink');
+    } else {
+      failure = new Error(
+        `could not place redirect symlink after ${RELINK_ATTEMPTS} attempts (${describeError(placed.last)})`,
+      );
     }
-    failure = new Error(
-      `could not place redirect symlink after ${RELINK_ATTEMPTS} attempts (${describeError(placed.last)})`,
-    );
   } catch (err) {
     // Not a contended path (EPERM, EACCES, …) — restore and report as-is.
     failure = err;
@@ -638,6 +538,25 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
           .map(d => d.name);
       } catch { continue; }
 
+      const pluginDirNorm = comparisonPath(pluginDir);
+      const lexicalActiveVersionDirsHere = activePathIdentities
+        .filter(ap => ap.startsWith(pluginDirNorm + '/'))
+        .map(ap => join(pluginDir, ap.slice(pluginDirNorm.length + 1).split('/')[0]));
+      const filesystemActiveVersionDirsHere: string[] = [];
+      try {
+        const pluginDirStats = statSync(pluginDir);
+        for (const activePath of activePathsArray) {
+          const versionName = firstChildBelowDirectoryIdentity(activePath, pluginDirStats);
+          if (versionName) filesystemActiveVersionDirsHere.push(join(pluginDir, versionName));
+        }
+      } catch {
+        // Lexical matches remain available if the namespace disappears mid-scan.
+      }
+      const activeVersionDirsHere = dedupePaths([
+        ...lexicalActiveVersionDirsHere,
+        ...filesystemActiveVersionDirsHere,
+      ]);
+
       // Reconcile interrupted relinks BEFORE walking normal versions.  Entries
       // arrive in filesystem order, so a squatter at `4.15.6` could otherwise be
       // relinked first — and that relink clears `4.15.6.omq-stale-<pid>`, the
@@ -705,7 +624,8 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
 
         // Check if this version or any of its subdirectories are referenced
         const isActive = activePathIdentities.includes(normalised) ||
-          activePathIdentities.some(ap => ap.startsWith(normalised + '/'));
+          activePathIdentities.some(ap => ap.startsWith(normalised + '/')) ||
+          activeVersionDirsHere.some(activeDir => comparisonPath(activeDir) === normalised);
 
         if (isActive) continue;
 
@@ -721,13 +641,6 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
         // When an active version exists in the same plugin namespace, replace the
         // stale directory with a symlink rather than deleting it.  This keeps any
         // running session whose CLAUDE_PLUGIN_ROOT still points to this path working.
-        const pluginDirNorm = comparisonPath(pluginDir);
-        const activeVersionDirsHere = dedupePaths(
-          activePathIdentities
-            .filter(ap => ap.startsWith(pluginDirNorm + '/'))
-            .map(ap => join(pluginDir, ap.slice(pluginDirNorm.length + 1).split('/')[0])),
-        );
-
         if (activeVersionDirsHere.length > 0) {
           const target = [...activeVersionDirsHere].sort((a, b) =>
             compareSemverDesc(
@@ -736,7 +649,30 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
             ),
           )[0];
           try {
-            relinkStaleVersionDir(versionDir, target);
+            const targetStats = statSync(target);
+            if (!targetStats.isDirectory()) {
+              throw new Error('Registered active plugin target is not a directory');
+            }
+            const staleVersionStats = statSync(versionDir);
+            const resolvedTarget = realpathSync(target);
+            const resolvedStaleVersion = realpathSync(versionDir);
+            const targetPath = comparisonPath(resolvedTarget);
+            const staleVersionPath = comparisonPath(resolvedStaleVersion);
+            const targetOverlapsStaleVersion = sameFileSystemIdentity(targetStats, staleVersionStats) ||
+              targetPath === staleVersionPath ||
+              targetPath.startsWith(`${staleVersionPath}/`) ||
+              staleVersionPath.startsWith(`${targetPath}/`) ||
+              hasAncestorWithIdentity(resolvedTarget, staleVersionStats) ||
+              hasAncestorWithIdentity(resolvedStaleVersion, targetStats);
+            const isOmcPlugin = isOmcPluginCacheIdentity(pluginName, marketplace);
+            const isTargetUsable = () => statSync(target).isDirectory() &&
+              (isOmcPlugin
+                ? isUsableVersionPath(target, staleVersionStats)
+                : isUsableGenericPluginTarget(target, staleVersionStats));
+            if (targetOverlapsStaleVersion || !isTargetUsable()) {
+              throw new Error('Registered active plugin target is unusable or overlaps the stale version tree');
+            }
+            relinkStaleVersionDir(versionDir, target, isTargetUsable);
             result.symlinked++;
             result.symlinkPaths.push(versionDir);
           } catch (err) {
@@ -771,8 +707,7 @@ export function purgeStalePluginCacheVersions(options?: { skipGracePeriod?: bool
   return result;
 }
 
-// Brand-compatibility aliases: the vendored ancestor renamed these to "Omc",
-// while OMQ's tree (and the CN config-root work built on them) uses "Omq".
+// Restored from authority ref 7f973ec: adoption replaced this module with upstream's version.
 export {
   getLegacyOmcDir as getLegacyOmqDir,
   getGlobalOmcConfigRoot as getGlobalOmqConfigRoot,
@@ -783,3 +718,66 @@ export {
   getGlobalOmcStateCandidates as getGlobalOmqStateCandidates,
   getLegacyOmcPath as getLegacyOmqPath,
 };
+
+// Restored from authority ref 7f973ec: adoption replaced this module with upstream's version.
+export function resolvePluginCacheBase(configDir: string): string {
+  const cacheParent = join(configDir, 'plugins', 'cache');
+  const fallback = join(cacheParent, OMQ_PLUGIN_MARKETPLACE_SLUG, OMQ_PLUGIN_PACKAGE_NAME);
+
+  let slugs: string[];
+  try {
+    slugs = readdirSync(cacheParent).sort();
+  } catch {
+    return fallback;
+  }
+
+  let best: { base: string; version: string; canonical: boolean } | undefined;
+  for (const slug of slugs) {
+    const base = join(cacheParent, slug, OMQ_PLUGIN_PACKAGE_NAME);
+    let versions: string[];
+    try {
+      versions = readdirSync(base).filter(name => {
+        if (!CACHE_VERSION_DIR.test(name)) return false;
+        try {
+          return statSync(join(base, name)).isDirectory();
+        } catch {
+          return false;
+        }
+      });
+    } catch {
+      continue;
+    }
+    if (versions.length === 0) continue;
+
+    const latest = versions.sort(compareCacheVersions)[versions.length - 1];
+    const canonical = slug === OMQ_PLUGIN_MARKETPLACE_SLUG;
+    if (
+      !best
+      || compareCacheVersions(latest, best.version) > 0
+      || (compareCacheVersions(latest, best.version) === 0 && canonical && !best.canonical)
+    ) {
+      best = { base, version: latest, canonical };
+    }
+  }
+
+  return best?.base ?? fallback;
+}
+
+// Restored from authority ref 7f973ec: this symbol was deleted by adoption and its fork consumers still need it.
+export const CACHE_VERSION_DIR = /^\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.-]+)?$/;
+
+// Restored from authority ref 7f973ec: this symbol was deleted by adoption and its fork consumers still need it.
+export function compareCacheVersions(a: string, b: string): number {
+  const [coreA, preA] = a.split(/[-+]/);
+  const [coreB, preB] = b.split(/[-+]/);
+  const partsA = coreA.split('.').map(Number);
+  const partsB = coreB.split('.').map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  // A release outranks its own pre-release, matching semver precedence.
+  if (preA && !preB) return -1;
+  if (!preA && preB) return 1;
+  return 0;
+}

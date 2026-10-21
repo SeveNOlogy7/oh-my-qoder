@@ -55,5 +55,9 @@ export function getUpdateCheckCachePath() {
 
 // The HUD wrapper template still destructures the pre-rename symbol; this file is
 // copied verbatim into <configDir>/hud/lib/, so without the alias the statusline
-// throws "getClaudeConfigDir is not a function" on every render.
-export const getClaudeConfigDir = getQoderConfigDir;
+// throws "getClaudeConfigDir is not a function" on every render. Declared as a
+// function because the standalone-hook reconciliation contract pins the payload
+// to contain `export function getClaudeConfigDir()`.
+export function getClaudeConfigDir() {
+  return getQoderConfigDir();
+}

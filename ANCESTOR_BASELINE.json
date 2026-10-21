@@ -1,26 +1,25 @@
 {
   "lineage": {
     "repo": "Yeachan-Heo/oh-my-claudecode",
-    "tag": "v5.5.0",
-    "tagSha": "11b237fb259adbf9373e1f53c3f8f9bcb760e656",
-    "commitSha": "9fd35ece5d6de65b511bf43b55e42c499e4fc194",
-    "treeSha": "54f033ca4aec87ec8bbde71213795385f484c80c",
-    "commitDate": "2026-09-22T01:11:26Z",
-    "publishedAt": "2026-09-22T01:34:18Z",
-    "treeCache": ".omq/cache/ancestor-v5.5.0-tree.json",
-    "blobCount": 7005,
-    "note": "prior-round adoption target (v5.5.0 round terminal)"
-  },
-  "adoptionTarget": {
-    "repo": "Yeachan-Heo/oh-my-claudecode",
     "tag": "v5.6.0",
     "tagSha": "c56fc5e442a07f20335b15701b04d5ba95d9e3d2",
     "commitSha": "e74b22cd34e0a8b9dd5ded87d1bf0db6ce1a38dd",
+    "treeSha": "9df8c9a3550e78169e7d598418de094bc2a91373",
     "commitDate": "2026-10-01T05:23:38Z",
     "treeCache": ".omq/cache/ancestor-v5.6.0-tree.json",
     "blobCount": 7077,
-    "treeSha": "9df8c9a3550e78169e7d598418de094bc2a91373",
-    "parentSha": "d84f05985012be458fda5346ac05c3d205f3a79a"
+    "note": "prior-round adoption target (v5.6.0 round terminal)"
+  },
+  "adoptionTarget": {
+    "repo": "Yeachan-Heo/oh-my-claudecode",
+    "tag": "v5.7.0",
+    "tagSha": "e48c8ac25d507cc32ca44deadf2f5e1f9c1ffd4b",
+    "commitSha": "8262f9f790eed35e6cbd66572b36c2acba18f679",
+    "commitDate": "2026-10-12T02:49:57Z",
+    "treeCache": ".omq/cache/ancestor-v5.7.0-tree.json",
+    "blobCount": 7682,
+    "treeSha": "b057380a96553770724a94db14623f7df860a29d",
+    "parentSha": "8c48967fac617cce08d5059b0da7b66f3bdd6f89"
   },
   "patchLayer": {
     "baseCommit": "9ba1359c8f8cab5d72d7ffc543d3e35f676a4709",
@@ -33,6 +32,6 @@
       }
     ]
   },
-  "recordedAt": "2026-10-15",
-  "note": "v5.6.0 round. blobCount 7077 was measured via the GitHub API (repeated git-protocol fetch from the upstream repo failed on this box with RPC EOF / connection reset). treeSha 9df8c9a3550e78169e7d598418de094bc2a91373 is the authoritative tree object of commit e74b22cd, taken from the GitHub git/commits API - it is the same value `git rev-parse e74b22cd^{tree}` would return. The commit date is the git author date from that same API response."
+  "recordedAt": "2026-10-19",
+  "note": "v5.7.0 round. blobCount 7682 was measured via the GitHub API (git-protocol fetch from the upstream repo still fails on this box with RPC EOF / connection reset). treeSha b057380a96553770724a94db14623f7df860a29d is the authoritative tree object of commit 8262f9f7, taken from the GitHub git/commits API. Adoption target 8262f9f7 is a MERGE commit with two parents (8c48967f, 677f9715); parentSha records the first parent only, and no consumer reads this field. The extracted tarball of that commit held exactly 7682 files and every adopted file hashed to its tree blob."
 }

@@ -14,7 +14,7 @@ export interface CliAgentContract {
   agentType: CliAgentType;
   binary: string;
   installInstructions: string;
-  buildLaunchArgs(model?: string, extraFlags?: string[]): string[];
+  buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags?: string[]): string[];
   parseOutput(rawOutput: string): string;
   /** Whether this agent supports a prompt/headless mode that bypasses TUI input */
   supportsPromptMode?: boolean;
@@ -26,6 +26,7 @@ export interface WorkerLaunchConfig {
   teamName: string;
   workerName: string;
   model?: string;
+  reasoningEffort?: string;
   cwd: string;
   extraFlags?: string[];
   /**
@@ -189,7 +190,10 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     // Resolved lazily so importing this module does not shell out to PATH lookup.
     get binary() { return qoderCliBinary(); },
     installInstructions: 'Install Qoder CLI: curl -fsSL https://qoder.com/install | bash',
-    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+    // reasoningEffort exists for contract conformance: the shared caller passes (model, reasoningEffort,
+    // extraFlags) positionally, so omitting the slot would drop the effort string into extraFlags and
+    // spread it into single-character CLI arguments. Qoder CLI has no effort flag.
+    buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags: string[] = []): string[] {
       const args = ['--dangerously-skip-permissions'];
       if (shouldUseClaudeBareMode() && !extraFlags.includes('--bare')) {
         args.push('--bare');
@@ -212,7 +216,7 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     agentType: 'claude',
     binary: 'claude',
     installInstructions: 'Install Claude CLI: https://claude.ai/download',
-    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+    buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags: string[] = []): string[] {
       const args = ['--dangerously-skip-permissions'];
       if (shouldUseClaudeBareMode() && !extraFlags.includes('--bare')) {
         args.push('--bare');
@@ -224,6 +228,9 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
         // these providers. (issue #1695)
         const resolved = isProviderSpecificModelId(model) ? model : normalizeToCcAlias(model);
         args.push('--model', resolved);
+      }
+      if (reasoningEffort) {
+        args.push('--effort', reasoningEffort);
       }
       return [...args, ...extraFlags];
     },
@@ -239,9 +246,12 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     // or positional prompt mode here; runtime dispatch writes inbox.md and nudges
     // the live Codex TUI with `codex` as the worker process.
     supportsPromptMode: false,
-    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+    buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags: string[] = []): string[] {
       const args = ['--dangerously-bypass-approvals-and-sandbox'];
       if (model) args.push('--model', model);
+      if (reasoningEffort) {
+        args.push('-c', `model_reasoning_effort="${reasoningEffort}"`);
+      }
       return [...args, ...extraFlags];
     },
     parseOutput(rawOutput: string): string {
@@ -269,7 +279,7 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     installInstructions: 'Install Gemini CLI: npm install -g @google/gemini-cli',
     supportsPromptMode: true,
     promptModeFlag: '-p',
-    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+    buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags: string[] = []): string[] {
       const args = ['--approval-mode', 'yolo'];
       if (model) args.push('--model', model);
       return [...args, ...extraFlags];
@@ -284,7 +294,7 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     installInstructions: 'Install Grok Build: https://build.grok.com',
     supportsPromptMode: true,
     promptModeFlag: '-p',
-    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+    buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags: string[] = []): string[] {
       const args = ['--always-approve'];
       if (model) args.push('--model', model);
       return [...args, ...extraFlags];
@@ -299,7 +309,7 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     installInstructions: 'Install the Antigravity CLI (agy) per the official instructions at https://antigravity.google, then verify with `agy --version`.',
     supportsPromptMode: true,
     promptModeFlag: '-p',
-    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+    buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags: string[] = []): string[] {
       // agy's `-p`/`--print` is appended by getPromptModeArgs as `-p <instruction>`,
       // where the prompt is the VALUE of `-p` (not a boolean). All other flags
       // MUST precede that `-p`, so buildLaunchArgs returns only the leading flags
@@ -307,6 +317,9 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
       // so no trust-confirm send-keys is needed (unlike gemini). Verified agy 1.0.10.
       const args = ['--dangerously-skip-permissions'];
       if (model) args.push('--model', model);
+      if (reasoningEffort) {
+        args.push('--effort', reasoningEffort);
+      }
       return [...args, ...extraFlags];
     },
     parseOutput(rawOutput: string): string {
@@ -320,7 +333,7 @@ const CONTRACTS: Record<CliAgentType, CliAgentContract> = {
     // Team workers must be persistent interactive panes, so the one-shot
     // `-p/--print` path is deliberately unused here (same stance as codex).
     supportsPromptMode: false,
-    buildLaunchArgs(model?: string, extraFlags: string[] = []): string[] {
+    buildLaunchArgs(model?: string, reasoningEffort?: string, extraFlags: string[] = []): string[] {
       // `--force` suppresses per-command approval prompts and `--trust` accepts
       // the workspace, which together are cursor-agent's equivalent of the
       // approval bypass every other provider already passes. Without them a
@@ -422,7 +435,7 @@ export function resolveValidatedBinaryPath(agentType: CliAgentType): string {
 }
 
 export function buildLaunchArgs(agentType: CliAgentType, config: WorkerLaunchConfig): string[] {
-  return getContract(agentType).buildLaunchArgs(config.model, config.extraFlags);
+  return getContract(agentType).buildLaunchArgs(config.model, config.reasoningEffort, config.extraFlags);
 }
 
 export function buildWorkerArgv(agentType: CliAgentType, config: WorkerLaunchConfig): string[] {
@@ -488,6 +501,7 @@ export function buildWorkerCommand(agentType: CliAgentType, config: WorkerLaunch
 }
 
 const WORKER_MODEL_ENV_ALLOWLIST = [
+  'OMQ_STATE_DIR',
   'ANTHROPIC_MODEL',
   'CLAUDE_MODEL',
   'ANTHROPIC_BASE_URL',
@@ -522,6 +536,7 @@ export function getWorkerEnv(
   workerName: string,
   agentType: CliAgentType,
   env: NodeJS.ProcessEnv = process.env,
+  role?: string,
 ): Record<string, string> {
   validateTeamName(teamName);
   const workerEnv: Record<string, string> = {
@@ -529,6 +544,9 @@ export function getWorkerEnv(
     OMQ_TEAM_NAME: teamName,
     OMQ_WORKER_AGENT_TYPE: agentType,
   };
+  if (role) {
+    workerEnv.OMQ_TEAM_ROLE = role;
+  }
 
   for (const key of WORKER_MODEL_ENV_ALLOWLIST) {
     const value = env[key];
@@ -691,17 +709,15 @@ export function resolveExternalModelsDefaults(
 /**
  * Whether a CLI agent's headless/prompt mode is supported on the given platform.
  * Antigravity (`agy`) `-p`/`--print` takes the prompt as an argv value and cannot
- * read it from stdin; on Windows that argv path is unreliable and `agy` has known
- * upstream Windows `-p` limitations. This centralizes the same platform support
- * decision the advisor (`scripts/run-provider-advisor.js`) enforces for `omc ask`.
+ * read it from stdin. The upstream bug (google-antigravity/antigravity-cli#76) was
+ * fixed in agy 1.0.15/1.1.1, enabling headless mode on Windows as of agy 1.3.0+.
+ * The team path spawns agy without a shell to avoid cmd.exe parsing issues.
  */
 export function isHeadlessSupportedOnPlatform(
   agentType: CliAgentType,
-  platform: NodeJS.Platform = process.platform,
+  _platform: NodeJS.Platform = process.platform,
 ): boolean {
-  if (agentType === 'antigravity' && platform === 'win32') {
-    return false;
-  }
+  // All prompt-mode agents support headless on all platforms (agy 1.3.0+)
   return true;
 }
 

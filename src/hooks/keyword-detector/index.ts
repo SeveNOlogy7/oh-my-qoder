@@ -160,7 +160,7 @@ export interface ExplicitWorkflowSlashInvocation {
  * Parse an explicit workflow slash invocation at the start of a prompt.
  *
  * Recognizes `/<skill>`, `/omq:<skill>`, `/oh-my-qoder:<skill>`, and the
- * ancestor `/omc:<skill>` / `/oh-my-claudecode:<skill>` forms for the canonical
+ * ancestor `/omc:<skill>` / `/oh-my-qoder:<skill>` forms for the canonical
  * workflow skill list. Both spellings are accepted because pasted guidance and
  * upstream documentation still carry the ancestor prefix; accepting it costs
  * nothing here, while refusing `/omq:` would silently drop the workflow lock for
@@ -377,8 +377,8 @@ export function sanitizeForKeywordDetection(text: string): string {
   let result = stripPastedCommandPayloads(text);
   // Remove HTML/markdown comments first so keywords inside comments cannot trigger modes
   result = result.replace(/<!--[\s\S]*?-->/g, '');
-  // Remove XML tag blocks (opening + content + closing; tag names must match)
-  result = result.replace(/<(\w[\w-]*)[\s>][\s\S]*?<\/\1>/g, '');
+  // Keep optional closing-tag attributes on one line and stop at adjacent tags.
+  result = result.replace(/<(\w[\w-]*)[\s>][\s\S]*?<\/\1(?:[ \t][^<>\r\n]*)?>/g, '');
   // Remove self-closing XML tags
   result = result.replace(/<\w[\w-]*(?:\s[^>]*)?\s*\/>/g, '');
   // Remove URLs
@@ -821,7 +821,7 @@ export function detectKeywordsWithType(
   // The general sanitizer strips bare `/word` tokens as file paths, so bare
   // commands like `/ralph fix auth` would otherwise never match. This must be
   // robust to surrounding whitespace, namespace prefixes (`/omc:`,
-  // `/oh-my-claudecode:`), and code-fence/backtick wrapping (handled inside
+  // `/oh-my-qoder:`), and code-fence/backtick wrapping (handled inside
   // the parser via removeCodeBlocks).
   const explicitSlash = parseExplicitWorkflowSlashInvocation(text);
   const explicitSlashType = explicitSlash
@@ -913,6 +913,8 @@ export interface TaskSizeFilterOptions {
   largeWordLimit?: number;
   /** Suppress heavy modes for small tasks. Default: true */
   suppressHeavyModesForSmallTasks?: boolean;
+  /** Jev-provided task size result (used in active mode). Overrides heuristic if provided. */
+  jevTaskSizeResult?: TaskSizeResult;
 }
 
 /**
@@ -940,16 +942,17 @@ export function getAllKeywordsWithSizeCheck(
     smallWordLimit = 50,
     largeWordLimit = 200,
     suppressHeavyModesForSmallTasks = true,
+    jevTaskSizeResult,
   } = options;
 
   const keywords = getAllKeywords(text);
 
   if (!enabled || !suppressHeavyModesForSmallTasks || keywords.length === 0) {
-    return { keywords, taskSizeResult: null, suppressedKeywords: [] };
+    return { keywords, taskSizeResult: jevTaskSizeResult ?? null, suppressedKeywords: [] };
   }
 
   const thresholds: TaskSizeThresholds = { smallWordLimit, largeWordLimit };
-  const taskSizeResult = classifyTaskSize(text, thresholds);
+  const taskSizeResult = jevTaskSizeResult ?? classifyTaskSize(text, thresholds);
 
   // Only suppress heavy modes for small tasks
   if (taskSizeResult.size !== 'small') {

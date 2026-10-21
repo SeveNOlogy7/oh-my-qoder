@@ -61,9 +61,6 @@ function loadTemplate(filename: string): string {
 // CONSTANTS AND UTILITIES
 // =============================================================================
 
-/** Minimum required Node.js version for hooks (must match package.json engines) */
-export const MIN_NODE_VERSION = 20;
-
 /** Check if running on Windows */
 export function isWindows(): boolean {
   return process.platform === "win32";
@@ -394,3 +391,6 @@ export const HOOKS_SETTINGS_CONFIG_NODE = {
 export function getHooksSettingsConfig(): typeof HOOKS_SETTINGS_CONFIG_NODE {
   return HOOKS_SETTINGS_CONFIG_NODE;
 }
+
+// Restored from authority ref 7f973ec: adoption replaced this module with upstream's version.
+export const MIN_NODE_VERSION = 20;

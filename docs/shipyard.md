@@ -4,7 +4,7 @@ Shipyard is the delivery methodology behind seven opt-in skills: `drydock`, `ask
 
 > **Everyone ships, and nobody ships randomly** — agents continuously run everything repeatable and acceptable-by-evidence; humans decide what cannot be judged by the system or what fails expensively.
 
-This page is the map of the methodology: the boundary principle, the roles, the four pillars, the surface layout, the working metaphor, and how the seven skills compose. The skills themselves (`/oh-my-claudecode:drydock`, `/oh-my-claudecode:ask-navigator`, `/oh-my-claudecode:loft`, `/oh-my-claudecode:harbor`, `/oh-my-claudecode:launch`, `/oh-my-claudecode:architecture-survey`, `/oh-my-claudecode:minimal-code-discipline`) are the executable form.
+This page is the map of the methodology: the boundary principle, the roles, the four pillars, the surface layout, the working metaphor, and how the seven skills compose. The skills themselves (`/oh-my-qoder:drydock`, `/oh-my-qoder:ask-navigator`, `/oh-my-qoder:loft`, `/oh-my-qoder:harbor`, `/oh-my-qoder:launch`, `/oh-my-qoder:architecture-survey`, `/oh-my-qoder:minimal-code-discipline`) are the executable form.
 
 ## The verifiability boundary
 
@@ -33,15 +33,15 @@ The premise sentence is the role model compressed: **everyone ships** is the adm
 
 ## The four pillars → five surfaces
 
-A repo that humans and agents both build on carries four pillars across five conceptual surfaces. `/oh-my-claudecode:drydock` lays them; every later session inherits them by reading.
+A repo that humans and agents both build on carries four pillars across five conceptual surfaces. `/oh-my-qoder:drydock` lays them; every later session inherits them by reading.
 
 | Conceptual surface | Concrete paths | Carries / filled by |
 | --- | --- | --- |
-| Shared context | `CONTEXT.md` + `docs/business/` + `docs/adr/` + OMC wiki | Glossary, business knowledge, and decision records; launch writes the file-backed paper trail and wiki compounds session knowledge |
+| Shared context | `GLOSSARY.md` + `docs/business/` + `docs/adr/` + OMC wiki | Glossary, business knowledge, and decision records; launch writes the file-backed paper trail and wiki compounds session knowledge |
 | Rules | `CLAUDE.md` + `docs/standards/` | Thin conventions/principles/index plus architecture, data, and process standards; drydock seeds them and the launch C5 sediment pass/reviews sediment recurring corrections |
 | Project skills | `.omc/skills/` | Reusable project capabilities and practices; contributors add them through the skillify quality gate |
-| Design system | `design-system/` | Tokens, components, and patterns; drydock seeds it for UI repos and may create a stub or skip it for non-UI repos |
-| MCP / CLI tools | `.mcp.json` + `scripts/` | MCP servers and repository automation; drydock seeds empty tool surfaces and integrations are added only when needed |
+| Design system | `design-system/` | Tokens, components, and patterns; appears on first use — when the first UI token or component contract is worth reusing |
+| MCP / CLI tools | `.mcp.json` + `scripts/` | MCP servers and repository automation; drydock seeds only the two faces (CLAUDE.md + GLOSSARY.md) day one, so these surfaces appear on first use and integrations are added only when needed |
 
 ## The metaphor family (for teaching the system)
 
@@ -50,13 +50,13 @@ A repo that humans and agents both build on carries four pillars across five con
 | The shipyard | The whole harness | A shared facility; everyone comes here to build |
 | The keel | Shared context + rules surfaces | Lay the skeleton first; the hull grows upward |
 | The fog | An effort whose destination isn't stateable yet | Nobody ships randomly — and nobody ships into fog without a chart |
-| The navigator | `/oh-my-claudecode:ask-navigator` | Charts the fog as a map of decision tickets; hands off, never builds |
-| The loft | `/oh-my-claudecode:loft` | Cut no steel until the shape is fair: a throwaway artifact answers a design question before real work begins |
-| The harbor | `/oh-my-claudecode:harbor` | The port's gate: external requests inspected, dispositioned, and turned into work orders — never merges, never decides |
+| The navigator | `/oh-my-qoder:ask-navigator` | Charts the fog as a map of decision tickets; hands off, never builds |
+| The loft | `/oh-my-qoder:loft` | Cut no steel until the shape is fair: a throwaway artifact answers a design question before real work begins |
+| The harbor | `/oh-my-qoder:harbor` | The port's gate: external requests inspected, dispositioned, and turned into work orders — never merges, never decides |
 | The classification society | `docs/standards/` + `design-system/` | A ship must pass class to sail = changes must pass standards to merge |
 | The charts | specs + tickets | Launch's output; build from the chart |
 | The logbook | `docs/adr/` | Decisions, auditable after the fact |
-| The launch | `/oh-my-claudecode:launch` | Everyone may launch — and not one class check may be skipped |
+| The launch | `/oh-my-qoder:launch` | Everyone may launch — and not one class check may be skipped |
 | The lookout | `omc lookout` | The mast watch: before an unattended run, scan the briefing and the workspace for danger — the lookout reports, the captain decides |
 
 ## The seven skills compose
@@ -81,7 +81,7 @@ Two levers every checkpoint pulls: **push right** — a checkpoint is deferred a
 
 Every shipyard skill — the seven compose skills plus the `agent-doc-discipline` companion — sits on one of two axes:
 
-- **User-invoked** — reachable only by the human typing the skill (`/oh-my-claudecode:launch`). Other skills may point the human at them, but never invoke them through the Skill tool. `launch`, `harbor`, `ask-navigator`, and `architecture-survey` are user-invoked entry points, marked `disable-model-invocation: true` in frontmatter where the harness honors it.
+- **User-invoked** — reachable only by the human typing the skill (`/oh-my-qoder:launch`). Other skills may point the human at them, but never invoke them through the Skill tool. `launch`, `harbor`, `ask-navigator`, and `architecture-survey` are user-invoked entry points, marked `disable-model-invocation: true` in frontmatter where the harness honors it.
 - **Model-invoked** — reachable by the model when the task fits, and callable by other skills ("call the Skill tool with ..."). `drydock`, `loft`, `minimal-code-discipline`, and `agent-doc-discipline` stay model-invoked.
 
 The iron rule: a user-invoked skill never invokes another user-invoked skill. The one deliberate exception is `drydock` — it is a human keel-laying entry point *and* the gate chain's callable audit: launch's yard gate and the navigator's charting mechanically call `drydock --check`, so it must remain model-invoked. The shipyard contract test suite pins the assignment in both directions and rejects skill text that invokes a user-invoked skill by name through the Skill tool.
@@ -107,7 +107,7 @@ The gates are not a chain that ends at delivery; they form one **closed circuit*
         │                │                           │         │
         │                ▼                           ▼         │
         │           sediment ◄──── review/verify ◄───┘         │
-        │   decisions land in CONTEXT.md, ADRs,                │
+        │   decisions land in GLOSSARY.md, ADRs,               │
         │   docs/business/, docs/standards/, .omc/skills/      │
         │                │                                     │
         └────────────────┘                                     │
@@ -125,7 +125,7 @@ The joins, each named as a gate:
 
 The cross-cutting express surfaces — **diagram** and **show-me** — are callable from any stage of the circuit; they are express lanes, not stages.
 
-Shipyard corrects itself through its file-backed paper trail; `/oh-my-claudecode:drydock --check` audits harness drift. These skills do not add a separate findings store, shipped/wontfixed state machine, hidden ledger, or `sy check`/`context-lint` commands.
+Shipyard corrects itself through its file-backed paper trail; `/oh-my-qoder:drydock --check` audits harness drift. These skills do not add a separate findings store, shipped/wontfixed state machine, hidden ledger, or `sy check`/`context-lint` commands.
 
 ## When to reach for what
 
