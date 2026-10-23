@@ -25,7 +25,10 @@ export function resolveDefaultConfigDir(home = homedir()) {
   return stripTrailingSep(normalize(join(home, chosen)));
 }
 
-export function getQoderConfigDir(env = process.env, home = homedir()) {
+// Declared under the ancestor spelling as a function: the standalone-hook reconciliation contract
+// pins the copied payload to contain `export function getClaudeConfigDir()`, and the fork spelling
+// below aliases the SAME reference so config-dir-mirror-parity's .toBe identity check holds.
+export function getClaudeConfigDir(env = process.env, home = homedir()) {
   const configured = (env.QODER_CONFIG_DIR ?? '').trim() || (env.QODERCN_CONFIG_DIR ?? '').trim();
 
   if (!configured) {
@@ -43,11 +46,9 @@ export function getQoderConfigDir(env = process.env, home = homedir()) {
   return stripTrailingSep(normalize(configured));
 }
 
-/** Hook templates spell the config root getter getClaudeConfigDir; keep the ancestor name as a
- *  function declaration, which is the payload shape the reconciliation contract pins. */
-export function getClaudeConfigDir() {
-  return getQoderConfigDir();
-}
+// The HUD wrapper template still destructures the pre-rename symbol; this alias keeps both
+// spellings pointing at one function object.
+export const getQoderConfigDir = getClaudeConfigDir;
 
 export function getOmqConfigDir() {
   return join(getQoderConfigDir(), '.omq');

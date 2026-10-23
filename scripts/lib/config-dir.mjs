@@ -21,7 +21,10 @@ export function resolveDefaultConfigDir(home = homedir()) {
   return stripTrailingSep(normalize(join(home, cnHasState ? QODER_CN_CONFIG_DIR_NAME : QODER_INTL_CONFIG_DIR_NAME)));
 }
 
-export function getQoderConfigDir(env = process.env, home = homedir()) {
+// Declared under the ancestor spelling as a function: the standalone-hook reconciliation contract
+// pins the copied payload to contain `export function getClaudeConfigDir()`, and the fork spelling
+// below aliases the SAME reference so config-dir-mirror-parity's .toBe identity check holds.
+export function getClaudeConfigDir(env = process.env, home = homedir()) {
   const configured = (env.QODER_CONFIG_DIR ?? '').trim() || (env.QODERCN_CONFIG_DIR ?? '').trim();
 
   if (!configured) {
@@ -39,6 +42,10 @@ export function getQoderConfigDir(env = process.env, home = homedir()) {
   return stripTrailingSep(normalize(configured));
 }
 
+// The HUD wrapper template still destructures the pre-rename symbol; this alias keeps both
+// spellings pointing at one function object.
+export const getQoderConfigDir = getClaudeConfigDir;
+
 export function getQoderRootConfigFileName(configDir = getQoderConfigDir()) {
   return basename(normalize(configDir)) === QODER_CN_CONFIG_DIR_NAME
     ? `${QODER_CN_CONFIG_DIR_NAME}.json`
@@ -51,13 +58,4 @@ export function getOmqConfigDir() {
 
 export function getUpdateCheckCachePath() {
   return join(getOmqConfigDir(), 'update-check.json');
-}
-
-// The HUD wrapper template still destructures the pre-rename symbol; this file is
-// copied verbatim into <configDir>/hud/lib/, so without the alias the statusline
-// throws "getClaudeConfigDir is not a function" on every render. Declared as a
-// function because the standalone-hook reconciliation contract pins the payload
-// to contain `export function getClaudeConfigDir()`.
-export function getClaudeConfigDir() {
-  return getQoderConfigDir();
 }
