@@ -37,7 +37,7 @@ const pullNumber = Number.parseInt(arg('pull') || '', 10);
 const baseRef = arg('base', 'origin/main');
 const headRef = arg('head', 'HEAD');
 const targetRef = arg('target', 'main');
-const owner = arg('owner', 'Yeachan-Heo');
+const owner = arg('owner', 'qoder-plugins');
 const expiresAt = arg('expires');
 const outPath = arg('out');
 

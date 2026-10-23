@@ -37,7 +37,7 @@ OMQ has two supported public surfaces. Use the Claude Code plugin for in-session
 
 ```bash
 # Step 1: Add the marketplace
-/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-qoder
+/plugin marketplace add https://github.com/qoder-plugins/oh-my-qoder
 
 # Step 2: Install the plugin
 /plugin install oh-my-qoder

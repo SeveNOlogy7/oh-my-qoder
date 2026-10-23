@@ -1,19 +1,19 @@
 {
   "schemaVersion": 2,
   "generatedAt": null,
-  "repository": "Yeachan-Heo/oh-my-qoder",
+  "repository": "qoder-plugins/oh-my-qoder",
   "provenance": {
     "base": "05c800f40d1ad53b42a78609d2667ef4f726808b",
     "planningHead": "0a91273e61dbbd47eb0af4c02844409251e08398",
-    "head": "95fca4a119f39795ce872f56c3ac0e557dfefa57",
-    "sourceSha256": "4fb1d1cddeb5304851c62d7f27b033593d20e3a0bceca8d2eb0babdeeda32eb3",
+    "head": "34f4b609097f42644afebcc89295d2c7c6278f08",
+    "sourceSha256": "b8ae225615eb731d0c178bc0b90195b92a2739a3fb9e237ae8f40476e304a71c",
     "generatedAt": null,
     "generator": "scripts/generate-inventory-graph.mjs"
   },
   "base": "05c800f40d1ad53b42a78609d2667ef4f726808b",
   "planningHead": "0a91273e61dbbd47eb0af4c02844409251e08398",
-  "head": "95fca4a119f39795ce872f56c3ac0e557dfefa57",
-  "sourceSha256": "4fb1d1cddeb5304851c62d7f27b033593d20e3a0bceca8d2eb0babdeeda32eb3",
+  "head": "34f4b609097f42644afebcc89295d2c7c6278f08",
+  "sourceSha256": "b8ae225615eb731d0c178bc0b90195b92a2739a3fb9e237ae8f40476e304a71c",
   "counts": {
     "public": {
       "skills": 60,
@@ -57160,5 +57160,5 @@
     }
   },
   "inventorySha256": "0900a300e9502c9b966c978fd6f9a3fefb33536eaed5d7d19222edac981018e7",
-  "manifestSha256": "bb7e3cb4f620312dd21d32e528ef2847f01e584cb098afbef31064d5ee77d2a5"
+  "manifestSha256": "aa5cf3405e41d8e0daf0c8ffa9b7a503819961e1bc8c1465f6496dc6dbe91493"
 }

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = resolve(SCRIPT_DIR, '..');
 const MANIFEST_PATH = join(REPOSITORY_ROOT, '.github', 'generated-artifact-authorizations.json');
-const OWNER = 'Yeachan-Heo';
+const OWNER = 'qoder-plugins';
 const DEFAULT_BRANCH = 'main';
 const WORKFLOW_PATH = '.github/workflows/generated-artifact-authorization.yml';
 const API_URL = 'https://api.github.com';

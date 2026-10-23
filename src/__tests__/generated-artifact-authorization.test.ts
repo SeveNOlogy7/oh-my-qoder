@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const REPOSITORY = 'Yeachan-Heo/oh-my-qoder';
-const OWNER = 'Yeachan-Heo';
+const REPOSITORY = 'qoder-plugins/oh-my-qoder';
+const OWNER = 'qoder-plugins';
 const MERGE_BASE_SHA = '76c90920b74494df6e34d6165be963bca8a9adf6';
 const LIVE_BASE_SHA = '21a6e488ce12d79b9a22d37e1093ac8e79f21029';
 const HEAD_SHA = '10078ece166ad36332390ecbaab2d5e247852bbc';

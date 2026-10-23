@@ -758,7 +758,7 @@ export OMQ_JEV_QUIET=1  # Suppress the activation message
 
 ### References
 
-- **Decision Model**: [Jev Issue #3669](https://github.com/Yeachan-Heo/oh-my-qoder/issues/3669) — user stories and design
-- **Degradation Contract**: [ADR 03665](https://github.com/Yeachan-Heo/oh-my-qoder/blob/dev/docs/adr/03665-jev-degradation-contract.md) — how Jev fails gracefully
-- **Env Activation**: [ADR 03672](https://github.com/Yeachan-Heo/oh-my-qoder/blob/dev/docs/adr/03672-env-activated-active-mode.md) — `:active` syntax and union semantics
-- **Script-Side Points**: [ADR 03671](https://github.com/Yeachan-Heo/oh-my-qoder/blob/dev/docs/adr/03671-script-side-judgment-channel.md) — hook-script integration points
+- **Decision Model**: [Jev Issue #3669](https://github.com/Yeachan-Heo/oh-my-claudecode/issues/3669) — user stories and design
+- **Degradation Contract**: [ADR 03665](https://github.com/Yeachan-Heo/oh-my-claudecode/blob/dev/docs/adr/03665-jev-degradation-contract.md) — how Jev fails gracefully
+- **Env Activation**: [ADR 03672](https://github.com/Yeachan-Heo/oh-my-claudecode/blob/dev/docs/adr/03672-env-activated-active-mode.md) — `:active` syntax and union semantics
+- **Script-Side Points**: [ADR 03671](https://github.com/Yeachan-Heo/oh-my-claudecode/blob/dev/docs/adr/03671-script-side-judgment-channel.md) — hook-script integration points

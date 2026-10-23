@@ -132,11 +132,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Yeachan-Heo/oh-my-qoder.git"
+    "url": "git+https://github.com/qoder-plugins/oh-my-qoder.git"
   },
-  "homepage": "https://github.com/Yeachan-Heo/oh-my-qoder#readme",
+  "homepage": "https://github.com/qoder-plugins/oh-my-qoder#readme",
   "bugs": {
-    "url": "https://github.com/Yeachan-Heo/oh-my-qoder/issues"
+    "url": "https://github.com/qoder-plugins/oh-my-qoder/issues"
   },
   "author": "Yeachan Heo",
   "license": "MIT",

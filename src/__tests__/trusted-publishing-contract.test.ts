@@ -46,7 +46,7 @@ describe('npm trusted publishing contract', () => {
     expect(releaseJob).toContain('npm install --global npm@11.17.0');
     expect(releaseJob).toContain('test "$(npm --version)" = "11.17.0"');
     expect(releaseBoundary).toContain("const WORKFLOW_PATH = '.github/workflows/ci.yml'");
-    expect(releaseBoundary).toContain("const REPOSITORY_URL = 'https://github.com/Yeachan-Heo/oh-my-qoder'");
+    expect(releaseBoundary).toContain("const REPOSITORY_URL = 'https://github.com/qoder-plugins/oh-my-qoder'");
     expect(releaseBoundary).not.toContain("const WORKFLOW_PATH = '.github/workflows/release.yml'");
   });
 
